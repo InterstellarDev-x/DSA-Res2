@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [C++ Templates](#c-templates)
+5. [Rust Templates](#rust-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -72,128 +72,148 @@ The key invariant: at every step, pointers maintain a constraint (e.g. `sum ≤ 
 
 ---
 
-## C++ Templates
+## Rust Templates
 
 ### 1. Opposite Ends — Two Sum (Sorted)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> twoSum(vector<int>& arr, int target) {
-    int l = 0, r = arr.size() - 1;
-    while (l < r) {
-        int sum = arr[l] + arr[r];
-        if (sum == target) return {l, r};
-        else if (sum < target) l++;
-        else r--;
+```rust
+fn two_sum(arr: &[i32], target: i32) -> (i32, i32) {
+    let mut l = 0;
+    let mut r = arr.len() - 1;
+    while l < r {
+        let sum = arr[l] + arr[r];
+        if sum == target {
+            return (l as i32, r as i32);
+        } else if sum < target {
+            l += 1;
+        } else {
+            r -= 1;
+        }
     }
-    return {-1, -1};
+    (-1, -1)
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 2. Same Direction — Remove Duplicates (Sorted)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int removeDuplicates(vector<int>& nums) {
-    if (nums.empty()) return 0;
-    int slow = 0;
-    for (int fast = 1; fast < (int)nums.size(); fast++) {
-        if (nums[fast] != nums[slow]) {
-            slow++;
+```rust
+fn remove_duplicates(nums: &mut Vec<i32>) -> usize {
+    if nums.is_empty() {
+        return 0;
+    }
+    let mut slow = 0;
+    for fast in 1..nums.len() {
+        if nums[fast] != nums[slow] {
+            slow += 1;
             nums[slow] = nums[fast];
         }
     }
-    return slow + 1; // new length
+    slow + 1 // new length
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 3. Move Zeros to End
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void moveZeroes(vector<int>& nums) {
-    int slow = 0;
-    for (int fast = 0; fast < (int)nums.size(); fast++) {
-        if (nums[fast] != 0) {
-            nums[slow++] = nums[fast];
+```rust
+fn move_zeroes(nums: &mut Vec<i32>) {
+    let mut slow = 0;
+    for fast in 0..nums.len() {
+        if nums[fast] != 0 {
+            nums[slow] = nums[fast];
+            slow += 1;
         }
     }
-    while (slow < (int)nums.size()) nums[slow++] = 0;
+    while slow < nums.len() {
+        nums[slow] = 0;
+        slow += 1;
+    }
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 4. 3Sum
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn three_sum(nums: &mut Vec<i32>) -> Vec<Vec<i32>> {
+    nums.sort();
+    let mut result: Vec<Vec<i32>> = Vec::new();
+    let n = nums.len();
 
-vector<vector<int>> threeSum(vector<int>& nums) {
-    sort(nums.begin(), nums.end());
-    vector<vector<int>> result;
+    for i in 0..n.saturating_sub(2) {
+        if i > 0 && nums[i] == nums[i - 1] {
+            continue; // skip duplicate i
+        }
 
-    for (int i = 0; i < (int)nums.size() - 2; i++) {
-        if (i > 0 && nums[i] == nums[i - 1]) continue; // skip duplicate i
-
-        int l = i + 1, r = nums.size() - 1;
-        while (l < r) {
-            int sum = nums[i] + nums[l] + nums[r];
-            if (sum == 0) {
-                result.push_back({nums[i], nums[l], nums[r]});
-                while (l < r && nums[l] == nums[l + 1]) l++; // skip dup l
-                while (l < r && nums[r] == nums[r - 1]) r--; // skip dup r
-                l++; r--;
-            } else if (sum < 0) l++;
-            else r--;
+        let mut l = i + 1;
+        let mut r = n - 1;
+        while l < r {
+            let sum = nums[i] + nums[l] + nums[r];
+            if sum == 0 {
+                result.push(vec![nums[i], nums[l], nums[r]]);
+                while l < r && nums[l] == nums[l + 1] { l += 1; } // skip dup l
+                while l < r && nums[r] == nums[r - 1] { r -= 1; } // skip dup r
+                l += 1;
+                r -= 1;
+            } else if sum < 0 {
+                l += 1;
+            } else {
+                r -= 1;
+            }
         }
     }
-    return result;
+    result
 }
 // Time: O(n²) | Space: O(1) excluding output
 ```
 
 ### 5. Container With Most Water
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int maxArea(vector<int>& height) {
-    int l = 0, r = height.size() - 1, maxWater = 0;
-    while (l < r) {
-        maxWater = max(maxWater, min(height[l], height[r]) * (r - l));
-        if (height[l] < height[r]) l++;
-        else r--;
+```rust
+fn max_area(height: &[i32]) -> i32 {
+    let mut l = 0;
+    let mut r = height.len() - 1;
+    let mut max_water = 0;
+    while l < r {
+        let water = height[l].min(height[r]) * (r - l) as i32;
+        max_water = max_water.max(water);
+        if height[l] < height[r] {
+            l += 1;
+        } else {
+            r -= 1;
+        }
     }
-    return maxWater;
+    max_water
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 6. Merge Two Sorted Arrays into One
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> mergeSorted(vector<int>& a, vector<int>& b) {
-    int i = 0, j = 0, k = 0;
-    vector<int> result(a.size() + b.size());
-    while (i < (int)a.size() && j < (int)b.size()) {
-        result[k++] = (a[i] <= b[j]) ? a[i++] : b[j++];
+```rust
+fn merge_sorted(a: &[i32], b: &[i32]) -> Vec<i32> {
+    let mut result = Vec::with_capacity(a.len() + b.len());
+    let mut i = 0;
+    let mut j = 0;
+    while i < a.len() && j < b.len() {
+        if a[i] <= b[j] {
+            result.push(a[i]);
+            i += 1;
+        } else {
+            result.push(b[j]);
+            j += 1;
+        }
     }
-    while (i < (int)a.size()) result[k++] = a[i++];
-    while (j < (int)b.size()) result[k++] = b[j++];
-    return result;
+    while i < a.len() {
+        result.push(a[i]);
+        i += 1;
+    }
+    while j < b.len() {
+        result.push(b[j]);
+        j += 1;
+    }
+    result
 }
 // Time: O(m+n) | Space: O(m+n)
 ```
@@ -204,11 +224,11 @@ vector<int> mergeSorted(vector<int>& a, vector<int>& b) {
 
 | Mistake | Fix |
 |---------|-----|
-| Applying Two Pointers to unsorted array | Sort first (adds O(n log n)) or use std::unordered_map |
+| Applying Two Pointers to unsorted array | Sort first (adds O(n log n)) or use HashMap |
 | Loop condition `l < r` vs `l <= r` | `l < r` for pairs; `l <= r` if element can be used alone |
 | 3Sum: not skipping duplicates | Skip when `nums[i] == nums[i-1]` AND `nums[l] == nums[l+1]` |
 | Moving both pointers when sum equals target | Move both; `l++` and `r--` together |
-| Integer overflow in sum of large values | Cast to `long` before adding |
+| Integer overflow in sum of large values | Cast to `i64` before adding |
 
 ---
 

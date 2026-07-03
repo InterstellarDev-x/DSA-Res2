@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [C++ Templates](#cpp-templates)
+5. [Rust Templates](#rust-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -71,22 +71,19 @@ After sorting, scan for anomalies (missing index, duplicate value).
 
 ---
 
-## C++ Templates
+## Rust Templates
 
 ### 1. Cyclic Sort — Sort Numbers [1, n]
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void cyclicSort(vector<int>& nums) {
-    int i = 0;
-    while (i < (int)nums.size()) {
-        int correct = nums[i] - 1; // nums[i] belongs at index correct
-        if (nums[i] != nums[correct]) {
-            swap(nums[i], nums[correct]);
+```rust
+fn cyclic_sort(nums: &mut Vec<i32>) {
+    let mut i = 0;
+    while i < nums.len() {
+        let correct = (nums[i] - 1) as usize; // nums[i] belongs at index correct
+        if nums[i] != nums[correct] {
+            nums.swap(i, correct);
         } else {
-            i++;
+            i += 1;
         }
     }
 }
@@ -95,124 +92,111 @@ void cyclicSort(vector<int>& nums) {
 
 ### 2. Find the Missing Number [0, n]
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int missingNumber(vector<int>& nums) {
-    int i = 0;
-    while (i < (int)nums.size()) {
-        int correct = nums[i];
+```rust
+fn missing_number(nums: &mut Vec<i32>) -> i32 {
+    let n = nums.len();
+    let mut i = 0;
+    while i < n {
+        let correct = nums[i] as usize;
         // nums[i] should be at index nums[i], range [0, n]
-        if (nums[i] < (int)nums.size() && nums[i] != nums[correct]) {
-            swap(nums[i], nums[correct]);
+        if nums[i] < n as i32 && nums[i] != nums[correct] {
+            nums.swap(i, correct);
         } else {
-            i++;
+            i += 1;
         }
     }
     // Scan for mismatch
-    for (int j = 0; j < (int)nums.size(); j++) {
-        if (nums[j] != j) return j;
+    for j in 0..n {
+        if nums[j] != j as i32 { return j as i32; }
     }
-    return nums.size(); // n is missing
+    n as i32 // n is missing
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 3. Find the Duplicate Number [1, n] (One Duplicate)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int findDuplicate(vector<int>& nums) {
-    int i = 0;
-    while (i < (int)nums.size()) {
-        int correct = nums[i] - 1;
-        if (nums[i] != i + 1) {
-            if (nums[i] != nums[correct]) {
-                swap(nums[i], nums[correct]);
+```rust
+fn find_duplicate(nums: &mut Vec<i32>) -> i32 {
+    let mut i = 0;
+    while i < nums.len() {
+        let correct = (nums[i] - 1) as usize;
+        if nums[i] != i as i32 + 1 {
+            if nums[i] != nums[correct] {
+                nums.swap(i, correct);
             } else {
                 return nums[i]; // duplicate found
             }
         } else {
-            i++;
+            i += 1;
         }
     }
-    return -1;
+    -1
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 4. Find All Missing Numbers [1, n]
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> findDisappearedNumbers(vector<int>& nums) {
-    int i = 0;
-    while (i < (int)nums.size()) {
-        int correct = nums[i] - 1;
-        if (nums[i] != nums[correct]) {
-            swap(nums[i], nums[correct]);
+```rust
+fn find_disappeared_numbers(nums: &mut Vec<i32>) -> Vec<i32> {
+    let mut i = 0;
+    while i < nums.len() {
+        let correct = (nums[i] - 1) as usize;
+        if nums[i] != nums[correct] {
+            nums.swap(i, correct);
         } else {
-            i++;
+            i += 1;
         }
     }
-    vector<int> missing;
-    for (int j = 0; j < (int)nums.size(); j++) {
-        if (nums[j] != j + 1) missing.push_back(j + 1);
+    let mut missing = Vec::new();
+    for j in 0..nums.len() {
+        if nums[j] != j as i32 + 1 { missing.push(j as i32 + 1); }
     }
-    return missing;
+    missing
 }
 // Time: O(n) | Space: O(1) (output not counted)
 ```
 
 ### 5. Find All Duplicates [1, n]
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> findAllDuplicates(vector<int>& nums) {
-    int i = 0;
-    while (i < (int)nums.size()) {
-        int correct = nums[i] - 1;
-        if (nums[i] != nums[correct]) {
-            swap(nums[i], nums[correct]);
+```rust
+fn find_all_duplicates(nums: &mut Vec<i32>) -> Vec<i32> {
+    let mut i = 0;
+    while i < nums.len() {
+        let correct = (nums[i] - 1) as usize;
+        if nums[i] != nums[correct] {
+            nums.swap(i, correct);
         } else {
-            i++;
+            i += 1;
         }
     }
-    vector<int> duplicates;
-    for (int j = 0; j < (int)nums.size(); j++) {
-        if (nums[j] != j + 1) duplicates.push_back(nums[j]);
+    let mut duplicates = Vec::new();
+    for j in 0..nums.len() {
+        if nums[j] != j as i32 + 1 { duplicates.push(nums[j]); }
     }
-    return duplicates;
+    duplicates
 }
 ```
 
 ### 6. First Missing Positive (Cyclic Sort Variant)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int firstMissingPositive(vector<int>& nums) {
-    int n = nums.size(), i = 0;
-    while (i < n) {
-        int correct = nums[i] - 1;
-        if (nums[i] > 0 && nums[i] <= n && nums[i] != nums[correct]) {
-            swap(nums[i], nums[correct]);
+```rust
+fn first_missing_positive(nums: &mut Vec<i32>) -> i32 {
+    let n = nums.len();
+    let mut i = 0;
+    while i < n {
+        let correct = (nums[i] - 1) as usize;
+        if nums[i] > 0 && nums[i] <= n as i32 && nums[i] != nums[correct] {
+            nums.swap(i, correct);
         } else {
-            i++;
+            i += 1;
         }
     }
-    for (int j = 0; j < n; j++) {
-        if (nums[j] != j + 1) return j + 1;
+    for j in 0..n {
+        if nums[j] != j as i32 + 1 { return j as i32 + 1; }
     }
-    return n + 1;
+    n as i32 + 1
 }
 // Time: O(n) | Space: O(1)
 ```

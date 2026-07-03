@@ -12,7 +12,7 @@ Microsoft interviews weight **communication** heavily: a working solution you ca
 
 ### The lemma and its proof
 
-Let `n = s.length()` and `k = lps[n-1]` (the longest border of the whole string). Define the candidate period `p = n - k`.
+Let `n = s.len()` and `k = lps[n-1]` (the longest border of the whole string). Define the candidate period `p = n - k`.
 
 **Claim:** `s` is built from repeated copies of a substring **iff** `k != 0` and `n % p == 0`.
 
@@ -26,32 +26,38 @@ Aligning these two equal blocks forces `s[j] == s[j + p]` for every valid `j` (t
 
 **Why the `k != 0` guard.** A string with no border at all (e.g. `"abc"`) has `k = 0`, so `p = n`, and `n % n == 0` would falsely say "yes." The guard rejects the trivial single-copy case.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    bool repeatedSubstringPattern(string s) {
-        int n = s.length();
-        vector<int> lps = buildLPS(s);
-        int k = lps[n - 1];
-        return k != 0 && n % (n - k) == 0;
+impl Solution {
+    pub fn repeated_substring_pattern(s: String) -> bool {
+        let n = s.len();
+        let lps = Self::build_lps(&s);
+        let k = lps[n - 1];
+        k != 0 && n % (n - k) == 0
     }
 
-private:
-    vector<int> buildLPS(string s) {
-        int n = s.length();
-        vector<int> lps(n);
-        int len = 0, i = 1;
-        while (i < n) {
-            if (s[i] == s[len]) { lps[i++] = ++len; }
-            else if (len > 0) { len = lps[len - 1]; }
-            else { lps[i++] = 0; }
+    fn build_lps(s: &str) -> Vec<usize> {
+        let n = s.len();
+        let bytes = s.as_bytes();
+        let mut lps = vec![0usize; n];
+        let mut len = 0usize;
+        let mut i = 1;
+        while i < n {
+            if bytes[i] == bytes[len] {
+                len += 1;
+                lps[i] = len;
+                i += 1;
+            } else if len > 0 {
+                len = lps[len - 1];
+            } else {
+                lps[i] = 0;
+                i += 1;
+            }
         }
-        return lps;
+        lps
     }
-};
+}
 ```
 
 **Complexity:** O(n) time and space.
@@ -64,42 +70,54 @@ private:
 
 > Return the first index of `needle` in `haystack`, or `-1`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int strStr(string haystack, string needle) {
-        if (needle.empty()) return 0;
-        vector<int> lps = buildLPS(needle);
-        int i = 0, j = 0, n = haystack.length(), m = needle.length();
-        while (i < n) {
-            if (haystack[i] == needle[j]) {
-                i++; j++;
-                if (j == m) return i - j;
-            } else if (j > 0) {
-                j = lps[j - 1];   // fall back using the border; text pointer stays
+impl Solution {
+    pub fn str_str(haystack: String, needle: String) -> i32 {
+        if needle.is_empty() { return 0; }
+        let lps = Self::build_lps(&needle);
+        let h = haystack.as_bytes();
+        let p = needle.as_bytes();
+        let n = h.len();
+        let m = p.len();
+        let mut i = 0;
+        let mut j = 0;
+        while i < n {
+            if h[i] == p[j] {
+                i += 1;
+                j += 1;
+                if j == m { return (i - j) as i32; }
+            } else if j > 0 {
+                j = lps[j - 1]; // fall back using the border; text pointer stays
             } else {
-                i++;
+                i += 1;
             }
         }
-        return -1;
+        -1
     }
 
-private:
-    vector<int> buildLPS(string s) {
-        int n = s.length();
-        vector<int> lps(n);
-        int len = 0, i = 1;
-        while (i < n) {
-            if (s[i] == s[len]) { lps[i++] = ++len; }
-            else if (len > 0) { len = lps[len - 1]; }
-            else { lps[i++] = 0; }
+    fn build_lps(s: &str) -> Vec<usize> {
+        let n = s.len();
+        let bytes = s.as_bytes();
+        let mut lps = vec![0usize; n];
+        let mut len = 0usize;
+        let mut i = 1;
+        while i < n {
+            if bytes[i] == bytes[len] {
+                len += 1;
+                lps[i] = len;
+                i += 1;
+            } else if len > 0 {
+                len = lps[len - 1];
+            } else {
+                lps[i] = 0;
+                i += 1;
+            }
         }
-        return lps;
+        lps
     }
-};
+}
 ```
 
 **Design notes to verbalize:** handle the empty needle (return 0), note that `haystack.indexOf(needle)` is the production answer, and explain that KMP's win is *never moving the text pointer `i` backward* — on a mismatch we only rewind `j` within the pattern.

@@ -12,7 +12,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [C++ Templates](#c-templates)
+5. [Rust Templates](#rust-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -22,7 +22,7 @@
 
 ## Pattern Overview
 
-Two Pointers on strings applies the same opposite-ends or same-direction pointer logic as on arrays, with one key difference: **C++ strings are mutable**, so in-place operations can be performed directly on `std::string`.
+Two Pointers on strings applies the same opposite-ends or same-direction pointer logic as on arrays, with one key difference: **Rust `String` values are mutable when owned**, so in-place operations can be performed directly on `Vec<char>` or byte slices.
 
 **Three sub-styles:**
 
@@ -60,69 +60,75 @@ Two Pointers on strings applies the same opposite-ends or same-direction pointer
 
 | Operation | Time | Space |
 |-----------|------|-------|
-| Palindrome check | O(n) | O(1) in-place on `std::string` |
+| Palindrome check | O(n) | O(1) in-place on `String` |
 | Reverse string | O(n) | O(1) in-place |
 | Reverse words | O(n) | O(n) — copy required |
 | Two-string compare | O(m+n) | O(1) |
 
 ---
 
-## C++ Templates
+## Rust Templates
 
 ### 1. Valid Palindrome (Ignore Non-Alphanumeric, LC 125)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool isPalindrome(string s) {
-    int l = 0, r = s.length() - 1;
-    while (l < r) {
-        while (l < r && !isalnum(s[l])) l++;
-        while (l < r && !isalnum(s[r])) r--;
-        if (tolower(s[l]) != tolower(s[r])) return false;
-        l++; r--;
+```rust
+fn is_palindrome(s: String) -> bool {
+    let s = s.as_bytes();
+    let n = s.len();
+    let mut l = 0usize;
+    let mut r = n.saturating_sub(1);
+    while l < r {
+        while l < r && !s[l].is_ascii_alphanumeric() { l += 1; }
+        while l < r && !s[r].is_ascii_alphanumeric() { r -= 1; }
+        if s[l].to_ascii_lowercase() != s[r].to_ascii_lowercase() { return false; }
+        l += 1;
+        r -= 1;
     }
-    return true;
+    true
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 2. Valid Palindrome II — At Most One Deletion (LC 680)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool isPalin(string& s, int l, int r) {
-    while (l < r) {
-        if (s[l++] != s[r--]) return false;
+```rust
+fn is_palin(s: &[u8], mut l: usize, mut r: usize) -> bool {
+    while l < r {
+        if s[l] != s[r] { return false; }
+        l += 1;
+        r -= 1;
     }
-    return true;
+    true
 }
 
-bool validPalindrome(string s) {
-    int l = 0, r = s.length() - 1;
-    while (l < r) {
-        if (s[l] != s[r])
-            return isPalin(s, l + 1, r) || isPalin(s, l, r - 1);
-        l++; r--;
+fn valid_palindrome(s: String) -> bool {
+    let s = s.as_bytes();
+    let n = s.len();
+    let mut l = 0usize;
+    let mut r = n.saturating_sub(1);
+    while l < r {
+        if s[l] != s[r] {
+            return is_palin(s, l + 1, r) || is_palin(s, l, r - 1);
+        }
+        l += 1;
+        r -= 1;
     }
-    return true;
+    true
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 3. Reverse String In-Place (LC 344)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void reverseString(vector<char>& s) {
-    int l = 0, r = s.size() - 1;
-    while (l < r) {
-        char tmp = s[l]; s[l++] = s[r]; s[r--] = tmp;
+```rust
+fn reverse_string(s: &mut Vec<char>) {
+    let n = s.len();
+    let mut l = 0usize;
+    let mut r = n.saturating_sub(1);
+    while l < r {
+        s.swap(l, r);
+        l += 1;
+        r -= 1;
     }
 }
 // Time: O(n) | Space: O(1)
@@ -130,76 +136,80 @@ void reverseString(vector<char>& s) {
 
 ### 4. Reverse Words in a String (LC 151)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-string reverseWords(string s) {
+```rust
+fn reverse_words(s: String) -> String {
     // Split on whitespace, reverse word order
-    vector<string> words;
-    istringstream iss(s);
-    string word;
-    while (iss >> word) words.push_back(word);
-    int l = 0, r = words.size() - 1;
-    while (l < r) { swap(words[l++], words[r--]); }
-    string result;
-    for (int i = 0; i < (int)words.size(); i++) {
-        if (i > 0) result += " ";
-        result += words[i];
+    let mut words: Vec<&str> = s.split_whitespace().collect();
+    let mut l = 0usize;
+    let mut r = words.len().saturating_sub(1);
+    while l < r {
+        words.swap(l, r);
+        l += 1;
+        r -= 1;
     }
-    return result;
+    words.join(" ")
 }
 // Time: O(n) | Space: O(n) — copy required
 ```
 
 ### 5. Rotate String — Three-Reverse Trick (LC 796)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Check if s can become goal by rotation
-bool rotateString(string s, string goal) {
-    return s.length() == goal.length() && (s + s).find(goal) != string::npos;
+fn rotate_string(s: String, goal: String) -> bool {
+    s.len() == goal.len() && s.repeat(2).contains(goal.as_str())
     // Alternative: KMP search in doubled string
 }
-// Time: O(n²) with find; O(n) with KMP
+// Time: O(n²) with contains; O(n) with KMP
 ```
 
 ### 6. Compare Version Numbers (LC 165)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int compareVersion(string version1, string version2) {
-    int i = 0, j = 0;
-    while (i < (int)version1.length() || j < (int)version2.length()) {
-        int v1 = 0, v2 = 0;
-        while (i < (int)version1.length() && version1[i] != '.') v1 = v1 * 10 + (version1[i++] - '0');
-        while (j < (int)version2.length() && version2[j] != '.') v2 = v2 * 10 + (version2[j++] - '0');
-        if (v1 != v2) return v1 > v2 ? 1 : -1;
-        i++; j++; // skip '.'
+```rust
+fn compare_version(version1: String, version2: String) -> i32 {
+    let v1 = version1.as_bytes();
+    let v2 = version2.as_bytes();
+    let mut i = 0usize;
+    let mut j = 0usize;
+    while i < v1.len() || j < v2.len() {
+        let mut num1 = 0i32;
+        let mut num2 = 0i32;
+        while i < v1.len() && v1[i] != b'.' {
+            num1 = num1 * 10 + (v1[i] - b'0') as i32;
+            i += 1;
+        }
+        while j < v2.len() && v2[j] != b'.' {
+            num2 = num2 * 10 + (v2[j] - b'0') as i32;
+            j += 1;
+        }
+        if num1 != num2 { return if num1 > num2 { 1 } else { -1 }; }
+        i += 1; // skip '.'
+        j += 1; // skip '.'
     }
-    return 0;
+    0
 }
 // Time: O(m+n) | Space: O(1)
 ```
 
 ### 7. Long Pressed Name (LC 925)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool isLongPressedName(string name, string typed) {
-    int i = 0, j = 0;
-    while (j < (int)typed.length()) {
-        if (i < (int)name.length() && name[i] == typed[j]) { i++; j++; }
-        else if (j > 0 && typed[j] == typed[j - 1]) j++;
-        else return false;
+```rust
+fn is_long_pressed_name(name: String, typed: String) -> bool {
+    let name = name.as_bytes();
+    let typed = typed.as_bytes();
+    let mut i = 0usize;
+    let mut j = 0usize;
+    while j < typed.len() {
+        if i < name.len() && name[i] == typed[j] {
+            i += 1;
+            j += 1;
+        } else if j > 0 && typed[j] == typed[j - 1] {
+            j += 1;
+        } else {
+            return false;
+        }
     }
-    return i == (int)name.length();
+    i == name.len()
 }
 // Time: O(m+n) | Space: O(1)
 ```
@@ -210,10 +220,10 @@ bool isLongPressedName(string name, string typed) {
 
 | Mistake | Fix |
 |---------|-----|
-| Palindrome: not converting to lowercase | `tolower()` both chars before comparing |
-| Palindrome: not skipping non-alphanumeric | Use `isalnum()` guard inside while |
-| Reverse words: splitting on single space only | Use `istringstream` to handle multiple spaces automatically |
-| In-place reverse: unnecessary copy | Can modify `std::string` directly in C++ |
+| Palindrome: not converting to lowercase | `to_ascii_lowercase()` both chars before comparing |
+| Palindrome: not skipping non-alphanumeric | Use `is_ascii_alphanumeric()` guard inside while |
+| Reverse words: splitting on single space only | Use `split_whitespace()` to handle multiple spaces automatically |
+| In-place reverse: unnecessary copy | Can modify `Vec<char>` directly in Rust using `.swap()` |
 | Two-string pointer: forgetting to advance both `i` and `j` | After a match, both pointers advance |
 
 ---
@@ -222,7 +232,7 @@ bool isLongPressedName(string name, string typed) {
 
 | Variation | Description |
 |-----------|-------------|
-| Palindrome with ignored chars | Two pointer + `isalnum()` filter |
+| Palindrome with ignored chars | Two pointer + `is_ascii_alphanumeric()` filter |
 | Palindrome after at most k deletions | DP for k > 1; greedy for k = 1 |
 | Merge alternately | Two pointer, append from each |
 | Backspace string compare (LC 844) | Simulate with stack or reverse pointer |

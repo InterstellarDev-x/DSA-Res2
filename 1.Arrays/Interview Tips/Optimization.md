@@ -24,7 +24,7 @@
 2. **Identify the bottleneck** — is it the nested loop? The sort? The space?
 3. **Ask: what extra information can I precompute?** — prefix sums, frequency maps
 4. **Ask: can I avoid recomputation?** — sliding window, DP
-5. **Ask: can I trade space for time?** — `std::unordered_map` / `std::unordered_set`
+5. **Ask: can I trade space for time?** — `HashMap` / `HashSet`
 6. **Ask: can I eliminate space?** — in-place manipulation, cyclic sort
 
 ---
@@ -33,8 +33,8 @@
 
 | From | To | Technique | Example |
 |------|----|-----------|---------|
-| O(n²) pair check | O(n) | `std::unordered_map` | Two Sum |
-| O(n²) subarray sum | O(n) | [Prefix Sum + `std::unordered_map`](../Patterns/Prefix%20Sum.md) | Subarray Sum = K |
+| O(n²) pair check | O(n) | `HashMap` | Two Sum |
+| O(n²) subarray sum | O(n) | [Prefix Sum + `HashMap`](../Patterns/Prefix%20Sum.md) | Subarray Sum = K |
 | O(n²) window check | O(n) | [Sliding Window](../Patterns/Sliding%20Window.md) | Longest substring |
 | O(n² log n) 3Sum naive | O(n²) | Sort + [Two Pointers](../Patterns/Two%20Pointers.md) | 3Sum |
 | O(n log n) merge-find | O(n) | [Cyclic Sort](../Patterns/Cyclic%20Sort.md) | Missing number |
@@ -55,26 +55,41 @@
 
 ### Set Matrix Zeroes — O(1) Space Optimization
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Use first row and first column as markers
-bool firstRowZero = false, firstColZero = false;
+let mut first_row_zero = false;
+let mut first_col_zero = false;
 // Check if first row/col have zeros originally
-for (int j = 0; j < cols; j++) if (matrix[0][j] == 0) firstRowZero = true;
-for (int i = 0; i < rows; i++) if (matrix[i][0] == 0) firstColZero = true;
+for j in 0..cols {
+    if matrix[0][j] == 0 { first_row_zero = true; }
+}
+for i in 0..rows {
+    if matrix[i][0] == 0 { first_col_zero = true; }
+}
 // Mark zeros using first row/col
-for (int i = 1; i < rows; i++)
-    for (int j = 1; j < cols; j++)
-        if (matrix[i][j] == 0) { matrix[i][0] = 0; matrix[0][j] = 0; }
+for i in 1..rows {
+    for j in 1..cols {
+        if matrix[i][j] == 0 {
+            matrix[i][0] = 0;
+            matrix[0][j] = 0;
+        }
+    }
+}
 // Apply markers
-for (int i = 1; i < rows; i++)
-    for (int j = 1; j < cols; j++)
-        if (matrix[i][0] == 0 || matrix[0][j] == 0) matrix[i][j] = 0;
+for i in 1..rows {
+    for j in 1..cols {
+        if matrix[i][0] == 0 || matrix[0][j] == 0 {
+            matrix[i][j] = 0;
+        }
+    }
+}
 // Handle first row and col
-if (firstRowZero) fill(matrix[0].begin(), matrix[0].end(), 0);
-if (firstColZero) for (int i = 0; i < rows; i++) matrix[i][0] = 0;
+if first_row_zero {
+    for j in 0..cols { matrix[0][j] = 0; }
+}
+if first_col_zero {
+    for i in 0..rows { matrix[i][0] = 0; }
+}
 ```
 
 ---
@@ -85,46 +100,46 @@ if (firstColZero) for (int i = 0; i < rows; i++) matrix[i][0] = 0;
 
 Instead of scanning left or right at each step, precompute:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Suffix maximum for Trapping Rain Water
-vector<int> rightMax(n);
-rightMax[n-1] = height[n-1];
-for (int i = n - 2; i >= 0; i--) rightMax[i] = max(height[i], rightMax[i+1]);
-```
-
-### 2. Use Complement in `std::unordered_map`
-
-Instead of "find pair that sums to target", store "what I've seen" and check "target - current":
-
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-// O(n) instead of O(n²)
-unordered_map<int, int> seen;
-for (int i = 0; i < (int)nums.size(); i++) {
-    int complement = target - nums[i];
-    if (seen.count(complement)) return {seen[complement], i};
-    seen[nums[i]] = i;
+let mut right_max = vec![0i32; n];
+right_max[n - 1] = height[n - 1];
+for i in (0..n - 1).rev() {
+    right_max[i] = height[i].max(right_max[i + 1]);
 }
 ```
 
-### 3. Eliminate Sort with `std::unordered_set`
+### 2. Use Complement in `HashMap`
+
+Instead of "find pair that sums to target", store "what I've seen" and check "target - current":
+
+```rust
+use std::collections::HashMap;
+
+// O(n) instead of O(n²)
+let mut seen: HashMap<i32, usize> = HashMap::new();
+for i in 0..nums.len() {
+    let complement = target - nums[i];
+    if let Some(&j) = seen.get(&complement) {
+        return vec![j as i32, i as i32];
+    }
+    seen.insert(nums[i], i);
+}
+```
+
+### 3. Eliminate Sort with `HashSet`
 
 For "Longest Consecutive Sequence":
 - Naive: sort then scan → O(n log n)
-- Optimal: `std::unordered_set` + only extend from sequence start → O(n)
+- Optimal: `HashSet` + only extend from sequence start → O(n)
 
 ### 4. Early Termination
 
-```cpp
+```rust
 // If max so far is already at theoretical maximum, stop
-if (maxLen == n) return maxLen;
+if max_len == n { return max_len; }
 // In sorted array, if current element > target/3, no valid triplet possible
-if (nums[i] > 0 && nums[i] * 3 > target) break;
+if nums[i] > 0 && nums[i] * 3 > target { break; }
 ```
 
 ---

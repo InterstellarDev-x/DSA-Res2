@@ -10,7 +10,7 @@
 1. [Problem Statement](#problem-statement)
 2. [Interview Expectations](#interview-expectations)
 3. [Approaches](#approaches)
-4. [C++ Implementation](#c-implementation)
+4. [Rust Implementation](#rust-implementation)
 5. [Complexity Analysis](#complexity-analysis)
 6. [Edge Cases](#edge-cases)
 7. [Similar Problems](#similar-problems)
@@ -24,7 +24,7 @@
 Design a system that, given a set of `k` patterns, can find **all occurrences of any pattern** in a text string efficiently.
 
 - `PatternMatcher(string[] patterns)` — preprocess patterns
-- `vector<pair<int,int>> search(string text)` — return `{start, patternIndex}` for each match
+- `Vec<(usize, usize)> search(text: &str)` — return `(start, patternIndex)` for each match
 
 ---
 
@@ -35,7 +35,7 @@ Design a system that, given a set of `k` patterns, can find **all occurrences of
 | Know naive approach | Run KMP for each pattern: O(n×k + m×k) |
 | Know optimal | Aho-Corasick: build once O(m×k), search O(n + total_matches) |
 | Understand failure links | How they mirror KMP's LPS but across a Trie |
-| Discuss std::string `find` | Uses Boyer-Moore-Horspool internally, O(n×m) worst |
+| Discuss `str::find` | Uses two-way algorithm internally, O(n×m) worst |
 
 ---
 
@@ -49,86 +49,100 @@ Design a system that, given a set of `k` patterns, can find **all occurrences of
 
 ---
 
-## C++ Implementation — Aho-Corasick
+## Rust Implementation — Aho-Corasick
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
+
+struct TrieNode {
+    next: [i32; 26],
+    fail: usize,
+    output: Vec<usize>,
+}
+
+impl TrieNode {
+    fn new() -> Self {
+        TrieNode {
+            next: [-1; 26],
+            fail: 0,
+            output: Vec::new(),
+        }
+    }
+}
 
 struct AhoCorasick {
-    struct TrieNode {
-        int next[26];
-        int fail;                  // failure link
-        vector<int> output;       // pattern indices ending here
+    trie: Vec<TrieNode>,
+    patterns: Vec<String>,
+}
 
-        TrieNode() {
-            fill(next, next + 26, -1);
-        }
-    };
-
-    vector<TrieNode> trie;
-    vector<string> patterns;
-
-    AhoCorasick(vector<string>& pats) : patterns(pats) {
-        trie.push_back(TrieNode()); // root
+impl AhoCorasick {
+    fn new(patterns: Vec<String>) -> Self {
+        let mut ac = AhoCorasick {
+            trie: vec![TrieNode::new()], // root
+            patterns,
+        };
 
         // Build Trie
-        for (int pi = 0; pi < (int)patterns.size(); pi++) {
-            int cur = 0;
-            for (char c : patterns[pi]) {
-                int idx = c - 'a';
-                if (trie[cur].next[idx] == -1) {
-                    trie[cur].next[idx] = trie.size();
-                    trie.push_back(TrieNode());
+        for pi in 0..ac.patterns.len() {
+            let mut cur = 0usize;
+            let pat: Vec<u8> = ac.patterns[pi].bytes().collect();
+            for b in pat {
+                let idx = (b - b'a') as usize;
+                if ac.trie[cur].next[idx] == -1 {
+                    ac.trie[cur].next[idx] = ac.trie.len() as i32;
+                    ac.trie.push(TrieNode::new());
                 }
-                cur = trie[cur].next[idx];
+                cur = ac.trie[cur].next[idx] as usize;
             }
-            trie[cur].output.push_back(pi);
+            ac.trie[cur].output.push(pi);
         }
 
         // Build failure links (BFS)
-        queue<int> q;
-        trie[0].fail = 0;
-        for (int c = 0; c < 26; c++) {
-            int child = trie[0].next[c];
-            if (child == -1) {
-                trie[0].next[c] = 0; // redirect to root
+        let mut q: VecDeque<usize> = VecDeque::new();
+        ac.trie[0].fail = 0;
+        for c in 0..26usize {
+            let child = ac.trie[0].next[c];
+            if child == -1 {
+                ac.trie[0].next[c] = 0; // redirect to root
             } else {
-                trie[child].fail = 0;
-                q.push(child);
+                ac.trie[child as usize].fail = 0;
+                q.push_back(child as usize);
             }
         }
-        while (!q.empty()) {
-            int u = q.front(); q.pop();
+        while let Some(u) = q.pop_front() {
+            let fail_u = ac.trie[u].fail;
             // Merge output of failure link into current node
-            auto& failOut = trie[trie[u].fail].output;
-            trie[u].output.insert(trie[u].output.end(), failOut.begin(), failOut.end());
-            for (int c = 0; c < 26; c++) {
-                int v = trie[u].next[c];
-                if (v == -1) {
-                    trie[u].next[c] = trie[trie[u].fail].next[c];
+            let fail_output: Vec<usize> = ac.trie[fail_u].output.clone();
+            ac.trie[u].output.extend(fail_output);
+            for c in 0..26usize {
+                let v = ac.trie[u].next[c];
+                let fail_next = ac.trie[fail_u].next[c];
+                if v == -1 {
+                    ac.trie[u].next[c] = fail_next;
                 } else {
-                    trie[v].fail = trie[trie[u].fail].next[c];
-                    q.push(v);
+                    ac.trie[v as usize].fail = fail_next as usize;
+                    q.push_back(v as usize);
                 }
             }
         }
+
+        ac
     }
 
-    vector<pair<int,int>> search(const string& text) {
-        vector<pair<int,int>> result;
-        int cur = 0;
-        for (int i = 0; i < (int)text.length(); i++) {
-            int c = text[i] - 'a';
-            cur = trie[cur].next[c];
-            for (int pi : trie[cur].output) {
-                int start = i - (int)patterns[pi].length() + 1;
-                result.push_back({start, pi});
+    fn search(&self, text: &str) -> Vec<(usize, usize)> {
+        let mut result = Vec::new();
+        let mut cur = 0usize;
+        for (i, b) in text.bytes().enumerate() {
+            let c = (b - b'a') as usize;
+            cur = self.trie[cur].next[c] as usize;
+            for &pi in &self.trie[cur].output {
+                let start = i + 1 - self.patterns[pi].len();
+                result.push((start, pi));
             }
         }
-        return result;
+        result
     }
-};
+}
 // Build: O(total_pattern_len × 26)
 // Search: O(n + total_matches)
 ```
@@ -169,7 +183,7 @@ Where Σ = alphabet size (26 for lowercase).
 
 1. **Aho-Corasick vs running KMP for each pattern?** → AC wins when patterns are many and text is reused; KMP is simpler for a small fixed set.
 2. **Case insensitive?** → Lowercase all chars before insertion.
-3. **Unicode / large alphabet?** → Use `unordered_map<char, int>` at each node instead of `int[26]`.
+3. **Unicode / large alphabet?** → Use `HashMap<char, usize>` at each node instead of `[i32; 26]`.
 
 ---
 

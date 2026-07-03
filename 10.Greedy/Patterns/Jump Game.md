@@ -45,29 +45,27 @@ At any point in the scan, maintain the farthest index currently reachable. If th
 
 If we process all indices without encountering an unreachable one, return true.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct JumpGame;
 
-class JumpGame {
-public:
-    bool canJump(vector<int>& nums) {
-        int maxReach = 0;
-        for (int i = 0; i < (int)nums.size(); i++) {
-            if (i > maxReach) return false;
-            maxReach = max(maxReach, i + nums[i]);
+impl JumpGame {
+    fn can_jump(nums: &[i32]) -> bool {
+        let mut max_reach = 0usize;
+        for i in 0..nums.len() {
+            if i > max_reach {
+                return false;
+            }
+            max_reach = max_reach.max(i + nums[i] as usize);
         }
-        return true;
+        true
     }
-};
+}
 
-int main() {
-    JumpGame sol;
-    vector<int> v1 = {2, 3, 1, 1, 4};
-    vector<int> v2 = {3, 2, 1, 0, 4};
-    cout << sol.canJump(v1) << "\n"; // true
-    cout << sol.canJump(v2) << "\n"; // false
-    return 0;
+fn main() {
+    let v1 = vec![2, 3, 1, 1, 4];
+    let v2 = vec![3, 2, 1, 0, 4];
+    println!("{}", JumpGame::can_jump(&v1)); // true
+    println!("{}", JumpGame::can_jump(&v2)); // false
 }
 ```
 
@@ -105,32 +103,31 @@ Loop completes without returning false  return true
 
 We stop the loop at `nums.length - 1` (not `nums.length`) because once we can reach the last index (i.e., `farthest >= last`), we don't need another jump.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct JumpGameII;
 
-class JumpGameII {
-public:
-    int jump(vector<int>& nums) {
-        int jumps = 0, curEnd = 0, farthest = 0;
-        for (int i = 0; i < (int)nums.size() - 1; i++) {
-            farthest = max(farthest, i + nums[i]);
-            if (i == curEnd) {
-                jumps++;
-                curEnd = farthest;
+impl JumpGameII {
+    fn jump(nums: &[i32]) -> i32 {
+        let mut jumps = 0i32;
+        let mut cur_end = 0usize;
+        let mut farthest = 0usize;
+        let n = nums.len();
+        for i in 0..n - 1 {
+            farthest = farthest.max(i + nums[i] as usize);
+            if i == cur_end {
+                jumps += 1;
+                cur_end = farthest;
             }
         }
-        return jumps;
+        jumps
     }
-};
+}
 
-int main() {
-    JumpGameII sol;
-    vector<int> v1 = {2, 3, 1, 1, 4};
-    vector<int> v2 = {2, 3, 0, 1, 4};
-    cout << sol.jump(v1) << "\n"; // 2
-    cout << sol.jump(v2) << "\n"; // 2
-    return 0;
+fn main() {
+    let v1 = vec![2, 3, 1, 1, 4];
+    let v2 = vec![2, 3, 0, 1, 4];
+    println!("{}", JumpGameII::jump(&v1)); // 2
+    println!("{}", JumpGameII::jump(&v2)); // 2
 }
 ```
 

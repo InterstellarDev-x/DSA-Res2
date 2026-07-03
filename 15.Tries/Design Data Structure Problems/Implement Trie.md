@@ -13,136 +13,155 @@ Design a trie supporting:
 
 ## Full Solution (LC 208)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
+#[derive(Debug)]
 struct TrieNode {
-    TrieNode* children[26];
-    bool isEnd = false;
-    TrieNode() {
-        fill(children, children + 26, nullptr);
-    }
-};
+    children: [Option<Box<TrieNode>>; 26],
+    is_end: bool,
+}
 
-class Trie {
-private:
-    TrieNode* root;
-
-    TrieNode* find(const string& s) {
-        TrieNode* node = root;
-        for (char c : s) {
-            int idx = c - 'a';
-            if (node->children[idx] == nullptr) return nullptr;
-            node = node->children[idx];
+impl TrieNode {
+    fn new() -> Self {
+        TrieNode {
+            children: std::array::from_fn(|_| None),
+            is_end: false,
         }
-        return node;
+    }
+}
+
+struct Trie {
+    root: Box<TrieNode>,
+}
+
+impl Trie {
+    fn new() -> Self {
+        Trie {
+            root: Box::new(TrieNode::new()),
+        }
     }
 
-public:
-    Trie() {
-        root = new TrieNode();
-    }
-
-    void insert(const string& word) {
-        TrieNode* node = root;
-        for (char c : word) {
-            int idx = c - 'a';
-            if (node->children[idx] == nullptr) {
-                node->children[idx] = new TrieNode();
+    fn find(&self, s: &str) -> Option<&TrieNode> {
+        let mut node = &*self.root;
+        for c in s.chars() {
+            let idx = (c as u8 - b'a') as usize;
+            match &node.children[idx] {
+                None => return None,
+                Some(child) => node = child,
             }
-            node = node->children[idx];
         }
-        node->isEnd = true;
+        Some(node)
     }
 
-    bool search(const string& word) {
-        TrieNode* node = find(word);
-        return node != nullptr && node->isEnd;
+    fn insert(&mut self, word: &str) {
+        let mut node = &mut *self.root;
+        for c in word.chars() {
+            let idx = (c as u8 - b'a') as usize;
+            if node.children[idx].is_none() {
+                node.children[idx] = Some(Box::new(TrieNode::new()));
+            }
+            node = node.children[idx].as_mut().unwrap();
+        }
+        node.is_end = true;
     }
 
-    bool startsWith(const string& prefix) {
-        return find(prefix) != nullptr;
+    fn search(&self, word: &str) -> bool {
+        self.find(word).map_or(false, |node| node.is_end)
     }
-};
+
+    fn starts_with(&self, prefix: &str) -> bool {
+        self.find(prefix).is_some()
+    }
+}
 ```
 
-The only difference between `search` and `startsWith` is the `isEnd` check: a word must *terminate* at the final node, a prefix only needs the path to *exist*.
+The only difference between `search` and `starts_with` is the `is_end` check: a word must *terminate* at the final node, a prefix only needs the path to *exist*.
 
 ## Trie II Extension — count words / prefixes, erase
 
 Many follow-ups ask for multiset semantics: how many times was a word inserted, how many words share a prefix, and remove an instance.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
+#[derive(Debug)]
 struct TrieNode {
-    TrieNode* children[26];
-    int countWord = 0;     // words ending exactly here
-    int countPrefix = 0;   // words passing through here
-    TrieNode() {
-        fill(children, children + 26, nullptr);
-    }
-};
+    children: [Option<Box<TrieNode>>; 26],
+    count_word: i32,    // words ending exactly here
+    count_prefix: i32,  // words passing through here
+}
 
-class TrieII {
-private:
-    TrieNode* root;
-
-    TrieNode* find(const string& s) {
-        TrieNode* node = root;
-        for (char c : s) {
-            int idx = c - 'a';
-            if (node->children[idx] == nullptr) return nullptr;
-            node = node->children[idx];
+impl TrieNode {
+    fn new() -> Self {
+        TrieNode {
+            children: std::array::from_fn(|_| None),
+            count_word: 0,
+            count_prefix: 0,
         }
-        return node;
     }
+}
 
-public:
-    TrieII() {
-        root = new TrieNode();
-    }
+struct TrieII {
+    root: Box<TrieNode>,
+}
 
-    void insert(const string& word) {
-        TrieNode* node = root;
-        for (char c : word) {
-            int idx = c - 'a';
-            if (node->children[idx] == nullptr) node->children[idx] = new TrieNode();
-            node = node->children[idx];
-            node->countPrefix++;
+impl TrieII {
+    fn new() -> Self {
+        TrieII {
+            root: Box::new(TrieNode::new()),
         }
-        node->countWord++;
     }
 
-    int countWordsEqualTo(const string& word) {
-        TrieNode* n = find(word);
-        return n == nullptr ? 0 : n->countWord;
-    }
-
-    int countWordsStartingWith(const string& prefix) {
-        TrieNode* n = find(prefix);
-        return n == nullptr ? 0 : n->countPrefix;
-    }
-
-    void erase(const string& word) {
-        if (countWordsEqualTo(word) == 0) return;
-        TrieNode* node = root;
-        for (char c : word) {
-            node = node->children[c - 'a'];
-            node->countPrefix--;
+    fn find(&self, s: &str) -> Option<&TrieNode> {
+        let mut node = &*self.root;
+        for c in s.chars() {
+            let idx = (c as u8 - b'a') as usize;
+            match &node.children[idx] {
+                None => return None,
+                Some(child) => node = child,
+            }
         }
-        node->countWord--;
+        Some(node)
     }
-};
+
+    fn insert(&mut self, word: &str) {
+        let mut node = &mut *self.root;
+        for c in word.chars() {
+            let idx = (c as u8 - b'a') as usize;
+            if node.children[idx].is_none() {
+                node.children[idx] = Some(Box::new(TrieNode::new()));
+            }
+            node = node.children[idx].as_mut().unwrap();
+            node.count_prefix += 1;
+        }
+        node.count_word += 1;
+    }
+
+    fn count_words_equal_to(&self, word: &str) -> i32 {
+        self.find(word).map_or(0, |n| n.count_word)
+    }
+
+    fn count_words_starting_with(&self, prefix: &str) -> i32 {
+        self.find(prefix).map_or(0, |n| n.count_prefix)
+    }
+
+    fn erase(&mut self, word: &str) {
+        if self.count_words_equal_to(word) == 0 {
+            return;
+        }
+        let mut node = &mut *self.root;
+        for c in word.chars() {
+            let idx = (c as u8 - b'a') as usize;
+            node = node.children[idx].as_mut().unwrap();
+            node.count_prefix -= 1;
+        }
+        node.count_word -= 1;
+    }
+}
 ```
 
 `erase` here is **lazy deletion**: it decrements counters but leaves nodes in place. This is correct (queries read the counters) and simple. Physically removing nodes is the next follow-up.
 
-## Array vs unordered_map children — trade-off
+## Array vs HashMap children — trade-off
 
-| Aspect | `TrieNode*[26]` array | `unordered_map<char, TrieNode*>` |
+| Aspect | `[Option<Box<TrieNode>>; 26]` array | `HashMap<char, Box<TrieNode>>` |
 |--------|----------------------|-----------------------------|
 | Child lookup | O(1) array index `c - 'a'` | O(1) amortized + hashing constant |
 | Memory / node | 26 pointers always (sparse waste) | only existing children stored |
@@ -166,28 +185,34 @@ public:
 
 ## Follow-ups
 
-1. **Delete operation (physical):** to actually unlink, recurse to the word's terminal node, clear `isEnd`, and on the way back up remove any child that has no children *and* is not itself a word end. Must be careful not to delete nodes that are prefixes of other words.
+1. **Delete operation (physical):** to actually unlink, recurse to the word's terminal node, clear `is_end`, and on the way back up remove any child that has no children *and* is not itself a word end. Must be careful not to delete nodes that are prefixes of other words.
 
-   ```cpp
-   bool isEmpty(TrieNode* node) {
-       for (TrieNode* c : node->children) if (c != nullptr) return false;
-       return true;
+   ```rust
+   fn is_empty(node: &TrieNode) -> bool {
+       node.children.iter().all(|c| c.is_none())
    }
 
-   bool deleteWord(TrieNode* node, const string& word, int i) {
-       if (i == (int)word.length()) {
-           if (!node->isEnd) return false;   // word not present
-           node->isEnd = false;
-           return isEmpty(node);            // can prune if no children
+   fn delete_word(node: &mut TrieNode, word: &[u8], i: usize) -> bool {
+       if i == word.len() {
+           if !node.is_end {
+               return false; // word not present
+           }
+           node.is_end = false;
+           return is_empty(node); // can prune if no children
        }
-       int idx = word[i] - 'a';
-       TrieNode* child = node->children[idx];
-       if (child == nullptr) return false;
-       if (deleteWord(child, word, i + 1)) {
-           node->children[idx] = nullptr;       // prune dead child
-           return !node->isEnd && isEmpty(node);
+       let idx = (word[i] - b'a') as usize;
+       if node.children[idx].is_none() {
+           return false;
        }
-       return false;
+       let should_delete = {
+           let child = node.children[idx].as_mut().unwrap();
+           delete_word(child, word, i + 1)
+       };
+       if should_delete {
+           node.children[idx] = None; // prune dead child
+           return !node.is_end && is_empty(node);
+       }
+       false
    }
    ```
 

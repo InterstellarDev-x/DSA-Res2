@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [C++ Templates](#c-templates)
+5. [Rust Templates](#rust-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -70,24 +70,23 @@ Array: [1, 2, 1, 3, 5, 6, 4]
 
 ---
 
-## C++ Templates
+## Rust Templates
 
 ### 1. Find Peak Element (any peak)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int findPeakElement(vector<int>& nums) {
-    int lo = 0, hi = nums.size() - 1;
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (nums[mid] < nums[mid + 1])
+```rust
+fn find_peak_element(nums: &[i32]) -> usize {
+    let mut lo = 0usize;
+    let mut hi = nums.len() - 1;
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if nums[mid] < nums[mid + 1] {
             lo = mid + 1; // ascending slope: peak to the right
-        else
+        } else {
             hi = mid;     // descending or at peak: peak at mid or left
+        }
     }
-    return lo; // lo == hi == peak index
+    lo // lo == hi == peak index
 }
 // Time: O(log n) | Space: O(1)
 // Works for any array, guaranteed ≥1 peak exists
@@ -96,91 +95,111 @@ int findPeakElement(vector<int>& nums) {
 
 ### 2. Mountain Array Peak Index
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Array strictly increases then strictly decreases
-int peakIndexInMountainArray(vector<int>& arr) {
-    int lo = 0, hi = arr.size() - 1;
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (arr[mid] < arr[mid + 1])
+fn peak_index_in_mountain_array(arr: &[i32]) -> usize {
+    let mut lo = 0usize;
+    let mut hi = arr.len() - 1;
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if arr[mid] < arr[mid + 1] {
             lo = mid + 1; // still on upslope
-        else
+        } else {
             hi = mid;     // on downslope or at peak
+        }
     }
-    return lo;
+    lo
 }
 // Time: O(log n) | Space: O(1)
 ```
 
 ### 3. Search in Mountain Array (search both halves)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int findPeak(vector<int>& arr) {
-    int lo = 0, hi = arr.size() - 1;
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (arr[mid] < arr[mid + 1]) lo = mid + 1;
-        else hi = mid;
-    }
-    return lo;
-}
-
-int binarySearch(vector<int>& arr, int lo, int hi, int target, bool ascending) {
-    while (lo <= hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (arr[mid] == target) return mid;
-        if (ascending) {
-            if (arr[mid] < target) lo = mid + 1; else hi = mid - 1;
+```rust
+fn find_peak(arr: &[i32]) -> usize {
+    let mut lo = 0usize;
+    let mut hi = arr.len() - 1;
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if arr[mid] < arr[mid + 1] {
+            lo = mid + 1;
         } else {
-            if (arr[mid] > target) lo = mid + 1; else hi = mid - 1;
+            hi = mid;
         }
     }
-    return -1;
+    lo
 }
 
-int findInMountainArray(int target, vector<int>& mountainArr) {
-    int peak = findPeak(mountainArr);
+fn binary_search(arr: &[i32], mut lo: usize, mut hi: usize, target: i32, ascending: bool) -> i32 {
+    while lo <= hi {
+        let mid = lo + (hi - lo) / 2;
+        if arr[mid] == target {
+            return mid as i32;
+        }
+        if ascending {
+            if arr[mid] < target {
+                lo = mid + 1;
+            } else {
+                if mid == 0 { break; }
+                hi = mid - 1;
+            }
+        } else {
+            if arr[mid] > target {
+                lo = mid + 1;
+            } else {
+                if mid == 0 { break; }
+                hi = mid - 1;
+            }
+        }
+    }
+    -1
+}
+
+fn find_in_mountain_array(target: i32, mountain_arr: &[i32]) -> i32 {
+    let peak = find_peak(mountain_arr);
 
     // Search in ascending half [0, peak]
-    int idx = binarySearch(mountainArr, 0, peak, target, true);
-    if (idx != -1) return idx;
+    let idx = binary_search(mountain_arr, 0, peak, target, true);
+    if idx != -1 {
+        return idx;
+    }
 
     // Search in descending half [peak+1, n-1]
-    return binarySearch(mountainArr, peak + 1, mountainArr.size() - 1, target, false);
+    binary_search(mountain_arr, peak + 1, mountain_arr.len() - 1, target, false)
 }
 // Time: O(log n) | Space: O(1)
 ```
 
 ### 4. Find Peak Element II (2D Matrix)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Each row is a separate 1D problem; binary search on columns
-vector<int> findPeakGrid(vector<vector<int>>& mat) {
-    int lo = 0, hi = mat[0].size() - 1;
-    while (lo <= hi) {
-        int midCol = lo + (hi - lo) / 2;
-        int maxRow = 0;
-        // Find row with max element in midCol
-        for (int r = 0; r < (int)mat.size(); r++)
-            if (mat[r][midCol] > mat[maxRow][midCol]) maxRow = r;
+fn find_peak_grid(mat: &Vec<Vec<i32>>) -> Vec<i32> {
+    let mut lo = 0usize;
+    let mut hi = mat[0].len() - 1;
+    while lo <= hi {
+        let mid_col = lo + (hi - lo) / 2;
+        let mut max_row = 0usize;
+        // Find row with max element in mid_col
+        for r in 0..mat.len() {
+            if mat[r][mid_col] > mat[max_row][mid_col] {
+                max_row = r;
+            }
+        }
 
-        bool leftBigger  = midCol > 0 && mat[maxRow][midCol - 1] > mat[maxRow][midCol];
-        bool rightBigger = midCol < (int)mat[0].size() - 1 && mat[maxRow][midCol + 1] > mat[maxRow][midCol];
+        let left_bigger  = mid_col > 0 && mat[max_row][mid_col - 1] > mat[max_row][mid_col];
+        let right_bigger = mid_col < mat[0].len() - 1 && mat[max_row][mid_col + 1] > mat[max_row][mid_col];
 
-        if (!leftBigger && !rightBigger) return vector<int>{maxRow, midCol};
-        else if (rightBigger) lo = midCol + 1;
-        else hi = midCol - 1;
+        if !left_bigger && !right_bigger {
+            return vec![max_row as i32, mid_col as i32];
+        } else if right_bigger {
+            lo = mid_col + 1;
+        } else {
+            if mid_col == 0 { break; }
+            hi = mid_col - 1;
+        }
     }
-    return vector<int>{-1, -1};
+    vec![-1, -1]
 }
 // Time: O(m log n) | Space: O(1)
 ```

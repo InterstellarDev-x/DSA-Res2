@@ -62,19 +62,17 @@ The answer at `i` depends on a constant number of earlier indices. *What varies:
 
 When a dimension is a **set of used items** (TSP-style, "assign jobs to people"), encode it as a bitmask integer:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
 // dp[mask] = best cost having assigned the people in `mask`
-vector<int> dp(1 << n);
-fill(dp.begin(), dp.end(), INT_MAX);
+let mut dp: Vec<i32> = vec![i32::MAX; 1 << n];
 dp[0] = 0;
-for (int mask = 0; mask < (1 << n); mask++) {
-    int i = __builtin_popcount(mask);          // next task index = count of set bits
-    for (int p = 0; p < n; p++) {
-        if ((mask & (1 << p)) == 0) {        // person p still free
-            int next = mask | (1 << p);
-            dp[next] = min(dp[next], dp[mask] + cost[i][p]);
+for mask in 0usize..(1 << n) {
+    if dp[mask] == i32::MAX { continue; } // skip unreachable states
+    let i = mask.count_ones() as usize; // next task index = count of set bits
+    for p in 0..n {
+        if (mask & (1 << p)) == 0 {     // person p still free
+            let next = mask | (1 << p);
+            dp[next] = dp[next].min(dp[mask] + cost[i][p]);
         }
     }
 }

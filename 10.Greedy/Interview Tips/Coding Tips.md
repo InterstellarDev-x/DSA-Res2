@@ -14,24 +14,22 @@ The most important habit in greedy: **sort before you greedily scan**.
 | Meeting Rooms II | Start time ascending | Process meetings in chronological order |
 | Minimum Arrows | End time ascending | Arrow at end of first balloon pops maximum overlapping |
 
-**C++ idiom:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+**Rust idiom:**
+```rust
 // Sort by end time (interval scheduling)
-sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b) { return a[1] < b[1]; });
+intervals.sort_by(|a, b| a[1].cmp(&b[1]));
 
 // Sort by start time (merge intervals)
-sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b) { return a[0] < b[0]; });
+intervals.sort_by(|a, b| a[0].cmp(&b[0]));
 
 // Sort 2D array by first column ascending, break ties by second column descending
-sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b) {
-    return a[0] != b[0] ? a[0] < b[0] : b[1] < a[1];
+intervals.sort_by(|a, b| {
+    if a[0] != b[0] { a[0].cmp(&b[0]) } else { b[1].cmp(&a[1]) }
 });
 
 // Sort two arrays together (Assign Cookies)
-sort(g.begin(), g.end());
-sort(s.begin(), s.end());
+g.sort();
+s.sort();
 ```
 
 **Never use `a - b` as a comparator** — it overflows for large negative values. Always use explicit comparison lambdas.
@@ -59,23 +57,21 @@ When asked "why does greedy work?", use this template:
 
 When a constraint depends on **both neighbors**, a single pass is insufficient. Use two passes:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
 // Generic two-pass template
-vector<int> result(n, 1); // Initialize minimum
+let mut result = vec![1i32; n]; // Initialize minimum
 
 // Pass 1: Left → Right (satisfy left-neighbor constraint)
-for (int i = 1; i < n; i++) {
-    if (condition(i, i - 1)) {
+for i in 1..n {
+    if condition(i, i - 1) {
         result[i] = result[i - 1] + 1;
     }
 }
 
 // Pass 2: Right → Left (satisfy right-neighbor constraint)
-for (int i = n - 2; i >= 0; i--) {
-    if (condition(i, i + 1)) {
-        result[i] = max(result[i], result[i + 1] + 1);
+for i in (0..n - 1).rev() {
+    if condition(i, i + 1) {
+        result[i] = result[i].max(result[i + 1] + 1);
     }
 }
 ```
@@ -90,21 +86,19 @@ for (int i = n - 2; i >= 0; i--) {
 
 When a character can represent multiple states (like `*` = `(`, `)`, or empty), track the **range of possible valid states**:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-int lo = 0; // Minimum open-paren count (treating '*' as ')' or '')
-int hi = 0; // Maximum open-paren count (treating '*' as '(')
+```rust
+let mut lo: i32 = 0; // Minimum open-paren count (treating '*' as ')' or '')
+let mut hi: i32 = 0; // Maximum open-paren count (treating '*' as '(')
 
-for (char c : s) {
-    if (c == '(')      { lo++; hi++; }
-    else if (c == ')') { lo--; hi--; }
-    else               { lo--; hi++; } // '*' decrements min, increments max
+for c in s.chars() {
+    if c == '('      { lo += 1; hi += 1; }
+    else if c == ')' { lo -= 1; hi -= 1; }
+    else             { lo -= 1; hi += 1; } // '*' decrements min, increments max
 
-    if (hi < 0) return false;  // Even optimistically, too many ')'
-    lo = max(lo, 0);           // lo can't be negative (can't have negative open parens)
+    if hi < 0 { return false; }  // Even optimistically, too many ')'
+    lo = lo.max(0);              // lo can't be negative (can't have negative open parens)
 }
-return lo == 0; // Minimum open count must reach 0 (all closed)
+lo == 0 // Minimum open count must reach 0 (all closed)
 ```
 
 **Invariant:** `lo ≤ actual_open_count ≤ hi` at every step.
@@ -112,35 +106,37 @@ return lo == 0; // Minimum open count must reach 0 (all closed)
 
 ---
 
-## Tip 5: std::map for Greedy with Ordering
+## Tip 5: BTreeMap for Greedy with Ordering
 
-When greedy requires processing in sorted order AND dynamic insertion/deletion, use `std::map`:
+When greedy requires processing in sorted order AND dynamic insertion/deletion, use `BTreeMap`:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-map<int, int> count;
+```rust
+use std::collections::BTreeMap;
+let mut count: BTreeMap<i32, i32> = BTreeMap::new();
 
 // Insert / increment
-for (int card : hand) count[card]++;
+for &card in &hand {
+    *count.entry(card).or_insert(0) += 1;
+}
 
 // Process smallest key first (greedy order)
-while (!count.empty()) {
-    int first = count.begin()->first; // O(log n)
-    for (int i = first; i < first + groupSize; i++) {
-        if (count.count(i) == 0) return false;
-        count[i]--;
-        if (count[i] == 0) count.erase(i); // Clean up zeros
+while !count.is_empty() {
+    let first = *count.keys().next().unwrap(); // O(log n)
+    for i in first..first + group_size {
+        if !count.contains_key(&i) { return false; }
+        let cnt = count.get_mut(&i).unwrap();
+        *cnt -= 1;
+        if *cnt == 0 { count.remove(&i); } // Clean up zeros
     }
 }
 ```
 
-**When to use std::map vs std::priority_queue:**
-| Feature | std::map | std::priority_queue |
+**When to use BTreeMap vs BinaryHeap:**
+| Feature | BTreeMap | BinaryHeap |
 |---------|----------|---------------------|
 | Access by value | ✓ `[key]` | ✗ |
-| Access min/max | ✓ `begin()->first`/`rbegin()->first` | ✓ `top()` |
-| Range queries | ✓ `lower_bound()`/`upper_bound()` | ✗ |
+| Access min/max | ✓ `.keys().next()`/`.keys().next_back()` | ✓ `peek()` |
+| Range queries | ✓ `.range()` | ✗ |
 | Duplicates | Via value field | ✓ naturally |
 | Use when | Need both lookup + ordering | Need min/max only |
 
@@ -160,38 +156,40 @@ Before writing greedy code, answer these questions:
 
 ## Tip 7: Common Greedy Code Patterns
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
 // Pattern A: Two-pointer greedy (Assign Cookies)
-int i = 0, j = 0;
-while (i < (int)a.size() && j < (int)b.size()) {
-    if (b[j] >= a[i]) i++; // match found
-    j++;                    // always advance the "resource" pointer
+let mut i = 0usize;
+let mut j = 0usize;
+while i < a.len() && j < b.len() {
+    if b[j] >= a[i] { i += 1; } // match found
+    j += 1;                      // always advance the "resource" pointer
 }
 
 // Pattern B: Interval keep/remove (Non-overlapping, Min Arrows)
-int prevEnd = INT_MIN; // or first interval's end
-int kept = 0;
-for (auto& interval : sortedIntervals) {
-    if (interval[0] >= prevEnd) { // no overlap
-        kept++;
-        prevEnd = interval[1];
+let mut prev_end = i32::MIN; // or first interval's end
+let mut kept = 0;
+for interval in &sorted_intervals {
+    if interval[0] >= prev_end { // no overlap
+        kept += 1;
+        prev_end = interval[1];
     }
 }
 
 // Pattern C: Window stretching (Partition Labels)
-int start = 0, end = 0;
-for (int i = 0; i < n; i++) {
-    end = max(end, last[element(i)]);
-    if (i == end) { recordPartition(); start = i + 1; }
+let mut start = 0usize;
+let mut end = 0usize;
+for i in 0..n {
+    end = end.max(last[element(i)]);
+    if i == end { record_partition(); start = i + 1; }
 }
 
 // Pattern D: BFS-level greedy (Jump Game II)
-int jumps = 0, curEnd = 0, farthest = 0;
-for (int i = 0; i < n - 1; i++) {
-    farthest = max(farthest, reach(i));
-    if (i == curEnd) { jumps++; curEnd = farthest; }
+let mut jumps = 0;
+let mut cur_end = 0usize;
+let mut farthest = 0usize;
+for i in 0..n - 1 {
+    farthest = farthest.max(reach(i));
+    if i == cur_end { jumps += 1; cur_end = farthest; }
 }
 ```
 

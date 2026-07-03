@@ -2,7 +2,7 @@
 
 # Stock Buy Sell
 
-The "Stock Buy Sell" family is a collection of problems that look superficially different — one transaction, infinite transactions, at most two, at most K, with a cooldown, with a fee — but every one of them is a specialization of a **single underlying state machine**. Once you internalize that machine, you stop memorizing six tricks and instead derive each variant by *constraining* one general recurrence. This page builds that unified model first, then solves all six problems with full, compilable C++.
+The "Stock Buy Sell" family is a collection of problems that look superficially different — one transaction, infinite transactions, at most two, at most K, with a cooldown, with a fee — but every one of them is a specialization of a **single underlying state machine**. Once you internalize that machine, you stop memorizing six tricks and instead derive each variant by *constraining* one general recurrence. This page builds that unified model first, then solves all six problems with full, compilable Rust.
 
 The whole family shares one rule: on any day you either **hold** a share or you don't, and you transition between those two states by buying (pay `prices[i]`) or selling (receive `prices[i]`). The variations only change *how many times* you may transition and *what penalties* apply.
 
@@ -82,42 +82,40 @@ You may complete **at most one** transaction. This is the `K = 1` specialization
 - `minPrice` = lowest price in `prices[0..i]`.
 - `maxProfit` = `max over i of (prices[i] - minPrice)`.
 
-### C++
+### Rust
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct StockI;
 
-class StockI {
-public:
+impl StockI {
     // O(n) time, O(1) space — the K = 1 specialization.
-    int maxProfit(vector<int>& prices) {
-        int minPrice = INT_MAX;
-        int best = 0;
-        for (auto& price : prices) {
-            if (price < minPrice) {
-                minPrice = price;
-            } else if (price - minPrice > best) {
-                best = price - minPrice;
+    fn max_profit(prices: &[i32]) -> i32 {
+        let mut min_price = i32::MAX;
+        let mut best = 0;
+        for &price in prices {
+            if price < min_price {
+                min_price = price;
+            } else if price - min_price > best {
+                best = price - min_price;
             }
         }
-        return best;
+        best
     }
 
     // The same problem via the unified holding-state DP with K = 1, O(1) space.
     // cash0 = best profit holding nothing, having used 0 buys.
     // hold1 = best profit holding a share (the one allowed buy).
     // cash1 = best profit holding nothing after the one allowed sell.
-    int maxProfitDP(vector<int>& prices) {
-        int hold1 = INT_MIN; // bought once, not yet sold
-        int cash1 = 0;       // sold the one share
-        for (auto& price : prices) {
-            hold1 = max(hold1, -price);        // buy today (from initial cash 0)
-            cash1 = max(cash1, hold1 + price); // sell today
+    fn max_profit_dp(prices: &[i32]) -> i32 {
+        let mut hold1 = i32::MIN; // bought once, not yet sold
+        let mut cash1 = 0;        // sold the one share
+        for &price in prices {
+            hold1 = hold1.max(-price);         // buy today (from initial cash 0)
+            cash1 = cash1.max(hold1 + price);  // sell today
         }
-        return cash1;
+        cash1
     }
-};
+}
 ```
 
 ### Dry run
@@ -156,38 +154,36 @@ Any multi-day upswing `a < b < c` yields the same profit whether you take it as 
 
 With unbounded transactions the state reduces to two values: best profit while in cash, best profit while holding.
 
-### C++
+### Rust
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct StockII;
 
-class StockII {
-public:
+impl StockII {
     // Greedy: O(n) time, O(1) space.
-    int maxProfit(vector<int>& prices) {
-        int profit = 0;
-        for (int i = 1; i < (int)prices.size(); i++) {
-            int delta = prices[i] - prices[i - 1];
-            if (delta > 0) {
+    fn max_profit(prices: &[i32]) -> i32 {
+        let mut profit = 0;
+        for i in 1..prices.len() {
+            let delta = prices[i] - prices[i - 1];
+            if delta > 0 {
                 profit += delta;
             }
         }
-        return profit;
+        profit
     }
 
     // Holding-state DP (K = infinite => no transaction dimension), O(1) space.
-    int maxProfitDP(vector<int>& prices) {
-        int cash = 0;        // not holding
-        int hold = INT_MIN;  // holding a share
-        for (auto& price : prices) {
-            int prevCash = cash;
-            cash = max(cash, hold + price);       // sell today
-            hold = max(hold, prevCash - price);   // buy today (reuse prior cash)
+    fn max_profit_dp(prices: &[i32]) -> i32 {
+        let mut cash = 0;         // not holding
+        let mut hold = i32::MIN;  // holding a share
+        for &price in prices {
+            let prev_cash = cash;
+            cash = cash.max(hold + price);       // sell today
+            hold = hold.max(prev_cash - price);  // buy today (reuse prior cash)
         }
-        return cash;
+        cash
     }
-};
+}
 ```
 
 ### Recurrence
@@ -214,109 +210,95 @@ Now `K = 2`. We use the full three-dimensional machine but with the transaction 
 
 ### 4.1 Top-down memoization (3D)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct StockIII_Memo;
 
-class StockIII_Memo {
-
-    vector<vector<vector<int>>> memo;
-    vector<int> prices;
-    int n;
-
-    int solve(int day, int cap, int holding) {
-        if (day == n || cap == 0) {
+impl StockIII_Memo {
+    fn solve(day: usize, cap: usize, holding: usize, prices: &[i32], memo: &mut Vec<Vec<Vec<i32>>>) -> i32 {
+        let n = prices.len();
+        if day == n || cap == 0 {
             return 0;
         }
-        if (memo[day][cap][holding] != -1) {
+        if memo[day][cap][holding] != -1 {
             return memo[day][cap][holding];
         }
 
-        int rest = solve(day + 1, cap, holding);
-        int action;
-        if (holding == 0) {
+        let rest = Self::solve(day + 1, cap, holding, prices, memo);
+        let action = if holding == 0 {
             // buy: pay price, now holding, cap unchanged (we count txn at sell)
-            action = solve(day + 1, cap, 1) - prices[day];
+            Self::solve(day + 1, cap, 1, prices, memo) - prices[day]
         } else {
             // sell: receive price, now in cash, consume one transaction
-            action = solve(day + 1, cap - 1, 0) + prices[day];
-        }
+            Self::solve(day + 1, cap - 1, 0, prices, memo) + prices[day]
+        };
 
-        int result = max(rest, action);
+        let result = rest.max(action);
         memo[day][cap][holding] = result;
-        return result;
+        result
     }
 
-public:
-    int maxProfit(vector<int>& prices) {
-        this->prices = prices;
-        this->n = prices.size();
+    fn max_profit(prices: &[i32]) -> i32 {
+        let n = prices.len();
         // dimensions: day (n), transactionsLeft (3: 0,1,2), holding (2)
-        memo = vector<vector<vector<int>>>(n, vector<vector<int>>(3, vector<int>(2, -1)));
-        return solve(0, 2, 0);
+        let mut memo = vec![vec![vec![-1i32; 2]; 3]; n];
+        Self::solve(0, 2, 0, prices, &mut memo)
     }
-};
+}
 ```
 
 ### 4.2 Bottom-up tabulation (3D)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct StockIII_Tab;
 
-class StockIII_Tab {
-public:
-    int maxProfit(vector<int>& prices) {
-        int n = prices.size();
-        if (n == 0) {
+impl StockIII_Tab {
+    fn max_profit(prices: &[i32]) -> i32 {
+        let n = prices.len();
+        if n == 0 {
             return 0;
         }
         // dp[day][cap][holding]; day goes n down to 0
-        vector<vector<vector<int>>> dp(n + 1, vector<vector<int>>(3, vector<int>(2, 0)));
+        let mut dp = vec![vec![vec![0i32; 2]; 3]; n + 1];
         // base: dp[n][*][*] = 0 (already zero); cap == 0 also yields 0.
 
-        for (int day = n - 1; day >= 0; day--) {
-            for (int cap = 1; cap <= 2; cap++) {
+        for day in (0..n).rev() {
+            for cap in 1..=2usize {
                 // holding == 0 (can buy)
-                dp[day][cap][0] = max(
-                        dp[day + 1][cap][0],                 // rest
-                        dp[day + 1][cap][1] - prices[day]);  // buy
+                dp[day][cap][0] = dp[day + 1][cap][0].max(
+                    dp[day + 1][cap][1] - prices[day]);  // buy
                 // holding == 1 (can sell)
-                dp[day][cap][1] = max(
-                        dp[day + 1][cap][1],                     // rest
-                        dp[day + 1][cap - 1][0] + prices[day]);  // sell, consume txn
+                dp[day][cap][1] = dp[day + 1][cap][1].max(
+                    dp[day + 1][cap - 1][0] + prices[day]);  // sell, consume txn
             }
         }
-        return dp[0][2][0];
+        dp[0][2][0]
     }
-};
+}
 ```
 
 ### 4.3 Space-optimized (four scalars)
 
 With `K = 2` the entire table collapses to four running values: cost/profit after the 1st buy, after the 1st sell, after the 2nd buy, after the 2nd sell.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct StockIII_Opt;
 
-class StockIII_Opt {
-public:
+impl StockIII_Opt {
     // O(n) time, O(1) space.
-    int maxProfit(vector<int>& prices) {
-        int buy1 = INT_MIN;  // after first buy
-        int sell1 = 0;       // after first sell
-        int buy2 = INT_MIN;  // after second buy
-        int sell2 = 0;       // after second sell
-        for (auto& price : prices) {
-            buy1 = max(buy1, -price);
-            sell1 = max(sell1, buy1 + price);
-            buy2 = max(buy2, sell1 - price);
-            sell2 = max(sell2, buy2 + price);
+    fn max_profit(prices: &[i32]) -> i32 {
+        let mut buy1 = i32::MIN;  // after first buy
+        let mut sell1 = 0;        // after first sell
+        let mut buy2 = i32::MIN;  // after second buy
+        let mut sell2 = 0;        // after second sell
+        for &price in prices {
+            buy1 = buy1.max(-price);
+            sell1 = sell1.max(buy1 + price);
+            buy2 = buy2.max(sell1 - price);
+            sell2 = sell2.max(buy2 + price);
         }
-        return sell2;
+        sell2
     }
-};
+}
 ```
 
 ### Complexity
@@ -335,129 +317,112 @@ The general machine, no constraint removed. Below are the memo, the tabulation, 
 
 ### 5.1 Top-down memoization (3D)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct StockIV_Memo;
 
-class StockIV_Memo {
-
-    vector<vector<vector<int>>> memo;
-    vector<int> prices;
-    int n;
-
-    int solve(int day, int cap, int holding) {
-        if (day == n || cap == 0) {
+impl StockIV_Memo {
+    fn solve(day: usize, cap: usize, holding: usize, prices: &[i32], memo: &mut Vec<Vec<Vec<i32>>>) -> i32 {
+        let n = prices.len();
+        if day == n || cap == 0 {
             return 0;
         }
-        if (memo[day][cap][holding] != -1) {
+        if memo[day][cap][holding] != -1 {
             return memo[day][cap][holding];
         }
 
-        int rest = solve(day + 1, cap, holding);
-        int action;
-        if (holding == 0) {
-            action = solve(day + 1, cap, 1) - prices[day];        // buy
+        let rest = Self::solve(day + 1, cap, holding, prices, memo);
+        let action = if holding == 0 {
+            Self::solve(day + 1, cap, 1, prices, memo) - prices[day]        // buy
         } else {
-            action = solve(day + 1, cap - 1, 0) + prices[day];    // sell, consume txn
-        }
+            Self::solve(day + 1, cap - 1, 0, prices, memo) + prices[day]   // sell, consume txn
+        };
 
-        int result = max(rest, action);
+        let result = rest.max(action);
         memo[day][cap][holding] = result;
-        return result;
+        result
     }
 
-public:
-    int maxProfit(int k, vector<int>& prices) {
-        this->prices = prices;
-        this->n = prices.size();
-        if (n == 0 || k == 0) {
+    fn max_profit(k: usize, prices: &[i32]) -> i32 {
+        let n = prices.len();
+        if n == 0 || k == 0 {
             return 0;
         }
         // dimensions: day (n), transactionsLeft (k+1), holding (2)
-        memo = vector<vector<vector<int>>>(n, vector<vector<int>>(k + 1, vector<int>(2, -1)));
-        return solve(0, k, 0);
+        let mut memo = vec![vec![vec![-1i32; 2]; k + 1]; n];
+        Self::solve(0, k, 0, prices, &mut memo)
     }
-};
+}
 ```
 
 ### 5.2 Bottom-up tabulation (3D)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct StockIV_Tab;
 
-class StockIV_Tab {
-public:
-    int maxProfit(int k, vector<int>& prices) {
-        int n = prices.size();
-        if (n == 0 || k == 0) {
+impl StockIV_Tab {
+    fn max_profit(k: usize, prices: &[i32]) -> i32 {
+        let n = prices.len();
+        if n == 0 || k == 0 {
             return 0;
         }
-        vector<vector<vector<int>>> dp(n + 1, vector<vector<int>>(k + 1, vector<int>(2, 0))); // base dp[n][*][*] = 0
+        let mut dp = vec![vec![vec![0i32; 2]; k + 1]; n + 1]; // base dp[n][*][*] = 0
 
-        for (int day = n - 1; day >= 0; day--) {
-            for (int cap = 1; cap <= k; cap++) {
-                dp[day][cap][0] = max(
-                        dp[day + 1][cap][0],
-                        dp[day + 1][cap][1] - prices[day]);
-                dp[day][cap][1] = max(
-                        dp[day + 1][cap][1],
-                        dp[day + 1][cap - 1][0] + prices[day]);
+        for day in (0..n).rev() {
+            for cap in 1..=k {
+                dp[day][cap][0] = dp[day + 1][cap][0].max(
+                    dp[day + 1][cap][1] - prices[day]);
+                dp[day][cap][1] = dp[day + 1][cap][1].max(
+                    dp[day + 1][cap - 1][0] + prices[day]);
             }
         }
-        return dp[0][k][0];
+        dp[0][k][0]
     }
-};
+}
 ```
 
 ### 5.3 Space-optimized to 2D (rolling day) and 1D (buy/sell pairs)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct StockIV_Opt;
 
-class StockIV_Opt {
-public:
+impl StockIV_Opt {
     // 2D: keep only the next day's plane -> O(k) space.
-    int maxProfit2D(int k, vector<int>& prices) {
-        int n = prices.size();
-        if (n == 0 || k == 0) {
+    fn max_profit_2d(k: usize, prices: &[i32]) -> i32 {
+        let n = prices.len();
+        if n == 0 || k == 0 {
             return 0;
         }
-        vector<vector<int>> next(k + 1, vector<int>(2, 0));
-        for (int day = n - 1; day >= 0; day--) {
-            vector<vector<int>> cur(k + 1, vector<int>(2, 0));
-            for (int cap = 1; cap <= k; cap++) {
-                cur[cap][0] = max(next[cap][0], next[cap][1] - prices[day]);
-                cur[cap][1] = max(next[cap][1], next[cap - 1][0] + prices[day]);
+        let mut next = vec![vec![0i32; 2]; k + 1];
+        for day in (0..n).rev() {
+            let mut cur = vec![vec![0i32; 2]; k + 1];
+            for cap in 1..=k {
+                cur[cap][0] = next[cap][0].max(next[cap][1] - prices[day]);
+                cur[cap][1] = next[cap][1].max(next[cap - 1][0] + prices[day]);
             }
             next = cur;
         }
-        return next[k][0];
+        next[k][0]
     }
 
     // 1D: buy[t]/sell[t] arrays scanned over days, like the four-scalar StockIII
     // generalized to k pairs. O(k) space.
-    int maxProfit1D(int k, vector<int>& prices) {
-        if (prices.empty() || k == 0) {
+    fn max_profit_1d(k: usize, prices: &[i32]) -> i32 {
+        if prices.is_empty() || k == 0 {
             return 0;
         }
-        vector<int> buy(k + 1, 0);
-        vector<int> sell(k + 1, 0);
-        fill(buy.begin(), buy.end(), INT_MIN);
+        let mut buy = vec![i32::MIN; k + 1];
+        let mut sell = vec![0i32; k + 1];
         // sell[0] stays 0; buy[0] unused for transactions.
-        for (auto& price : prices) {
-            for (int t = 1; t <= k; t++) {
-                buy[t] = max(buy[t], sell[t - 1] - price);
-                sell[t] = max(sell[t], buy[t] + price);
+        for &price in prices {
+            for t in 1..=k {
+                buy[t] = buy[t].max(sell[t - 1] - price);
+                sell[t] = sell[t].max(buy[t] + price);
             }
         }
-        return sell[k];
+        sell[k]
     }
-};
+}
 ```
-
-(The `#include <bits/stdc++.h>` covers all standard library needs for `StockIV_Opt::maxProfit1D`.)
 
 ### Complexity
 
@@ -490,34 +455,32 @@ rest[i] = max( rest[i-1], sold[i-1] )                // stay in cash, or come of
 
 Answer = `max(sold[n-1], rest[n-1])` (never end holding).
 
-### C++
+### Rust
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct StockCooldown;
 
-class StockCooldown {
-public:
+impl StockCooldown {
     // O(n) time, O(1) space.
-    int maxProfit(vector<int>& prices) {
-        if (prices.empty()) {
+    fn max_profit(prices: &[i32]) -> i32 {
+        if prices.is_empty() {
             return 0;
         }
-        int hold = INT_MIN; // own a share
-        int sold = 0;       // sold today (cooldown begins)
-        int rest = 0;       // in cash, free to buy
-        for (auto& price : prices) {
-            int prevHold = hold;
-            int prevSold = sold;
-            int prevRest = rest;
+        let mut hold = i32::MIN; // own a share
+        let mut sold = 0;        // sold today (cooldown begins)
+        let mut rest = 0;        // in cash, free to buy
+        for &price in prices {
+            let prev_hold = hold;
+            let prev_sold = sold;
+            let prev_rest = rest;
 
-            hold = max(prevHold, prevRest - price); // buy only from rest
-            sold = prevHold + price;                // sell
-            rest = max(prevRest, prevSold);         // stay or exit cooldown
+            hold = prev_hold.max(prev_rest - price); // buy only from rest
+            sold = prev_hold + price;                // sell
+            rest = prev_rest.max(prev_sold);         // stay or exit cooldown
         }
-        return max(sold, rest);
+        sold.max(rest)
     }
-};
+}
 ```
 
 ### Complexity
@@ -539,26 +502,24 @@ cash[i] = max( cash[i-1], hold[i-1] + prices[i] - fee )  // sell, pay fee
 hold[i] = max( hold[i-1], cash[i-1] - prices[i] )        // buy
 ```
 
-### C++
+### Rust
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct StockWithFee;
 
-class StockWithFee {
-public:
+impl StockWithFee {
     // O(n) time, O(1) space.
-    int maxProfit(vector<int>& prices, int fee) {
-        int cash = 0;        // not holding
-        int hold = INT_MIN;  // holding a share
-        for (auto& price : prices) {
-            int prevCash = cash;
-            cash = max(cash, hold + price - fee); // sell, charge fee
-            hold = max(hold, prevCash - price);   // buy
+    fn max_profit(prices: &[i32], fee: i32) -> i32 {
+        let mut cash = 0;         // not holding
+        let mut hold = i32::MIN;  // holding a share
+        for &price in prices {
+            let prev_cash = cash;
+            cash = cash.max(hold + price - fee); // sell, charge fee
+            hold = hold.max(prev_cash - price);  // buy
         }
-        return cash;
+        cash
     }
-};
+}
 ```
 
 ### Complexity
@@ -573,12 +534,12 @@ public:
 
 Everything above is the one template from Section 1:
 
-```cpp
+```rust
 // dp[day][cap][holding]
-dp[day][cap][0] = max(dp[day + 1][cap][0],
-                      dp[day + 1][cap][1] - prices[day]);   // rest / buy
-dp[day][cap][1] = max(dp[day + 1][cap][1],
-                      dp[day + 1][cap - 1][0] + prices[day]); // rest / sell
+dp[day][cap][0] = dp[day + 1][cap][0].max(
+    dp[day + 1][cap][1] - prices[day]);    // rest / buy
+dp[day][cap][1] = dp[day + 1][cap][1].max(
+    dp[day + 1][cap - 1][0] + prices[day]); // rest / sell
 ```
 
 Explicit specializations:
@@ -615,7 +576,7 @@ Explicit specializations:
 - **K = ∞** drops the transaction dimension entirely → the greedy positive-delta sum.
 - **General K** is the full 3D table; optimize to `O(k)` space, and short-circuit to greedy when `K ≥ n/2`.
 - **Cooldown** adds a forced-rest edge after selling; **fee** subtracts a constant on the sell edge. Neither changes the core machine.
-- C++ standards used throughout: `vector<vector<vector<int>>>` / `vector<vector<int>>` tables, vector constructor with `-1` for memo init, `max` for transitions, guarding holding state with `INT_MIN` as the "impossible" sentinel.
+- Rust idioms used throughout: `Vec<Vec<Vec<i32>>>` / `Vec<Vec<i32>>` tables, `vec![]` macro with `-1` for memo init, `.max()` for transitions, guarding holding state with `i32::MIN` as the "impossible" sentinel.
 
 | Problem | LC | Constraint | Best space |
 | --- | --- | --- | --- |

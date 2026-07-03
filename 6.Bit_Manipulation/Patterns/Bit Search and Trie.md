@@ -13,49 +13,64 @@ A **Binary Trie** stores integers bit by bit from the most significant bit (MSB)
 
 ## Binary Trie Structure
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
+// Index-based Binary Trie (avoids Rc<RefCell<>> complexity)
+#[derive(Debug, Clone)]
 struct TrieNode {
-    TrieNode* children[2] = {nullptr, nullptr}; // children[0] = '0' bit, children[1] = '1' bit
-};
+    children: [Option<usize>; 2], // children[0] = '0' bit, children[1] = '1' bit
+}
+
+struct Trie {
+    nodes: Vec<TrieNode>,
+}
+
+impl Trie {
+    fn new() -> Self {
+        Trie {
+            nodes: vec![TrieNode { children: [None, None] }],
+        }
+    }
+}
 ```
 
 **Insert n into trie (MSB first, 32 bits):**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void insert(TrieNode* root, int n) {
-    TrieNode* curr = root;
-    for (int bit = 31; bit >= 0; bit--) {
-        int b = (n >> bit) & 1;
-        if (curr->children[b] == nullptr) curr->children[b] = new TrieNode();
-        curr = curr->children[b];
+```rust
+// Insert n into trie (MSB first, 32 bits) — method on Trie
+impl Trie {
+    fn insert(&mut self, n: i32) {
+        let mut curr = 0usize;
+        for bit in (0..32).rev() {
+            let b = ((n >> bit) & 1) as usize;
+            if self.nodes[curr].children[b].is_none() {
+                self.nodes.push(TrieNode { children: [None, None] });
+                let new_idx = self.nodes.len() - 1;
+                self.nodes[curr].children[b] = Some(new_idx);
+            }
+            curr = self.nodes[curr].children[b].unwrap();
+        }
     }
 }
 ```
 
 **Query: find number in trie that maximizes XOR with x:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int maxXOR(TrieNode* root, int x) {
-    TrieNode* curr = root;
-    int result = 0;
-    for (int bit = 31; bit >= 0; bit--) {
-        int b = (x >> bit) & 1;
-        int want = 1 - b; // prefer opposite bit to maximize XOR
-        if (curr->children[want] != nullptr) {
-            result |= (1 << bit); // got the XOR bit = 1
-            curr = curr->children[want];
-        } else {
-            curr = curr->children[b]; // forced to take same bit, XOR = 0
+```rust
+// Query: find number in trie that maximizes XOR with x — method on Trie
+impl Trie {
+    fn max_xor(&self, x: i32) -> i32 {
+        let mut curr = 0usize;
+        let mut result = 0i32;
+        for bit in (0..32).rev() {
+            let b = ((x >> bit) & 1) as usize;
+            let want = 1 - b; // prefer opposite bit to maximize XOR
+            if self.nodes[curr].children[want].is_some() {
+                result |= 1 << bit; // got the XOR bit = 1
+                curr = self.nodes[curr].children[want].unwrap();
+            } else {
+                curr = self.nodes[curr].children[b].unwrap(); // forced to take same bit, XOR = 0
+            }
         }
+        result
     }
-    return result;
 }
 ```
 
@@ -63,19 +78,18 @@ int maxXOR(TrieNode* root, int x) {
 
 ## Template 1 — Maximum XOR of Two Numbers (LC 421)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int findMaximumXOR(vector<int>& nums) {
-    TrieNode* root = new TrieNode();
-    for (int n : nums) insert(root, n);
-
-    int maxVal = 0;
-    for (int n : nums) {
-        maxVal = max(maxVal, maxXOR(root, n));
+```rust
+fn find_maximum_xor(nums: &[i32]) -> i32 {
+    let mut trie = Trie::new();
+    for &n in nums {
+        trie.insert(n);
     }
-    return maxVal;
+
+    let mut max_val = 0i32;
+    for &n in nums {
+        max_val = max_val.max(trie.max_xor(n));
+    }
+    max_val
 }
 ```
 
@@ -83,35 +97,34 @@ int findMaximumXOR(vector<int>& nums) {
 
 ---
 
-## Template 2 — Greedy Bit-by-Bit (no Trie, using std::unordered_set)
+## Template 2 — Greedy Bit-by-Bit (no Trie, using HashSet)
 
-For Maximum XOR, build the answer greedily from MSB to LSB using an `std::unordered_set` of prefixes:
+For Maximum XOR, build the answer greedily from MSB to LSB using a `HashSet` of prefixes:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-int findMaximumXOR(vector<int>& nums) {
-    int maxVal = 0, mask = 0;
-    for (int bit = 31; bit >= 0; bit--) {
-        mask |= (1 << bit);
-        unordered_set<int> prefixes;
-        for (int n : nums) prefixes.insert(n & mask); // prefix up to current bit
+fn find_maximum_xor(nums: &[i32]) -> i32 {
+    let mut max_val = 0i32;
+    let mut mask = 0i32;
+    for bit in (0..32).rev() {
+        mask |= 1 << bit;
+        let prefixes: HashSet<i32> = nums.iter().map(|&n| n & mask).collect(); // prefix up to current bit
 
-        int candidate = maxVal | (1 << bit); // try setting this bit in the answer
-        for (int prefix : prefixes) {
+        let candidate = max_val | (1 << bit); // try setting this bit in the answer
+        for &prefix in &prefixes {
             // If candidate ^ prefix is also a prefix, then two numbers XOR to candidate
-            if (prefixes.count(candidate ^ prefix)) {
-                maxVal = candidate;
+            if prefixes.contains(&(candidate ^ prefix)) {
+                max_val = candidate;
                 break;
             }
         }
     }
-    return maxVal;
+    max_val
 }
 ```
 
-**Time:** O(32n). **Space:** O(n) for `std::unordered_set`.
+**Time:** O(32n). **Space:** O(n) for `HashSet`.
 
 ---
 
@@ -119,29 +132,27 @@ int findMaximumXOR(vector<int>& nums) {
 
 Queries: for query `[x, m]`, find max XOR of x with any element ≤ m. Sort queries by m; process in order, inserting elements into trie as their value ≤ current m.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn maximize_xor(nums: &mut Vec<i32>, queries: &Vec<Vec<i32>>) -> Vec<i32> {
+    nums.sort();
+    let n = queries.len();
+    let mut idx: Vec<usize> = (0..n).collect();
+    idx.sort_by(|&a, &b| queries[a][1].cmp(&queries[b][1])); // sort by m
 
-vector<int> maximizeXor(vector<int>& nums, vector<vector<int>>& queries) {
-    sort(nums.begin(), nums.end());
-    int n = queries.size();
-    vector<int> idx(n);
-    for (int i = 0; i < n; i++) idx[i] = i;
-    sort(idx.begin(), idx.end(), [&](int a, int b) { return queries[a][1] < queries[b][1]; }); // sort by m
+    let mut result = vec![0i32; n];
+    let mut trie = Trie::new();
+    let mut j = 0usize;
 
-    vector<int> result(n);
-    TrieNode* root = new TrieNode();
-    int j = 0;
-
-    for (int i : idx) {
-        int x = queries[i][0], m = queries[i][1];
-        while (j < (int)nums.size() && nums[j] <= m) {
-            insert(root, nums[j++]);
+    for i in idx {
+        let x = queries[i][0];
+        let m = queries[i][1];
+        while j < nums.len() && nums[j] <= m {
+            trie.insert(nums[j]);
+            j += 1;
         }
-        result[i] = (j == 0) ? -1 : maxXOR(root, x);
+        result[i] = if j == 0 { -1 } else { trie.max_xor(x) };
     }
-    return result;
+    result
 }
 ```
 
@@ -151,23 +162,20 @@ vector<int> maximizeXor(vector<int>& nums, vector<vector<int>>& queries) {
 
 Count pairs `(i, j)` with `i < j` such that `l ≤ nums[i] XOR nums[j] ≤ r`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int countPairs(vector<int>& nums, int low, int high) {
-    return countAtMost(nums, high) - countAtMost(nums, low - 1);
+```rust
+fn count_pairs(nums: &Vec<i32>, low: i32, high: i32) -> i32 {
+    count_at_most(nums, high) - count_at_most(nums, low - 1)
 }
 
 // Count pairs with XOR <= limit
-int countAtMost(vector<int>& nums, int limit) {
-    TrieNode* root = new TrieNode();
-    int count = 0;
-    for (int n : nums) {
-        count += queryAtMost(root, n, limit);
-        insert(root, n);
+fn count_at_most(nums: &Vec<i32>, limit: i32) -> i32 {
+    let mut trie = Trie::new();
+    let mut count = 0i32;
+    for &n in nums {
+        count += query_at_most(&trie, n, limit);
+        trie.insert(n);
     }
-    return count;
+    count
 }
 ```
 
@@ -179,12 +187,12 @@ For maximizing XOR, the highest bit contributes `2^31` vs `2^0` — greedy from 
 
 ---
 
-## Trie vs std::unordered_set Approach
+## Trie vs HashSet Approach
 
 | Approach | Time | Space | When to Use |
 |----------|------|-------|-------------|
 | Binary Trie | O(32n) | O(32n) | When querying multiple times or with range constraints |
-| std::unordered_set prefix | O(32n) | O(n) | Single maximum XOR with no range constraint |
+| HashSet prefix | O(32n) | O(n) | Single maximum XOR with no range constraint |
 | Brute force | O(n²) | O(1) | n ≤ 1000 |
 
 ---
@@ -194,7 +202,7 @@ For maximizing XOR, the highest bit contributes `2^31` vs `2^0` — greedy from 
 | Problem | Time | Space |
 |---------|------|-------|
 | Max XOR Two Numbers (Trie) | O(n) | O(n) |
-| Max XOR Two Numbers (std::unordered_set) | O(n) | O(n) |
+| Max XOR Two Numbers (HashSet) | O(n) | O(n) |
 | Max XOR with Range Query | O((n+q) log n) | O(n) |
 
 ---

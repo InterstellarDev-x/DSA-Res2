@@ -11,7 +11,7 @@
 1. [Problem Statement](#problem-statement)
 2. [Interview Expectations](#interview-expectations)
 3. [Approaches](#approaches)
-4. [C++ Implementation](#c-implementation)
+4. [Rust Implementation](#rust-implementation)
 5. [Complexity Analysis](#complexity-analysis)
 6. [Edge Cases](#edge-cases)
 7. [Similar Problems](#similar-problems)
@@ -24,8 +24,8 @@
 
 Design a search autocomplete system. Given a list of historical sentences with their times searched, implement:
 
-- `AutocompleteSystem(string[] sentences, int[] times)` — initialise
-- `vector<string> input(char c)` — accepts one character at a time; returns top 3 most searched sentences matching the current prefix. `'#'` ends the current input and saves it.
+- `AutocompleteSystem::new(sentences: Vec<String>, times: Vec<i32>)` — initialise
+- `Vec<String> input(c: char)` — accepts one character at a time; returns top 3 most searched sentences matching the current prefix. `'#'` ends the current input and saves it.
 
 Top 3 ranked by: **times searched descending**, then **lexicographic order ascending** for ties.
 
@@ -35,11 +35,11 @@ Top 3 ranked by: **times searched descending**, then **lexicographic order ascen
 
 | Expectation | Detail |
 |-------------|--------|
-| Core structure | Trie for prefix lookup + std::unordered_map for frequency |
-| Ranking | Custom comparator: `[&](const string& a, const string& b) { int fa = freq[a], fb = freq[b]; return fa != fb ? fb > fa : a < b; }` |
-| Live typing | Accumulate typed characters into `curInput` |
-| Save on `#` | Insert `curInput` into trie with updated frequency |
-| Trade-off discussion | Trie (fast prefix) vs std::unordered_map (simple but O(n) scan on each char) |
+| Core structure | Trie for prefix lookup + HashMap for frequency |
+| Ranking | Custom comparator: `candidates.sort_by(\|a, b\| { let fa = freq[a]; let fb = freq[b]; if fa != fb { fb.cmp(&fa) } else { a.cmp(b) } })` |
+| Live typing | Accumulate typed characters into `input_str` |
+| Save on `#` | Insert `input_str` into trie with updated frequency |
+| Trade-off discussion | Trie (fast prefix) vs HashMap (simple but O(n) scan on each char) |
 
 ---
 
@@ -47,87 +47,112 @@ Top 3 ranked by: **times searched descending**, then **lexicographic order ascen
 
 | Approach | `input` Time | Space | Notes |
 |----------|-------------|-------|-------|
-| std::unordered_map + scan | O(n×k) per char | O(n×k) | Scan all sentences for prefix match |
+| HashMap + scan | O(n×k) per char | O(n×k) | Scan all sentences for prefix match |
 | Trie + DFS | O(p + r) per char | O(n×k) | p = prefix len, r = results |
 | Trie + top-k at each node | O(1) per char | O(n×k×3) | Pre-cache top 3 at each node |
 
 ---
 
-## C++ Implementation
+## Rust Implementation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-class AutocompleteSystem {
-    struct TrieNode {
-        unordered_map<char, TrieNode*> children;
-        // Could pre-cache top-k here for O(1) lookup
-    };
+struct TrieNode {
+    children: HashMap<char, usize>,
+    // Could pre-cache top-k here for O(1) lookup
+}
 
-    TrieNode* root = new TrieNode();
-    unordered_map<string, int> freq;
-    TrieNode* cur;
-    string inputStr;
+struct AutocompleteSystem {
+    nodes: Vec<TrieNode>,
+    freq: HashMap<String, i32>,
+    cur: Option<usize>,
+    input_str: String,
+}
 
-    void insert(const string& s) {
-        TrieNode* node = root;
-        for (char c : s) {
-            if (!node->children.count(c))
-                node->children[c] = new TrieNode();
-            node = node->children[c];
+impl AutocompleteSystem {
+    fn new(sentences: Vec<String>, times: Vec<i32>) -> Self {
+        let root = TrieNode { children: HashMap::new() };
+        let mut sys = AutocompleteSystem {
+            nodes: vec![root],
+            freq: HashMap::new(),
+            cur: Some(0),
+            input_str: String::new(),
+        };
+        for (i, s) in sentences.iter().enumerate() {
+            *sys.freq.entry(s.clone()).or_insert(0) = times[i];
+            sys.insert(s);
+        }
+        sys
+    }
+
+    fn insert(&mut self, s: &str) {
+        let mut node_idx = 0;
+        for c in s.chars() {
+            if !self.nodes[node_idx].children.contains_key(&c) {
+                let new_idx = self.nodes.len();
+                self.nodes.push(TrieNode { children: HashMap::new() });
+                self.nodes[node_idx].children.insert(c, new_idx);
+            }
+            node_idx = *self.nodes[node_idx].children.get(&c).unwrap();
         }
     }
 
-    void dfs(TrieNode* node, string& sb, vector<string>& results) {
-        if (freq.count(sb)) results.push_back(sb);
-        for (auto& [c, child] : node->children) {
-            sb += c;
-            dfs(child, sb, results);
-            sb.pop_back();
+    fn dfs(&self, node_idx: usize, sb: &mut String, results: &mut Vec<String>) {
+        if self.freq.contains_key(sb.as_str()) {
+            results.push(sb.clone());
+        }
+        // Collect children to avoid borrow conflict during recursion
+        let children: Vec<(char, usize)> = self.nodes[node_idx]
+            .children
+            .iter()
+            .map(|(&c, &idx)| (c, idx))
+            .collect();
+        for (c, child_idx) in children {
+            sb.push(c);
+            self.dfs(child_idx, sb, results);
+            sb.pop();
         }
     }
 
-public:
-    AutocompleteSystem(vector<string>& sentences, vector<int>& times) {
-        for (int i = 0; i < (int)sentences.size(); i++) {
-            freq[sentences[i]] = times[i];
-            insert(sentences[i]);
-        }
-        cur = root;
-    }
-
-    vector<string> input(char c) {
-        if (c == '#') {
-            freq[inputStr]++;
-            insert(inputStr);
-            inputStr.clear();
-            cur = root;
-            return {};
+    fn input(&mut self, c: char) -> Vec<String> {
+        if c == '#' {
+            *self.freq.entry(self.input_str.clone()).or_insert(0) += 1;
+            let s = self.input_str.clone();
+            self.insert(&s);
+            self.input_str.clear();
+            self.cur = Some(0);
+            return vec![];
         }
 
-        inputStr += c;
-        if (cur != nullptr) {
-            auto it = cur->children.find(c);
-            cur = (it != cur->children.end()) ? it->second : nullptr;
+        self.input_str.push(c);
+        if let Some(node_idx) = self.cur {
+            self.cur = self.nodes[node_idx].children.get(&c).copied();
         }
-        if (cur == nullptr) return {};
+        let cur_idx = match self.cur {
+            Some(idx) => idx,
+            None => return vec![],
+        };
 
         // Collect all sentences under cur node via DFS
-        vector<string> candidates;
-        string prefix = inputStr;
-        dfs(cur, prefix, candidates);
+        let mut candidates: Vec<String> = Vec::new();
+        let mut prefix = self.input_str.clone();
+        self.dfs(cur_idx, &mut prefix, &mut candidates);
 
         // Sort: freq desc, then lex asc
-        sort(candidates.begin(), candidates.end(), [&](const string& a, const string& b) {
-            int fa = freq.count(a) ? freq[a] : 0;
-            int fb = freq.count(b) ? freq[b] : 0;
-            return fa != fb ? fb > fa : a < b;
+        candidates.sort_by(|a, b| {
+            let fa = *self.freq.get(a).unwrap_or(&0);
+            let fb = *self.freq.get(b).unwrap_or(&0);
+            if fa != fb {
+                fb.cmp(&fa)
+            } else {
+                a.cmp(b)
+            }
         });
-        if (candidates.size() > 3) candidates.resize(3);
-        return candidates;
+        candidates.truncate(3);
+        candidates
     }
-};
+}
 ```
 
 ---
@@ -166,8 +191,8 @@ Where: `n` = sentences, `k` = avg length, `p` = current prefix length, `r` = mat
 
 ## Follow-up Questions
 
-1. **Top 3 cached at each Trie node — how?** → Store a `priority_queue<string>` (size 3) at each node; update on insert. `input()` becomes O(1) per char.
-2. **Thread-safe for multiple users?** → Use `std::mutex` with `std::lock_guard` around the Trie and `freq` map; or use a per-prefix-subtree lock for finer granularity.
+1. **Top 3 cached at each Trie node — how?** → Store a `BinaryHeap<String>` (size 3) at each node; update on insert. `input()` becomes O(1) per char.
+2. **Thread-safe for multiple users?** → Use `Mutex` with `MutexGuard` around the Trie and `freq` map; or use a per-prefix-subtree lock for finer granularity.
 3. **Disk-based for 10 billion sentences?** → LSM-tree or prefix-sorted file with binary search; cache hot prefixes in memory.
 4. **Handle typos / fuzzy matching?** → BK-tree or Levenshtein automaton instead of Trie.
 

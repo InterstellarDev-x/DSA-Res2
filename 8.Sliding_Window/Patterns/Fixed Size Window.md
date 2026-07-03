@@ -22,24 +22,20 @@ Array:  [2, 3, 4, 1, 5]   k = 3
 
 ## Template
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-double findMaxAverage(vector<int>& nums, int k) {
+```rust
+fn find_max_average(nums: &[i32], k: usize) -> f64 {
     // Step 1: Build initial window of size k
-    double windowSum = 0;
-    for (int i = 0; i < k; i++) windowSum += nums[i];
+    let mut window_sum: f64 = nums[..k].iter().map(|&x| x as f64).sum();
 
-    double maxSum = windowSum;
+    let mut max_sum = window_sum;
 
     // Step 2: Slide window — remove left, add right
-    for (int right = k; right < (int)nums.size(); right++) {
-        windowSum += nums[right] - nums[right - k];  // right - k = outgoing element
-        maxSum = max(maxSum, windowSum);
+    for right in k..nums.len() {
+        window_sum += (nums[right] - nums[right - k]) as f64;  // right - k = outgoing element
+        max_sum = max_sum.max(window_sum);
     }
 
-    return maxSum / k;
+    max_sum / k as f64
 }
 ```
 
@@ -51,43 +47,35 @@ double findMaxAverage(vector<int>& nums, int k) {
 
 **Input:** `nums = [1,12,-5,-6,50,3]`, `k = 4` → `12.75` (window `[12,-5,-6,50]`)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-double findMaxAverage(vector<int>& nums, int k) {
-    double sum = 0;
-    for (int i = 0; i < k; i++) sum += nums[i];
-    double maxSum = sum;
-    for (int right = k; right < (int)nums.size(); right++) {
-        sum += nums[right] - nums[right - k];
-        maxSum = max(maxSum, sum);
+```rust
+fn find_max_average(nums: &[i32], k: usize) -> f64 {
+    let mut sum: f64 = nums[..k].iter().map(|&x| x as f64).sum();
+    let mut max_sum = sum;
+    for right in k..nums.len() {
+        sum += (nums[right] - nums[right - k]) as f64;
+        max_sum = max_sum.max(sum);
     }
-    return maxSum / k;
+    max_sum / k as f64
 }
 ```
 
 **Complexity:** O(n) time, O(1) space
 
-**Edge case:** Single window (`nums.size() == k`) — loop body never executes; initial window is the answer.
+**Edge case:** Single window (`nums.len() == k`) — loop body never executes; initial window is the answer.
 
 ---
 
 ## Problem 2: Maximum Sum of Exactly K Elements (Variant)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int maxSum(vector<int>& arr, int k) {
-    int windowSum = 0;
-    for (int i = 0; i < k; i++) windowSum += arr[i];
-    int maxSum = windowSum;
-    for (int right = k; right < (int)arr.size(); right++) {
-        windowSum += arr[right] - arr[right - k];
-        maxSum = max(maxSum, windowSum);
+```rust
+fn max_sum(arr: &[i32], k: usize) -> i32 {
+    let mut window_sum: i32 = arr[..k].iter().sum();
+    let mut max_sum = window_sum;
+    for right in k..arr.len() {
+        window_sum += arr[right] - arr[right - k];
+        max_sum = max_sum.max(window_sum);
     }
-    return maxSum;
+    max_sum
 }
 ```
 
@@ -95,67 +83,80 @@ int maxSum(vector<int>& arr, int k) {
 
 ## Problem 3: Find All Anagrams in String — LC 438
 
-Fixed window of size `p.length()`. Use frequency arrays to compare.
+Fixed window of size `p.len()`. Use frequency arrays to compare.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> findAnagrams(string s, string p) {
-    vector<int> result;
-    if (s.length() < p.length()) return result;
-
-    int pFreq[26] = {}, wFreq[26] = {};
-    for (auto& c : p) pFreq[c - 'a']++;
-
-    int k = p.length();
-    for (int i = 0; i < k; i++) wFreq[s[i] - 'a']++;
-    if (equal(pFreq, pFreq + 26, wFreq)) result.push_back(0);
-
-    for (int right = k; right < (int)s.length(); right++) {
-        wFreq[s[right] - 'a']++;           // add incoming
-        wFreq[s[right - k] - 'a']--;       // remove outgoing
-        if (equal(pFreq, pFreq + 26, wFreq)) result.push_back(right - k + 1);
+```rust
+fn find_anagrams(s: &str, p: &str) -> Vec<i32> {
+    let mut result = Vec::new();
+    let s: Vec<u8> = s.bytes().collect();
+    let p: Vec<u8> = p.bytes().collect();
+    if s.len() < p.len() {
+        return result;
     }
-    return result;
+
+    let mut p_freq = [0i32; 26];
+    let mut w_freq = [0i32; 26];
+    for &c in &p {
+        p_freq[(c - b'a') as usize] += 1;
+    }
+
+    let k = p.len();
+    for i in 0..k {
+        w_freq[(s[i] - b'a') as usize] += 1;
+    }
+    if p_freq == w_freq {
+        result.push(0);
+    }
+
+    for right in k..s.len() {
+        w_freq[(s[right] - b'a') as usize] += 1;           // add incoming
+        w_freq[(s[right - k] - b'a') as usize] -= 1;       // remove outgoing
+        if p_freq == w_freq {
+            result.push((right - k + 1) as i32);
+        }
+    }
+    result
 }
 ```
 
-**Optimization:** Track `matches` count instead of calling `equal()` every iteration (O(26) → O(1) check).
+**Optimization:** Track `matches` count instead of comparing arrays every iteration (O(26) → O(1) check).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn find_anagrams(s: &str, p: &str) -> Vec<i32> {
+    let mut result = Vec::new();
+    let s: Vec<u8> = s.bytes().collect();
+    let p: Vec<u8> = p.bytes().collect();
+    let mut freq = [0i32; 26];
+    for &c in &p {
+        freq[(c - b'a') as usize] += 1;
+    }
 
-vector<int> findAnagrams(string s, string p) {
-    vector<int> result;
-    int freq[26] = {};
-    for (auto& c : p) freq[c - 'a']++;
-
-    int k = p.length(), matches = 0;
+    let k = p.len();
+    let mut matches = 0usize;
     // Count how many chars have freq 0 (already matched) — initially all non-p chars
-    int required = count_if(freq, freq + 26, [](int f){ return f != 0; });
+    let required = freq.iter().filter(|&&f| f != 0).count();
     // Actually, simpler: track 'have' == 'need'
     // Use the count-of-satisfied approach:
-    int left = 0;
-    for (int right = 0; right < (int)s.length(); right++) {
-        int c = s[right] - 'a';
-        freq[c]--;
-        if (freq[c] == 0) matches++;   // this char's count is now satisfied
+    let mut left = 0usize;
+    for right in 0..s.len() {
+        let c = (s[right] - b'a') as usize;
+        freq[c] -= 1;
+        if freq[c] == 0 { matches += 1; }   // this char's count is now satisfied
 
-        if (right >= k) {
-            int l = s[left++] - 'a';
-            if (freq[l] == 0) matches--;   // removing a satisfied char
-            freq[l]++;
+        if right >= k {
+            let l = (s[left] - b'a') as usize;
+            left += 1;
+            if freq[l] == 0 { matches -= 1; }   // removing a satisfied char
+            freq[l] += 1;
         }
-        if (matches == required) result.push_back(left - 1);  // wait, need re-check
+        if matches == required { result.push((left as i32) - 1); }  // wait, need re-check
     }
-    // Cleaner: use pFreq and wFreq with 'need' tracker
-    return result;
+    // Cleaner: use p_freq and w_freq with 'need' tracker
+    result
 }
 ```
 
-The `equal()` version is cleaner for interviews — only 26 comparisons.
+The array-equality version is cleaner for interviews — only 26 comparisons.
 
 ---
 
@@ -163,26 +164,35 @@ The `equal()` version is cleaner for interviews — only 26 comparisons.
 
 Same as Find Anagrams but return `true`/`false`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool checkInclusion(string s1, string s2) {
-    if (s1.length() > s2.length()) return false;
-    int freq[26] = {};
-    for (auto& c : s1) freq[c - 'a']++;
-
-    int k = s1.length();
-    int window[26] = {};
-    for (int i = 0; i < k; i++) window[s2[i] - 'a']++;
-    if (equal(freq, freq + 26, window)) return true;
-
-    for (int right = k; right < (int)s2.length(); right++) {
-        window[s2[right] - 'a']++;
-        window[s2[right - k] - 'a']--;
-        if (equal(freq, freq + 26, window)) return true;
+```rust
+fn check_inclusion(s1: &str, s2: &str) -> bool {
+    if s1.len() > s2.len() {
+        return false;
     }
-    return false;
+    let s1: Vec<u8> = s1.bytes().collect();
+    let s2: Vec<u8> = s2.bytes().collect();
+    let mut freq = [0i32; 26];
+    for &c in &s1 {
+        freq[(c - b'a') as usize] += 1;
+    }
+
+    let k = s1.len();
+    let mut window = [0i32; 26];
+    for i in 0..k {
+        window[(s2[i] - b'a') as usize] += 1;
+    }
+    if freq == window {
+        return true;
+    }
+
+    for right in k..s2.len() {
+        window[(s2[right] - b'a') as usize] += 1;
+        window[(s2[right - k] - b'a') as usize] -= 1;
+        if freq == window {
+            return true;
+        }
+    }
+    false
 }
 ```
 

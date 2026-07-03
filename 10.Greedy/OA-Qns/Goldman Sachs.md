@@ -24,27 +24,26 @@
 3. "What if there are multiple valid starting points?" → Return the lexicographically smallest (first valid)
 
 **Code they want to see:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
-    int totalGain = 0, currentGain = 0, startStation = 0;
-    for (int i = 0; i < (int)gas.size(); i++) {
-        int gain = gas[i] - cost[i];
-        totalGain += gain;
-        currentGain += gain;
-        if (currentGain < 0) {
-            startStation = i + 1;
-            currentGain = 0;
+```rust
+fn can_complete_circuit(gas: &[i32], cost: &[i32]) -> i32 {
+    let mut total_gain: i32 = 0;
+    let mut current_gain: i32 = 0;
+    let mut start_station: usize = 0;
+    for i in 0..gas.len() {
+        let gain = gas[i] - cost[i];
+        total_gain += gain;
+        current_gain += gain;
+        if current_gain < 0 {
+            start_station = i + 1;
+            current_gain = 0;
         }
     }
-    return totalGain >= 0 ? startStation : -1;
+    if total_gain >= 0 { start_station as i32 } else { -1 }
 }
 ```
 
 **Business context Goldman appreciates:**
-- `totalGain >= 0` ↔ "Net cash flow is non-negative — the route is viable in aggregate"
+- `total_gain >= 0` ↔ "Net cash flow is non-negative — the route is viable in aggregate"
 - Local candidate reset ↔ "If you're in deficit after visiting station i, no earlier start could have helped — reset"
 
 ---
@@ -61,28 +60,25 @@ int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
 3. "What is the minimum bonus if we allow circular arrangement?" → Circular candy problem — NP-hard variant
 
 **Code they want to see:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int candy(vector<int>& ratings) {
-    int n = ratings.size();
-    vector<int> candies(n, 1);
-    for (int i = 1; i < n; i++) {
-        if (ratings[i] > ratings[i - 1]) candies[i] = candies[i - 1] + 1;
-    }
-    for (int i = n - 2; i >= 0; i--) {
-        if (ratings[i] > ratings[i + 1]) {
-            candies[i] = max(candies[i], candies[i + 1] + 1);
+```rust
+fn candy(ratings: &[i32]) -> i32 {
+    let n = ratings.len();
+    let mut candies = vec![1i32; n];
+    for i in 1..n {
+        if ratings[i] > ratings[i - 1] {
+            candies[i] = candies[i - 1] + 1;
         }
     }
-    int total = 0;
-    for (auto& c : candies) total += c;
-    return total;
+    for i in (0..n - 1).rev() {
+        if ratings[i] > ratings[i + 1] {
+            candies[i] = candies[i].max(candies[i + 1] + 1);
+        }
+    }
+    candies.iter().sum()
 }
 ```
 
-**Why two passes:** Left-to-right ensures left-neighbor constraint; right-to-left ensures right-neighbor constraint. `max` at each position satisfies both simultaneously.
+**Why two passes:** Left-to-right ensures left-neighbor constraint; right-to-left ensures right-neighbor constraint. `.max()` at each position satisfies both simultaneously.
 
 ---
 

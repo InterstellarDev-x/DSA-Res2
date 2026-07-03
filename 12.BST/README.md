@@ -4,15 +4,21 @@
 
 A production-quality, interview-focused reference for **Binary Search Trees (BST)**: 16 problems
 organized into 4 reusable patterns, plus a design problem (BST Iterator), company question banks,
-interview deep dives, and tips. Every solution is full C++ — no pseudocode.
+interview deep dives, and tips. Every solution is full Rust — no pseudocode.
 
-```cpp
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
-};
+```rust
+#[derive(Debug, Clone, PartialEq)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
+
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 ---
@@ -35,7 +41,7 @@ Three consequences power nearly every solution on this page:
    cannot contain a valid answer.
 
 `h` = tree height. Read it everywhere as **O(log n) balanced / O(n) skewed**. Self-balancing
-variants (Red-Black, AVL) — and C++'s `std::map`/`std::set` — guarantee `h = O(log n)`.
+variants (Red-Black, AVL) — and Rust's `BTreeMap`/`BTreeSet` — guarantee `h = O(log n)`.
 
 ---
 
@@ -133,5 +139,6 @@ Controlled inorder using an explicit stack — `next()` and `hasNext()` are **am
 5. Practice the **BST Iterator** (controlled inorder) — a frequent design follow-up.
 6. Cross-reference the general [LCA in a binary tree](../11.Binary_Trees/Patterns/Tree%20DP.md)
    to appreciate why the BST version is dramatically simpler.
+
 
 > **Last Updated:** 2026-06-26

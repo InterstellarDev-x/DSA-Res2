@@ -9,22 +9,29 @@
 
 Return the number of calls in the last 3000 milliseconds.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-class RecentCounter {
-    queue<int> window;
-public:
-    int ping(int t) {
-        window.push(t);
-        while (window.front() < t - 3000) window.pop();
-        return window.size();
+struct RecentCounter {
+    window: VecDeque<i32>,
+}
+
+impl RecentCounter {
+    fn new() -> Self {
+        RecentCounter { window: VecDeque::new() }
     }
-};
+
+    fn ping(&mut self, t: i32) -> i32 {
+        self.window.push_back(t);
+        while *self.window.front().unwrap() < t - 3000 {
+            self.window.pop_front();
+        }
+        self.window.len() as i32
+    }
+}
 ```
 
-**Why this works:** `t` is strictly increasing. The queue is a sliding window `[t-3000, t]`. Each timestamp is added once and removed once — O(1) amortized.
+**Why this works:** `t` is strictly increasing. The `VecDeque` is a sliding window `[t-3000, t]`. Each timestamp is added once and removed once — O(1) amortized.
 
 ---
 
@@ -34,100 +41,118 @@ Count hits in the last 5 minutes (300 seconds). `hit(timestamp)` records a hit. 
 
 ### Approach 1: Queue-based sliding window
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-class HitCounter {
-    queue<int> hits;
-public:
-    void hit(int timestamp) {
-        hits.push(timestamp);
+struct HitCounter {
+    hits: VecDeque<i32>,
+}
+
+impl HitCounter {
+    fn new() -> Self {
+        HitCounter { hits: VecDeque::new() }
     }
 
-    int getHits(int timestamp) {
-        while (!hits.empty() && hits.front() <= timestamp - 300) {
-            hits.pop();
+    fn hit(&mut self, timestamp: i32) {
+        self.hits.push_back(timestamp);
+    }
+
+    fn get_hits(&mut self, timestamp: i32) -> i32 {
+        while !self.hits.is_empty() && *self.hits.front().unwrap() <= timestamp - 300 {
+            self.hits.pop_front();
         }
-        return hits.size();
+        self.hits.len() as i32
     }
-};
+}
 ```
 
-**Complexity:** O(1) amortized for both operations. Queue can hold at most all hits in the last 300 seconds.
+**Complexity:** O(1) amortized for both operations. `VecDeque` can hold at most all hits in the last 300 seconds.
 
 ### Approach 2: Fixed-size circular array (O(1) worst case, O(1) space)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct HitCounter {
+    times: Vec<i32>,
+    counts: Vec<i32>,
+}
 
-class HitCounter {
-    vector<int> times = vector<int>(300, 0);
-    vector<int> counts = vector<int>(300, 0);
-public:
-    void hit(int timestamp) {
-        int idx = timestamp % 300;
-        if (times[idx] == timestamp) {
-            counts[idx]++;         // same second → increment
-        } else {
-            times[idx] = timestamp;  // new second → overwrite
-            counts[idx] = 1;
+impl HitCounter {
+    fn new() -> Self {
+        HitCounter {
+            times: vec![0; 300],
+            counts: vec![0; 300],
         }
     }
 
-    int getHits(int timestamp) {
-        int total = 0;
-        for (int i = 0; i < 300; i++) {
-            if (timestamp - times[i] < 300) {
-                total += counts[i];
+    fn hit(&mut self, timestamp: i32) {
+        let idx = (timestamp % 300) as usize;
+        if self.times[idx] == timestamp {
+            self.counts[idx] += 1;        // same second → increment
+        } else {
+            self.times[idx] = timestamp;  // new second → overwrite
+            self.counts[idx] = 1;
+        }
+    }
+
+    fn get_hits(&self, timestamp: i32) -> i32 {
+        let mut total = 0;
+        for i in 0..300 {
+            if timestamp - self.times[i] < 300 {
+                total += self.counts[i];
             }
         }
-        return total;
+        total
     }
-};
+}
 ```
 
 **Circular array insight:** Timestamps 1 and 301 map to the same slot (`1 % 300 == 1`). We store the timestamp to detect stale entries. If `timestamp - times[idx] >= 300`, the slot is stale and not counted.
 
-**Complexity:** O(1) hit, O(300) = O(1) getHits. Handles high-frequency same-second hits efficiently.
+**Complexity:** O(1) hit, O(300) = O(1) get_hits. Handles high-frequency same-second hits efficiently.
 
 ---
 
 ## Problem 3: Token Bucket Rate Limiter (System Design Component)
 
-Design a rate limiter that allows at most `capacity` requests per `windowMs` milliseconds.
+Design a rate limiter that allows at most `capacity` requests per `window_ms` milliseconds.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
+use std::sync::Mutex;
 
-class RateLimiter {
-    const int capacity;
-    const long windowMs;
-    queue<long> requests;
-    mutex mtx; // use std::mutex for thread safety
-public:
-    RateLimiter(int capacity, long windowMs) : capacity(capacity), windowMs(windowMs) {}
+struct RateLimiter {
+    capacity: usize,
+    window_ms: i64,
+    requests: Mutex<VecDeque<i64>>,
+}
 
-    bool allow(long currentTimeMs) {
-        lock_guard<mutex> lock(mtx);
-        // Remove requests outside the sliding window
-        while (!requests.empty() && requests.front() <= currentTimeMs - windowMs) {
-            requests.pop();
+impl RateLimiter {
+    fn new(capacity: usize, window_ms: i64) -> Self {
+        RateLimiter {
+            capacity,
+            window_ms,
+            requests: Mutex::new(VecDeque::new()),
         }
-        if ((int)requests.size() < capacity) {
-            requests.push(currentTimeMs);
+    }
+
+    fn allow(&self, current_time_ms: i64) -> bool {
+        let mut requests = self.requests.lock().unwrap();
+        // Remove requests outside the sliding window
+        while !requests.is_empty() && *requests.front().unwrap() <= current_time_ms - self.window_ms {
+            requests.pop_front();
+        }
+        if requests.len() < self.capacity {
+            requests.push_back(current_time_ms);
             return true;
         }
-        return false;
+        false
     }
-};
+}
 ```
 
 **Key properties:**
 - O(1) amortized per `allow()` call
-- `lock_guard<mutex>` for thread safety in single-instance deployments
+- `Mutex::lock().unwrap()` for thread safety in single-instance deployments
 - Sliding window (not fixed window) — avoids the "double burst at boundary" problem of fixed windows
 
 ---

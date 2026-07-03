@@ -10,13 +10,19 @@ Implement an iterator over a BST that returns keys in **ascending (inorder)** or
 
 **Both `next()` and `hasNext()` must be amortized O(1), using at most O(h) memory.**
 
-```cpp
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
-};
+```rust
+#[derive(Debug)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
+
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 ---
@@ -31,38 +37,36 @@ on top.
 The helper `pushLeftmost(node)` pushes a node and all of its left descendants. Calling it on `root`
 in the constructor primes the stack so the top is the global minimum.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+pub struct BSTIterator {
+    stk: Vec<Box<TreeNode>>,
+}
 
-class BSTIterator {
-    stack<TreeNode*> stk;
-
-    void pushLeftmost(TreeNode* node) {
-        while (node != nullptr) {
-            stk.push(node);
-            node = node->left;
+impl BSTIterator {
+    fn push_leftmost(stk: &mut Vec<Box<TreeNode>>, mut node: Option<Box<TreeNode>>) {
+        while let Some(mut n) = node {
+            node = n.left.take(); // detach left child so we can push n
+            stk.push(n);
         }
     }
 
-public:
-    BSTIterator(TreeNode* root) {
-        pushLeftmost(root);              // prime: leftmost (smallest) ends up on top
+    pub fn new(root: Option<Box<TreeNode>>) -> Self {
+        let mut iter = BSTIterator { stk: Vec::new() };
+        Self::push_leftmost(&mut iter.stk, root); // prime: leftmost (smallest) ends up on top
+        iter
     }
 
-    int next() {
-        TreeNode* node = stk.top();      // next-smallest is always on top
-        stk.pop();
-        if (node->right != nullptr) {
-            pushLeftmost(node->right);   // its successor lives at the leftmost of its right subtree
-        }
-        return node->val;
+    pub fn next(&mut self) -> i32 {
+        let node = *self.stk.pop().unwrap(); // next-smallest is always on top
+        let right = node.right;
+        Self::push_leftmost(&mut self.stk, right); // its successor lives at the leftmost of its right subtree
+        node.val
     }
 
-    bool hasNext() {
-        return !stk.empty();
+    pub fn has_next(&self) -> bool {
+        !self.stk.is_empty()
     }
-};
+}
 ```
 
 ---
@@ -118,38 +122,36 @@ space — strictly worse and the reason the follow-up is asked.
 A descending iterator mirrors everything: push the **rightmost** spine, and on each step move into
 the popped node's **left** subtree.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+pub struct BSTIteratorReverse {
+    stk: Vec<Box<TreeNode>>,
+}
 
-class BSTIteratorReverse {
-    stack<TreeNode*> stk;
-
-    void pushRightmost(TreeNode* node) {
-        while (node != nullptr) {
-            stk.push(node);
-            node = node->right;
+impl BSTIteratorReverse {
+    fn push_rightmost(stk: &mut Vec<Box<TreeNode>>, mut node: Option<Box<TreeNode>>) {
+        while let Some(mut n) = node {
+            node = n.right.take(); // detach right child so we can push n
+            stk.push(n);
         }
     }
 
-public:
-    BSTIteratorReverse(TreeNode* root) {
-        pushRightmost(root);             // largest ends up on top
+    pub fn new(root: Option<Box<TreeNode>>) -> Self {
+        let mut iter = BSTIteratorReverse { stk: Vec::new() };
+        Self::push_rightmost(&mut iter.stk, root); // largest ends up on top
+        iter
     }
 
-    int prev() {                         // returns next-largest
-        TreeNode* node = stk.top();
-        stk.pop();
-        if (node->left != nullptr) {
-            pushRightmost(node->left);   // predecessor = rightmost of left subtree
-        }
-        return node->val;
+    pub fn prev(&mut self) -> i32 {                // returns next-largest
+        let node = *self.stk.pop().unwrap();
+        let left = node.left;
+        Self::push_rightmost(&mut self.stk, left); // predecessor = rightmost of left subtree
+        node.val
     }
 
-    bool hasPrev() {
-        return !stk.empty();
+    pub fn has_prev(&self) -> bool {
+        !self.stk.is_empty()
     }
-};
+}
 ```
 
 > **Bidirectional variant (LC 1586):** maintain both directions by re-priming the appropriate

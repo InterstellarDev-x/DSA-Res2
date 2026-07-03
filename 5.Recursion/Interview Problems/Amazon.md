@@ -21,9 +21,9 @@
 
 ### The Two Invariants
 
-```cpp
-if (open < n)    // can add '(' — haven't used all open brackets
-if (close < open) // can add ')' — can only close what's been opened
+```rust
+if open < n { }    // can add '(' — haven't used all open brackets
+if close < open { } // can add ')' — can only close what's been opened
 ```
 
 Why this generates all valid combinations without duplicates:
@@ -46,32 +46,40 @@ Space: O(n) per stack frame, max depth 2n.
 
 Backtracking + memoization. Separate **reachability** from **enumeration**:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashSet, HashMap};
 
-vector<string> backtrack(const string& s, int start, const unordered_set<string>& dict, unordered_map<int, vector<string>>& memo) {
-    if (memo.count(start)) return memo[start];
-    vector<string> result;
-    if (start == (int)s.size()) { result.push_back(""); return result; }
+fn backtrack(s: &str, start: usize, dict: &HashSet<String>, memo: &mut HashMap<usize, Vec<String>>) -> Vec<String> {
+    if let Some(cached) = memo.get(&start) {
+        return cached.clone();
+    }
+    let mut result: Vec<String> = Vec::new();
+    if start == s.len() {
+        result.push(String::new());
+        return result;
+    }
 
-    for (int end = start + 1; end <= (int)s.size(); end++) {
-        string word = s.substr(start, end - start);
-        if (dict.count(word)) {
-            vector<string> suffixes = backtrack(s, end, dict, memo);
-            for (auto& suffix : suffixes) {
-                result.push_back(word + (suffix.empty() ? "" : " " + suffix));
+    for end in (start + 1)..=s.len() {
+        let word = &s[start..end];
+        if dict.contains(word) {
+            let suffixes = backtrack(s, end, dict, memo);
+            for suffix in &suffixes {
+                result.push(if suffix.is_empty() {
+                    word.to_string()
+                } else {
+                    format!("{} {}", word, suffix)
+                });
             }
         }
     }
-    memo[start] = result;
-    return result;
+    memo.insert(start, result.clone());
+    result
 }
 
-vector<string> wordBreak(string s, vector<string>& wordDict) {
-    unordered_set<string> dict(wordDict.begin(), wordDict.end());
-    unordered_map<int, vector<string>> memo;
-    return backtrack(s, 0, dict, memo);
+fn word_break(s: String, word_dict: Vec<String>) -> Vec<String> {
+    let dict: HashSet<String> = word_dict.into_iter().collect();
+    let mut memo: HashMap<usize, Vec<String>> = HashMap::new();
+    backtrack(&s, 0, &dict, &mut memo)
 }
 ```
 

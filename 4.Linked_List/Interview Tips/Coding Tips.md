@@ -5,27 +5,36 @@
 
 ---
 
-## C++ Node Definitions
+## Rust Node Definitions
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Singly Linked List
-struct ListNode {
-    int val;
-    ListNode* next;
-    ListNode(int val) : val(val), next(nullptr) {}
-    ListNode(int val, ListNode* next) : val(val), next(next) {}
-};
+#[derive(Debug, Clone, PartialEq)]
+pub struct ListNode {
+    pub val: i32,
+    pub next: Option<Box<ListNode>>,
+}
 
-// Doubly Linked List (for LRU/LFU)
-struct Node {
-    int key, val;
-    Node* prev;
-    Node* next;
-    Node(int k, int v) : key(k), val(v), prev(nullptr), next(nullptr) {}
-};
+impl ListNode {
+    pub fn new(val: i32) -> Self {
+        ListNode { val, next: None }
+    }
+}
+
+// Doubly Linked List (for LRU/LFU) — use index-based Vec approach
+#[derive(Debug, Clone)]
+pub struct Node {
+    pub key: i32,
+    pub val: i32,
+    pub prev: Option<usize>, // index into node arena
+    pub next: Option<usize>, // index into node arena
+}
+
+impl Node {
+    pub fn new(key: i32, val: i32) -> Self {
+        Node { key, val, prev: None, next: None }
+    }
+}
 ```
 
 ---
@@ -34,17 +43,20 @@ struct Node {
 
 Always use a dummy head when the result list's head might change:
 
-```cpp
-// BAD — head can change, requires if (head == nullptr) checks everywhere
-ListNode* head = nullptr, *tail = nullptr;
-if (head == nullptr) head = tail = new ListNode(val);
-else { tail->next = new ListNode(val); tail = tail->next; }
+```rust
+// BAD — head can change, requires is_none() checks everywhere
+let mut head: Option<Box<ListNode>> = None;
+// ... complex conditional checks needed at every append
 
-// GOOD — dummy head never changes; result is always dummy->next
-ListNode* dummy = new ListNode(0), *tail = dummy;
-tail->next = new ListNode(val);
-tail = tail->next;
-return dummy->next;
+// GOOD — dummy head never changes; result is always dummy.next
+// Use raw pointer for mutable tail tracking (required in Rust for this pattern)
+let mut dummy = Box::new(ListNode::new(0));
+let mut tail: *mut ListNode = dummy.as_mut();
+unsafe {
+    (*tail).next = Some(Box::new(ListNode::new(val)));
+    tail = (*tail).next.as_mut().unwrap().as_mut();
+}
+// result: dummy.next
 ```
 
 Use dummy head for: merge, partition, remove nodes, reverse sublist.
@@ -55,12 +67,19 @@ Use dummy head for: merge, partition, remove nodes, reverse sublist.
 
 When relinking pointers, always save references **before** overwriting:
 
-```cpp
-// Reverse step — save nxt BEFORE breaking curr->next
-ListNode* nxt = curr->next; // 1. save
-curr->next = prev;           // 2. relink (curr->next is now gone)
-prev = curr;                 // 3. advance prev
-curr = nxt;                  // 4. advance curr using saved reference
+```rust
+// Reverse step — take ownership before relinking (with Option<Box<ListNode>>)
+fn reverse_list(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+    let mut prev: Option<Box<ListNode>> = None;
+    let mut curr = head;
+    while let Some(mut node) = curr {
+        let nxt = node.next.take(); // 1. save (disconnects next, sets to None)
+        node.next = prev;           // 2. relink
+        prev = Some(node);          // 3. advance prev
+        curr = nxt;                 // 4. advance curr using saved reference
+    }
+    prev
+}
 ```
 
 The order `save → relink → advance` prevents losing nodes.
@@ -71,10 +90,13 @@ The order `save → relink → advance` prevents losing nodes.
 
 Count once and store — don't recount:
 
-```cpp
-int length = 0;
-ListNode* curr = head;
-while (curr != nullptr) { length++; curr = curr->next; }
+```rust
+let mut length: usize = 0;
+let mut curr = &head; // head: Option<Box<ListNode>>
+while let Some(node) = curr {
+    length += 1;
+    curr = &node.next;
+}
 // Reuse length, don't traverse again
 ```
 
@@ -82,16 +104,20 @@ while (curr != nullptr) { length++; curr = curr->next; }
 
 ## Avoid Null Pointer in Fast Pointer
 
-Fast pointer skips 2 nodes per step — always check both `fast` and `fast->next`:
+Fast pointer skips 2 nodes per step — always check both `fast` and `fast.next`:
 
-```cpp
-while (fast != nullptr && fast->next != nullptr) {
-    slow = slow->next;
-    fast = fast->next->next; // safe because fast->next != nullptr checked above
+```rust
+// Using shared references for read-only traversal
+let mut slow: Option<&ListNode> = head.as_deref();
+let mut fast: Option<&ListNode> = head.as_deref();
+while fast.is_some() && fast.unwrap().next.is_some() {
+    slow = slow.unwrap().next.as_deref();
+    fast = fast.unwrap().next.as_ref().and_then(|n| n.next.as_deref());
+    // safe because fast.next.is_some() checked above
 }
 ```
 
-If you check only `fast != nullptr`, `fast->next->next` causes undefined behavior (segfault).
+If you check only `fast.is_some()`, accessing `fast.next.next` without checking causes a panic.
 
 ---
 
@@ -99,32 +125,42 @@ If you check only `fast != nullptr`, `fast->next->next` causes undefined behavio
 
 The init of `fast` controls which mid you get for even-length lists:
 
-```cpp
+```rust
 // fast = head → second middle (default for most problems)
-ListNode* slow = head, *fast = head;
-// fast = head->next → first middle (for palindrome: split after first half)
-ListNode* slow = head, *fast = head->next;
+let mut slow: Option<&ListNode> = head.as_deref();
+let mut fast: Option<&ListNode> = head.as_deref();
+
+// fast = head.next → first middle (for palindrome: split after first half)
+let mut slow: Option<&ListNode> = head.as_deref();
+let mut fast: Option<&ListNode> = head.as_deref().and_then(|n| n.next.as_deref());
 ```
 
 For `[1, 2, 3, 4]`:
 - `fast = head`: slow ends at 3 (second middle)
-- `fast = head->next`: slow ends at 2 (first middle)
+- `fast = head.next`: slow ends at 2 (first middle)
 
 ---
 
 ## In-Place Tricks
 
 **Delete Node without head reference (LC 237):**
-```cpp
+```rust
 // Copy next node's value, then skip next node
-node->val = node->next->val;
-node->next = node->next->next;
+let next_val = node.next.as_ref().unwrap().val;
+let next_next = node.next.as_mut().unwrap().next.take();
+node.val = next_val;
+node.next = next_next;
 ```
 
 **Cycle detection phase 2 — after meeting, both pointers move 1x:**
-```cpp
-slow = head; // reset to head
-while (slow != fast) { slow = slow->next; fast = fast->next; }
+```rust
+let mut slow: Option<&ListNode> = head.as_deref(); // reset to head
+// fast stays at meeting point from phase 1
+while !std::ptr::eq(slow.unwrap(), fast.unwrap()) {
+    slow = slow.unwrap().next.as_deref();
+    fast = fast.unwrap().next.as_deref();
+}
+// slow == fast == cycle start node
 ```
 
 ---
@@ -141,23 +177,23 @@ Exception: tree-like problems (flatten multilevel DLL) are naturally recursive.
 
 ---
 
-## Common C++ APIs
+## Common Rust APIs
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-// stack<T> (preferred for LIFO)
-stack<int> stk;
+// Vec<T> as stack (LIFO)
+let mut stk: Vec<i32> = Vec::new();
 stk.push(x);  // push
-stk.pop();    // pop (no return value)
-stk.top();    // peek
+stk.pop();    // pop (returns Option<i32>)
+stk.last();   // peek (returns Option<&i32>)
 
-// priority_queue for min-heap (Merge K Sorted)
-auto cmp = [](ListNode* a, ListNode* b) { return a->val > b->val; };
-priority_queue<ListNode*, vector<ListNode*>, decltype(cmp)> pq(cmp);
-// Safe comparator (no overflow):
-// lambda-based comparator above works fine and avoids subtraction overflow
+// BinaryHeap with Reverse<(val, idx)> for min-heap (Merge K Sorted)
+let mut pq: BinaryHeap<Reverse<(i32, usize)>> = BinaryHeap::new();
+// Push (node.val, list_index) wrapped in Reverse for min-heap ordering
+// pq.push(Reverse((node.val, idx)));
+// Safe comparator: compare by node value, no overflow risk
 ```
 
 ---

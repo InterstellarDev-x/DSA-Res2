@@ -6,13 +6,19 @@ Rebuilding a tree from traversal arrays, and structural rewrites (flatten, width
 pointers). The unifying idea: **the root is identifiable from one array, and its position in
 another array splits the remaining nodes into left and right subtrees.**
 
-```cpp
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
-};
+```rust
+#[derive(Debug)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
+
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 ---
@@ -23,7 +29,7 @@ struct TreeNode {
 - **Inorder**  = `[Left subtree | Root | Right subtree]` → finding the root in inorder splits
   left vs right.
 
-Use a `unordered_map<val → inorderIndex>` for **O(1)** root lookup instead of a linear scan.
+Use a `HashMap<val → inorder_index>` for **O(1)** root lookup instead of a linear scan.
 
 **Key invariants:**
 ```
@@ -34,32 +40,37 @@ left  subtree: preorder[preStart+1 .. preStart+leftSize], inorder[inStart .. inI
 right subtree: preorder[preStart+leftSize+1 .. ],          inorder[inIdx+1 .. inEnd]
 ```
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-unordered_map<int, int> idx;       // inorder value -> index
-int preIndex;                       // global pointer into preorder
-
-TreeNode* buildTree(vector<int>& preorder, vector<int>& inorder) {
-    idx.clear();
-    for (int i = 0; i < (int)inorder.size(); i++) idx[inorder[i]] = i;
-    preIndex = 0;
-    return build(preorder, 0, inorder.size() - 1);
+pub fn build_tree(preorder: Vec<i32>, inorder: Vec<i32>) -> Option<Box<TreeNode>> {
+    let mut idx: HashMap<i32, i32> = HashMap::new();
+    for (i, &val) in inorder.iter().enumerate() {
+        idx.insert(val, i as i32);
+    }
+    let mut pre_index: i32 = 0;
+    build(&preorder, 0, inorder.len() as i32 - 1, &idx, &mut pre_index)
 }
 
-TreeNode* build(vector<int>& preorder, int inStart, int inEnd) {
-    if (inStart > inEnd) return nullptr;
-    int rootVal = preorder[preIndex++];   // preorder consumed front-to-back
-    TreeNode* root = new TreeNode(rootVal);
-    int inIdx = idx[rootVal];
-    root->left  = build(preorder, inStart, inIdx - 1);   // build LEFT first
-    root->right = build(preorder, inIdx + 1, inEnd);     // matches preorder order
-    return root;
+fn build(
+    preorder: &[i32],
+    in_start: i32,
+    in_end: i32,
+    idx: &HashMap<i32, i32>,
+    pre_index: &mut i32,
+) -> Option<Box<TreeNode>> {
+    if in_start > in_end { return None; }
+    let root_val = preorder[*pre_index as usize];
+    *pre_index += 1;   // preorder consumed front-to-back
+    let mut root = Box::new(TreeNode::new(root_val));
+    let in_idx = idx[&root_val];
+    root.left  = build(preorder, in_start, in_idx - 1, idx, pre_index);  // build LEFT first
+    root.right = build(preorder, in_idx + 1, in_end, idx, pre_index);    // matches preorder order
+    Some(root)
 }
 ```
 
-> ⚠️ Build the **left** subtree before the right, because the global `preIndex` must advance
+> Build the **left** subtree before the right, because the global `pre_index` must advance
 > through the left subtree's nodes (which appear first in preorder).
 
 ---
@@ -70,28 +81,34 @@ TreeNode* build(vector<int>& preorder, int inStart, int inEnd) {
 **back-to-front** gives Root, then Right subtree, then Left subtree — so build the **right**
 subtree before the left.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-unordered_map<int, int> idx;
-int postIndex;
-
-TreeNode* buildTree(vector<int>& inorder, vector<int>& postorder) {
-    idx.clear();
-    for (int i = 0; i < (int)inorder.size(); i++) idx[inorder[i]] = i;
-    postIndex = postorder.size() - 1;     // consume from the back
-    return build(postorder, 0, inorder.size() - 1);
+pub fn build_tree(inorder: Vec<i32>, postorder: Vec<i32>) -> Option<Box<TreeNode>> {
+    let mut idx: HashMap<i32, i32> = HashMap::new();
+    for (i, &val) in inorder.iter().enumerate() {
+        idx.insert(val, i as i32);
+    }
+    let n = postorder.len() as i32;
+    let mut post_index: i32 = n - 1;   // consume from the back
+    build(&postorder, 0, n - 1, &idx, &mut post_index)
 }
 
-TreeNode* build(vector<int>& postorder, int inStart, int inEnd) {
-    if (inStart > inEnd) return nullptr;
-    int rootVal = postorder[postIndex--];
-    TreeNode* root = new TreeNode(rootVal);
-    int inIdx = idx[rootVal];
-    root->right = build(postorder, inIdx + 1, inEnd);    // RIGHT first (mirror of LC 105)
-    root->left  = build(postorder, inStart, inIdx - 1);
-    return root;
+fn build(
+    postorder: &[i32],
+    in_start: i32,
+    in_end: i32,
+    idx: &HashMap<i32, i32>,
+    post_index: &mut i32,
+) -> Option<Box<TreeNode>> {
+    if in_start > in_end { return None; }
+    let root_val = postorder[*post_index as usize];
+    *post_index -= 1;
+    let mut root = Box::new(TreeNode::new(root_val));
+    let in_idx = idx[&root_val];
+    root.right = build(postorder, in_idx + 1, in_end, idx, post_index);   // RIGHT first (mirror of LC 105)
+    root.left  = build(postorder, in_start, in_idx - 1, idx, post_index);
+    Some(root)
 }
 ```
 
@@ -103,28 +120,37 @@ Without inorder the answer isn't unique, but any valid tree works. Identify the 
 subtree's root** = `preorder[preStart+1]`, find it in postorder to compute the left-subtree
 size.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-unordered_map<int, int> postIdx;
-int preIndex = 0;
-
-TreeNode* constructFromPrePost(vector<int>& pre, vector<int>& post) {
-    postIdx.clear();
-    for (int i = 0; i < (int)post.size(); i++) postIdx[post[i]] = i;
-    return build(pre, post, 0, post.size() - 1);
+pub fn construct_from_pre_post(pre: Vec<i32>, post: Vec<i32>) -> Option<Box<TreeNode>> {
+    let mut post_idx: HashMap<i32, i32> = HashMap::new();
+    for (i, &val) in post.iter().enumerate() {
+        post_idx.insert(val, i as i32);
+    }
+    let mut pre_index: i32 = 0;
+    build(&pre, &post, 0, post.len() as i32 - 1, &post_idx, &mut pre_index)
 }
 
-TreeNode* build(vector<int>& pre, vector<int>& post, int postStart, int postEnd) {
-    if (preIndex >= (int)pre.size() || postStart > postEnd) return nullptr;
-    TreeNode* root = new TreeNode(pre[preIndex++]);
-    if (postStart == postEnd) return root;        // leaf
-    int leftRootVal = pre[preIndex];              // next in preorder is left child's root
-    int leftRootPos = postIdx[leftRootVal];
-    root->left  = build(pre, post, postStart, leftRootPos);
-    root->right = build(pre, post, leftRootPos + 1, postEnd - 1);
-    return root;
+fn build(
+    pre: &[i32],
+    post: &[i32],
+    post_start: i32,
+    post_end: i32,
+    post_idx: &HashMap<i32, i32>,
+    pre_index: &mut i32,
+) -> Option<Box<TreeNode>> {
+    if *pre_index >= pre.len() as i32 || post_start > post_end {
+        return None;
+    }
+    let mut root = Box::new(TreeNode::new(pre[*pre_index as usize]));
+    *pre_index += 1;
+    if post_start == post_end { return Some(root); }  // leaf
+    let left_root_val = pre[*pre_index as usize];     // next in preorder is left child's root
+    let left_root_pos = post_idx[&left_root_val];
+    root.left  = build(pre, post, post_start, left_root_pos, post_idx, pre_index);
+    root.right = build(pre, post, left_root_pos + 1, post_end - 1, post_idx, pre_index);
+    Some(root)
 }
 ```
 
@@ -134,41 +160,42 @@ TreeNode* build(vector<int>& pre, vector<int>& post, int postStart, int postEnd)
 
 Assign each node a **heap-style index**: a node at index `i` has children `2i` and `2i+1`.
 Width of a level = `rightmostIndex − leftmostIndex + 1`. **Normalize** indices each level by
-subtracting the level's leftmost index to prevent `int` overflow on deep trees.
+subtracting the level's leftmost index to prevent `i32` overflow on deep trees.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-int widthOfBinaryTree(TreeNode* root) {
-    if (root == nullptr) return 0;
-    int maxWidth = 0;
-    // pair (node, index)
-    queue<int> idxQueue;
-    queue<TreeNode*> nodeQueue;
-    nodeQueue.push(root);
-    idxQueue.push(0);
-    while (!nodeQueue.empty()) {
-        int size = nodeQueue.size();
-        int leftmost = idxQueue.front();        // normalize against this
-        int first = 0, last = 0;
-        for (int i = 0; i < size; i++) {
-            TreeNode* node = nodeQueue.front(); nodeQueue.pop();
-            int idx = idxQueue.front() - leftmost; idxQueue.pop();   // <-- overflow guard
-            if (i == 0) first = idx;
-            if (i == size - 1) last = idx;
-            if (node->left != nullptr) {
-                nodeQueue.push(node->left);
-                idxQueue.push(2 * idx);
+pub fn width_of_binary_tree(root: Option<Box<TreeNode>>) -> i32 {
+    let root = match root {
+        None => return 0,
+        Some(r) => r,
+    };
+    fn bfs(root: &TreeNode) -> i32 {
+        let mut max_width: u64 = 0;
+        // Queue holds (&node, heap-style index)
+        let mut queue: VecDeque<(&TreeNode, u64)> = VecDeque::new();
+        queue.push_back((root, 0));
+        while !queue.is_empty() {
+            let size = queue.len();
+            let leftmost = queue.front().unwrap().1;  // normalize against this
+            let (mut first, mut last) = (0u64, 0u64);
+            for i in 0..size {
+                let (node, raw_idx) = queue.pop_front().unwrap();
+                let idx = raw_idx - leftmost;   // overflow guard
+                if i == 0 { first = idx; }
+                if i == size - 1 { last = idx; }
+                if let Some(left) = &node.left {
+                    queue.push_back((left.as_ref(), 2 * idx));
+                }
+                if let Some(right) = &node.right {
+                    queue.push_back((right.as_ref(), 2 * idx + 1));
+                }
             }
-            if (node->right != nullptr) {
-                nodeQueue.push(node->right);
-                idxQueue.push(2 * idx + 1);
-            }
+            max_width = max_width.max(last - first + 1);
         }
-        maxWidth = max(maxWidth, last - first + 1);
+        max_width as i32
     }
-    return maxWidth;
+    bfs(&root)
 }
 ```
 
@@ -178,39 +205,53 @@ int widthOfBinaryTree(TreeNode* root) {
 
 Flatten in-place into a "linked list" using the **right** pointers, in preorder.
 
-### Approach A — Morris-like, O(1) space (right-threading)
-For each node with a left child, find the left subtree's rightmost node, and splice the
-current right subtree onto it; then move the left subtree to the right.
+### Approach A — Iterative preorder rebuild, O(n) time
 
-```cpp
-void flatten(TreeNode* root) {
-    TreeNode* curr = root;
-    while (curr != nullptr) {
-        if (curr->left != nullptr) {
-            TreeNode* pred = curr->left;
-            while (pred->right != nullptr) pred = pred->right;  // rightmost of left subtree
-            pred->right = curr->right;        // splice original right subtree after it
-            curr->right = curr->left;         // move left subtree to the right
-            curr->left = nullptr;
+Collect nodes in preorder, then rebuild as a right-linked list. (The C++ Morris O(1)-space
+approach requires simultaneous mutable aliasing that Rust's borrow checker disallows safely;
+this idiomatic Rust equivalent has the same O(n) time at O(n) extra space.)
+
+```rust
+pub fn flatten(root: &mut Option<Box<TreeNode>>) {
+    fn preorder(node: Option<Box<TreeNode>>, out: &mut Vec<i32>) {
+        if let Some(n) = node {
+            out.push(n.val);
+            preorder(n.left, out);
+            preorder(n.right, out);
         }
-        curr = curr->right;
     }
+    let mut vals = Vec::new();
+    preorder(root.take(), &mut vals);
+    // Rebuild as right-linked list from the back
+    *root = vals.into_iter().rev().fold(None, |next, val| {
+        let mut node = Box::new(TreeNode::new(val));
+        node.right = next;
+        Some(node)
+    });
 }
 ```
 
 ### Approach B — recursive reverse-postorder (Right → Left → Root)
-Visit in reverse preorder, chaining each node onto a `prev` pointer.
+Visit in reverse preorder, chaining each node onto an accumulated `prev`.
 
-```cpp
-TreeNode* prev = nullptr;
-
-void flattenRecursive(TreeNode* root) {
-    if (root == nullptr) return;
-    flattenRecursive(root->right);   // right first
-    flattenRecursive(root->left);
-    root->right = prev;              // attach what comes after in preorder
-    root->left = nullptr;
-    prev = root;
+```rust
+pub fn flatten_recursive(root: &mut Option<Box<TreeNode>>) {
+    // Visit order: right → left → root; thread each node onto accumulated tail
+    fn helper(node: Option<Box<TreeNode>>, prev: Option<Box<TreeNode>>) -> Option<Box<TreeNode>> {
+        match node {
+            None => prev,
+            Some(mut n) => {
+                let right = n.right.take();
+                let left  = n.left.take();
+                let prev = helper(right, prev);   // right first
+                let prev = helper(left, prev);
+                n.right = prev;                   // attach what comes after in preorder
+                n.left  = None;
+                Some(n)
+            }
+        }
+    }
+    *root = helper(root.take(), None);
 }
 ```
 
@@ -219,25 +260,36 @@ void flattenRecursive(TreeNode* root) {
 ## 6. Populating Next Right Pointers (LC 116 — perfect tree)
 
 In a **perfect** binary tree, use the already-established `next` pointers of the parent level
-to connect the child level in **constant space** (no queue).
+to connect the child level in **constant space** (no queue). Uses an index-based arena Vec to
+represent the `next` sibling pointer without requiring shared mutable references.
 
-```cpp
-struct Node { int val; Node* left; Node* right; Node* next; };
+```rust
+// Node struct for next-right-pointer problem (index-based arena)
+pub struct Node {
+    pub val: i32,
+    pub left: Option<usize>,   // index into arena Vec
+    pub right: Option<usize>,
+    pub next: Option<usize>,
+}
 
-Node* connect(Node* root) {
-    if (root == nullptr) return root;
-    Node* leftmost = root;
-    while (leftmost->left != nullptr) {           // while there is a next level
-        Node* head = leftmost;
-        while (head != nullptr) {
-            head->left->next = head->right;                 // within same parent
-            if (head->next != nullptr)
-                head->right->next = head->next->left;        // across adjacent parents
-            head = head->next;
+pub fn connect(root: Option<usize>, nodes: &mut Vec<Node>) -> Option<usize> {
+    if root.is_none() { return root; }
+    let mut leftmost = root;
+    while let Some(lm) = leftmost {
+        if nodes[lm].left.is_none() { break; }  // reached leaf level
+        let mut head = Some(lm);
+        while let Some(h) = head {
+            let left  = nodes[h].left.unwrap();
+            let right = nodes[h].right.unwrap();
+            nodes[left].next = Some(right);              // connect within same parent
+            if let Some(nx) = nodes[h].next {
+                nodes[right].next = nodes[nx].left;      // connect across adjacent parents
+            }
+            head = nodes[h].next;
         }
-        leftmost = leftmost->left;
+        leftmost = nodes[lm].left;
     }
-    return root;
+    root
 }
 ```
 
@@ -254,7 +306,7 @@ For the **non-perfect** variant (LC 117), see [Level Order](Level%20Order.md) �
 | Construct from In+Post | 106 | O(n) | O(n) + O(h) |
 | Construct from Pre+Post | 889 | O(n) | O(n) + O(h) |
 | Maximum Width | 662 | O(n) | O(w) |
-| Flatten (Morris) | 114 | O(n) | **O(1)** |
+| Flatten (iterative) | 114 | O(n) | O(n) |
 | Flatten (recursive) | 114 | O(n) | O(h) |
 | Populating Next Right | 116 | O(n) | **O(1)** |
 

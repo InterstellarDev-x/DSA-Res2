@@ -9,42 +9,54 @@
 **LC 215** · Medium
 
 **Heap approach — O(n log k):**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
-int findKthLargest(vector<int>& nums, int k) {
-    priority_queue<int, vector<int>, greater<int>> minHeap;
-    for (auto n : nums) {
-        minHeap.push(n);
-        if (minHeap.size() > k) minHeap.pop();
+fn find_kth_largest(nums: Vec<i32>, k: usize) -> i32 {
+    let mut min_heap: BinaryHeap<Reverse<i32>> = BinaryHeap::new();
+    for &n in &nums {
+        min_heap.push(Reverse(n));
+        if min_heap.len() > k {
+            min_heap.pop();
+        }
     }
-    return minHeap.top();
+    min_heap.peek().unwrap().0
 }
 ```
 
 **Quickselect — O(n) average:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int partition(vector<int>& nums, int l, int r) {
-    int pivot = nums[r], i = l;
-    for (int j = l; j < r; j++) if (nums[j] <= pivot) swap(nums[i++], nums[j]);
-    swap(nums[i], nums[r]);
-    return i;
+```rust
+fn partition(nums: &mut Vec<i32>, l: usize, r: usize) -> usize {
+    let pivot = nums[r];
+    let mut i = l;
+    for j in l..r {
+        if nums[j] <= pivot {
+            nums.swap(i, j);
+            i += 1;
+        }
+    }
+    nums.swap(i, r);
+    i
 }
 
-int quickselect(vector<int>& nums, int l, int r, int target) {
-    if (l == r) return nums[l];
-    int pivot = partition(nums, l, r);
-    if (pivot == target) return nums[pivot];
-    return pivot < target ? quickselect(nums, pivot + 1, r, target)
-                          : quickselect(nums, l, pivot - 1, target);
+fn quickselect(nums: &mut Vec<i32>, l: usize, r: usize, target: usize) -> i32 {
+    if l == r {
+        return nums[l];
+    }
+    let pivot = partition(nums, l, r);
+    if pivot == target {
+        nums[pivot]
+    } else if pivot < target {
+        quickselect(nums, pivot + 1, r, target)
+    } else {
+        quickselect(nums, l, pivot - 1, target)
+    }
 }
 
-int findKthLargest(vector<int>& nums, int k) {
-    return quickselect(nums, 0, nums.size() - 1, nums.size() - k);
+fn find_kth_largest(mut nums: Vec<i32>, k: usize) -> i32 {
+    let n = nums.len();
+    quickselect(&mut nums, 0, n - 1, n - k)
 }
 ```
 
@@ -57,36 +69,61 @@ A: "It depends on context. If I can't modify the input array (immutable data), I
 
 **LC 23** · Hard
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Ordering;
+use std::collections::BinaryHeap;
 
-struct ListNode {
-    int val;
-    ListNode* next;
-    ListNode(int x) : val(x), next(nullptr) {}
-};
+#[derive(Debug)]
+pub struct ListNode {
+    pub val: i32,
+    pub next: Option<Box<ListNode>>,
+}
 
-ListNode* mergeKLists(vector<ListNode*>& lists) {
-    auto cmp = [](ListNode* a, ListNode* b) { return a->val > b->val; }; // SAFE — no overflow
-    priority_queue<ListNode*, vector<ListNode*>, decltype(cmp)> heap(cmp);
-    for (auto n : lists) if (n != nullptr) heap.push(n);
-
-    ListNode dummy(0);
-    ListNode* tail = &dummy;
-    while (!heap.empty()) {
-        ListNode* node = heap.top(); heap.pop();
-        tail->next = node;
-        tail = tail->next;
-        if (tail->next != nullptr) heap.push(tail->next);
+impl ListNode {
+    pub fn new(val: i32) -> Self {
+        ListNode { val, next: None }
     }
-    return dummy.next;
+}
+
+// Wrapper to enable min-heap ordering by val
+struct HeapNode(Box<ListNode>);
+
+impl PartialEq for HeapNode {
+    fn eq(&self, other: &Self) -> bool { self.0.val == other.0.val }
+}
+impl Eq for HeapNode {}
+impl PartialOrd for HeapNode {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+}
+impl Ord for HeapNode {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.0.val.cmp(&self.0.val) // Reverse for min-heap — no overflow
+    }
+}
+
+pub fn merge_k_lists(lists: Vec<Option<Box<ListNode>>>) -> Option<Box<ListNode>> {
+    let mut heap: BinaryHeap<HeapNode> = BinaryHeap::new();
+    for node in lists.into_iter().flatten() {
+        heap.push(HeapNode(node));
+    }
+
+    let mut dummy = Box::new(ListNode::new(0));
+    let mut tail = &mut dummy;
+
+    while let Some(HeapNode(mut node)) = heap.pop() {
+        if let Some(next) = node.next.take() {
+            heap.push(HeapNode(next));
+        }
+        tail.next = Some(node);
+        tail = tail.next.as_mut().unwrap();
+    }
+    dummy.next
 }
 ```
 
 **Microsoft edge cases:**
-- `lists = []` → return nullptr (heap never filled, loop never runs, `dummy.next = nullptr`)
-- `lists = [nullptr]` → nullptr filtered in initialization; returns nullptr
+- `lists = []` → return `None` (heap never filled, loop never runs, `dummy.next = None`)
+- `lists = [None]` → `None` filtered in initialization; returns `None`
 - Single list with elements → works correctly (heap has one item, processes all)
 
 **Q: Compare to divide-and-conquer approach.**

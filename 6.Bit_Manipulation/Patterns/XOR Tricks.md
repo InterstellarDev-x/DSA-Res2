@@ -24,15 +24,17 @@
 
 Every number appears twice except one. Find the unique one.
 
-```cpp
-int singleNumber(vector<int>& nums) {
-    int result = 0;
-    for (auto n : nums) result ^= n;
-    return result; // all pairs cancel; unique remains
+```rust
+fn single_number(nums: &[i32]) -> i32 {
+    let mut result = 0;
+    for &n in nums {
+        result ^= n;
+    }
+    result // all pairs cancel; unique remains
 }
 ```
 
-**Time:** O(n). **Space:** O(1). No `std::unordered_set` needed.
+**Time:** O(n). **Space:** O(1). No `HashSet` needed.
 
 ---
 
@@ -40,17 +42,17 @@ int singleNumber(vector<int>& nums) {
 
 Array of n numbers in range [0, n], one missing. XOR all indices 0..n with all values:
 
-```cpp
-int missingNumber(vector<int>& nums) {
-    int result = nums.size(); // start with n
-    for (int i = 0; i < (int)nums.size(); i++) {
-        result ^= i ^ nums[i]; // XOR index and value cancel if equal; missing value survives
+```rust
+fn missing_number(nums: &[i32]) -> i32 {
+    let mut result = nums.len() as i32; // start with n
+    for (i, &n) in nums.iter().enumerate() {
+        result ^= i as i32 ^ n; // XOR index and value cancel if equal; missing value survives
     }
-    return result;
+    result
 }
 ```
 
-**Alternative:** `sum(0..n) - sum(nums)` = `n*(n+1)/2 - accumulate(nums.begin(), nums.end(), 0)`. Both O(n) O(1).
+**Alternative:** `sum(0..n) - sum(nums)` = `n*(n+1)/2 - nums.iter().sum::<i32>()`. Both O(n) O(1).
 
 ---
 
@@ -60,30 +62,33 @@ Every number appears **three times** except one. Cannot use XOR directly (triple
 
 **Bit counting approach:** Count bits mod 3. Any bit that appears 3k times cancels; the remaining bit belongs to the unique number.
 
-```cpp
-int singleNumber(vector<int>& nums) {
-    int ones = 0, twos = 0;
-    for (auto n : nums) {
-        ones = (ones ^ n) & ~twos; // bits seen once (not in twos)
-        twos = (twos ^ n) & ~ones; // bits seen twice (not in ones)
+```rust
+fn single_number(nums: &[i32]) -> i32 {
+    let mut ones = 0i32;
+    let mut twos = 0i32;
+    for &n in nums {
+        ones = (ones ^ n) & !twos; // bits seen once (not in twos)
+        twos = (twos ^ n) & !ones; // bits seen twice (not in ones)
         // bits seen three times fall out of both
     }
-    return ones;
+    ones
 }
 ```
 
 **State machine:** Each bit cycles through states 0 → 1 → 2 → 0. `ones` tracks bits at state 1, `twos` at state 2.
 
 **Bit-by-bit approach (clearer but O(32)):**
-```cpp
-int singleNumber(vector<int>& nums) {
-    int result = 0;
-    for (int bit = 0; bit < 32; bit++) {
-        int sum = 0;
-        for (auto n : nums) sum += (n >> bit) & 1;
+```rust
+fn single_number(nums: &[i32]) -> i32 {
+    let mut result = 0i32;
+    for bit in 0..32 {
+        let mut sum = 0i32;
+        for &n in nums {
+            sum += (n >> bit) & 1;
+        }
         result |= (sum % 3) << bit;
     }
-    return result;
+    result
 }
 ```
 
@@ -93,24 +98,25 @@ int singleNumber(vector<int>& nums) {
 
 Two numbers appear once; all others appear twice. Find both.
 
-**Key insight:** `xorVal = a ^ b` (the XOR of the two unique numbers). Any set bit in `xorVal` is a bit where `a` and `b` differ — use it to partition the array.
+**Key insight:** `xor_val = a ^ b` (the XOR of the two unique numbers). Any set bit in `xor_val` is a bit where `a` and `b` differ — use it to partition the array.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> singleNumber(vector<int>& nums) {
-    int xorVal = 0;
-    for (auto n : nums) xorVal ^= n;
+```rust
+fn single_number(nums: &[i32]) -> Vec<i32> {
+    let mut xor_val = 0i32;
+    for &n in nums {
+        xor_val ^= n;
+    }
 
     // Find any differing bit (e.g., lowest set bit)
-    int diff = xorVal & (-xorVal); // isolate lowest set bit
+    let diff = xor_val & (-xor_val); // isolate lowest set bit
 
-    int a = 0;
-    for (auto n : nums) {
-        if ((n & diff) != 0) a ^= n; // group 1: numbers with this bit set
+    let mut a = 0i32;
+    for &n in nums {
+        if (n & diff) != 0 {
+            a ^= n; // group 1: numbers with this bit set
+        }
     }
-    return {a, xorVal ^ a}; // b = xorVal ^ a
+    vec![a, xor_val ^ a] // b = xor_val ^ a
 }
 ```
 
@@ -122,21 +128,21 @@ vector<int> singleNumber(vector<int>& nums) {
 
 Prefix XOR — analogous to prefix sum but with XOR.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn xor_queries(arr: &[i32], queries: &[Vec<i32>]) -> Vec<i32> {
+    let n = arr.len();
+    let mut prefix = vec![0i32; n + 1]; // prefix[i] = XOR of arr[0..i-1]
+    for i in 0..n {
+        prefix[i + 1] = prefix[i] ^ arr[i];
+    }
 
-vector<int> xorQueries(vector<int>& arr, vector<vector<int>>& queries) {
-    int n = arr.size();
-    vector<int> prefix(n + 1); // prefix[i] = XOR of arr[0..i-1]
-    for (int i = 0; i < n; i++) prefix[i + 1] = prefix[i] ^ arr[i];
-
-    vector<int> result(queries.size());
-    for (int i = 0; i < (int)queries.size(); i++) {
-        int l = queries[i][0], r = queries[i][1];
+    let mut result = vec![0i32; queries.len()];
+    for (i, q) in queries.iter().enumerate() {
+        let l = q[0] as usize;
+        let r = q[1] as usize;
         result[i] = prefix[r + 1] ^ prefix[l]; // XOR[l..r] = prefix[r+1] ^ prefix[l]
     }
-    return result;
+    result
 }
 ```
 
@@ -149,17 +155,17 @@ vector<int> xorQueries(vector<int>& arr, vector<vector<int>>& queries) {
 `XOR(L, R) = XOR(0, L-1) ^ XOR(0, R)`
 
 XOR from 0 to n has a 4-cycle:
-```cpp
-int xorUpTo(int n) {
-    switch (n % 4) {
-        case 0: return n;
-        case 1: return 1;
-        case 2: return n + 1;
-        case 3: return 0;
-        default: return -1; // unreachable
+```rust
+fn xor_up_to(n: i32) -> i32 {
+    match n % 4 {
+        0 => n,
+        1 => 1,
+        2 => n + 1,
+        3 => 0,
+        _ => -1, // unreachable
     }
 }
-int xorRange(int l, int r) { return xorUpTo(r) ^ xorUpTo(l - 1); }
+fn xor_range(l: i32, r: i32) -> i32 { xor_up_to(r) ^ xor_up_to(l - 1) }
 ```
 
 ---

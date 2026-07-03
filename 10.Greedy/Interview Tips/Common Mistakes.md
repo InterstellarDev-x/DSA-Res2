@@ -6,15 +6,12 @@
 
 **Bug:** Sorting by start time when you should sort by end time for interval scheduling.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // WRONG — sort by start time for non-overlapping intervals
-sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b){ return a[0] < b[0]; });
+intervals.sort_by(|a, b| a[0].cmp(&b[0]));
 
 // CORRECT — sort by end time
-sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b){ return a[1] < b[1]; });
+intervals.sort_by(|a, b| a[1].cmp(&b[1]));
 ```
 
 **Consequence:** Counter-example: `[[1,10],[2,3],[4,5]]`. Sorted by start, greedy keeps `[1,10]` first, then removes everything. Answer: 2 (wrong). Sorted by end, keeps `[2,3]` and `[4,5]`. Answer: 1 (correct).
@@ -30,30 +27,30 @@ sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b){ retur
 
 **Bug:** Forgetting to check if total gain is negative before returning `startStation`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // WRONG — forgets infeasibility check
-int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
-    int currentGain = 0, startStation = 0;
-    for (int i = 0; i < (int)gas.size(); i++) {
-        currentGain += gas[i] - cost[i];
-        if (currentGain < 0) { startStation = i + 1; currentGain = 0; }
+fn can_complete_circuit_wrong(gas: &[i32], cost: &[i32]) -> i32 {
+    let mut current_gain = 0i32;
+    let mut start_station = 0usize;
+    for i in 0..gas.len() {
+        current_gain += gas[i] - cost[i];
+        if current_gain < 0 { start_station = i + 1; current_gain = 0; }
     }
-    return startStation; // BUG: may return invalid answer when no solution exists
+    start_station as i32 // BUG: may return invalid answer when no solution exists
 }
 
 // CORRECT
-int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
-    int totalGain = 0, currentGain = 0, startStation = 0;
-    for (int i = 0; i < (int)gas.size(); i++) {
-        int gain = gas[i] - cost[i];
-        totalGain += gain;
-        currentGain += gain;
-        if (currentGain < 0) { startStation = i + 1; currentGain = 0; }
+fn can_complete_circuit(gas: &[i32], cost: &[i32]) -> i32 {
+    let mut total_gain = 0i32;
+    let mut current_gain = 0i32;
+    let mut start_station = 0usize;
+    for i in 0..gas.len() {
+        let gain = gas[i] - cost[i];
+        total_gain += gain;
+        current_gain += gain;
+        if current_gain < 0 { start_station = i + 1; current_gain = 0; }
     }
-    return totalGain >= 0 ? startStation : -1; // CORRECT: check feasibility
+    if total_gain >= 0 { start_station as i32 } else { -1 } // CORRECT: check feasibility
 }
 ```
 
@@ -65,18 +62,16 @@ int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
 
 **Bug:** Trying to solve Candy in a single left-to-right pass.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // WRONG — single pass misses decreasing sequences
-int candy(vector<int>& ratings) {
-    vector<int> candies(ratings.size(), 1);
-    for (int i = 1; i < (int)ratings.size(); i++) {
-        if (ratings[i] > ratings[i-1]) candies[i] = candies[i-1] + 1;
-        else if (ratings[i] < ratings[i-1]) candies[i-1]++; // BUG: too late!
+fn candy_wrong(ratings: &[i32]) -> i32 {
+    let mut candies = vec![1i32; ratings.len()];
+    for i in 1..ratings.len() {
+        if ratings[i] > ratings[i - 1] { candies[i] = candies[i - 1] + 1; }
+        else if ratings[i] < ratings[i - 1] { candies[i - 1] += 1; } // BUG: too late!
     }
     // ...
+    0
 }
 ```
 
@@ -90,21 +85,18 @@ int candy(vector<int>& ratings) {
 
 **Bug:** Only treating `*` as `(` or `)`, not as empty string.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-// The real bug: not clamping lo = max(lo, 0)
+```rust
+// The real bug: not clamping lo = lo.max(0)
 
 // WRONG — lo goes negative, which is invalid
-for (char c : s) {
-    if (c == '(') { lo++; hi++; }
-    else if (c == ')') { lo--; hi--; }
-    else { lo--; hi++; }
-    if (hi < 0) return false;
-    // Missing: lo = max(lo, 0);
+for c in s.chars() {
+    if c == '(' { lo += 1; hi += 1; }
+    else if c == ')' { lo -= 1; hi -= 1; }
+    else { lo -= 1; hi += 1; }
+    if hi < 0 { return false; }
+    // Missing: lo = lo.max(0);
 }
-return lo == 0; // BUG: lo might be -2, and this returns false when should be true
+lo == 0 // BUG: lo might be -2, and this returns false when should be true
 ```
 
 **Test case:** `s = "*"`. lo=-1, hi=1. Without clamp, lo=-1 ≠ 0, returns false. But `"*"` is valid (treat as empty). Correct answer: true.
@@ -115,24 +107,21 @@ return lo == 0; // BUG: lo might be -2, and this returns false when should be tr
 
 **Bug:** Using `i <= nums.length - 1` instead of `i < nums.length - 1`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // WRONG — processes the last index unnecessarily, overcounts jumps
-for (int i = 0; i <= (int)nums.size() - 1; i++) {
-    farthest = max(farthest, i + nums[i]);
-    if (i == curEnd) { jumps++; curEnd = farthest; }
+for i in 0..nums.len() {
+    farthest = farthest.max(i + nums[i] as usize);
+    if i == cur_end { jumps += 1; cur_end = farthest; }
 }
 
 // CORRECT — stop at second-to-last index
-for (int i = 0; i < (int)nums.size() - 1; i++) {
-    farthest = max(farthest, i + nums[i]);
-    if (i == curEnd) { jumps++; curEnd = farthest; }
+for i in 0..nums.len() - 1 {
+    farthest = farthest.max(i + nums[i] as usize);
+    if i == cur_end { jumps += 1; cur_end = farthest; }
 }
 ```
 
-**Why:** When `i == nums.size() - 1`, we are already AT the destination. We do not need to "jump from" it. Processing it causes a spurious increment of `jumps`.
+**Why:** When `i == nums.len() - 1`, we are already AT the destination. We do not need to "jump from" it. Processing it causes a spurious increment of `jumps`.
 
 **Test case:** `[0]`. Single element, already at destination. Correct: 0 jumps. Wrong: 1 jump.
 
@@ -142,15 +131,15 @@ for (int i = 0; i < (int)nums.size() - 1; i++) {
 
 **Bug:** Using max-heap instead of min-heap.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
 // WRONG — max-heap gives farthest ending room, not earliest ending room
-priority_queue<int> maxHeap; // default is max-heap
+let mut max_heap: BinaryHeap<i32> = BinaryHeap::new(); // default is max-heap
 
 // CORRECT — min-heap gives earliest ending room
-priority_queue<int, vector<int>, greater<int>> minHeap;
+let mut min_heap: BinaryHeap<Reverse<i32>> = BinaryHeap::new();
 ```
 
 **Why it matters:** We want to check if ANY room is free (has end ≤ new start). The room most likely to be free is the one that ends earliest. Max-heap gives the room that ends latest — useless for this check.
@@ -161,12 +150,12 @@ priority_queue<int, vector<int>, greater<int>> minHeap;
 
 **Bug:** Using `<` instead of `<=` in the overlap merge condition.
 
-```cpp
+```rust
 // WRONG — misses touching intervals [1,3] and [3,5] should merge to [1,5]
-while (i < n && intervals[i][0] < newInterval[1]) { ... }
+while i < n && intervals[i][0] < new_interval[1] { /* ... */ }
 
 // CORRECT — intervals touching at a single point ARE overlapping
-while (i < n && intervals[i][0] <= newInterval[1]) { ... }
+while i < n && intervals[i][0] <= new_interval[1] { /* ... */ }
 ```
 
 **Test case:** `intervals=[[1,3],[3,5]]`, `newInterval=[2,3]`. Wrong code stops before merging `[3,5]` because `3 < 3` is false. Correct code merges both.
@@ -175,22 +164,21 @@ while (i < n && intervals[i][0] <= newInterval[1]) { ... }
 
 ## Mistake 8: Hand of Straights — Not Cleaning Up Zero-Count Keys
 
-**Bug:** Not removing keys with count 0 from `std::map`, causing `begin()->first` to return completed cards.
+**Bug:** Not removing keys with count 0 from `BTreeMap`, causing the first key to return completed cards.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BTreeMap;
 
 // WRONG — zero-count keys remain in map
-count[i]--;
-// If count[i] == 0, the key stays in the std::map
+*count.get_mut(&i).unwrap() -= 1;
+// If count[i] == 0, the key stays in the BTreeMap
 
 // CORRECT — remove exhausted keys
-count[i]--;
-if (count[i] == 0) count.erase(i);
+*count.get_mut(&i).unwrap() -= 1;
+if count[&i] == 0 { count.remove(&i); }
 ```
 
-**Consequence:** `begin()->first` may return a card with count 0 on the next iteration, causing an infinite loop or incorrect group formation.
+**Consequence:** The first key of the map may return a card with count 0 on the next iteration, causing an infinite loop or incorrect group formation.
 
 ---
 
@@ -198,12 +186,12 @@ if (count[i] == 0) count.erase(i);
 
 **Bug:** Using `>` instead of `>=` for the non-overlap check.
 
-```cpp
+```rust
 // WRONG — treats touching intervals [1,2] and [2,3] as overlapping
-if (interval[0] > prevEnd) { kept++; prevEnd = interval[1]; }
+if interval[0] > prev_end { kept += 1; prev_end = interval[1]; }
 
 // CORRECT — touching intervals do NOT overlap
-if (interval[0] >= prevEnd) { kept++; prevEnd = interval[1]; }
+if interval[0] >= prev_end { kept += 1; prev_end = interval[1]; }
 ```
 
 **Test case:** `[[1,2],[2,3]]`. These intervals touch at point 2 but do not overlap. Wrong code removes one; correct code keeps both (result = 0 removals).
@@ -214,17 +202,14 @@ if (interval[0] >= prevEnd) { kept++; prevEnd = interval[1]; }
 
 **Bug:** Building a frequency count instead of a last-occurrence map.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // WRONG — frequency count does not tell us WHERE the last occurrence is
-vector<int> freq(26, 0);
-for (char c : s) freq[c - 'a']++;
+let mut freq = vec![0i32; 26];
+for c in s.chars() { freq[(c as u8 - b'a') as usize] += 1; }
 
 // CORRECT — last occurrence index is what we need for window stretching
-vector<int> last(26, 0);
-for (int i = 0; i < (int)s.length(); i++) last[s[i] - 'a'] = i;
+let mut last = vec![0usize; 26];
+for (i, c) in s.chars().enumerate() { last[(c as u8 - b'a') as usize] = i; }
 ```
 
 **Why:** The window must extend to the POSITION of the last occurrence of each character (so the character is fully contained), not just count how many times it occurs.
@@ -238,11 +223,11 @@ for (int i = 0; i < (int)s.length(); i++) last[s[i] - 'a'] = i;
 | Wrong sort key | Wrong answer on interval problems | Sort by end (maximize) or start (merge) |
 | Gas Station no feasibility check | Returns wrong station when -1 expected | Track `totalGain`, return -1 if negative |
 | Candy single pass | Wrong candy count on peaks/valleys | Two passes: L→R then R→L |
-| Valid Paren missing lo clamp | Returns false on valid `"*"` strings | Add `lo = max(lo, 0)` |
-| Jump Game II loop bound | Overcounts jumps | Use `i < nums.size() - 1` |
-| Meeting Rooms max-heap | Allocates too many rooms | Use `priority_queue<int, vector<int>, greater<int>>()` (min) |
+| Valid Paren missing lo clamp | Returns false on valid `"*"` strings | Add `lo = lo.max(0)` |
+| Jump Game II loop bound | Overcounts jumps | Use `i < nums.len() - 1` |
+| Meeting Rooms max-heap | Allocates too many rooms | Use `BinaryHeap<Reverse<i32>>` (min) |
 | Insert Interval `<` vs `<=` | Misses touching interval merges | Use `<=` in merge condition |
-| Hand of Straights no cleanup | Infinite loop or wrong groups | Remove 0-count keys from std::map |
+| Hand of Straights no cleanup | Infinite loop or wrong groups | Remove 0-count keys from BTreeMap |
 | Non-overlapping `>` vs `>=` | Removes touching intervals | Use `>=` for non-overlap |
 | Partition Labels frequency vs last | Wrong partition boundaries | Build last-occurrence array, not freq |
 

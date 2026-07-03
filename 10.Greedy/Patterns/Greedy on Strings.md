@@ -51,42 +51,41 @@ $10 bills can only be used as partial change for $20 bills — they have exactly
 
 This is the greedy-choice property: using a $10+$5 now cannot be worse than using $5+$5+$5, because the $10 bill saved is useless unless a future $20 arrives (and then we still have the $5 available).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool lemonadeChange(vector<int>& bills) {
-    int five = 0, ten = 0;
-    for (int bill : bills) {
-        if (bill == 5) {
-            five++;
-        } else if (bill == 10) {
-            if (five == 0) return false;
-            five--;
-            ten++;
+```rust
+fn lemonade_change(bills: &[i32]) -> bool {
+    let mut five = 0i32;
+    let mut ten = 0i32;
+    for &bill in bills {
+        if bill == 5 {
+            five += 1;
+        } else if bill == 10 {
+            if five == 0 {
+                return false;
+            }
+            five -= 1;
+            ten += 1;
         } else {
             // bill == 20: need to give $15 change
-            if (ten > 0 && five > 0) {
-                ten--;
-                five--;
-            } else if (five >= 3) {
+            if ten > 0 && five > 0 {
+                ten -= 1;
+                five -= 1;
+            } else if five >= 3 {
                 five -= 3;
             } else {
                 return false;
             }
         }
     }
-    return true;
+    true
 }
 
-int main() {
-    vector<int> bills1 = {5, 5, 5, 10, 20};
-    cout << lemonadeChange(bills1) << "\n"; // true
-    vector<int> bills2 = {5, 5, 10, 10, 20};
-    cout << lemonadeChange(bills2) << "\n"; // false
-    vector<int> bills3 = {5, 5, 10, 20, 5, 5, 5, 5, 5, 5, 5, 5, 5, 10, 5, 5, 20, 5, 20, 5};
-    cout << lemonadeChange(bills3) << "\n"; // true
-    return 0;
+fn main() {
+    let bills1 = vec![5, 5, 5, 10, 20];
+    println!("{}", lemonade_change(&bills1)); // true
+    let bills2 = vec![5, 5, 10, 10, 20];
+    println!("{}", lemonade_change(&bills2)); // false
+    let bills3 = vec![5, 5, 10, 20, 5, 5, 5, 5, 5, 5, 5, 5, 5, 10, 5, 5, 20, 5, 20, 5];
+    println!("{}", lemonade_change(&bills3)); // true
 }
 ```
 
@@ -132,37 +131,36 @@ At the end, if `lo == 0`, there is a valid assignment of `*` that gives zero unc
 
 **Why lo/hi works:** `lo` represents the most pessimistic assignment of wildcards (every `*` tries to close or disappear), and `hi` represents the most optimistic (every `*` opens). Any integer in `[lo, hi]` is achievable. We need 0 to be achievable at the end.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool checkValidString(string s) {
-    int lo = 0, hi = 0;
-    for (char c : s) {
-        if (c == '(') {
-            lo++;
-            hi++;
-        } else if (c == ')') {
-            lo--;
-            hi--;
+```rust
+fn check_valid_string(s: &str) -> bool {
+    let mut lo = 0i32;
+    let mut hi = 0i32;
+    for c in s.chars() {
+        if c == '(' {
+            lo += 1;
+            hi += 1;
+        } else if c == ')' {
+            lo -= 1;
+            hi -= 1;
         } else {
             // '*' acts as ')' for lo (most pessimistic), '(' for hi (most optimistic)
-            lo--;
-            hi++;
+            lo -= 1;
+            hi += 1;
         }
-        if (hi < 0) return false;  // too many ')' even with all '*' as '('
-        lo = max(lo, 0);           // balance can't go below 0
+        if hi < 0 {
+            return false; // too many ')' even with all '*' as '('
+        }
+        lo = lo.max(0); // balance can't go below 0
     }
-    return lo == 0;
+    lo == 0
 }
 
-int main() {
-    cout << checkValidString("()") << "\n";    // true
-    cout << checkValidString("(*)") << "\n";   // true
-    cout << checkValidString("(*))") << "\n";  // true
-    cout << checkValidString("((*)") << "\n";  // true
-    cout << checkValidString("((*)") << "\n";  // true
-    return 0;
+fn main() {
+    println!("{}", check_valid_string("()"));    // true
+    println!("{}", check_valid_string("(*)"));   // true
+    println!("{}", check_valid_string("(*))"));  // true
+    println!("{}", check_valid_string("((*)"));  // true
+    println!("{}", check_valid_string("((*)"));  // true
 }
 ```
 
@@ -201,36 +199,32 @@ c=')': lo=-1, hi=-1
 
 Among the remaining (valid) triplets, take the component-wise maximum. If that maximum equals `target`, return true; otherwise false.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool mergeTriplets(vector<vector<int>>& triplets, vector<int>& target) {
-    vector<int> result(3, 0);
-    for (auto& t : triplets) {
-        if (t[0] <= target[0] && t[1] <= target[1] && t[2] <= target[2]) {
-            result[0] = max(result[0], t[0]);
-            result[1] = max(result[1], t[1]);
-            result[2] = max(result[2], t[2]);
+```rust
+fn merge_triplets(triplets: &Vec<Vec<i32>>, target: &Vec<i32>) -> bool {
+    let mut result = vec![0i32; 3];
+    for t in triplets {
+        if t[0] <= target[0] && t[1] <= target[1] && t[2] <= target[2] {
+            result[0] = result[0].max(t[0]);
+            result[1] = result[1].max(t[1]);
+            result[2] = result[2].max(t[2]);
         }
     }
-    return result == target;
+    result == *target
 }
 
-int main() {
+fn main() {
     // target = [5,5,5], triplets include [5,5,5] directly
-    vector<vector<int>> t1 = {{2,5,3},{1,8,4},{1,7,5}};
-    vector<int> target1 = {5, 5, 5};
-    cout << mergeTriplets(t1, target1) << "\n"; // false (no valid triplet has first=5 without exceeding second)
+    let t1 = vec![vec![2,5,3], vec![1,8,4], vec![1,7,5]];
+    let target1 = vec![5, 5, 5];
+    println!("{}", merge_triplets(&t1, &target1)); // false (no valid triplet has first=5 without exceeding second)
 
-    vector<vector<int>> t2 = {{3,4,5},{4,5,6}};
-    vector<int> target2 = {3, 2, 5};
-    cout << mergeTriplets(t2, target2) << "\n"; // false
+    let t2 = vec![vec![3,4,5], vec![4,5,6]];
+    let target2 = vec![3, 2, 5];
+    println!("{}", merge_triplets(&t2, &target2)); // false
 
-    vector<vector<int>> t3 = {{2,5,3},{2,3,4},{1,2,5}};
-    vector<int> target3 = {2, 5, 5};
-    cout << mergeTriplets(t3, target3) << "\n"; // true ([2,5,3] and [1,2,5] merge to [2,5,5])
-    return 0;
+    let t3 = vec![vec![2,5,3], vec![2,3,4], vec![1,2,5]];
+    let target3 = vec![2, 5, 5];
+    println!("{}", merge_triplets(&t3, &target3)); // true ([2,5,3] and [1,2,5] merge to [2,5,5])
 }
 ```
 
@@ -265,39 +259,35 @@ The two-pass strategy:
 
 The max operation is crucial: taking the max preserves both directional constraints simultaneously.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int candy(vector<int>& ratings) {
-    int n = ratings.size();
-    vector<int> candies(n, 1);
+```rust
+fn candy(ratings: &[i32]) -> i32 {
+    let n = ratings.len();
+    let mut candies = vec![1i32; n];
 
     // Left to right: higher than left neighbor gets one more
-    for (int i = 1; i < n; i++) {
-        if (ratings[i] > ratings[i - 1]) candies[i] = candies[i - 1] + 1;
-    }
-
-    // Right to left: higher than right neighbor gets at least one more than right
-    for (int i = n - 2; i >= 0; i--) {
-        if (ratings[i] > ratings[i + 1]) {
-            candies[i] = max(candies[i], candies[i + 1] + 1);
+    for i in 1..n {
+        if ratings[i] > ratings[i - 1] {
+            candies[i] = candies[i - 1] + 1;
         }
     }
 
-    int total = 0;
-    for (int c : candies) total += c;
-    return total;
+    // Right to left: higher than right neighbor gets at least one more than right
+    for i in (0..n - 1).rev() {
+        if ratings[i] > ratings[i + 1] {
+            candies[i] = candies[i].max(candies[i + 1] + 1);
+        }
+    }
+
+    candies.iter().sum()
 }
 
-int main() {
-    vector<int> r1 = {1, 0, 2};
-    cout << candy(r1) << "\n"; // 5
-    vector<int> r2 = {1, 2, 2};
-    cout << candy(r2) << "\n"; // 4
-    vector<int> r3 = {3, 2, 1};
-    cout << candy(r3) << "\n"; // 6
-    return 0;
+fn main() {
+    let r1 = vec![1, 0, 2];
+    println!("{}", candy(&r1)); // 5
+    let r2 = vec![1, 2, 2];
+    println!("{}", candy(&r2)); // 4
+    let r3 = vec![3, 2, 1];
+    println!("{}", candy(&r3)); // 6
 }
 ```
 

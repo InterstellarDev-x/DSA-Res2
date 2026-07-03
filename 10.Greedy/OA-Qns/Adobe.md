@@ -19,28 +19,29 @@
 **Adobe-specific framing:** "You are parsing a document where each character belongs to a segment. Segment all characters such that each character type appears in exactly one segment. Return segment lengths."
 
 **Adobe follow-up questions:**
-1. "What if the string has Unicode characters?" → Use `std::unordered_map<char, int>` instead of `int[26]`
+1. "What if the string has Unicode characters?" → Use `HashMap<char, i32>` instead of `[usize; 26]`
 2. "What if each segment must be at most K characters long?" → Greedy + constraint (force split at K)
 3. "What if segments can overlap but you want minimum total overlap?" → Interval DP
 
 **Code they want to see:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> partitionLabels(string s) {
-    int last[26] = {};
-    for (int i = 0; i < (int)s.size(); i++) last[s[i] - 'a'] = i;
-    vector<int> result;
-    int start = 0, end = 0;
-    for (int i = 0; i < (int)s.size(); i++) {
-        end = max(end, last[s[i] - 'a']);
-        if (i == end) {
-            result.push_back(end - start + 1);
+```rust
+fn partition_labels(s: String) -> Vec<i32> {
+    let s = s.as_bytes();
+    let mut last = [0usize; 26];
+    for i in 0..s.len() {
+        last[(s[i] - b'a') as usize] = i;
+    }
+    let mut result = Vec::new();
+    let mut start = 0;
+    let mut end = 0;
+    for i in 0..s.len() {
+        end = end.max(last[(s[i] - b'a') as usize]);
+        if i == end {
+            result.push((end - start + 1) as i32);
             start = i + 1;
         }
     }
-    return result;
+    result
 }
 ```
 
@@ -55,19 +56,19 @@ vector<int> partitionLabels(string s) {
 **Key insight:** Sort both arrays. Try to satisfy smallest unsatisfied user with smallest sufficient license.
 
 **Code they want to see:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int findContentChildren(vector<int>& g, vector<int>& s) {
-    sort(g.begin(), g.end());
-    sort(s.begin(), s.end());
-    int child = 0, cookie = 0;
-    while (child < (int)g.size() && cookie < (int)s.size()) {
-        if (s[cookie] >= g[child]) child++;
-        cookie++;
+```rust
+fn find_content_children(g: &mut Vec<i32>, s: &mut Vec<i32>) -> i32 {
+    g.sort();
+    s.sort();
+    let mut child = 0;
+    let mut cookie = 0;
+    while child < g.len() && cookie < s.len() {
+        if s[cookie] >= g[child] {
+            child += 1;
+        }
+        cookie += 1;
     }
-    return child;
+    child as i32
 }
 ```
 

@@ -18,54 +18,65 @@ This is the same structure documented in the Bit Manipulation topic — see [Bit
 
 Given `nums`, find `max(nums[i] XOR nums[j])`. Constraints fit in 32-bit ints; for LeetCode's range we use **31 bits** (`0 .. 2^31 - 1`, so bit indices `30 .. 0`). Using 32 bits also works as long as you're consistent.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+const HIGH_BIT: i32 = 30; // 31-bit numbers: MSB index 30
 
-struct TrieNode {
-    TrieNode* children[2] = {nullptr, nullptr};  // child[0] = bit 0, child[1] = bit 1
-};
+struct Trie {
+    // Each node has two children indexed by bit (0 or 1)
+    // Index-based arena: root is at index 0, None means no child
+    children: Vec<[Option<usize>; 2]>,
+}
 
-const int HIGH_BIT = 30;       // 31-bit numbers: MSB index 30
-
-// Insert a number MSB-first as a path of 31 bits.
-void insert(TrieNode* root, int num) {
-    TrieNode* node = root;
-    for (int i = HIGH_BIT; i >= 0; i--) {
-        int bit = (num >> i) & 1;            // extract bit i
-        if (node->children[bit] == nullptr) {
-            node->children[bit] = new TrieNode();
+impl Trie {
+    fn new() -> Self {
+        Trie {
+            children: vec![[None, None]], // root node at index 0
         }
-        node = node->children[bit];
+    }
+
+    // Insert a number MSB-first as a path of 31 bits.
+    fn insert(&mut self, num: i32) {
+        let mut node = 0;
+        for i in (0..=HIGH_BIT).rev() {
+            let bit = ((num >> i) & 1) as usize;
+            if self.children[node][bit].is_none() {
+                let new_idx = self.children.len();
+                self.children.push([None, None]);
+                self.children[node][bit] = Some(new_idx);
+            }
+            node = self.children[node][bit].unwrap();
+        }
+    }
+
+    // For `num`, greedily prefer the opposite bit at each level to maximize XOR.
+    fn max_xor_with(&self, num: i32) -> i32 {
+        let mut node = 0;
+        let mut xor_val = 0;
+        for i in (0..=HIGH_BIT).rev() {
+            let bit = ((num >> i) & 1) as usize;
+            let want = bit ^ 1; // we want the opposite bit
+            if let Some(next) = self.children[node][want] {
+                xor_val |= 1 << i; // this bit of XOR is 1
+                node = next;
+            } else {
+                node = self.children[node][bit].unwrap(); // forced to take the same bit
+            }
+        }
+        xor_val
     }
 }
 
-// For `num`, greedily prefer the opposite bit at each level to maximize XOR.
-int maxXorWith(TrieNode* root, int num) {
-    TrieNode* node = root;
-    int xor_val = 0;
-    for (int i = HIGH_BIT; i >= 0; i--) {
-        int bit = (num >> i) & 1;
-        int want = bit ^ 1;                  // we want the opposite bit
-        if (node->children[want] != nullptr) {
-            xor_val |= (1 << i);             // this bit of XOR is 1
-            node = node->children[want];
-        } else {
-            node = node->children[bit];      // forced to take the same bit
-        }
+fn find_maximum_xor(nums: &[i32]) -> i32 {
+    let mut trie = Trie::new();
+    for &num in nums {
+        trie.insert(num);
     }
-    return xor_val;
-}
 
-int findMaximumXOR(vector<int>& nums) {
-    TrieNode* root = new TrieNode();
-    for (auto& num : nums) insert(root, num);
-
-    int best = 0;
-    for (auto& num : nums) {
-        best = max(best, maxXorWith(root, num));
+    let mut best = 0;
+    for &num in nums {
+        best = best.max(trie.max_xor_with(num));
     }
-    return best;
+    best
 }
 ```
 
@@ -94,16 +105,16 @@ The maximum XOR is `5 XOR 25 = 28`:
 XOR = 11100 = 28
 ```
 
-**Tracing `maxXorWith(root, 5)` after all numbers are inserted** (we only show the bits where it matters; ignore the all-zero high bits):
+**Tracing `max_xor_with(root, 5)` after all numbers are inserted** (we only show the bits where it matters; ignore the all-zero high bits):
 
 - `5  = ...00101`. Walking MSB-first, at the bit where `25 = ...11001` diverges:
   - Top meaningful bit: `5` has `0`, we *want* `1`. `25` and `8` and `10` provide a `1` child → take it → XOR bit set. (`25` is on this branch.)
   - Next bit: `5` has `0`, want `1`; `25` has `1` here → take it → XOR bit set.
   - Next bit: `5` has `1`, want `0`; `25` has `0` here → take it → XOR bit set.
   - Lower bits resolve to `0 XOR 1` / `1 XOR 0` giving the final `11100`.
-- Result: `maxXorWith(root, 5) = 28`.
+- Result: `max_xor_with(root, 5) = 28`.
 
-Every other number's greedy walk yields a value `<= 28`, so `findMaximumXOR` returns **28**.
+Every other number's greedy walk yields a value `<= 28`, so `find_maximum_xor` returns **28**.
 
 The greedy guarantee: at each level, if *any* inserted number offers the opposite bit, we grab it and lock in a `1` at that position — no later choice can beat a higher-position `1`.
 

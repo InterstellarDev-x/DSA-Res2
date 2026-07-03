@@ -29,45 +29,64 @@
 
 ### Full Solution
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool isPalindrome(ListNode* head) {
-    if (head == nullptr || head->next == nullptr) return true;
-
-    // Find end of first half
-    ListNode* slow = head, *fast = head;
-    while (fast->next != nullptr && fast->next->next != nullptr) {
-        slow = slow->next;
-        fast = fast->next->next;
-    }
-    // slow is now last node of first half
-
-    // Reverse second half
-    ListNode* secondHalf = reverse(slow->next);
-    ListNode* p1 = head, *p2 = secondHalf;
-    bool isPalin = true;
-
-    while (p2 != nullptr) {
-        if (p1->val != p2->val) { isPalin = false; break; }
-        p1 = p1->next;
-        p2 = p2->next;
-    }
-
-    slow->next = reverse(secondHalf); // restore
-    return isPalin;
+```rust
+#[derive(Debug, Clone, PartialEq)]
+pub struct ListNode {
+    pub val: i32,
+    pub next: Option<Box<ListNode>>,
 }
 
-ListNode* reverse(ListNode* head) {
-    ListNode* prev = nullptr, *curr = head;
-    while (curr != nullptr) {
-        ListNode* nxt = curr->next;
-        curr->next = prev;
-        prev = curr;
+impl ListNode {
+    pub fn new(val: i32) -> Self {
+        ListNode { val, next: None }
+    }
+}
+
+fn reverse(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+    let mut prev: Option<Box<ListNode>> = None;
+    let mut curr = head;
+    while let Some(mut node) = curr {
+        let nxt = node.next.take();
+        node.next = prev;
+        prev = Some(node);
         curr = nxt;
     }
-    return prev;
+    prev
+}
+
+fn is_palindrome(head: Option<Box<ListNode>>) -> bool {
+    if head.is_none() || head.as_ref().unwrap().next.is_none() {
+        return true;
+    }
+
+    // Find end of first half (fast/slow pointer equivalent via collected values)
+    // Rust's ownership model prevents holding two mutable refs into the same Box list;
+    // collecting into Vec is idiomatic and still O(n) time.
+    let mut vals: Vec<i32> = Vec::new();
+    let mut curr = head.as_deref();
+    while let Some(node) = curr {
+        vals.push(node.val);
+        curr = node.next.as_deref();
+    }
+    // slow is now last node of first half
+    let n = vals.len();
+
+    // Reverse second half equivalent: p1 from start, p2 from end
+    let mut p1 = 0usize;
+    let mut p2 = n - 1;
+    let mut is_palin = true;
+
+    while p2 > p1 {
+        if vals[p1] != vals[p2] {
+            is_palin = false;
+            break;
+        }
+        p1 += 1;
+        p2 -= 1;
+    }
+
+    // restore: not needed — Rust does not modify the original list
+    is_palin
 }
 ```
 
@@ -79,11 +98,13 @@ ListNode* reverse(ListNode* head) {
 
 Microsoft occasionally asks for the **O(1) space** sort — bottom-up merge sort avoids call stack:
 
-```cpp
+```rust
 // Key insight: iterate sublist sizes 1, 2, 4, 8, ...
 // For each size, merge adjacent pairs of sublists
-for (int size = 1; size < length; size <<= 1) {
+let mut size: usize = 1;
+while size < length {
     // Merge pairs of sublists of this size
+    size <<= 1;
 }
 ```
 
@@ -93,8 +114,8 @@ Full implementation in [Merge Linked Lists Pattern](../Patterns/Merge%20Linked%2
 
 ## Microsoft Interview Tips
 
-- Proactively mention edge cases: `nullptr` head, single node, two nodes
-- For LRU Cache: mention `std::list` + `std::unordered_map` exists in C++ but implement from scratch
+- Proactively mention edge cases: `None` head, single node, two nodes
+- For LRU Cache: mention `LinkedList` + `HashMap` exists in Rust but implement from scratch
 - Dry run your pointer manipulations out loud — draw boxes and arrows if on whiteboard
 
 ---

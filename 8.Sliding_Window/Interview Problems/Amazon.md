@@ -10,34 +10,47 @@
 
 ### Full Solution with `have/need` Counter
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn min_window(s: String, t: String) -> String {
+    let s = s.as_bytes();
+    let t = t.as_bytes();
+    let mut need = [0i32; 128];
+    for &c in t {
+        need[c as usize] += 1;
+    }
 
-string minWindow(string s, string t) {
-    int need[128] = {};
-    for (char c : t) need[c]++;
+    let mut left = 0usize;
+    let mut have = 0i32;
+    let required = t.len() as i32;
+    let mut min_len = i32::MAX;
+    let mut min_left = 0usize;
 
-    int left = 0, have = 0, required = t.length();
-    int minLen = INT_MAX, minLeft = 0;
+    for right in 0..s.len() {
+        let c = s[right] as usize;
+        if need[c] > 0 {
+            have += 1; // satisfying a genuine need
+        }
+        need[c] -= 1;
 
-    for (int right = 0; right < (int)s.length(); right++) {
-        char c = s[right];
-        if (need[c] > 0) have++;   // satisfying a genuine need
-        need[c]--;
-
-        while (have == required) {
-            if (right - left + 1 < minLen) {
-                minLen = right - left + 1;
-                minLeft = left;
+        while have == required {
+            if (right - left + 1) as i32 < min_len {
+                min_len = (right - left + 1) as i32;
+                min_left = left;
             }
-            char l = s[left];
-            need[l]++;
-            if (need[l] > 0) have--;   // we lost a needed char
-            left++;
+            let l = s[left] as usize;
+            need[l] += 1;
+            if need[l] > 0 {
+                have -= 1; // we lost a needed char
+            }
+            left += 1;
         }
     }
-    return minLen == INT_MAX ? "" : s.substr(minLeft, minLen);
+
+    if min_len == i32::MAX {
+        String::new()
+    } else {
+        String::from_utf8(s[min_left..min_left + min_len as usize].to_vec()).unwrap()
+    }
 }
 ```
 
@@ -45,10 +58,10 @@ string minWindow(string s, string t) {
 A: `need` array starts with counts from `t`. As we add characters from `s`, `need[c]` decreases. If `need[c] > 0` before decrement, this character was genuinely needed — we're satisfying a requirement. If `need[c] ≤ 0`, this is an excess character (already have enough of this type) — `have` shouldn't increase.
 
 **Q: On shrinking, why does `need[l]++ > 0` trigger `have--`?**
-A: After `need[l]++`, if the count is now positive (> 0), it means we needed this char and removing it from the window means we're no longer satisfying that need. If the count is ≤ 0 after increment, we still have excess copies in the window — no need to decrement `have`.
+A: After `need[l] += 1`, if the count is now positive (> 0), it means we needed this char and removing it from the window means we're no longer satisfying that need. If the count is ≤ 0 after increment, we still have excess copies in the window — no need to decrement `have`.
 
 **Q: What if `t` has duplicate characters like "AAB"?**
-A: The `need` array handles this — `need['A'] = 2`, so you need two A's in the window. Each A added from `s` decrements `need['A']`; `have` increments when `need['A']` goes from positive to zero/negative, meaning we've satisfied all A requirements.
+A: The `need` array handles this — `need['A' as usize] = 2`, so you need two A's in the window. Each A added from `s` decrements `need['A' as usize]`; `have` increments when `need['A' as usize]` goes from positive to zero/negative, meaning we've satisfied all A requirements.
 
 **Amazon LP Alignment:**
 
@@ -64,34 +77,35 @@ A: The `need` array handles this — `need['A'] = 2`, so you need two A's in the
 
 **LC 424** · Medium · O(n) time
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn character_replacement(s: String, k: i32) -> i32 {
+    let s = s.as_bytes();
+    let mut freq = [0i32; 26];
+    let mut left = 0usize;
+    let mut max_freq = 0i32;
+    let mut max_len = 0i32;
 
-int characterReplacement(string s, int k) {
-    int freq[26] = {};
-    int left = 0, maxFreq = 0, maxLen = 0;
+    for right in 0..s.len() {
+        let idx = (s[right] - b'A') as usize;
+        freq[idx] += 1;
+        max_freq = max_freq.max(freq[idx]);
 
-    for (int right = 0; right < (int)s.length(); right++) {
-        freq[s[right] - 'A']++;
-        maxFreq = max(maxFreq, freq[s[right] - 'A']);
-
-        if ((right - left + 1) - maxFreq > k) {
-            freq[s[left] - 'A']--;
-            left++;
+        if (right - left + 1) as i32 - max_freq > k {
+            freq[(s[left] - b'A') as usize] -= 1;
+            left += 1;
         }
 
-        maxLen = max(maxLen, right - left + 1);
+        max_len = max_len.max((right - left + 1) as i32);
     }
-    return maxLen;
+    max_len
 }
 ```
 
 **Q: Why `if` not `while` for shrinking?**
-A: We're maximizing window size. Once we shrink by 1, the window is at the same size as before this iteration's expansion — it can never be smaller than `maxLen`. We don't need to keep shrinking; we just maintain size until the window can grow again.
+A: We're maximizing window size. Once we shrink by 1, the window is at the same size as before this iteration's expansion — it can never be smaller than `max_len`. We don't need to keep shrinking; we just maintain size until the window can grow again.
 
-**Q: Prove `maxFreq` doesn't need to be recomputed on shrink.**
-A: We're looking for the maximum window. Any valid window must have `windowSize - maxFreq ≤ k`. When we shrink, the window decreases to the previous maximum size. For the answer to improve, we need a larger `maxFreq` in a future window. So not updating `maxFreq` downward is safe — it represents "the best we've seen so far," and only a better value can make the window grow.
+**Q: Prove `max_freq` doesn't need to be recomputed on shrink.**
+A: We're looking for the maximum window. Any valid window must have `windowSize - max_freq ≤ k`. When we shrink, the window decreases to the previous maximum size. For the answer to improve, we need a larger `max_freq` in a future window. So not updating `max_freq` downward is safe — it represents "the best we've seen so far," and only a better value can make the window grow.
 
 ---
 
@@ -99,27 +113,30 @@ A: We're looking for the maximum window. Any valid window must have `windowSize 
 
 **LC 904** · Medium
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-int totalFruit(vector<int>& fruits) {
-    unordered_map<int, int> basket;
-    int left = 0, maxLen = 0;
+fn total_fruit(fruits: Vec<i32>) -> i32 {
+    let mut basket: HashMap<i32, i32> = HashMap::new();
+    let mut left = 0usize;
+    let mut max_len = 0i32;
 
-    for (int right = 0; right < (int)fruits.size(); right++) {
-        basket[fruits[right]]++;
+    for right in 0..fruits.len() {
+        *basket.entry(fruits[right]).or_insert(0) += 1;
 
-        while (basket.size() > 2) {
-            int f = fruits[left];
-            basket[f]--;
-            if (basket[f] == 0) basket.erase(f);
-            left++;
+        while basket.len() > 2 {
+            let f = fruits[left];
+            let count = basket.get_mut(&f).unwrap();
+            *count -= 1;
+            if *count == 0 {
+                basket.remove(&f);
+            }
+            left += 1;
         }
 
-        maxLen = max(maxLen, right - left + 1);
+        max_len = max_len.max((right - left + 1) as i32);
     }
-    return maxLen;
+    max_len
 }
 ```
 
@@ -127,7 +144,7 @@ int totalFruit(vector<int>& fruits) {
 A: Replace `> 2` with `> k`. Same O(n) solution.
 
 **Q: What if fruits[] can be very large values (not 0..n)?**
-A: `std::unordered_map` handles arbitrary values. If values were bounded (e.g., 0..1000), an int array of size 1001 would be more efficient.
+A: `HashMap` handles arbitrary values. If values were bounded (e.g., 0..1000), an array of size 1001 would be more efficient.
 
 ---
 

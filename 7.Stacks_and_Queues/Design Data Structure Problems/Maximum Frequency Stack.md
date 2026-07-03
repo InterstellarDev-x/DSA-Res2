@@ -22,41 +22,46 @@ pop() → 4  (5→1, 4→1; 4 was pushed more recently)
 
 ---
 
-## Solution: std::unordered_map + std::unordered_map of Stacks
+## Solution: HashMap + HashMap of Stacks
 
 **Key insight:** Group elements by frequency. Within each frequency group, maintain insertion order (stack semantics for tie-breaking).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-class FreqStack {
-    unordered_map<int, int> freq;          // val → current frequency
-    unordered_map<int, stack<int>> group;  // freq → stack of vals at this freq
-    int maxFreq;
+struct FreqStack {
+    freq: HashMap<i32, i32>,       // val → current frequency
+    group: HashMap<i32, Vec<i32>>, // freq → stack of vals at this freq
+    max_freq: i32,
+}
 
-public:
-    FreqStack() : maxFreq(0) {}
-
-    void push(int val) {
-        int f = (freq.count(val) ? freq[val] : 0) + 1;
-        freq[val] = f;
-        maxFreq = max(maxFreq, f);
-        group[f].push(val);  // default-constructs stack if key absent
-    }
-
-    int pop() {
-        auto& stk = group[maxFreq];
-        int val = stk.top();
-        stk.pop();
-        freq[val] = freq[val] - 1;
-        if (stk.empty()) {
-            group.erase(maxFreq);
-            maxFreq--;   // only decrement — can never skip a frequency level
+impl FreqStack {
+    fn new() -> Self {
+        FreqStack {
+            freq: HashMap::new(),
+            group: HashMap::new(),
+            max_freq: 0,
         }
-        return val;
     }
-};
+
+    fn push(&mut self, val: i32) {
+        let f = self.freq.get(&val).copied().unwrap_or(0) + 1;
+        self.freq.insert(val, f);
+        self.max_freq = self.max_freq.max(f);
+        self.group.entry(f).or_insert_with(Vec::new).push(val); // default-constructs Vec if key absent
+    }
+
+    fn pop(&mut self) -> i32 {
+        let stk = self.group.get_mut(&self.max_freq).unwrap();
+        let val = stk.pop().unwrap();
+        *self.freq.get_mut(&val).unwrap() -= 1;
+        if stk.is_empty() {
+            self.group.remove(&self.max_freq);
+            self.max_freq -= 1; // only decrement — can never skip a frequency level
+        }
+        val
+    }
+}
 ```
 
 **Complexity:** O(1) for both `push` and `pop`.

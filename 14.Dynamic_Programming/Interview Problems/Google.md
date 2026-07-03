@@ -2,7 +2,7 @@
 
 # Google — DP Interview Deep Dives
 
-Google interviews probe *why* a recurrence is correct, not just whether you remember it. These four — Edit Distance, Burst Balloons, Regex Matching, Number of LIS — are the ones where the derivation is the interview. Each includes the state, a traced recurrence, base cases, full C++, complexity, and the level (L4/L5) at which it typically appears.
+Google interviews probe *why* a recurrence is correct, not just whether you remember it. These four — Edit Distance, Burst Balloons, Regex Matching, Number of LIS — are the ones where the derivation is the interview. Each includes the state, a traced recurrence, base cases, full Rust, complexity, and the level (L4/L5) at which it typically appears.
 
 See also: [OA-Qns → Google](../OA-Qns/Google.md) · [Interview Problems → Amazon](./Amazon.md) · [Interview Problems → Microsoft](./Microsoft.md) · [Topic README](../README.md)
 
@@ -29,26 +29,25 @@ Aligning the suffixes ends in one of three ways: the last char of `word1` is con
 
 **Trace** `word1="horse"`, `word2="ros"` → answer 3 (replace `h→r`, delete `r`, delete `e`). The dp table fills row by row; `dp[5][3] = 3`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int minDistance(string word1, string word2) {
-    int m = word1.length(), n = word2.length();
-    vector<vector<int>> dp(m + 1, vector<int>(n + 1));
-    for (int i = 0; i <= m; i++) dp[i][0] = i;
-    for (int j = 0; j <= n; j++) dp[0][j] = j;
-    for (int i = 1; i <= m; i++) {
-        for (int j = 1; j <= n; j++) {
-            if (word1[i - 1] == word2[j - 1]) {
+```rust
+fn min_distance(word1: String, word2: String) -> i32 {
+    let m = word1.len();
+    let n = word2.len();
+    let w1: Vec<char> = word1.chars().collect();
+    let w2: Vec<char> = word2.chars().collect();
+    let mut dp = vec![vec![0i32; n + 1]; m + 1];
+    for i in 0..=m { dp[i][0] = i as i32; }
+    for j in 0..=n { dp[0][j] = j as i32; }
+    for i in 1..=m {
+        for j in 1..=n {
+            if w1[i - 1] == w2[j - 1] {
                 dp[i][j] = dp[i - 1][j - 1];
             } else {
-                dp[i][j] = 1 + min(dp[i - 1][j - 1],
-                              min(dp[i - 1][j], dp[i][j - 1]));
+                dp[i][j] = 1 + dp[i - 1][j - 1].min(dp[i - 1][j].min(dp[i][j - 1]));
             }
         }
     }
-    return dp[m][n];
+    dp[m][n]
 }
 ```
 
@@ -58,27 +57,26 @@ Time `O(m·n)`, space `O(m·n)`.
 
 Each row needs only the previous row plus the diagonal. Keep two rows (or one row + a saved diagonal):
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int minDistance(string word1, string word2) {
-    int m = word1.length(), n = word2.length();
-    vector<int> prev(n + 1);
-    for (int j = 0; j <= n; j++) prev[j] = j;
-    for (int i = 1; i <= m; i++) {
-        vector<int> cur(n + 1);
-        cur[0] = i;
-        for (int j = 1; j <= n; j++) {
-            if (word1[i - 1] == word2[j - 1]) {
+```rust
+fn min_distance(word1: String, word2: String) -> i32 {
+    let m = word1.len();
+    let n = word2.len();
+    let w1: Vec<char> = word1.chars().collect();
+    let w2: Vec<char> = word2.chars().collect();
+    let mut prev: Vec<i32> = (0..=(n as i32)).collect();
+    for i in 1..=m {
+        let mut cur = vec![0i32; n + 1];
+        cur[0] = i as i32;
+        for j in 1..=n {
+            if w1[i - 1] == w2[j - 1] {
                 cur[j] = prev[j - 1];
             } else {
-                cur[j] = 1 + min(prev[j - 1], min(prev[j], cur[j - 1]));
+                cur[j] = 1 + prev[j - 1].min(prev[j].min(cur[j - 1]));
             }
         }
         prev = cur;
     }
-    return prev[n];
+    prev[n]
 }
 ```
 
@@ -107,27 +105,25 @@ If you ask "which balloon to burst **first** in range `(i, j)`?", the moment you
 - **Base:** `dp[i][j] = 0` when `j - i < 2` (nothing strictly between).
 - **Order:** increasing interval length, since `dp[i][j]` needs shorter `dp[i][k]` and `dp[k][j]`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn max_coins(nums: Vec<i32>) -> i32 {
+    let n = nums.len();
+    let mut arr = vec![0i32; n + 2];
+    arr[0] = 1;
+    arr[n + 1] = 1;
+    for i in 0..n { arr[i + 1] = nums[i]; }
 
-int maxCoins(vector<int>& nums) {
-    int n = nums.size();
-    vector<int> arr(n + 2);
-    arr[0] = arr[n + 1] = 1;
-    for (int i = 0; i < n; i++) arr[i + 1] = nums[i];
-
-    vector<vector<int>> dp(n + 2, vector<int>(n + 2, 0));
-    for (int len = 2; len <= n + 1; len++) {          // interval length (exclusive ends)
-        for (int i = 0; i + len <= n + 1; i++) {
-            int j = i + len;
-            for (int k = i + 1; k < j; k++) {         // k bursts LAST in (i, j)
-                int coins = arr[i] * arr[k] * arr[j] + dp[i][k] + dp[k][j];
-                dp[i][j] = max(dp[i][j], coins);
+    let mut dp = vec![vec![0i32; n + 2]; n + 2];
+    for len in 2..=(n + 1) {          // interval length (exclusive ends)
+        for i in 0..=(n + 1 - len) {
+            let j = i + len;
+            for k in (i + 1)..j {         // k bursts LAST in (i, j)
+                let coins = arr[i] * arr[k] * arr[j] + dp[i][k] + dp[k][j];
+                dp[i][j] = dp[i][j].max(coins);
             }
         }
     }
-    return dp[0][n + 1];
+    dp[0][n + 1]
 }
 ```
 
@@ -135,7 +131,7 @@ Time `O(n³)`, space `O(n²)`. This is the canonical [Partition DP (MCM)](../Pat
 
 ### Common follow-ups
 - "Min cost to cut a stick" (LC 1547) — same interval DP, minimize instead.
-- "Why not memoized recursion?" — equivalent; `dp(i,j)` with `vector<vector<int>>` memo and the same "last to burst" loop.
+- "Why not memoized recursion?" — equivalent; `dp(i,j)` with `Vec<Vec<i32>>` memo and the same "last to burst" loop.
 
 ---
 
@@ -157,35 +153,35 @@ Time `O(n³)`, space `O(n²)`. This is the canonical [Partition DP (MCM)](../Pat
 
 `x*` can stand for **nothing** (drop both `x` and `*`, look back 2 in the pattern) or for **at least one** `x` (consume one char of `s`, keep the `x*` available, look back 1 in the string). Missing the "look back 2" branch is the #1 failure on Google's hidden tests.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool isMatch(string s, string p) {
-    int m = s.length(), n = p.length();
-    vector<vector<bool>> dp(m + 1, vector<bool>(n + 1, false));
+```rust
+fn is_match(s: String, p: String) -> bool {
+    let m = s.len();
+    let n = p.len();
+    let s: Vec<char> = s.chars().collect();
+    let p: Vec<char> = p.chars().collect();
+    let mut dp = vec![vec![false; n + 1]; m + 1];
     dp[0][0] = true;
     // empty string vs patterns like a*, a*b*, ...
-    for (int j = 1; j <= n; j++) {
-        if (p[j - 1] == '*') {
+    for j in 1..=n {
+        if p[j - 1] == '*' {
             dp[0][j] = dp[0][j - 2];
         }
     }
-    for (int i = 1; i <= m; i++) {
-        for (int j = 1; j <= n; j++) {
-            char pc = p[j - 1];
-            if (pc == '*') {
+    for i in 1..=m {
+        for j in 1..=n {
+            let pc = p[j - 1];
+            if pc == '*' {
                 dp[i][j] = dp[i][j - 2];                       // zero occurrences
-                char prev = p[j - 2];
-                if (prev == '.' || prev == s[i - 1]) {
+                let prev = p[j - 2];
+                if prev == '.' || prev == s[i - 1] {
                     dp[i][j] = dp[i][j] || dp[i - 1][j];       // one or more
                 }
-            } else if (pc == '.' || pc == s[i - 1]) {
+            } else if pc == '.' || pc == s[i - 1] {
                 dp[i][j] = dp[i - 1][j - 1];
             }
         }
     }
-    return dp[m][n];
+    dp[m][n]
 }
 ```
 
@@ -213,33 +209,30 @@ For each `i`, scan `j < i` with `nums[j] < nums[i]`:
 
 Finally sum `count[i]` over all `i` with the global max length.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int findNumberOfLIS(vector<int>& nums) {
-    int n = nums.size();
-    vector<int> length(n, 1);
-    vector<int> count(n, 1);
-    int maxLen = 1;
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < i; j++) {
-            if (nums[j] < nums[i]) {
-                if (length[j] + 1 > length[i]) {
+```rust
+fn find_number_of_lis(nums: Vec<i32>) -> i32 {
+    let n = nums.len();
+    let mut length = vec![1i32; n];
+    let mut count = vec![1i32; n];
+    let mut max_len = 1i32;
+    for i in 0..n {
+        for j in 0..i {
+            if nums[j] < nums[i] {
+                if length[j] + 1 > length[i] {
                     length[i] = length[j] + 1;
                     count[i] = count[j];           // reset to the new winner's count
-                } else if (length[j] + 1 == length[i]) {
+                } else if length[j] + 1 == length[i] {
                     count[i] += count[j];          // tie → accumulate
                 }
             }
         }
-        maxLen = max(maxLen, length[i]);
+        max_len = max_len.max(length[i]);
     }
-    int total = 0;
-    for (int i = 0; i < n; i++) {
-        if (length[i] == maxLen) total += count[i];
+    let mut total = 0i32;
+    for i in 0..n {
+        if length[i] == max_len { total += count[i]; }
     }
-    return total;
+    total
 }
 ```
 

@@ -6,13 +6,19 @@
 subtree** to its parent, and (optionally) a **global result** is updated at each node. The
 recurrence lives in how a parent combines its children's returns.
 
-```cpp
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
-};
+```rust
+#[derive(Debug)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
+
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 > The template: `f(node)` returns a *summary* of the subtree rooted at `node`; the parent
@@ -27,23 +33,23 @@ You can't rob two directly-connected nodes. Each node returns a 2-element state:
 `[notRob, rob]` where `notRob` = best when this node is NOT robbed (children free to do
 either), `rob` = `node.val + children's notRob`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-// returns {notRobbingThisNode, robbingThisNode}
-vector<int> robSub(TreeNode* node) {
-    if (node == nullptr) return {0, 0};
-    auto l = robSub(node->left);
-    auto r = robSub(node->right);
-    int notRob = max(l[0], l[1]) + max(r[0], r[1]);  // children choose freely
-    int rob    = node->val + l[0] + r[0];             // children must NOT be robbed
-    return {notRob, rob};
+```rust
+// returns (not_robbing_this_node, robbing_this_node)
+fn rob_sub(node: &Option<Box<TreeNode>>) -> (i32, i32) {
+    if let Some(n) = node {
+        let l = rob_sub(&n.left);
+        let r = rob_sub(&n.right);
+        let not_rob = l.0.max(l.1) + r.0.max(r.1); // children choose freely
+        let rob = n.val + l.0 + r.0;                // children must NOT be robbed
+        (not_rob, rob)
+    } else {
+        (0, 0)
+    }
 }
 
-int rob(TreeNode* root) {
-    auto res = robSub(root);
-    return max(res[0], res[1]);
+fn rob(root: &Option<Box<TreeNode>>) -> i32 {
+    let res = rob_sub(root);
+    res.0.max(res.1)
 }
 ```
 
@@ -62,25 +68,34 @@ Greedy bottom-up DP with three states:
   it).
 - **Root special case:** after recursion, if the root is `NOT_COVERED`, add one camera.
 
-```cpp
-int cameras = 0;
-const int NOT_COVERED = 0, HAS_CAMERA = 1, COVERED = 2;
+```rust
+const NOT_COVERED: i32 = 0;
+const HAS_CAMERA: i32 = 1;
+const COVERED: i32 = 2;
 
-int dfs(TreeNode* node) {
-    if (node == nullptr) return COVERED;          // null is implicitly covered
-    int l = dfs(node->left);
-    int r = dfs(node->right);
-    if (l == NOT_COVERED || r == NOT_COVERED) {
-        cameras++;
-        return HAS_CAMERA;
+fn dfs(node: &Option<Box<TreeNode>>, cameras: &mut i32) -> i32 {
+    if let Some(n) = node {
+        let l = dfs(&n.left, cameras);
+        let r = dfs(&n.right, cameras);
+        if l == NOT_COVERED || r == NOT_COVERED {
+            *cameras += 1;
+            return HAS_CAMERA;
+        }
+        if l == HAS_CAMERA || r == HAS_CAMERA {
+            return COVERED;
+        }
+        NOT_COVERED
+    } else {
+        COVERED // null is implicitly covered
     }
-    if (l == HAS_CAMERA || r == HAS_CAMERA) return COVERED;
-    return NOT_COVERED;
 }
 
-int minCameraCover(TreeNode* root) {
-    if (dfs(root) == NOT_COVERED) cameras++;   // root left uncovered -> place a camera
-    return cameras;
+fn min_camera_cover(root: &Option<Box<TreeNode>>) -> i32 {
+    let mut cameras = 0;
+    if dfs(root, &mut cameras) == NOT_COVERED {
+        cameras += 1; // root left uncovered -> place a camera
+    }
+    cameras
 }
 ```
 
@@ -93,23 +108,22 @@ Each node should end with exactly 1 coin. The number of moves across an edge equ
 `excess = leftExcess + rightExcess + node.val − 1`; add `|excess|` to the answer and return
 `excess` to the parent.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int moves = 0;
-
-int excess(TreeNode* node) {
-    if (node == nullptr) return 0;
-    int left  = excess(node->left);
-    int right = excess(node->right);
-    moves += abs(left) + abs(right);     // coins crossing both child edges
-    return node->val + left + right - 1; // surplus(+)/deficit(-) passed up
+```rust
+fn excess(node: &Option<Box<TreeNode>>, moves: &mut i32) -> i32 {
+    if let Some(n) = node {
+        let left  = excess(&n.left,  moves);
+        let right = excess(&n.right, moves);
+        *moves += left.abs() + right.abs(); // coins crossing both child edges
+        n.val + left + right - 1            // surplus(+)/deficit(-) passed up
+    } else {
+        0
+    }
 }
 
-int distributeCoins(TreeNode* root) {
-    excess(root);
-    return moves;
+fn distribute_coins(root: &Option<Box<TreeNode>>) -> i32 {
+    let mut moves = 0;
+    excess(root, &mut moves);
+    moves
 }
 ```
 
@@ -120,19 +134,33 @@ int distributeCoins(TreeNode* root) {
 If the current node is `p` or `q`, return it. Recurse both sides; if **both** return non-null,
 the current node is the LCA. Otherwise propagate the non-null side up.
 
-```cpp
-TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
-    if (root == nullptr || root == p || root == q) return root;
-    TreeNode* left  = lowestCommonAncestor(root->left,  p, q);
-    TreeNode* right = lowestCommonAncestor(root->right, p, q);
-    if (left != nullptr && right != nullptr) return root;   // p and q on opposite sides -> LCA
-    return left != nullptr ? left : right;                  // both on one side (or neither)
+```rust
+fn lowest_common_ancestor<'a>(
+    root: &'a Option<Box<TreeNode>>,
+    p: i32,
+    q: i32,
+) -> Option<&'a TreeNode> {
+    if let Some(node) = root {
+        if node.val == p || node.val == q {
+            return Some(node); // deref coercion: &Box<TreeNode> -> &TreeNode
+        }
+        let left  = lowest_common_ancestor(&node.left,  p, q);
+        let right = lowest_common_ancestor(&node.right, p, q);
+        match (left, right) {
+            (Some(_), Some(_)) => Some(node), // p and q on opposite sides -> LCA
+            (Some(l), None)    => Some(l),
+            (None, Some(r))    => Some(r),
+            (None, None)       => None,
+        }
+    } else {
+        None
+    }
 }
 ```
 
 **Why early-return works:** a node returns non-null iff its subtree contains `p` or `q`. The
 first node to receive non-null from *both* sides is the split point = the LCA. If one of
-`p`/`q` is an ancestor of the other, the early `root == p` return makes that ancestor the LCA.
+`p`/`q` is an ancestor of the other, the early `node.val == p` return makes that ancestor the LCA.
 
 ---
 
@@ -141,25 +169,26 @@ first node to receive non-null from *both* sides is the split point = the LCA. I
 Return a `(node, depth)` pair upward. Pick the side with greater depth; if both depths are
 equal, the **current node** is the LCA of all deepest leaves below it.
 
-```cpp
-struct Result {
-    TreeNode* node;
-    int depth;
-    Result(TreeNode* node, int depth) : node(node), depth(depth) {}
-};
-
-Result dfs(TreeNode* node) {
-    if (node == nullptr) return Result(nullptr, 0);
-    Result l = dfs(node->left);
-    Result r = dfs(node->right);
-    if (l.depth == r.depth) return Result(node, l.depth + 1);  // balanced -> this node
-    return l.depth > r.depth
-        ? Result(l.node, l.depth + 1)
-        : Result(r.node, r.depth + 1);
+```rust
+// returns (lca_node, max_depth_below)
+fn dfs_lca<'a>(node: &'a Option<Box<TreeNode>>) -> (Option<&'a TreeNode>, i32) {
+    if let Some(n) = node {
+        let (l_node, l_depth) = dfs_lca(&n.left);
+        let (r_node, r_depth) = dfs_lca(&n.right);
+        if l_depth == r_depth {
+            (Some(n.as_ref()), l_depth + 1) // balanced -> this node is LCA
+        } else if l_depth > r_depth {
+            (l_node, l_depth + 1)
+        } else {
+            (r_node, r_depth + 1)
+        }
+    } else {
+        (None, 0)
+    }
 }
 
-TreeNode* lcaDeepestLeaves(TreeNode* root) {
-    return dfs(root).node;
+fn lca_deepest_leaves(root: &Option<Box<TreeNode>>) -> Option<&TreeNode> {
+    dfs_lca(root).0
 }
 ```
 
@@ -167,92 +196,109 @@ TreeNode* lcaDeepestLeaves(TreeNode* root) {
 
 ## 6. Delete Nodes and Return Forest (LC 1110)
 
-Put the to-delete values in an `unordered_set`. Post-order: a child that survives **becomes a new root**
+Put the to-delete values in a `HashSet`. Post-order: a child that survives **becomes a new root**
 if its parent was deleted (or if it is the original root). When a node is deleted, its
-surviving children are added to the forest; the node returns `nullptr` to detach itself.
+surviving children are added to the forest; the node returns `None` to detach itself.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-// returns the node if it survives, else nullptr (so the parent can detach it)
-TreeNode* dfs(TreeNode* node, bool isRoot,
-              unordered_set<int>& toDelete, vector<TreeNode*>& forest) {
-    if (node == nullptr) return nullptr;
-    bool deleted = toDelete.count(node->val) > 0;
-    node->left  = dfs(node->left,  deleted, toDelete, forest);   // child is a root if I'm deleted
-    node->right = dfs(node->right, deleted, toDelete, forest);
-    if (deleted) {
-        if (node->left  != nullptr) forest.push_back(node->left);
-        if (node->right != nullptr) forest.push_back(node->right);
-        return nullptr;
+// consumes node; returns Some(node) if it survives, else None (detaches from parent)
+fn dfs_delete(
+    node: Option<Box<TreeNode>>,
+    to_delete: &HashSet<i32>,
+    forest: &mut Vec<Box<TreeNode>>,
+) -> Option<Box<TreeNode>> {
+    let mut n = node?;
+    let deleted = to_delete.contains(&n.val);
+    n.left  = dfs_delete(n.left,  to_delete, forest); // child becomes root if this node is deleted
+    n.right = dfs_delete(n.right, to_delete, forest);
+    if deleted {
+        if let Some(l) = n.left.take()  { forest.push(l); }
+        if let Some(r) = n.right.take() { forest.push(r); }
+        return None;
     }
-    return node;
+    Some(n)
 }
 
-vector<TreeNode*> delNodes(TreeNode* root, vector<int>& to_delete) {
-    unordered_set<int> toDelete(to_delete.begin(), to_delete.end());
-    vector<TreeNode*> forest;
-    if (dfs(root, true, toDelete, forest) != nullptr) forest.push_back(root);
-    return forest;
+fn del_nodes(root: Option<Box<TreeNode>>, to_delete: Vec<i32>) -> Vec<Box<TreeNode>> {
+    let to_delete: HashSet<i32> = to_delete.into_iter().collect();
+    let mut forest = Vec::new();
+    if let Some(root_node) = dfs_delete(root, &to_delete, &mut forest) {
+        forest.push(root_node);
+    }
+    forest
 }
 ```
 
-(The top-level `root` is added in `delNodes` if it survives; surviving children of deleted
-nodes are added inside `dfs`.)
+(The top-level `root` is added in `del_nodes` if it survives; surviving children of deleted
+nodes are added inside `dfs_delete`.)
 
 ---
 
 ## 7. All Nodes Distance K (LC 863)
 
-Two phases: (1) DFS to build a `child → parent` map so the tree becomes an undirected graph;
-(2) BFS from `target`, expanding to left/right/parent, until you reach distance `K`.
+Two phases: (1) DFS to build an undirected adjacency map (keyed by node value) so the tree
+becomes an undirected graph; (2) BFS from `target`, expanding to all neighbours, until you
+reach distance `K`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, HashSet, VecDeque};
 
-void buildParents(TreeNode* node, TreeNode* par,
-                  unordered_map<TreeNode*, TreeNode*>& parent) {
-    if (node == nullptr) return;
-    parent[node] = par;
-    buildParents(node->left,  node, parent);
-    buildParents(node->right, node, parent);
+// build undirected adjacency list keyed by node value (values are unique per problem)
+fn build_graph(
+    node: &Option<Box<TreeNode>>,
+    par_val: Option<i32>,
+    adj: &mut HashMap<i32, Vec<i32>>,
+) {
+    if let Some(n) = node {
+        let val = n.val;
+        if let Some(p) = par_val {
+            adj.entry(val).or_insert_with(Vec::new).push(p);
+            adj.entry(p).or_insert_with(Vec::new).push(val);
+        } else {
+            adj.entry(val).or_insert_with(Vec::new); // root has no parent
+        }
+        build_graph(&n.left,  Some(val), adj);
+        build_graph(&n.right, Some(val), adj);
+    }
 }
 
-vector<int> distanceK(TreeNode* root, TreeNode* target, int k) {
-    unordered_map<TreeNode*, TreeNode*> parent;
-    buildParents(root, nullptr, parent);
+fn distance_k(root: &Option<Box<TreeNode>>, target_val: i32, k: i32) -> Vec<i32> {
+    let mut adj: HashMap<i32, Vec<i32>> = HashMap::new();
+    build_graph(root, None, &mut adj);
 
-    queue<TreeNode*> q;
-    unordered_set<TreeNode*> visited;
-    q.push(target);
-    visited.insert(target);
-    int dist = 0;
-    while (!q.empty()) {
-        if (dist == k) {                          // current frontier is exactly distance k
-            vector<int> res;
-            while (!q.empty()) {
-                res.push_back(q.front()->val);
-                q.pop();
-            }
-            return res;
+    let mut queue: VecDeque<i32> = VecDeque::new();
+    let mut visited: HashSet<i32> = HashSet::new();
+    queue.push_back(target_val);
+    visited.insert(target_val);
+    let mut dist = 0;
+
+    while !queue.is_empty() {
+        if dist == k {                                // current frontier is exactly distance k
+            return queue.into_iter().collect();
         }
-        int sz = q.size();
-        for (int i = 0; i < sz; i++) {
-            TreeNode* node = q.front(); q.pop();
-            for (TreeNode* nei : {node->left, node->right, parent[node]}) {
-                if (nei != nullptr && visited.insert(nei).second) q.push(nei);
+        let sz = queue.len();
+        for _ in 0..sz {
+            if let Some(val) = queue.pop_front() {
+                if let Some(neighbors) = adj.get(&val) {
+                    for &nei in neighbors {
+                        if visited.insert(nei) {
+                            queue.push_back(nei);
+                        }
+                    }
+                }
             }
         }
-        dist++;
+        dist += 1;
     }
-    return {};
+    vec![]
 }
 ```
 
-(`parent[node] = par` is the direct map insertion for building the adjacency relation; here
-each node has exactly one parent so a direct assignment suffices.)
+(The adjacency map uses node values as keys since all values are unique in this problem.
+`adj.entry(val).or_insert_with(Vec::new).push(p)` adds the parent to the current node's
+neighbour list, and the symmetric call adds the current node to the parent's list.)
 
 ---
 

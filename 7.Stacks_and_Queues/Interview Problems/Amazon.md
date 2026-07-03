@@ -17,22 +17,27 @@ Amazon interviewers typically start here then escalate:
 
 ### Solution with Key Insight Explanation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct MinStack {
+    st: Vec<(i32, i32)>, // (val, minAtThisLevel)
+}
 
-class MinStack {
-    stack<pair<int,int>> st; // {val, minAtThisLevel}
-
-public:
-    void push(int val) {
-        int mn = st.empty() ? val : min(val, st.top().second);
-        st.push({val, mn});
+impl MinStack {
+    fn new() -> Self {
+        MinStack { st: Vec::new() }
     }
-    void pop()    { st.pop(); }
-    int top()     { return st.top().first; }
-    int getMin()  { return st.top().second; }
-};
+
+    fn push(&mut self, val: i32) {
+        let mn = if self.st.is_empty() { val } else { val.min(self.st.last().unwrap().1) };
+        self.st.push((val, mn));
+    }
+
+    fn pop(&mut self) { self.st.pop(); }
+
+    fn top(&self) -> i32 { self.st.last().unwrap().0 }
+
+    fn get_min(&self) -> i32 { self.st.last().unwrap().1 }
+}
 ```
 
 **Q: Why not use a separate variable to track global minimum?**
@@ -47,24 +52,21 @@ A: No — with a stack of N elements each of which could be the minimum, we fund
 
 **LC 84** · Hard · O(n) time, O(n) space
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int largestRectangleArea(vector<int>& heights) {
-    int n = heights.size();
-    stack<int> st;
-    int maxArea = 0;
-    for (int i = 0; i <= n; i++) {
-        int h = (i == n) ? 0 : heights[i];
-        while (!st.empty() && heights[st.top()] > h) {
-            int height = heights[st.top()]; st.pop();
-            int width = st.empty() ? i : i - st.top() - 1;
-            maxArea = max(maxArea, height * width);
+```rust
+fn largest_rectangle_area(heights: Vec<i32>) -> i32 {
+    let n = heights.len();
+    let mut st: Vec<usize> = Vec::new();
+    let mut max_area = 0;
+    for i in 0..=n {
+        let h = if i == n { 0 } else { heights[i] };
+        while !st.is_empty() && heights[*st.last().unwrap()] > h {
+            let height = heights[st.pop().unwrap()];
+            let width = if st.is_empty() { i as i32 } else { (i - st.last().unwrap() - 1) as i32 };
+            max_area = max_area.max(height * width);
         }
         st.push(i);
     }
-    return maxArea;
+    max_area
 }
 ```
 
@@ -89,43 +91,40 @@ A: Build a histogram per row: for each cell `(r, c)`, `heights[c]` = consecutive
 
 ### Two Approaches Compared
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Approach 1: Two Pointers — O(n) time, O(1) space
-int trap(vector<int>& height) {
-    int left = 0, right = (int)height.size() - 1;
-    int maxL = 0, maxR = 0, water = 0;
-    while (left < right) {
-        if (height[left] <= height[right]) {
-            maxL = max(maxL, height[left]);
-            water += maxL - height[left];
-            left++;
+fn trap_two_pointers(height: &[i32]) -> i32 {
+    let (mut left, mut right) = (0usize, height.len() - 1);
+    let (mut max_l, mut max_r, mut water) = (0, 0, 0);
+    while left < right {
+        if height[left] <= height[right] {
+            max_l = max_l.max(height[left]);
+            water += max_l - height[left];
+            left += 1;
         } else {
-            maxR = max(maxR, height[right]);
-            water += maxR - height[right];
-            right--;
+            max_r = max_r.max(height[right]);
+            water += max_r - height[right];
+            right -= 1;
         }
     }
-    return water;
+    water
 }
 
 // Approach 2: Monotonic Stack — O(n) time, O(n) space
-int trap(vector<int>& height) {
-    stack<int> st;
-    int water = 0;
-    for (int i = 0; i < (int)height.size(); i++) {
-        while (!st.empty() && height[st.top()] < height[i]) {
-            int bottom = st.top(); st.pop();
-            if (st.empty()) break;
-            int width = i - st.top() - 1;
-            int h = min(height[st.top()], height[i]) - height[bottom];
+fn trap_stack(height: &[i32]) -> i32 {
+    let mut st: Vec<usize> = Vec::new();
+    let mut water = 0;
+    for i in 0..height.len() {
+        while !st.is_empty() && height[*st.last().unwrap()] < height[i] {
+            let bottom = st.pop().unwrap();
+            if st.is_empty() { break; }
+            let width = (i - st.last().unwrap() - 1) as i32;
+            let h = height[*st.last().unwrap()].min(height[i]) - height[bottom];
             water += width * h;
         }
         st.push(i);
     }
-    return water;
+    water
 }
 ```
 
@@ -141,21 +140,18 @@ A: When computing in a streaming/online fashion where the full array isn't avail
 
 **LC 456** · Medium · O(n) time
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool find132pattern(vector<int>& nums) {
-    int third = INT_MIN;  // candidate for nums[k] (132's "2")
-    stack<int> st;  // candidates for nums[j] (132's "3")
-    for (int i = (int)nums.size() - 1; i >= 0; i--) {
-        if (nums[i] < third) return true;
-        while (!st.empty() && st.top() < nums[i]) {
-            third = st.top(); st.pop();
+```rust
+fn find132pattern(nums: &[i32]) -> bool {
+    let mut third = i32::MIN; // candidate for nums[k] (132's "2")
+    let mut st: Vec<i32> = Vec::new(); // candidates for nums[j] (132's "3")
+    for i in (0..nums.len()).rev() {
+        if nums[i] < third { return true; }
+        while !st.is_empty() && *st.last().unwrap() < nums[i] {
+            third = st.pop().unwrap();
         }
         st.push(nums[i]);
     }
-    return false;
+    false
 }
 ```
 

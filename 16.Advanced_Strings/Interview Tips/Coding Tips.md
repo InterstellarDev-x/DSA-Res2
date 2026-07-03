@@ -8,12 +8,10 @@ Eight battle-tested tips for writing correct string-algorithm code under intervi
 
 ### Tip 1 — KMP vs just using `find`
 
-`haystack.find(needle)` already does O(n+m) substring search in C++. Reach for **hand-written KMP** only when: library calls are forbidden, the interviewer asks for the algorithm, you need guaranteed worst-case linear, or you search the *same* pattern across many texts (precompute `lps` once). State the pragmatic answer first, then offer KMP.
+`haystack.find(needle)` already does O(n+m) substring search in Rust. Reach for **hand-written KMP** only when: library calls are forbidden, the interviewer asks for the algorithm, you need guaranteed worst-case linear, or you search the *same* pattern across many texts (precompute `lps` once). State the pragmatic answer first, then offer KMP.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-size_t idx = haystack.find(needle);   // O(n+m), use this unless told otherwise
+```rust
+let idx: Option<usize> = haystack.find(needle); // O(n+m), use this unless told otherwise
 ```
 
 ---
@@ -22,15 +20,22 @@ size_t idx = haystack.find(needle);   // O(n+m), use this unless told otherwise
 
 The prefix function is the spine of this whole topic. Drill this until it is muscle memory:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-vector<int> lps(n);
-int len = 0, i = 1;
-while (i < n) {
-    if (s[i] == s[len]) { lps[i++] = ++len; }
-    else if (len > 0) { len = lps[len - 1]; }   // fall back; do NOT advance i
-    else { lps[i++] = 0; }
+```rust
+let s: Vec<u8> = s.as_bytes().to_vec();
+let mut lps = vec![0usize; n];
+let mut len = 0usize;
+let mut i = 1usize;
+while i < n {
+    if s[i] == s[len] {
+        len += 1;
+        lps[i] = len;
+        i += 1;
+    } else if len > 0 {
+        len = lps[len - 1]; // fall back; do NOT advance i
+    } else {
+        lps[i] = 0;
+        i += 1;
+    }
 }
 ```
 
@@ -42,37 +47,36 @@ The single most common bug is advancing `i` on the fallback branch. On a mismatc
 
 For Longest Palindromic Substring / Palindromic Substrings, **expand-around-center** (O(n²), O(1) space) is the right default — short and obviously correct. Mention **Manacher (O(n))** only if the interviewer explicitly asks for linear time. Implementing Manacher unprompted wastes time and invites bugs.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-int expand(const string& s, int l, int r) {
-    while (l >= 0 && r < (int)s.length() && s[l] == s[r]) { l--; r++; }
-    return r - l - 1;
+```rust
+fn expand(s: &[u8], mut l: i32, mut r: i32) -> i32 {
+    while l >= 0 && (r as usize) < s.len() && s[l as usize] == s[r as usize] {
+        l -= 1;
+        r += 1;
+    }
+    r - l - 1
 }
 ```
 
 ---
 
-### Tip 4 — Rolling hash: always `long long` + prime mod
+### Tip 4 — Rolling hash: always `i64` + prime mod
 
-A polynomial hash overflows 32-bit `int` instantly. Use `long long`, a prime modulus, and reduce after every multiply.
+A polynomial hash overflows 32-bit `i32` instantly. Use `i64`, a prime modulus, and reduce after every multiply.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-const long long MOD = 1000000007LL;
-const long long BASE = 131LL;            // or 31 / 256
-hash = (hash * BASE + s[i]) % MOD;
+```rust
+const MOD: i64 = 1_000_000_007;
+const BASE: i64 = 131; // or 31 / 256
+hash = (hash * BASE + s[i] as i64) % MOD;
 ```
 
 ---
 
 ### Tip 5 — `(x % m + m) % m` for negative remainders
 
-Rolling-hash updates **subtract** the leaving character, which can go negative. C++'s `%` keeps the sign of the dividend, so normalize:
+Rolling-hash updates **subtract** the leaving character, which can go negative. Rust's `%` keeps the sign of the dividend, so normalize:
 
-```cpp
-windowHash = ((windowHash - leaving) % MOD + MOD) % MOD;   // negative-safe
+```rust
+window_hash = ((window_hash - leaving) % MOD + MOD) % MOD; // negative-safe
 ```
 
 Forgetting this gives sporadic wrong answers that pass small tests and fail large ones.
@@ -83,10 +87,10 @@ Forgetting this gives sporadic wrong answers that pass small tests and fail larg
 
 A hash match is **necessary, not sufficient**. Two distinct substrings can share a hash (spurious hit). On every hash match, either confirm the characters or use double hashing.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-if (windowHash == patternHash && text.compare(i, m, pattern) == 0) return i;
+```rust
+if window_hash == pattern_hash && &text[i..i + m] == pattern {
+    return Some(i);
+}
 ```
 
 ---
@@ -101,10 +105,10 @@ if (windowHash == patternHash && text.compare(i, m, pattern) == 0) return i;
 
 `n` odd-length centers (each character) plus `n-1` even-length centers (each gap). When counting or searching palindromes, iterate *both* per index:
 
-```cpp
-for (int i = 0; i < n; i++) {
-    count += expand(s, i, i);       // odd center
-    count += expand(s, i, i + 1);   // even center
+```rust
+for i in 0..n {
+    count += expand(&s, i as i32, i as i32);       // odd center
+    count += expand(&s, i as i32, i as i32 + 1);   // even center
 }
 ```
 

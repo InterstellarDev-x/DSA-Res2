@@ -42,73 +42,72 @@ Both BFS and DFS explore a graph by starting at a source vertex and visiting rea
 
 Most graph problems hand you `n` nodes and a list of edges. Convert that into an **adjacency list** — for each node, a list of its neighbors.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct GraphBuilder;
 
-class GraphBuilder {
-public:
+impl GraphBuilder {
     // Build an undirected adjacency list for n nodes (0-indexed) from edges.
-    static vector<vector<int>> buildUndirected(int n, vector<vector<int>>& edges) {
-        vector<vector<int>> adj(n);
-        for (auto& e : edges) {
-            int u = e[0], v = e[1];
-            adj[u].push_back(v);
-            adj[v].push_back(u); // omit this line for a DIRECTED graph
+    fn build_undirected(n: usize, edges: &[Vec<i32>]) -> Vec<Vec<usize>> {
+        let mut adj = vec![vec![]; n];
+        for e in edges {
+            let u = e[0] as usize;
+            let v = e[1] as usize;
+            adj[u].push(v);
+            adj[v].push(u); // omit this line for a DIRECTED graph
         }
-        return adj;
+        adj
     }
-};
+}
 ```
 
-For a **directed** graph, only add `adj[u].push_back(v)`.
+For a **directed** graph, only add `adj[u].push(v)`.
 
-### `vector<bool> visited` vs `unordered_set<int>`
+### `Vec<bool> visited` vs `HashSet<i32>`
 
 | Structure | Use when | Cost |
 |-----------|----------|------|
-| `vector<bool> visited` | Nodes are integers in a known range `[0, n)` | O(1) access, O(n) space, cache-friendly |
-| `unordered_set<int>` (or `unordered_set<string>`) | Node identifiers are sparse, non-integer, or unknown range (strings, coordinates encoded as keys, generic objects) | O(1) average, hashing overhead |
+| `Vec<bool> visited` | Nodes are integers in a known range `[0, n)` | O(1) access, O(n) space, cache-friendly |
+| `HashSet<i32>` (or `HashSet<String>`) | Node identifiers are sparse, non-integer, or unknown range (strings, coordinates encoded as keys, generic objects) | O(1) average, hashing overhead |
 
-Rule of thumb: if the problem gives you `n` and integer-labeled nodes, use `vector<bool> visited`. If nodes are strings (Word Ladder) or arbitrary objects (Clone Graph), use an `unordered_set` / `unordered_map`.
+Rule of thumb: if the problem gives you `n` and integer-labeled nodes, use `Vec<bool> visited`. If nodes are strings (Word Ladder) or arbitrary objects (Clone Graph), use a `HashSet` / `HashMap`.
 
 ---
 
 ## 3. BFS Template (with level tracking)
 
-The **size-loop** idiom is how you process one full level at a time: snapshot `queue.size()` before the inner loop so newly added nodes (the next level) don't get counted in the current level.
+The **size-loop** idiom is how you process one full level at a time: snapshot `queue.len()` before the inner loop so newly added nodes (the next level) don't get counted in the current level.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-class BFSTemplate {
-public:
-    int bfs(int start, vector<vector<int>>& adj, int n) {
-        vector<bool> visited(n, false);
-        queue<int> q;
+struct BFSTemplate;
 
-        q.push(start);
+impl BFSTemplate {
+    fn bfs(start: usize, adj: &[Vec<usize>], n: usize) -> i32 {
+        let mut visited = vec![false; n];
+        let mut q: VecDeque<usize> = VecDeque::new();
+
+        q.push_back(start);
         visited[start] = true;   // mark visited when ENQUEUED, not when dequeued
-        int level = 0;
+        let mut level = 0;
 
-        while (!q.empty()) {
-            int size = q.size();        // snapshot: number of nodes at this level
-            for (int i = 0; i < size; i++) {
-                int node = q.front(); q.pop();
+        while !q.is_empty() {
+            let size = q.len();        // snapshot: number of nodes at this level
+            for _ in 0..size {
+                let node = q.pop_front().unwrap();
                 // ---- process `node` here (it is at distance `level` from start) ----
-                for (int next : adj[node]) {
-                    if (!visited[next]) {
+                for &next in &adj[node] {
+                    if !visited[next] {
                         visited[next] = true;
-                        q.push(next);
+                        q.push_back(next);
                     }
                 }
             }
-            level++;   // finished an entire level
+            level += 1;   // finished an entire level
         }
-        return level;
+        level
     }
-};
+}
 ```
 
 ---
@@ -117,52 +116,49 @@ public:
 
 ### Recursive DFS
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct DFSRecursive;
 
-class DFSRecursive {
-public:
-    void dfs(int node, vector<vector<int>>& adj, vector<bool>& visited) {
+impl DFSRecursive {
+    fn dfs(node: usize, adj: &[Vec<usize>], visited: &mut Vec<bool>) {
         visited[node] = true;
         // ---- process `node` here ----
-        for (int next : adj[node]) {
-            if (!visited[next]) {
-                dfs(next, adj, visited);
+        for &next in &adj[node] {
+            if !visited[next] {
+                Self::dfs(next, adj, visited);
             }
         }
     }
-};
+}
 ```
 
 ### Iterative DFS (explicit stack)
 
 Equivalent traversal without recursion — safer for very deep graphs (avoids stack overflow).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct DFSIterative;
 
-class DFSIterative {
-public:
-    void dfs(int start, vector<vector<int>>& adj, int n) {
-        vector<bool> visited(n, false);
-        stack<int> stk;
+impl DFSIterative {
+    fn dfs(start: usize, adj: &[Vec<usize>], n: usize) {
+        let mut visited = vec![false; n];
+        let mut stk: Vec<usize> = Vec::new();
         stk.push(start);
 
-        while (!stk.empty()) {
-            int node = stk.top(); stk.pop();
-            if (visited[node]) continue;   // a node can be pushed multiple times
+        while let Some(node) = stk.pop() {
+            if visited[node] {
+                continue;   // a node can be pushed multiple times
+            }
             visited[node] = true;
             // ---- process `node` here ----
-            for (int next : adj[node]) {
-                if (!visited[next]) {
+            for &next in &adj[node] {
+                if !visited[next] {
                     stk.push(next);
                 }
             }
         }
     }
-};
+}
 ```
 
 > Note: in iterative DFS we check `visited` on **pop** (not push) because the same node may be pushed by several neighbors before it is popped. Guarding on pop keeps it correct.
@@ -181,7 +177,7 @@ public:
 | Grid of cells, expand to 4 (or 8) neighbors | **Grid DFS/BFS with `dirs`** |
 | Color nodes / two groups / no two adjacent equal | **Bipartite check (BFS/DFS 2-coloring)** |
 | Reconstruct **all** shortest paths | **BFS to build parent map + DFS backtrack** |
-| Generic node objects, must duplicate structure | **DFS/BFS with `unordered_map<orig,clone>`** |
+| Generic node objects, must duplicate structure | **DFS/BFS with `HashMap<orig,clone>`** |
 
 ---
 
@@ -193,36 +189,33 @@ public:
 
 **Idea:** The matrix `isConnected[i][j] == 1` means cities `i` and `j` are directly connected. A *province* is a connected component. Run DFS from each unvisited city; each DFS launch marks one whole province, so count the launches.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int findCircleNum(vector<vector<int>>& isConnected) {
-        int n = isConnected.size();
-        vector<bool> visited(n, false);
-        int provinces = 0;
+impl Solution {
+    pub fn find_circle_num(is_connected: Vec<Vec<i32>>) -> i32 {
+        let n = is_connected.len();
+        let mut visited = vec![false; n];
+        let mut provinces = 0;
 
-        for (int i = 0; i < n; i++) {
-            if (!visited[i]) {
-                dfs(i, isConnected, visited);
-                provinces++;
+        for i in 0..n {
+            if !visited[i] {
+                Self::dfs(i, &is_connected, &mut visited);
+                provinces += 1;
             }
         }
-        return provinces;
+        provinces
     }
 
-private:
-    void dfs(int city, vector<vector<int>>& isConnected, vector<bool>& visited) {
+    fn dfs(city: usize, is_connected: &[Vec<i32>], visited: &mut Vec<bool>) {
         visited[city] = true;
-        for (int next = 0; next < (int)isConnected.size(); next++) {
-            if (isConnected[city][next] == 1 && !visited[next]) {
-                dfs(next, isConnected, visited);
+        for next in 0..is_connected.len() {
+            if is_connected[city][next] == 1 && !visited[next] {
+                Self::dfs(next, is_connected, visited);
             }
         }
     }
-};
+}
 ```
 
 **Complexity:** Time O(n²) (we scan the full row for every city), Space O(n) for `visited` + recursion stack.
@@ -233,40 +226,39 @@ private:
 
 **Idea:** Treat the grid as a graph where adjacent `'1'` cells are connected. Each time we find an unvisited `'1'`, we flood-fill (DFS) the entire island, sinking it to `'0'`, and increment the island count.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-    int dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
-public:
-    int numIslands(vector<vector<char>>& grid) {
-        int rows = grid.size(), cols = grid[0].size();
-        int count = 0;
+impl Solution {
+    pub fn num_islands(mut grid: Vec<Vec<char>>) -> i32 {
+        let rows = grid.len();
+        let cols = grid[0].len();
+        let mut count = 0;
 
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                if (grid[r][c] == '1') {
-                    dfs(grid, r, c);
-                    count++;
+        for r in 0..rows {
+            for c in 0..cols {
+                if grid[r][c] == '1' {
+                    Self::dfs(&mut grid, r as i32, c as i32);
+                    count += 1;
                 }
             }
         }
-        return count;
+        count
     }
 
-private:
-    void dfs(vector<vector<char>>& grid, int r, int c) {
-        if (r < 0 || r >= (int)grid.size() || c < 0 || c >= (int)grid[0].size()
-                || grid[r][c] != '1') {
+    fn dfs(grid: &mut Vec<Vec<char>>, r: i32, c: i32) {
+        let rows = grid.len() as i32;
+        let cols = grid[0].len() as i32;
+        if r < 0 || r >= rows || c < 0 || c >= cols || grid[r as usize][c as usize] != '1' {
             return;
         }
-        grid[r][c] = '0';                  // sink this land cell
-        for (auto& d : dirs) {
-            dfs(grid, r + d[0], c + d[1]);
+        grid[r as usize][c as usize] = '0';                  // sink this land cell
+        let dirs = [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)];
+        for &(dr, dc) in &dirs {
+            Self::dfs(grid, r + dr, c + dc);
         }
     }
-};
+}
 ```
 
 **Complexity:** Time O(rows × cols) — each cell visited once. Space O(rows × cols) worst-case recursion depth (a grid that is one giant island).
@@ -304,32 +296,32 @@ Scan in row-major order:
 
 **Idea:** Standard flood fill. Starting at `(sr, sc)`, repaint every 4-directionally connected cell that shares the original color with `newColor`. Guard against the case `newColor == originalColor` to avoid infinite recursion.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-    int dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
-public:
-    vector<vector<int>> floodFill(vector<vector<int>>& image, int sr, int sc, int newColor) {
-        int original = image[sr][sc];
-        if (original == newColor) return image;   // nothing to do; avoids infinite loop
-        dfs(image, sr, sc, original, newColor);
-        return image;
+impl Solution {
+    pub fn flood_fill(mut image: Vec<Vec<i32>>, sr: i32, sc: i32, new_color: i32) -> Vec<Vec<i32>> {
+        let original = image[sr as usize][sc as usize];
+        if original == new_color {
+            return image;   // nothing to do; avoids infinite loop
+        }
+        Self::dfs(&mut image, sr, sc, original, new_color);
+        image
     }
 
-private:
-    void dfs(vector<vector<int>>& image, int r, int c, int original, int newColor) {
-        if (r < 0 || r >= (int)image.size() || c < 0 || c >= (int)image[0].size()
-                || image[r][c] != original) {
+    fn dfs(image: &mut Vec<Vec<i32>>, r: i32, c: i32, original: i32, new_color: i32) {
+        let rows = image.len() as i32;
+        let cols = image[0].len() as i32;
+        if r < 0 || r >= rows || c < 0 || c >= cols || image[r as usize][c as usize] != original {
             return;
         }
-        image[r][c] = newColor;
-        for (auto& d : dirs) {
-            dfs(image, r + d[0], c + d[1], original, newColor);
+        image[r as usize][c as usize] = new_color;
+        let dirs = [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)];
+        for &(dr, dc) in &dirs {
+            Self::dfs(image, r + dr, c + dc, original, new_color);
         }
     }
-};
+}
 ```
 
 **Complexity:** Time O(rows × cols), Space O(rows × cols) recursion depth.
@@ -338,53 +330,57 @@ private:
 
 ## 4. Clone Graph — Medium (LC133)
 
-**Idea:** Deep-copy a connected undirected graph. Maintain an `unordered_map<Node*, Node*>` mapping each original node to its clone. During DFS, the first time we see a node we create its clone and recurse on neighbors; if we've seen it before, we return the existing clone (this also breaks cycles).
+**Idea:** Deep-copy a connected undirected graph. Maintain a `HashMap<i32, Rc<RefCell<Node>>>` mapping each original node's value to its clone. During DFS, the first time we see a node we create its clone and recurse on neighbors; if we've seen it before, we return the existing clone (this also breaks cycles).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 // Definition for a Node.
-class Node {
-public:
-    int val;
-    vector<Node*> neighbors;
-    Node() {
-        val = 0;
-        neighbors = {};
-    }
-    Node(int _val) {
-        val = _val;
-        neighbors = {};
-    }
-    Node(int _val, vector<Node*> _neighbors) {
-        val = _val;
-        neighbors = _neighbors;
-    }
-};
+#[derive(Debug)]
+pub struct Node {
+    pub val: i32,
+    pub neighbors: Vec<Option<Rc<RefCell<Node>>>>,
+}
 
-class Solution {
-private:
-    unordered_map<Node*, Node*> visited;
+impl Node {
+    pub fn new(val: i32) -> Self {
+        Node { val, neighbors: vec![] }
+    }
+}
 
-public:
-    Node* cloneGraph(Node* node) {
-        if (node == nullptr) return nullptr;
+struct Solution;
+
+impl Solution {
+    pub fn clone_graph(node: Option<Rc<RefCell<Node>>>) -> Option<Rc<RefCell<Node>>> {
+        let mut visited: HashMap<i32, Rc<RefCell<Node>>> = HashMap::new();
+        Self::dfs(node, &mut visited)
+    }
+
+    fn dfs(
+        node: Option<Rc<RefCell<Node>>>,
+        visited: &mut HashMap<i32, Rc<RefCell<Node>>>,
+    ) -> Option<Rc<RefCell<Node>>> {
+        let node = node?;
+        let val = node.borrow().val;
 
         // If already cloned, return the stored clone (handles cycles).
-        if (visited.count(node)) {
-            return visited[node];
+        if let Some(clone) = visited.get(&val) {
+            return Some(clone.clone());
         }
 
-        Node* clone = new Node(node->val);
-        visited[node] = clone;              // record BEFORE recursing
+        let clone = Rc::new(RefCell::new(Node::new(val)));
+        visited.insert(val, clone.clone());  // record BEFORE recursing
 
-        for (auto& neighbor : node->neighbors) {
-            clone->neighbors.push_back(cloneGraph(neighbor));
+        let neighbors: Vec<_> = node.borrow().neighbors.clone();
+        for neighbor in neighbors {
+            let cloned_neighbor = Self::dfs(neighbor, visited);
+            clone.borrow_mut().neighbors.push(cloned_neighbor);
         }
-        return clone;
+        Some(clone)
     }
-};
+}
 ```
 
 **Complexity:** Time O(V + E), Space O(V) for the map + recursion stack.
@@ -395,48 +391,52 @@ public:
 
 **Idea:** An `'O'` survives only if it is connected to a border `'O'`. So first, from every border `'O'`, DFS and mark all reachable `'O'`s as safe (temporary `'#'`). Then sweep the board: any remaining `'O'` is surrounded → flip to `'X'`; restore `'#'` back to `'O'`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-    int dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
-public:
-    void solve(vector<vector<char>>& board) {
-        if (board.empty() || board[0].empty()) return;
-        int rows = board.size(), cols = board[0].size();
+impl Solution {
+    pub fn solve(board: &mut Vec<Vec<char>>) {
+        if board.is_empty() || board[0].is_empty() {
+            return;
+        }
+        let rows = board.len();
+        let cols = board[0].len();
 
         // 1. Mark border-connected 'O's as safe ('#').
-        for (int r = 0; r < rows; r++) {
-            dfs(board, r, 0);
-            dfs(board, r, cols - 1);
+        for r in 0..rows {
+            Self::dfs(board, r as i32, 0);
+            Self::dfs(board, r as i32, (cols - 1) as i32);
         }
-        for (int c = 0; c < cols; c++) {
-            dfs(board, 0, c);
-            dfs(board, rows - 1, c);
+        for c in 0..cols {
+            Self::dfs(board, 0, c as i32);
+            Self::dfs(board, (rows - 1) as i32, c as i32);
         }
 
         // 2. Flip surrounded 'O' -> 'X', restore safe '#' -> 'O'.
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                if (board[r][c] == 'O') board[r][c] = 'X';
-                else if (board[r][c] == '#') board[r][c] = 'O';
+        for r in 0..rows {
+            for c in 0..cols {
+                if board[r][c] == 'O' {
+                    board[r][c] = 'X';
+                } else if board[r][c] == '#' {
+                    board[r][c] = 'O';
+                }
             }
         }
     }
 
-private:
-    void dfs(vector<vector<char>>& board, int r, int c) {
-        if (r < 0 || r >= (int)board.size() || c < 0 || c >= (int)board[0].size()
-                || board[r][c] != 'O') {
+    fn dfs(board: &mut Vec<Vec<char>>, r: i32, c: i32) {
+        let rows = board.len() as i32;
+        let cols = board[0].len() as i32;
+        if r < 0 || r >= rows || c < 0 || c >= cols || board[r as usize][c as usize] != 'O' {
             return;
         }
-        board[r][c] = '#';                 // safe marker
-        for (auto& d : dirs) {
-            dfs(board, r + d[0], c + d[1]);
+        board[r as usize][c as usize] = '#';                 // safe marker
+        let dirs = [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)];
+        for &(dr, dc) in &dirs {
+            Self::dfs(board, r + dr, c + dc);
         }
     }
-};
+}
 ```
 
 **Complexity:** Time O(rows × cols), Space O(rows × cols) recursion depth.
@@ -447,57 +447,62 @@ private:
 
 **Idea:** Instead of asking which cells flow to *both* oceans (expensive per-cell), reverse the flow: DFS **inland from each ocean's border**, climbing only to cells of **equal-or-greater** height. Cells reachable from the Pacific border AND the Atlantic border are the answer.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-    int dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
-public:
-    vector<vector<int>> pacificAtlantic(vector<vector<int>>& heights) {
-        vector<vector<int>> result;
-        if (heights.empty() || heights[0].empty()) return result;
+impl Solution {
+    pub fn pacific_atlantic(heights: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        let mut result = Vec::new();
+        if heights.is_empty() || heights[0].is_empty() {
+            return result;
+        }
 
-        int rows = heights.size(), cols = heights[0].size();
-        vector<vector<bool>> pacific(rows, vector<bool>(cols, false));
-        vector<vector<bool>> atlantic(rows, vector<bool>(cols, false));
+        let rows = heights.len();
+        let cols = heights[0].len();
+        let mut pacific = vec![vec![false; cols]; rows];
+        let mut atlantic = vec![vec![false; cols]; rows];
 
         // Pacific touches top row and left column.
         // Atlantic touches bottom row and right column.
-        for (int r = 0; r < rows; r++) {
-            dfs(heights, r, 0, pacific);
-            dfs(heights, r, cols - 1, atlantic);
+        for r in 0..rows {
+            Self::dfs(&heights, r as i32, 0, &mut pacific);
+            Self::dfs(&heights, r as i32, (cols - 1) as i32, &mut atlantic);
         }
-        for (int c = 0; c < cols; c++) {
-            dfs(heights, 0, c, pacific);
-            dfs(heights, rows - 1, c, atlantic);
+        for c in 0..cols {
+            Self::dfs(&heights, 0, c as i32, &mut pacific);
+            Self::dfs(&heights, (rows - 1) as i32, c as i32, &mut atlantic);
         }
 
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                if (pacific[r][c] && atlantic[r][c]) {
-                    result.push_back({r, c});
+        for r in 0..rows {
+            for c in 0..cols {
+                if pacific[r][c] && atlantic[r][c] {
+                    result.push(vec![r as i32, c as i32]);
                 }
             }
         }
-        return result;
+        result
     }
 
-private:
-    void dfs(vector<vector<int>>& heights, int r, int c, vector<vector<bool>>& ocean) {
-        ocean[r][c] = true;
-        for (auto& d : dirs) {
-            int nr = r + d[0], nc = c + d[1];
-            if (nr < 0 || nr >= (int)heights.size() || nc < 0 || nc >= (int)heights[0].size()) {
+    fn dfs(heights: &[Vec<i32>], r: i32, c: i32, ocean: &mut Vec<Vec<bool>>) {
+        let rows = heights.len() as i32;
+        let cols = heights[0].len() as i32;
+        ocean[r as usize][c as usize] = true;
+        let dirs = [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)];
+        for &(dr, dc) in &dirs {
+            let nr = r + dr;
+            let nc = c + dc;
+            if nr < 0 || nr >= rows || nc < 0 || nc >= cols {
                 continue;
             }
             // climb only to equal-or-higher cells (reverse of water flow)
-            if (!ocean[nr][nc] && heights[nr][nc] >= heights[r][c]) {
-                dfs(heights, nr, nc, ocean);
+            if !ocean[nr as usize][nc as usize]
+                && heights[nr as usize][nc as usize] >= heights[r as usize][c as usize]
+            {
+                Self::dfs(heights, nr, nc, ocean);
             }
         }
     }
-};
+}
 ```
 
 **Complexity:** Time O(rows × cols), Space O(rows × cols) for the two visited matrices.
@@ -506,40 +511,42 @@ private:
 
 ## 7. Is Graph Bipartite — Medium (LC785)
 
-**Idea:** A graph is bipartite iff it is 2-colorable. Use `vector<int> color` initialized to `-1` (uncolored). For each uncolored node, BFS and color neighbors the opposite color. If we ever find a neighbor already colored the **same** as the current node, it's not bipartite.
+**Idea:** A graph is bipartite iff it is 2-colorable. Use `Vec<i32> color` initialized to `-1` (uncolored). For each uncolored node, BFS and color neighbors the opposite color. If we ever find a neighbor already colored the **same** as the current node, it's not bipartite.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-class Solution {
-public:
-    bool isBipartite(vector<vector<int>>& graph) {
-        int n = graph.size();
-        vector<int> color(n, -1);              // -1 = uncolored
+struct Solution;
 
-        for (int start = 0; start < n; start++) {
-            if (color[start] != -1) continue;     // already handled component
+impl Solution {
+    pub fn is_bipartite(graph: Vec<Vec<i32>>) -> bool {
+        let n = graph.len();
+        let mut color = vec![-1i32; n];              // -1 = uncolored
 
-            queue<int> q;
-            q.push(start);
+        for start in 0..n {
+            if color[start] != -1 {
+                continue;     // already handled component
+            }
+
+            let mut q: VecDeque<usize> = VecDeque::new();
+            q.push_back(start);
             color[start] = 0;
 
-            while (!q.empty()) {
-                int node = q.front(); q.pop();
-                for (int next : graph[node]) {
-                    if (color[next] == -1) {
+            while let Some(node) = q.pop_front() {
+                for &next in &graph[node] {
+                    let next = next as usize;
+                    if color[next] == -1 {
                         color[next] = 1 - color[node];   // opposite color
-                        q.push(next);
-                    } else if (color[next] == color[node]) {
+                        q.push_back(next);
+                    } else if color[next] == color[node] {
                         return false;                    // conflict
                     }
                 }
             }
         }
-        return true;
+        true
     }
-};
+}
 ```
 
 **Complexity:** Time O(V + E), Space O(V).
@@ -550,57 +557,60 @@ public:
 
 **Idea:** Each word is a node; two words are connected if they differ by exactly one letter. We want the **shortest transformation length** → BFS. To find neighbors efficiently, pre-build buckets keyed by wildcard patterns (e.g., `h*t`); all words sharing a pattern are one-edit neighbors.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, HashSet, VecDeque};
 
-class Solution {
-public:
-    int ladderLength(string beginWord, string endWord, vector<string>& wordList) {
-        unordered_set<string> dict(wordList.begin(), wordList.end());
-        if (!dict.count(endWord)) return 0;
+struct Solution;
 
-        int L = beginWord.length();
+impl Solution {
+    pub fn ladder_length(begin_word: String, end_word: String, word_list: Vec<String>) -> i32 {
+        let dict: HashSet<String> = word_list.into_iter().collect();
+        if !dict.contains(&end_word) {
+            return 0;
+        }
+
+        let l = begin_word.len();
 
         // Build wildcard buckets: "h*t" -> [hot, hat, ...]
-        unordered_map<string, vector<string>> patterns;
-        for (auto& word : dict) {
-            for (int i = 0; i < L; i++) {
-                string key = word.substr(0, i) + "*" + word.substr(i + 1);
-                patterns[key].push_back(word);
+        let mut patterns: HashMap<String, Vec<String>> = HashMap::new();
+        for word in &dict {
+            for i in 0..l {
+                let key = format!("{}*{}", &word[..i], &word[i+1..]);
+                patterns.entry(key).or_default().push(word.clone());
             }
         }
 
-        queue<string> q;
-        unordered_set<string> visited;
-        q.push(beginWord);
-        visited.insert(beginWord);
-        int level = 1;                        // beginWord counts as the first word
+        let mut q: VecDeque<String> = VecDeque::new();
+        let mut visited: HashSet<String> = HashSet::new();
+        q.push_back(begin_word.clone());
+        visited.insert(begin_word.clone());
+        let mut level = 1;                        // beginWord counts as the first word
 
-        while (!q.empty()) {
-            int size = q.size();
-            for (int i = 0; i < size; i++) {
-                string word = q.front(); q.pop();
-                if (word == endWord) return level;
+        while !q.is_empty() {
+            let size = q.len();
+            for _ in 0..size {
+                let word = q.pop_front().unwrap();
+                if word == end_word {
+                    return level;
+                }
 
-                for (int j = 0; j < L; j++) {
-                    string key = word.substr(0, j) + "*" + word.substr(j + 1);
-                    auto it = patterns.find(key);
-                    if (it != patterns.end()) {
-                        for (auto& neighbor : it->second) {
-                            if (!visited.count(neighbor)) {
-                                visited.insert(neighbor);
-                                q.push(neighbor);
+                for j in 0..l {
+                    let key = format!("{}*{}", &word[..j], &word[j+1..]);
+                    if let Some(neighbors) = patterns.get(&key).cloned() {
+                        for neighbor in neighbors {
+                            if !visited.contains(&neighbor) {
+                                visited.insert(neighbor.clone());
+                                q.push_back(neighbor);
                             }
                         }
                     }
                 }
             }
-            level++;
+            level += 1;
         }
-        return 0;
+        0
     }
-};
+}
 ```
 
 **Complexity:** Time O(N × L²) — N words, L word length; building each pattern is O(L) and there are L patterns per word, and substring is O(L). Space O(N × L²) for the bucket map.
@@ -647,82 +657,96 @@ Path: `hit → hot → dot → dog → cog` (or `hit → hot → lot → log →
 
 **Idea:** Now we must return **all** shortest transformation sequences. Do BFS level by level recording, for each word, the set of predecessors (`parents`) that first reached it at the shortest distance. Stop BFS at the level where `endWord` appears. Then DFS-backtrack from `endWord` through the parent map to reconstruct every shortest path.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, HashSet};
 
-class Solution {
-public:
-    vector<vector<string>> findLadders(string beginWord, string endWord, vector<string>& wordList) {
-        vector<vector<string>> result;
-        unordered_set<string> dict(wordList.begin(), wordList.end());
-        if (!dict.count(endWord)) return result;
+struct Solution;
 
-        int L = beginWord.length();
+impl Solution {
+    pub fn find_ladders(
+        begin_word: String,
+        end_word: String,
+        word_list: Vec<String>,
+    ) -> Vec<Vec<String>> {
+        let mut result: Vec<Vec<String>> = Vec::new();
+        let mut dict: HashSet<String> = word_list.into_iter().collect();
+        if !dict.contains(&end_word) {
+            return result;
+        }
+
+        let l = begin_word.len();
 
         // parents[w] = words that reached w on the shortest path
-        unordered_map<string, vector<string>> parents;
-        unordered_set<string> current;
-        current.insert(beginWord);
-        unordered_set<string> visited;
-        visited.insert(beginWord);
-        bool found = false;
+        let mut parents: HashMap<String, Vec<String>> = HashMap::new();
+        let mut current: HashSet<String> = HashSet::new();
+        current.insert(begin_word.clone());
+        let mut visited: HashSet<String> = HashSet::new();
+        visited.insert(begin_word.clone());
+        let mut found = false;
 
-        while (!current.empty() && !found) {
+        while !current.is_empty() && !found {
             // Remove this level's words from dict so we don't revisit earlier levels.
-            for (auto& w : current) dict.erase(w);
-            unordered_set<string> next;
+            for w in &current {
+                dict.remove(w);
+            }
+            let mut next: HashSet<String> = HashSet::new();
 
-            for (auto& word : current) {
-                string chars = word;
-                for (int i = 0; i < L; i++) {
-                    char old = chars[i];
-                    for (char c = 'a'; c <= 'z'; c++) {
-                        if (c == old) continue;
-                        chars[i] = c;
-                        string cand = chars;
-                        if (dict.count(cand)) {
-                            if (!visited.count(cand)) {      // first time at this BFS depth
-                                visited.insert(cand);
-                                next.insert(cand);
+            for word in &current {
+                for i in 0..l {
+                    let old = word.as_bytes()[i] as char;
+                    for c in 'a'..='z' {
+                        if c == old {
+                            continue;
+                        }
+                        let cand = format!("{}{}{}", &word[..i], c, &word[i+1..]);
+                        if dict.contains(&cand) {
+                            if !visited.contains(&cand) {      // first time at this BFS depth
+                                visited.insert(cand.clone());
+                                next.insert(cand.clone());
                             }
                             // record predecessor regardless (same level reach)
-                            if (next.count(cand) || cand == endWord) {
-                                parents[cand].push_back(word);
+                            if next.contains(&cand) || cand == end_word {
+                                parents.entry(cand.clone()).or_default().push(word.clone());
                             }
-                            if (cand == endWord) found = true;
+                            if cand == end_word {
+                                found = true;
+                            }
                         }
                     }
-                    chars[i] = old;
                 }
             }
             current = next;
         }
 
-        if (found) {
-            vector<string> path = {endWord};
-            backtrack(endWord, beginWord, parents, path, result);
+        if found {
+            let mut path = vec![end_word.clone()];
+            Self::backtrack(&end_word, &begin_word, &parents, &mut path, &mut result);
         }
-        return result;
+        result
     }
 
-private:
-    void backtrack(string word, string& beginWord,
-                   unordered_map<string, vector<string>>& parents,
-                   vector<string>& path, vector<vector<string>>& result) {
-        if (word == beginWord) {
-            result.push_back(vector<string>(path.rbegin(), path.rend()));
+    fn backtrack(
+        word: &str,
+        begin_word: &str,
+        parents: &HashMap<String, Vec<String>>,
+        path: &mut Vec<String>,
+        result: &mut Vec<Vec<String>>,
+    ) {
+        if word == begin_word {
+            let mut reversed = path.clone();
+            reversed.reverse();
+            result.push(reversed);
             return;
         }
-        auto it = parents.find(word);
-        if (it == parents.end()) return;
-        for (auto& parent : it->second) {
-            path.push_back(parent);
-            backtrack(parent, beginWord, parents, path, result);
-            path.pop_back();
+        if let Some(preds) = parents.get(word).cloned() {
+            for parent in preds {
+                path.push(parent.clone());
+                Self::backtrack(&parent, begin_word, parents, path, result);
+                path.pop();
+            }
         }
     }
-};
+}
 ```
 
 **Complexity:** Time O(N × L × 26 + P) where P is the cost of enumerating all shortest paths; Space O(N × L) for the parent map plus output.
@@ -733,58 +757,66 @@ private:
 
 **Idea:** Each 4-digit state is a node; turning one wheel one notch (up or down, with wraparound 0↔9) gives 8 neighbors. We want the **minimum number of moves** from `"0000"` to `target` → BFS. Treat each deadend as already-visited so BFS never expands it.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashSet, VecDeque};
 
-class Solution {
-public:
-    int openLock(vector<string>& deadends, string target) {
-        unordered_set<string> dead(deadends.begin(), deadends.end());
-        if (dead.count("0000")) return -1;
-        if (target == "0000") return 0;
+struct Solution;
 
-        unordered_set<string> visited(dead);   // deadends count as visited
-        queue<string> q;
-        q.push("0000");
-        visited.insert("0000");
-        int moves = 0;
+impl Solution {
+    pub fn open_lock(deadends: Vec<String>, target: String) -> i32 {
+        let dead: HashSet<String> = deadends.into_iter().collect();
+        if dead.contains("0000") {
+            return -1;
+        }
+        if target == "0000" {
+            return 0;
+        }
 
-        while (!q.empty()) {
-            int size = q.size();
-            for (int i = 0; i < size; i++) {
-                string state = q.front(); q.pop();
-                if (state == target) return moves;
+        let mut visited: HashSet<String> = dead.clone();   // deadends count as visited
+        let mut q: VecDeque<String> = VecDeque::new();
+        q.push_back("0000".to_string());
+        visited.insert("0000".to_string());
+        let mut moves = 0;
 
-                for (auto& next : neighbors(state)) {
-                    if (!visited.count(next)) {
-                        visited.insert(next);
-                        q.push(next);
+        while !q.is_empty() {
+            let size = q.len();
+            for _ in 0..size {
+                let state = q.pop_front().unwrap();
+                if state == target {
+                    return moves;
+                }
+
+                for next in Self::neighbors(&state) {
+                    if !visited.contains(&next) {
+                        visited.insert(next.clone());
+                        q.push_back(next);
                     }
                 }
             }
-            moves++;
+            moves += 1;
         }
-        return -1;
+        -1
     }
 
-private:
-    vector<string> neighbors(string state) {
-        vector<string> res;
-        for (int i = 0; i < 4; i++) {
-            char old = state[i];
+    fn neighbors(state: &str) -> Vec<String> {
+        let mut res = Vec::new();
+        let bytes = state.as_bytes();
+        for i in 0..4 {
+            let old = bytes[i];
 
-            state[i] = (old == '9') ? '0' : (char)(old + 1);   // turn up
-            res.push_back(state);
+            let up = if old == b'9' { b'0' } else { old + 1 };   // turn up
+            let mut s = bytes.to_vec();
+            s[i] = up;
+            res.push(String::from_utf8(s).unwrap());
 
-            state[i] = (old == '0') ? '9' : (char)(old - 1);   // turn down
-            res.push_back(state);
-
-            state[i] = old;
+            let down = if old == b'0' { b'9' } else { old - 1 };   // turn down
+            let mut s = bytes.to_vec();
+            s[i] = down;
+            res.push(String::from_utf8(s).unwrap());
         }
-        return res;
+        res
     }
-};
+}
 ```
 
 **Complexity:** Time O(10⁴ × 8) ≈ O(N) over the bounded state space (10000 states, 8 neighbors each), Space O(10⁴) for the visited set.

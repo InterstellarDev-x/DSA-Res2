@@ -9,14 +9,14 @@
 
 `n & (n-1)` clears the **lowest set bit** of n. Iterate until n = 0, counting iterations = popcount.
 
-```cpp
-int hammingWeight(int n) {
-    int count = 0;
-    while (n != 0) {
-        n &= (n - 1); // clear lowest set bit
-        count++;
+```rust
+fn hamming_weight(mut n: u32) -> i32 {
+    let mut count = 0;
+    while n != 0 {
+        n &= n - 1; // clear lowest set bit
+        count += 1;
     }
-    return count;
+    count
 }
 ```
 
@@ -29,15 +29,15 @@ int hammingWeight(int n) {
 
 ---
 
-## C++ Built-in popcount
+## Rust Built-in popcount
 
-```cpp
-__builtin_popcount(n);              // number of 1-bits in int n
-__builtin_popcountll(n);            // for long long
-__builtin_clz(n);                   // leading zeros
-__builtin_ctz(n);                   // trailing zeros = position of lowest set bit
-(1 << (31 - __builtin_clz(n)));     // keeps only the highest set bit
-(n & (-n));                          // keeps only the lowest set bit
+```rust
+n.count_ones();                      // number of 1-bits in u32 n
+n.count_ones();                      // for u64 (same method, different type)
+n.leading_zeros();                   // leading zeros
+n.trailing_zeros();                  // trailing zeros = position of lowest set bit
+1u32 << (31 - n.leading_zeros());    // keeps only the highest set bit
+(n & n.wrapping_neg());              // keeps only the lowest set bit
 ```
 
 ---
@@ -46,27 +46,25 @@ __builtin_ctz(n);                   // trailing zeros = position of lowest set b
 
 Return array where `result[i]` = number of 1 bits in i, for all i in [0, n].
 
-**Naive:** O(n log n) — call `hammingWeight` for each.
+**Naive:** O(n log n) — call `hamming_weight` for each.
 
 **DP recurrence: O(n) time, O(n) space**
 
 Key insight: `bits(n) = bits(n >> 1) + (n & 1)` — right-shift removes the last bit; `n & 1` adds it back if it was 1.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> countBits(int n) {
-    vector<int> dp(n + 1, 0);
-    for (int i = 1; i <= n; i++) {
-        dp[i] = dp[i >> 1] + (i & 1);
+```rust
+fn count_bits(n: i32) -> Vec<i32> {
+    let n = n as usize;
+    let mut dp = vec![0i32; n + 1];
+    for i in 1..=n {
+        dp[i] = dp[i >> 1] + (i & 1) as i32;
     }
-    return dp;
+    dp
 }
 ```
 
 **Alternative DP using `n & (n-1)`:**
-```cpp
+```rust
 dp[i] = dp[i & (i - 1)] + 1; // i has one more bit than i-with-lowest-cleared
 ```
 
@@ -76,9 +74,9 @@ dp[i] = dp[i & (i - 1)] + 1; // i has one more bit than i-with-lowest-cleared
 
 Number of bit positions where two integers differ = popcount of their XOR.
 
-```cpp
-int hammingDistance(int x, int y) {
-    return __builtin_popcount(x ^ y);
+```rust
+fn hamming_distance(x: i32, y: i32) -> i32 {
+    (x ^ y).count_ones() as i32
 }
 ```
 
@@ -90,18 +88,15 @@ Sum of hamming distances between all pairs in an array. Naive O(n²) is too slow
 
 **Key insight:** Consider each bit position independently. If `k` numbers have bit `i` set and `n-k` do not, that bit contributes `k × (n-k)` to the total hamming distance.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int totalHammingDistance(vector<int>& nums) {
-    int total = 0, n = nums.size();
-    for (int bit = 0; bit < 32; bit++) {
-        int ones = 0;
-        for (auto& num : nums) ones += (num >> bit) & 1;
+```rust
+fn total_hamming_distance(nums: &Vec<i32>) -> i32 {
+    let mut total = 0i32;
+    let n = nums.len() as i32;
+    for bit in 0..32 {
+        let ones: i32 = nums.iter().map(|&num| (num >> bit) & 1).sum();
         total += ones * (n - ones); // pairs where this bit differs
     }
-    return total;
+    total
 }
 ```
 
@@ -113,9 +108,10 @@ int totalHammingDistance(vector<int>& nums) {
 
 At each step: if even, divide by 2 (right shift); if odd, subtract 1 (clear last bit).
 
-```cpp
-int numberOfSteps(int num) {
-    return __builtin_popcount(num) + (32 - __builtin_clz(num)) - 1;
+```rust
+fn number_of_steps(num: i32) -> i32 {
+    let num = num as u32;
+    num.count_ones() as i32 + (32 - num.leading_zeros()) as i32 - 1
     // = (number of 1-bits) + (bit-length - 1)
     // = ones take 1 step each to subtract; zeros take 1 step each to shift
 }
@@ -146,7 +142,7 @@ int numberOfSteps(int num) {
 | Problem | Time | Space |
 |---------|------|-------|
 | Hamming Weight (Kernighan) | O(popcount) | O(1) |
-| Hamming Weight (C++ built-in) | O(1) | O(1) |
+| Hamming Weight (Rust built-in) | O(1) | O(1) |
 | Counting Bits 0..n (DP) | O(n) | O(n) |
 | Hamming Distance | O(1) | O(1) |
 | Total Hamming Distance | O(32n) = O(n) | O(1) |

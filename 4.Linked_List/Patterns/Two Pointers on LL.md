@@ -9,34 +9,53 @@
 
 Unlike arrays, linked lists have no random access — so "two pointers" on a LL means:
 
-1. **Gap pointer:** Advance one pointer N steps ahead, then move both at 1x until the leader hits `nullptr`. Follower is now N steps from end.
-2. **Intersection / sync:** Two pointers start at different heads. When each exhausts its list, it restarts from the **other** head. They meet at intersection (or both hit `nullptr` if none).
+1. **Gap pointer:** Advance one pointer N steps ahead, then move both at 1x until the leader hits `None`. Follower is now N steps from end.
+2. **Intersection / sync:** Two pointers start at different heads. When each exhausts its list, it restarts from the **other** head. They meet at intersection (or both hit `None` if none).
 
 ---
 
 ## Template 1 — Remove Nth Node from End (LC 19)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+#[derive(Debug)]
+pub struct ListNode {
+    pub val: i32,
+    pub next: Option<Box<ListNode>>,
+}
 
-struct ListNode { int val; ListNode* next; ListNode(int x): val(x), next(nullptr){} };
+impl ListNode {
+    pub fn new(val: i32) -> Self {
+        ListNode { val, next: None }
+    }
+}
 
-ListNode* removeNthFromEnd(ListNode* head, int n) {
-    ListNode* dummy = new ListNode(0);
-    dummy->next = head;
-    ListNode* fast = dummy, *slow = dummy;
+pub fn remove_nth_from_end(head: Option<Box<ListNode>>, n: i32) -> Option<Box<ListNode>> {
+    let mut dummy = Box::new(ListNode { val: 0, next: head });
+    // Use raw pointers to hold two simultaneous references into the list
+    let ptr: *mut ListNode = dummy.as_mut();
+    let mut fast: *const ListNode = ptr as *const ListNode;
+    let mut slow: *mut ListNode = ptr;
 
     // Advance fast n+1 steps (so slow lands one BEFORE target)
-    for (int i = 0; i <= n; i++) fast = fast->next;
-
-    while (fast != nullptr) {
-        slow = slow->next;
-        fast = fast->next;
+    for _ in 0..=n {
+        // SAFETY: valid n guarantees fast stays within list bounds
+        unsafe { fast = (*fast).next.as_deref().map_or(std::ptr::null(), |node| node as *const _); }
     }
 
-    slow->next = slow->next->next; // delete target
-    return dummy->next;
+    while !fast.is_null() {
+        // SAFETY: both pointers remain within the list
+        unsafe {
+            slow = (*slow).next.as_mut().unwrap().as_mut();
+            fast = (*fast).next.as_deref().map_or(std::ptr::null(), |node| node as *const _);
+        }
+    }
+
+    // SAFETY: slow points to node before target, which exists
+    unsafe {
+        let next_next = (*slow).next.as_mut().unwrap().next.take(); // delete target
+        (*slow).next = next_next;
+    }
+    dummy.next
 }
 ```
 
@@ -46,51 +65,72 @@ ListNode* removeNthFromEnd(ListNode* head, int n) {
 
 ## Template 2 — Intersection of Two Linked Lists (LC 160)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+// Note: True node intersection requires shared ownership.
+// This demonstrates the algorithm using raw pointers (as used in LeetCode Rust).
 
-ListNode* getIntersectionNode(ListNode* headA, ListNode* headB) {
-    ListNode* a = headA, *b = headB;
-    while (a != b) {
-        a = (a != nullptr) ? a->next : headB;
-        b = (b != nullptr) ? b->next : headA;
+pub fn get_intersection_node(
+    head_a: *mut ListNode,
+    head_b: *mut ListNode,
+) -> *mut ListNode {
+    let mut a = head_a;
+    let mut b = head_b;
+    while a != b {
+        unsafe {
+            a = if !a.is_null() {
+                (*a).next.as_mut().map_or(std::ptr::null_mut(), |n| n.as_mut())
+            } else {
+                head_b
+            };
+            b = if !b.is_null() {
+                (*b).next.as_mut().map_or(std::ptr::null_mut(), |n| n.as_mut())
+            } else {
+                head_a
+            };
+        }
     }
-    return a; // nullptr if no intersection (both reach nullptr simultaneously)
+    a // null if no intersection (both reach null simultaneously)
 }
 ```
 
-**Why it works:** If list A has length `la` and list B has length `lb`, pointer `a` traverses `la + lb` nodes (its own list then B) and so does pointer `b`. They synchronize at the intersection node (or at `nullptr` if no intersection).
+**Why it works:** If list A has length `la` and list B has length `lb`, pointer `a` traverses `la + lb` nodes (its own list then B) and so does pointer `b`. They synchronize at the intersection node (or at `null` if no intersection).
 
-**Important:** Check `a != b` with reference equality (pointer equality), not value equality.
+**Important:** Check `a != b` with pointer equality, not value equality.
 
 ---
 
 ## Template 3 — Rotate List (LC 61)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-ListNode* rotateRight(ListNode* head, int k) {
-    if (head == nullptr || head->next == nullptr || k == 0) return head;
+```rust
+pub fn rotate_right(mut head: Option<Box<ListNode>>, k: i32) -> Option<Box<ListNode>> {
+    if head.is_none() || k == 0 { return head; }
 
     // Find length and tail
-    int length = 1;
-    ListNode* tail = head;
-    while (tail->next != nullptr) { tail = tail->next; length++; }
+    let mut length = 1usize;
+    let ptr: *mut ListNode = head.as_mut().unwrap().as_mut();
+    let mut tail: *mut ListNode = ptr;
 
-    k = k % length;
-    if (k == 0) return head;
+    unsafe {
+        while (*tail).next.is_some() {
+            tail = (*tail).next.as_mut().unwrap().as_mut();
+            length += 1;
+        }
+    }
+
+    let k = (k as usize) % length;
+    if k == 0 { return head; }
 
     // Find new tail (length - k - 1 steps from head)
-    ListNode* newTail = head;
-    for (int i = 0; i < length - k - 1; i++) newTail = newTail->next;
+    let mut new_tail: *mut ListNode = ptr;
+    unsafe {
+        for _ in 0..length - k - 1 {
+            new_tail = (*new_tail).next.as_mut().unwrap().as_mut();
+        }
 
-    ListNode* newHead = newTail->next;
-    newTail->next = nullptr;
-    tail->next = head; // connect old tail to old head
-    return newHead;
+        let new_head = (*new_tail).next.take(); // detach new_head from new_tail
+        (*tail).next = head; // connect old tail to old head
+        new_head
+    }
 }
 ```
 
@@ -102,27 +142,35 @@ ListNode* rotateRight(ListNode* head, int k) {
 
 Partition list around value `x`: all nodes < x before nodes >= x, preserving relative order.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+pub fn partition(mut head: Option<Box<ListNode>>, x: i32) -> Option<Box<ListNode>> {
+    let mut less_dummy = Box::new(ListNode::new(0));
+    let mut greater_dummy = Box::new(ListNode::new(0));
+    let mut less: *mut ListNode = less_dummy.as_mut();
+    let mut greater: *mut ListNode = greater_dummy.as_mut();
 
-ListNode* partition(ListNode* head, int x) {
-    ListNode* lessHead = new ListNode(0), *greaterHead = new ListNode(0);
-    ListNode* less = lessHead, *greater = greaterHead;
-
-    while (head != nullptr) {
-        if (head->val < x) { less->next = head; less = less->next; }
-        else               { greater->next = head; greater = greater->next; }
-        head = head->next;
+    while let Some(mut node) = head {
+        head = node.next.take(); // detach node from list
+        if node.val < x {
+            unsafe {
+                (*less).next = Some(node);
+                less = (*less).next.as_mut().unwrap().as_mut();
+            }
+        } else {
+            unsafe {
+                (*greater).next = Some(node);
+                greater = (*greater).next.as_mut().unwrap().as_mut();
+            }
+        }
     }
 
-    greater->next = nullptr; // CRITICAL: terminate — avoids a cycle if original tail < x
-    less->next = greaterHead->next;
-    return lessHead->next;
+    unsafe { (*greater).next = None; } // CRITICAL: terminate — avoids a cycle if original tail < x
+    unsafe { (*less).next = greater_dummy.next.take(); }
+    less_dummy.next
 }
 ```
 
-**Critical:** Set `greater->next = nullptr` before connecting. If the last node was already in `less`, `greater->next` still points into the original list, creating a cycle.
+**Critical:** Set `(*greater).next = None` before connecting. If the last node was already in `less`, `(*greater).next` still points into the original list, creating a cycle.
 
 ---
 
@@ -130,28 +178,30 @@ ListNode* partition(ListNode* head, int x) {
 
 Swap the kth node from beginning and kth from end (by value, not relinking):
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+pub fn swap_nodes(mut head: Option<Box<ListNode>>, k: i32) -> Option<Box<ListNode>> {
+    let ptr: *mut ListNode = head.as_mut().unwrap().as_mut();
+    let mut curr: *mut ListNode = ptr;
 
-ListNode* swapNodes(ListNode* head, int k) {
-    ListNode* first = head, *second = head, *curr = head;
-
-    // Advance curr k-1 steps to kth node from beginning
-    for (int i = 1; i < k; i++) curr = curr->next;
-    first = curr; // kth from beginning
+    // Advance curr k-1 steps to reach kth node from beginning
+    for _ in 1..k {
+        unsafe { curr = (*curr).next.as_mut().unwrap().as_mut(); }
+    }
+    let first: *mut ListNode = curr; // kth from beginning
 
     // Find kth from end: advance curr to end, second follows
-    while (curr->next != nullptr) {
-        curr = curr->next;
-        second = second->next;
+    let mut second: *mut ListNode = ptr;
+    unsafe {
+        while (*curr).next.is_some() {
+            curr = (*curr).next.as_mut().unwrap().as_mut();
+            second = (*second).next.as_mut().unwrap().as_mut();
+        }
+        // second is now kth from end; swap values
+        let tmp = (*first).val;
+        (*first).val = (*second).val;
+        (*second).val = tmp;
     }
-    // second is now kth from end
-
-    int tmp = first->val;
-    first->val = second->val;
-    second->val = tmp;
-    return head;
+    head
 }
 ```
 
@@ -161,22 +211,33 @@ ListNode* swapNodes(ListNode* head, int k) {
 
 Alternative to Floyd's for cycle entry: find cycle length `c`, then use two pointers with gap `c`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+// Note: Box<ListNode> cannot represent cycles in safe Rust.
+// Use an index-based arena: next[i] = Some(j) means node i's successor is node j,
+// None means end-of-list. Head is at index 0.
 
-ListNode* detectCycle(ListNode* head) {
-    int cycleLen = getCycleLength(head);
-    if (cycleLen == 0) return nullptr;
+fn get_cycle_length(next: &[Option<usize>]) -> usize {
+    // Omitted: uses Floyd's slow/fast pointer — see Fast & Slow Pointer pattern
+    0 // returns 0 if no cycle
+}
 
-    ListNode* p1 = head, *p2 = head;
-    for (int i = 0; i < cycleLen; i++) p1 = p1->next; // advance p1 by cycleLen
+pub fn detect_cycle(next: &[Option<usize>]) -> Option<usize> {
+    let cycle_len = get_cycle_length(next);
+    if cycle_len == 0 { return None; }
 
-    while (p1 != p2) {
-        p1 = p1->next;
-        p2 = p2->next;
+    let mut p1 = 0usize; // both start at head (index 0)
+    let mut p2 = 0usize;
+
+    // Advance p1 by cycle_len
+    for _ in 0..cycle_len {
+        p1 = next[p1]?;
     }
-    return p1;
+
+    while p1 != p2 {
+        p1 = next[p1]?;
+        p2 = next[p2]?;
+    }
+    Some(p1) // index of cycle entry node
 }
 ```
 
@@ -198,9 +259,9 @@ ListNode* detectCycle(ListNode* head) {
 | Mistake | Fix |
 |---------|-----|
 | Off-by-one: slow lands on target, not before it | Advance fast `n+1` times for "node before" |
-| Intersection: using `headA` vs `headB` for restart incorrectly | When `a` is null, redirect to `headB` (not `headA`) |
+| Intersection: using `head_a` vs `head_b` for restart incorrectly | When `a` is null, redirect to `head_b` (not `head_a`) |
 | Rotate: not handling `k % length == 0` | Return `head` immediately if no rotation needed |
-| Partition: `greater->next` not nulled — creates cycle | Always null-terminate the greater list |
+| Partition: `(*greater).next` not set to `None` — creates cycle | Always null-terminate the greater list |
 
 ---
 

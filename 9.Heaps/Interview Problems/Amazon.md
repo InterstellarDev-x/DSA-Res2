@@ -11,50 +11,61 @@
 ### Two Approaches
 
 **Approach 1: Min-heap of size k — O(n log k)**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, BinaryHeap};
+use std::cmp::Reverse;
 
-vector<int> topKFrequent(vector<int>& nums, int k) {
-    unordered_map<int,int> freq;
-    for (int n : nums) freq[n]++;
-
-    // min-heap by frequency: pair<freq, num>
-    priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> minHeap;
-
-    for (auto& [num, f] : freq) {
-        minHeap.push({f, num});
-        if ((int)minHeap.size() > k) minHeap.pop();
+fn top_k_frequent(nums: Vec<i32>, k: usize) -> Vec<i32> {
+    let mut freq: HashMap<i32, i32> = HashMap::new();
+    for &n in &nums {
+        *freq.entry(n).or_insert(0) += 1;
     }
 
-    vector<int> result(k);
-    for (int i = k - 1; i >= 0; i--) {
-        result[i] = minHeap.top().second;
-        minHeap.pop();
+    // min-heap by frequency: Reverse((freq, num))
+    let mut min_heap: BinaryHeap<Reverse<(i32, i32)>> = BinaryHeap::new();
+
+    for (&num, &f) in &freq {
+        min_heap.push(Reverse((f, num)));
+        if min_heap.len() > k {
+            min_heap.pop();
+        }
     }
-    return result;
+
+    let mut result = vec![0i32; k];
+    for i in (0..k).rev() {
+        if let Some(Reverse((_, num))) = min_heap.pop() {
+            result[i] = num;
+        }
+    }
+    result
 }
 ```
 
 **Approach 2: Bucket sort — O(n)**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-vector<int> topKFrequent(vector<int>& nums, int k) {
-    unordered_map<int,int> freq;
-    for (int n : nums) freq[n]++;
-
-    vector<vector<int>> buckets(nums.size() + 1);
-    for (auto& [num, f] : freq) {
-        buckets[f].push_back(num);
+fn top_k_frequent(nums: Vec<i32>, k: usize) -> Vec<i32> {
+    let mut freq: HashMap<i32, usize> = HashMap::new();
+    for &n in &nums {
+        *freq.entry(n).or_insert(0) += 1;
     }
 
-    vector<int> result;
-    for (int f = (int)buckets.size() - 1; f >= 0 && (int)result.size() < k; f--)
-        for (int n : buckets[f])
-            if ((int)result.size() < k) result.push_back(n);
-    return result;
+    let mut buckets: Vec<Vec<i32>> = vec![Vec::new(); nums.len() + 1];
+    for (&num, &f) in &freq {
+        buckets[f].push(num);
+    }
+
+    let mut result = Vec::new();
+    'outer: for f in (0..buckets.len()).rev() {
+        for &n in &buckets[f] {
+            if result.len() >= k {
+                break 'outer;
+            }
+            result.push(n);
+        }
+    }
+    result
 }
 ```
 
@@ -72,24 +83,22 @@ A: Add a second comparator condition: for equal frequencies, lexicographically l
 
 **Both approaches must be known:**
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Formula — O(26 log 26) = O(1) effectively
-int leastInterval(vector<char>& tasks, int n) {
-    vector<int> freq(26, 0);
-    for (char t : tasks) freq[t - 'A']++;
-    sort(freq.begin(), freq.end());
-    int maxFreq = freq[25];
-    int maxCount = 0;
-    for (int f : freq) if (f == maxFreq) maxCount++;
-    return max((maxFreq - 1) * (n + 1) + maxCount, (int)tasks.size());
+fn least_interval(tasks: Vec<char>, n: i32) -> i32 {
+    let mut freq = vec![0i32; 26];
+    for &t in &tasks {
+        freq[(t as u8 - b'A') as usize] += 1;
+    }
+    freq.sort();
+    let max_freq = freq[25];
+    let max_count = freq.iter().filter(|&&f| f == max_freq).count() as i32;
+    ((max_freq - 1) * (n + 1) + max_count).max(tasks.len() as i32)
 }
 ```
 
 **Q: Explain the formula.**
-A: Build "frames" of size `n+1`. The most frequent task (`maxFreq`) anchors each frame. There are `maxFreq - 1` full frames, each of size `n+1`. The final slot holds all tasks with max frequency (`maxCount`). Total = `(maxFreq-1)*(n+1) + maxCount`. But if tasks fill all slots with no idle time, the answer is just `tasks.size()`.
+A: Build "frames" of size `n+1`. The most frequent task (`maxFreq`) anchors each frame. There are `maxFreq - 1` full frames, each of size `n+1`. The final slot holds all tasks with max frequency (`maxCount`). Total = `(maxFreq-1)*(n+1) + maxCount`. But if tasks fill all slots with no idle time, the answer is just `tasks.len()`.
 
 **Q: Amazon variant — what if n is very large?**
 A: For large n, idle time dominates. The formula still handles this correctly — `(maxFreq-1)*(n+1) + maxCount` grows with n.
@@ -103,29 +112,52 @@ A: The heap simulation approach generalizes to this. The cooldown queue can trac
 
 **LC 23** · Hard · O(n log k)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-struct ListNode {
-    int val;
-    ListNode* next;
-    ListNode(int x): val(x), next(nullptr){}
-};
+#[derive(Debug, Clone, PartialEq)]
+pub struct ListNode {
+    pub val: i32,
+    pub next: Option<Box<ListNode>>,
+}
 
-ListNode* mergeKLists(vector<ListNode*>& lists) {
-    auto cmp = [](ListNode* a, ListNode* b) { return a->val > b->val; };
-    priority_queue<ListNode*, vector<ListNode*>, decltype(cmp)> heap(cmp);
-    for (ListNode* node : lists) if (node != nullptr) heap.push(node);
-
-    ListNode dummy(0);
-    ListNode* tail = &dummy;
-    while (!heap.empty()) {
-        tail->next = heap.top(); heap.pop();
-        tail = tail->next;
-        if (tail->next != nullptr) heap.push(tail->next);
+impl ListNode {
+    pub fn new(val: i32) -> Self {
+        ListNode { val, next: None }
     }
-    return dummy.next;
+}
+
+fn merge_k_lists(lists: Vec<Option<Box<ListNode>>>) -> Option<Box<ListNode>> {
+    let mut nodes: Vec<Option<Box<ListNode>>> = lists;
+    let k = nodes.len();
+
+    // min-heap: (Reverse(val), list_index) — only one node per list at a time: O(n log k)
+    let mut heap: BinaryHeap<Reverse<(i32, usize)>> = BinaryHeap::new();
+    for i in 0..k {
+        if let Some(ref n) = nodes[i] {
+            heap.push(Reverse((n.val, i)));
+        }
+    }
+
+    let mut result_vals: Vec<i32> = Vec::new();
+    while let Some(Reverse((_, i))) = heap.pop() {
+        let node = nodes[i].take().unwrap();
+        result_vals.push(node.val);
+        nodes[i] = node.next;
+        if let Some(ref next_node) = nodes[i] {
+            heap.push(Reverse((next_node.val, i)));
+        }
+    }
+
+    // Build linked list from sorted values
+    let mut head: Option<Box<ListNode>> = None;
+    for &val in result_vals.iter().rev() {
+        let mut node = Box::new(ListNode::new(val));
+        node.next = head;
+        head = Some(node);
+    }
+    head
 }
 ```
 

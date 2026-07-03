@@ -23,23 +23,25 @@
 3. "Can you do it in one pass?" (→ No — you need last-occurrence info before scanning)
 
 **Code they want to see:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> partitionLabels(string s) {
-    int last[26] = {};
-    for (int i = 0; i < (int)s.length(); i++) last[s[i] - 'a'] = i;
-    vector<int> result;
-    int start = 0, end = 0;
-    for (int i = 0; i < (int)s.length(); i++) {
-        end = max(end, last[s[i] - 'a']);
-        if (i == end) {
-            result.push_back(end - start + 1);
+```rust
+fn partition_labels(s: &str) -> Vec<i32> {
+    let s: Vec<char> = s.chars().collect();
+    let mut last = [0usize; 26];
+    for (i, &c) in s.iter().enumerate() {
+        last[c as usize - 'a' as usize] = i;
+    }
+    let mut result = Vec::new();
+    let mut start = 0;
+    let mut end = 0;
+    for (i, &c) in s.iter().enumerate() {
+        // stretch window to include last occurrence of current char
+        end = end.max(last[c as usize - 'a' as usize]);
+        if i == end {
+            result.push((end - start + 1) as i32);
             start = i + 1;
         }
     }
-    return result;
+    result
 }
 ```
 
@@ -60,24 +62,22 @@ vector<int> partitionLabels(string s) {
 3. "What if meetings have priorities and high-priority meetings can't share rooms?" → modified assignment
 
 **Sweep line alternative** (Google sometimes asks for this):
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int minMeetingRoomsSweep(vector<vector<int>>& intervals) {
-    vector<int> starts, ends;
-    for (auto& interval : intervals) {
-        starts.push_back(interval[0]);
-        ends.push_back(interval[1]);
+```rust
+fn min_meeting_rooms_sweep(intervals: &Vec<Vec<i32>>) -> i32 {
+    let mut starts: Vec<i32> = intervals.iter().map(|iv| iv[0]).collect();
+    let mut ends: Vec<i32> = intervals.iter().map(|iv| iv[1]).collect();
+    starts.sort();
+    ends.sort();
+    let mut rooms = 0;
+    let mut end_ptr = 0;
+    for start in &starts {
+        if *start < ends[end_ptr] {
+            rooms += 1;
+        } else {
+            end_ptr += 1;
+        }
     }
-    sort(starts.begin(), starts.end());
-    sort(ends.begin(), ends.end());
-    int rooms = 0, endPtr = 0;
-    for (int start : starts) {
-        if (start < ends[endPtr]) rooms++;
-        else endPtr++;
-    }
-    return rooms;
+    rooms
 }
 ```
 

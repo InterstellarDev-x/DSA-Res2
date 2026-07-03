@@ -32,77 +32,84 @@ Key intuitions:
 
 For each edge, if both endpoints already share a root, we've found a cycle. Otherwise union them.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 struct DSU {
-    vector<int> parent, rank_;
+    parent: Vec<usize>,
+    rank_: Vec<usize>,
+}
 
-    DSU(int n) : parent(n), rank_(n, 0) {
-        iota(parent.begin(), parent.end(), 0);
+impl DSU {
+    fn new(n: usize) -> Self {
+        DSU {
+            parent: (0..n).collect(),
+            rank_: vec![0; n],
+        }
     }
 
-    int find(int x) {                 // path compression
-        if (parent[x] != x) parent[x] = find(parent[x]);
-        return parent[x];
+    fn find(&mut self, mut x: usize) -> usize { // path halving
+        while self.parent[x] != x {
+            let pp = self.parent[self.parent[x]];
+            self.parent[x] = pp;
+            x = self.parent[x];
+        }
+        x
     }
 
     // returns false if x,y already connected (=> cycle); true if merged
-    bool unite(int x, int y) {
-        int rx = find(x), ry = find(y);
-        if (rx == ry) return false;
-        if (rank_[rx] < rank_[ry])      { parent[rx] = ry; }
-        else if (rank_[rx] > rank_[ry]) { parent[ry] = rx; }
-        else                            { parent[ry] = rx; rank_[rx]++; }
-        return true;
+    fn unite(&mut self, x: usize, y: usize) -> bool {
+        let rx = self.find(x);
+        let ry = self.find(y);
+        if rx == ry { return false; }
+        if self.rank_[rx] < self.rank_[ry]      { self.parent[rx] = ry; }
+        else if self.rank_[rx] > self.rank_[ry] { self.parent[ry] = rx; }
+        else                                     { self.parent[ry] = rx; self.rank_[rx] += 1; }
+        true
     }
-};
+}
 
-class UndirectedCycleDSU {
-public:
-    // edges given as vector<vector<int>> where each row is {u, v}, vertices 0..n-1
-    bool hasCycle(int n, vector<vector<int>>& edges) {
-        DSU dsu(n);
-        for (auto& e : edges) {
-            if (!dsu.unite(e[0], e[1])) return true; // both share root => cycle
+struct UndirectedCycleDSU;
+
+impl UndirectedCycleDSU {
+    // edges given as Vec<Vec<i32>> where each row is [u, v], vertices 0..n-1
+    fn has_cycle(n: usize, edges: &[Vec<i32>]) -> bool {
+        let mut dsu = DSU::new(n);
+        for e in edges {
+            if !dsu.unite(e[0] as usize, e[1] as usize) { return true; } // both share root => cycle
         }
-        return false;
+        false
     }
-};
+}
 ```
 
 ### 2b. Via DFS with Parent Tracking
 
 Walk the graph; if you reach a visited neighbor that isn't the parent, it's a back edge → cycle. Handle disconnected graphs by starting DFS from every unvisited vertex.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct UndirectedCycleDFS;
 
-class UndirectedCycleDFS {
-public:
-    bool hasCycle(int n, vector<vector<int>>& adj) {
-        vector<bool> visited(n, false);
-        for (int i = 0; i < n; i++) {
-            if (!visited[i] && dfs(i, -1, adj, visited)) return true;
+impl UndirectedCycleDFS {
+    fn has_cycle(n: usize, adj: &[Vec<i32>]) -> bool {
+        let mut visited = vec![false; n];
+        for i in 0..n {
+            if !visited[i] && Self::dfs(i, None, adj, &mut visited) { return true; }
         }
-        return false;
+        false
     }
 
-private:
-    bool dfs(int node, int parent, vector<vector<int>>& adj, vector<bool>& visited) {
+    fn dfs(node: usize, parent: Option<usize>, adj: &[Vec<i32>], visited: &mut Vec<bool>) -> bool {
         visited[node] = true;
-        for (int nei : adj[node]) {
-            if (!visited[nei]) {
-                if (dfs(nei, node, adj, visited)) return true;
-            } else if (nei != parent) {   // visited and not the node we came from
+        for &nei in &adj[node] {
+            let nei = nei as usize;
+            if !visited[nei] {
+                if Self::dfs(nei, Some(node), adj, visited) { return true; }
+            } else if Some(nei) != parent {   // visited and not the node we came from
                 return true;
             }
         }
-        return false;
+        false
     }
-};
+}
 ```
 
 > **BFS variant note:** The same idea works iteratively with BFS by storing `(node, parent)` pairs in the queue and flagging a cycle when a neighbor is already visited and isn't the parent. With parallel edges, track the edge instead of the parent vertex.
@@ -115,66 +122,68 @@ private:
 
 Colors: `0 = white` (unvisited), `1 = gray` (in current recursion stack), `2 = black` (fully processed). A cycle exists exactly when DFS hits a **gray** node.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct DirectedCycle3Color;
 
-class DirectedCycle3Color {
-    static const int WHITE = 0, GRAY = 1, BLACK = 2;
+impl DirectedCycle3Color {
+    const WHITE: i32 = 0;
+    const GRAY: i32 = 1;
+    const BLACK: i32 = 2;
 
-public:
-    bool hasCycle(int n, vector<vector<int>>& adj) {
-        vector<int> color(n, 0);          // all WHITE initially
-        for (int i = 0; i < n; i++) {
-            if (color[i] == WHITE && dfs(i, adj, color)) return true;
+    fn has_cycle(n: usize, adj: &[Vec<i32>]) -> bool {
+        let mut color = vec![0i32; n]; // all WHITE initially
+        for i in 0..n {
+            if color[i] == Self::WHITE && Self::dfs(i, adj, &mut color) { return true; }
         }
-        return false;
+        false
     }
 
-private:
-    bool dfs(int node, vector<vector<int>>& adj, vector<int>& color) {
-        color[node] = GRAY;                 // entering recursion stack
-        for (int nei : adj[node]) {
-            if (color[nei] == GRAY) return true;          // back edge => cycle
-            if (color[nei] == WHITE && dfs(nei, adj, color)) return true;
+    fn dfs(node: usize, adj: &[Vec<i32>], color: &mut Vec<i32>) -> bool {
+        color[node] = Self::GRAY;               // entering recursion stack
+        for &nei in &adj[node] {
+            let nei = nei as usize;
+            if color[nei] == Self::GRAY { return true; }          // back edge => cycle
+            if color[nei] == Self::WHITE && Self::dfs(nei, adj, color) { return true; }
             // color[nei] == BLACK => already done, safe to skip
         }
-        color[node] = BLACK;                // leaving recursion stack
-        return false;
+        color[node] = Self::BLACK;              // leaving recursion stack
+        false
     }
-};
+}
 ```
 
 ### 3b. Via Kahn's Algorithm (BFS Topological Sort)
 
 Peel off indegree-0 vertices. If the number processed is less than `n`, the leftovers are stuck in a cycle.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-class DirectedCycleKahn {
-public:
-    bool hasCycle(int n, vector<vector<int>>& adj) {
-        vector<int> indeg(n, 0);
-        for (int u = 0; u < n; u++)
-            for (int v : adj[u]) indeg[v]++;
+struct DirectedCycleKahn;
 
-        queue<int> q;
-        for (int i = 0; i < n; i++)
-            if (indeg[i] == 0) q.push(i);
+impl DirectedCycleKahn {
+    fn has_cycle(n: usize, adj: &[Vec<i32>]) -> bool {
+        let mut indeg = vec![0i32; n];
+        for u in 0..n {
+            for &v in &adj[u] { indeg[v as usize] += 1; }
+        }
 
-        int processed = 0;
-        while (!q.empty()) {
-            int u = q.front(); q.pop();
-            processed++;
-            for (int v : adj[u]) {
-                if (--indeg[v] == 0) q.push(v);
+        let mut q: VecDeque<usize> = VecDeque::new();
+        for i in 0..n {
+            if indeg[i] == 0 { q.push_back(i); }
+        }
+
+        let mut processed = 0;
+        while let Some(u) = q.pop_front() {
+            processed += 1;
+            for &v in &adj[u] {
+                indeg[v as usize] -= 1;
+                if indeg[v as usize] == 0 { q.push_back(v as usize); }
             }
         }
-        return processed < n;   // couldn't topologically order everything => cycle
+        processed < n   // couldn't topologically order everything => cycle
     }
-};
+}
 ```
 
 ---
@@ -206,59 +215,67 @@ Given an undirected graph with `n` vertices and an edge list, determine whether 
 
 **Approach A — DSU.** Process edges; the first edge whose endpoints already share a root proves a cycle.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct DetectCycleUndirected {
+    parent: Vec<usize>,
+    rank_: Vec<usize>,
+}
 
-class DetectCycleUndirected {
-    vector<int> parent, rank_;
-
-    int find(int x) {
-        if (parent[x] != x) parent[x] = find(parent[x]);
-        return parent[x];
+impl DetectCycleUndirected {
+    fn new() -> Self {
+        DetectCycleUndirected { parent: Vec::new(), rank_: Vec::new() }
     }
 
-    bool unite(int x, int y) {
-        int rx = find(x), ry = find(y);
-        if (rx == ry) return false;            // already connected => cycle
-        if (rank_[rx] < rank_[ry]) parent[rx] = ry;
-        else if (rank_[rx] > rank_[ry]) parent[ry] = rx;
-        else { parent[ry] = rx; rank_[rx]++; }
-        return true;
-    }
-
-public:
-    bool hasCycle(int n, vector<vector<int>>& edges) {
-        parent.resize(n);
-        rank_.assign(n, 0);
-        iota(parent.begin(), parent.end(), 0);
-        for (auto& e : edges) {
-            if (!unite(e[0], e[1])) return true;
+    fn find(&mut self, mut x: usize) -> usize {
+        while self.parent[x] != x {
+            let pp = self.parent[self.parent[x]];
+            self.parent[x] = pp;
+            x = self.parent[x];
         }
-        return false;
+        x
+    }
+
+    fn unite(&mut self, x: usize, y: usize) -> bool {
+        let rx = self.find(x);
+        let ry = self.find(y);
+        if rx == ry { return false; }            // already connected => cycle
+        if self.rank_[rx] < self.rank_[ry]      { self.parent[rx] = ry; }
+        else if self.rank_[rx] > self.rank_[ry] { self.parent[ry] = rx; }
+        else                                     { self.parent[ry] = rx; self.rank_[rx] += 1; }
+        true
+    }
+
+    fn has_cycle(&mut self, n: usize, edges: &[Vec<i32>]) -> bool {
+        self.parent = (0..n).collect();
+        self.rank_ = vec![0; n];
+        for e in edges {
+            if !self.unite(e[0] as usize, e[1] as usize) { return true; }
+        }
+        false
     }
 
     // Approach B — DFS with parent tracking (handles disconnected components)
-    bool hasCycleDFS(int n, vector<vector<int>>& adj) {
-        vector<bool> visited(n, false);
-        for (int i = 0; i < n; i++)
-            if (!visited[i] && dfs(i, -1, adj, visited)) return true;
-        return false;
+    fn has_cycle_dfs(n: usize, adj: &[Vec<i32>]) -> bool {
+        let mut visited = vec![false; n];
+        for i in 0..n {
+            if !visited[i] && Self::dfs(i, None, adj, &mut visited) { return true; }
+        }
+        false
     }
 
-private:
-    bool dfs(int node, int par, vector<vector<int>>& adj, vector<bool>& visited) {
+    fn dfs(node: usize, par: Option<usize>, adj: &[Vec<i32>], visited: &mut Vec<bool>) -> bool {
         visited[node] = true;
-        for (int nei : adj[node]) {
-            if (!visited[nei]) {
-                if (dfs(nei, node, adj, visited)) return true;
-            } else if (nei != par) {
+        for &nei in &adj[node] {
+            let nei = nei as usize;
+            if !visited[nei] {
+                if Self::dfs(nei, Some(node), adj, visited) { return true; }
+            } else if Some(nei) != par {
                 return true;
             }
         }
-        return false;
+        false
     }
-};
+}
 ```
 
 **Complexity:** DSU runs in `O(E · α(N))`; DFS in `O(V + E)`.
@@ -269,33 +286,33 @@ private:
 
 Given a directed graph, determine whether it contains a directed cycle. Use 3-color DFS: a cycle exists iff DFS reaches a vertex currently on the recursion stack (gray).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct DetectCycleDirected;
 
-class DetectCycleDirected {
-    static const int WHITE = 0, GRAY = 1, BLACK = 2;
+impl DetectCycleDirected {
+    const WHITE: i32 = 0;
+    const GRAY: i32 = 1;
+    const BLACK: i32 = 2;
 
-public:
-    bool hasCycle(int n, vector<vector<int>>& adj) {
-        vector<int> color(n, 0);
-        for (int i = 0; i < n; i++) {
-            if (color[i] == WHITE && dfs(i, adj, color)) return true;
+    fn has_cycle(n: usize, adj: &[Vec<i32>]) -> bool {
+        let mut color = vec![0i32; n];
+        for i in 0..n {
+            if color[i] == Self::WHITE && Self::dfs(i, adj, &mut color) { return true; }
         }
-        return false;
+        false
     }
 
-private:
-    bool dfs(int node, vector<vector<int>>& adj, vector<int>& color) {
-        color[node] = GRAY;
-        for (int nei : adj[node]) {
-            if (color[nei] == GRAY) return true;                 // back edge
-            if (color[nei] == WHITE && dfs(nei, adj, color)) return true;
+    fn dfs(node: usize, adj: &[Vec<i32>], color: &mut Vec<i32>) -> bool {
+        color[node] = Self::GRAY;
+        for &nei in &adj[node] {
+            let nei = nei as usize;
+            if color[nei] == Self::GRAY { return true; }                 // back edge
+            if color[nei] == Self::WHITE && Self::dfs(nei, adj, color) { return true; }
         }
-        color[node] = BLACK;
-        return false;
+        color[node] = Self::BLACK;
+        false
     }
-};
+}
 ```
 
 **Why parent-tracking fails here:** In a directed graph `a→b` and `b→a` is a genuine 2-cycle, so we cannot "excuse the parent." The recursion-stack (gray) check correctly distinguishes a back edge (ancestor on the stack) from a harmless cross edge (already-finished black node).
@@ -310,24 +327,25 @@ private:
 
 Brief snippet (3-color DFS; safe ⟺ no cycle reachable):
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool safe(int u, vector<vector<int>>& g, vector<int>& color) {
-    if (color[u] != 0) return color[u] == 2; // gray => unsafe, black => safe
+```rust
+fn safe(u: usize, g: &[Vec<i32>], color: &mut Vec<i32>) -> bool {
+    if color[u] != 0 { return color[u] == 2; } // gray => unsafe, black => safe
     color[u] = 1;
-    for (int v : g[u]) if (!safe(v, g, color)) return false;
+    for &v in &g[u] {
+        if !safe(v as usize, g, color) { return false; }
+    }
     color[u] = 2;
-    return true;
+    true
 }
 
-vector<int> eventualSafeNodes(vector<vector<int>>& graph) {
-    int n = graph.size();
-    vector<int> color(n, 0); // 0 white, 1 gray, 2 black(safe)
-    vector<int> res;
-    for (int i = 0; i < n; i++) if (safe(i, graph, color)) res.push_back(i);
-    return res;
+fn eventual_safe_nodes(graph: &[Vec<i32>]) -> Vec<i32> {
+    let n = graph.len();
+    let mut color = vec![0i32; n]; // 0 white, 1 gray, 2 black(safe)
+    let mut res = Vec::new();
+    for i in 0..n {
+        if safe(i, graph, &mut color) { res.push(i as i32); }
+    }
+    res
 }
 ```
 
@@ -341,23 +359,30 @@ See [Topological Sort](./Topological%20Sort.md) for the detailed reverse-Kahn tr
 
 Brief snippet (Kahn's):
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-bool canFinish(int numCourses, vector<vector<int>>& prerequisites) {
-    vector<vector<int>> adj(numCourses);
-    vector<int> indeg(numCourses, 0);
-    for (auto& p : prerequisites) { adj[p[1]].push_back(p[0]); indeg[p[0]]++; }
-
-    queue<int> q;
-    for (int i = 0; i < numCourses; i++) if (indeg[i] == 0) q.push(i);
-    int done = 0;
-    while (!q.empty()) {
-        int u = q.front(); q.pop(); done++;
-        for (int v : adj[u]) if (--indeg[v] == 0) q.push(v);
+fn can_finish(num_courses: usize, prerequisites: &[Vec<i32>]) -> bool {
+    let mut adj = vec![Vec::<usize>::new(); num_courses];
+    let mut indeg = vec![0i32; num_courses];
+    for p in prerequisites {
+        adj[p[1] as usize].push(p[0] as usize);
+        indeg[p[0] as usize] += 1;
     }
-    return done == numCourses; // all scheduled => acyclic
+
+    let mut q: VecDeque<usize> = VecDeque::new();
+    for i in 0..num_courses {
+        if indeg[i] == 0 { q.push_back(i); }
+    }
+    let mut done = 0;
+    while let Some(u) = q.pop_front() {
+        done += 1;
+        for &v in &adj[u] {
+            indeg[v] -= 1;
+            if indeg[v] == 0 { q.push_back(v); }
+        }
+    }
+    done == num_courses // all scheduled => acyclic
 }
 ```
 
@@ -381,53 +406,62 @@ A rooted tree with `n` nodes is given `n` directed edges; exactly one extra edge
     - If there was **no** indegree-2 node, the redundant edge is simply the one that closed the cycle (pure cycle case). Return it.
     - If there **was** an indegree-2 node, then `cand1` is the offender (removing `cand2` didn't fix things, so the other parent edge `cand1` is part of the cycle). Return `cand1`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct RedundantConnectionII {
+    parent: Vec<usize>,
+}
 
-class RedundantConnectionII {
-    vector<int> parent;
-
-    int find(int x) {
-        if (parent[x] != x) parent[x] = find(parent[x]);
-        return parent[x];
+impl RedundantConnectionII {
+    fn new() -> Self {
+        RedundantConnectionII { parent: Vec::new() }
     }
 
-public:
-    vector<int> findRedundantDirectedConnection(vector<vector<int>>& edges) {
-        int n = edges.size();
-        parent.resize(n + 1);
-        vector<int> incomingParent(n + 1, 0); // incomingParent[v] = which edge index gave v its parent
+    fn find(&mut self, mut x: usize) -> usize {
+        while self.parent[x] != x {
+            let pp = self.parent[self.parent[x]];
+            self.parent[x] = pp;
+            x = self.parent[x];
+        }
+        x
+    }
 
-        vector<int> cand1, cand2;      // two edges into the same node
-        for (int i = 0; i < n; i++) {
-            int u = edges[i][0], v = edges[i][1];
-            if (incomingParent[v] != 0) {       // v already has a parent edge
-                cand1 = edges[incomingParent[v] - 1]; // earlier edge into v
-                cand2 = edges[i];                     // current edge into v
+    fn find_redundant_directed_connection(&mut self, edges: &[Vec<i32>]) -> Vec<i32> {
+        let n = edges.len();
+        self.parent = (0..=n).collect();
+        let mut incoming_parent = vec![0usize; n + 1]; // incoming_parent[v] = which edge index gave v its parent
+
+        let mut cand1: Vec<i32> = Vec::new();
+        let mut cand2: Vec<i32> = Vec::new(); // two edges into the same node
+        for i in 0..n {
+            let v = edges[i][1] as usize;
+            if incoming_parent[v] != 0 {              // v already has a parent edge
+                cand1 = edges[incoming_parent[v] - 1].clone(); // earlier edge into v
+                cand2 = edges[i].clone();                       // current edge into v
             } else {
-                incomingParent[v] = i + 1;      // store 1-based index to keep 0 as "none"
+                incoming_parent[v] = i + 1;           // store 1-based index to keep 0 as "none"
             }
         }
 
-        iota(parent.begin(), parent.end(), 0);
+        self.parent = (0..=n).collect();
 
         // Run union over all edges except cand2 (if it exists)
-        for (int i = 0; i < n; i++) {
-            if (!cand2.empty() && edges[i] == cand2) continue; // skip the second parent edge
-            int u = edges[i][0], v = edges[i][1];
-            int ru = find(u), rv = find(v);
-            if (ru == rv) {
+        for i in 0..n {
+            if !cand2.is_empty() && edges[i] == cand2 { continue; } // skip the second parent edge
+            let u = edges[i][0] as usize;
+            let v = edges[i][1] as usize;
+            let ru = self.find(u);
+            let rv = self.find(v);
+            if ru == rv {
                 // a cycle formed without cand2
-                if (cand1.empty()) return edges[i]; // pure cycle, no indegree-2 node
-                return cand1;                       // indegree-2 case: cand1 is the bad edge
+                if cand1.is_empty() { return edges[i].clone(); } // pure cycle, no indegree-2 node
+                return cand1.clone();                             // indegree-2 case: cand1 is the bad edge
             }
-            parent[rv] = ru;
+            self.parent[rv] = ru;
         }
         // No cycle without cand2 => cand2 was the redundant edge
-        return cand2;
+        cand2
     }
-};
+}
 ```
 
 **Walking the cases:**
@@ -450,61 +484,75 @@ Given `n` servers (`0..n-1`) and undirected `connections`, return all **critical
 
 We must skip the immediate parent edge — but to handle **parallel edges** correctly, skip by *edge identity*, not by parent vertex.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct CriticalConnections {
+    adj: Vec<Vec<(usize, usize)>>, // adj[u] = list of (neighbor, edgeId)
+    disc: Vec<i32>,
+    low: Vec<i32>,
+    visited: Vec<bool>,
+    timer_: i32,
+    bridges: Vec<Vec<i32>>,
+}
 
-class CriticalConnections {
-    vector<vector<pair<int,int>>> adj;   // adj[u] = list of {neighbor, edgeId}
-    vector<int> disc, low;
-    vector<bool> visited;
-    int timer_ = 0;
-    vector<vector<int>> bridges;
-
-public:
-    vector<vector<int>> criticalConnections(int n, vector<vector<int>>& connections) {
-        adj.assign(n, {});
-        int id = 0;
-        for (auto& c : connections) {
-            int u = c[0], v = c[1];
-            adj[u].push_back({v, id});
-            adj[v].push_back({u, id});
-            id++;
+impl CriticalConnections {
+    fn new() -> Self {
+        CriticalConnections {
+            adj: Vec::new(),
+            disc: Vec::new(),
+            low: Vec::new(),
+            visited: Vec::new(),
+            timer_: 0,
+            bridges: Vec::new(),
         }
-        disc.resize(n);
-        low.resize(n);
-        visited.assign(n, false);
-
-        for (int i = 0; i < n; i++)
-            if (!visited[i]) dfs(i, -1);   // -1 = no incoming edge id
-        return bridges;
     }
 
-private:
-    void dfs(int u, int parentEdgeId) {
-        visited[u] = true;
-        disc[u] = low[u] = timer_++;
-        for (auto& [v, eid] : adj[u]) {
-            if (eid == parentEdgeId) continue;     // don't go back over the same edge
-            if (!visited[v]) {
-                dfs(v, eid);
-                low[u] = min(low[u], low[v]);
-                if (low[v] > disc[u]) {            // bridge condition
-                    bridges.push_back({u, v});
+    fn critical_connections(&mut self, n: usize, connections: &[Vec<i32>]) -> Vec<Vec<i32>> {
+        self.adj = vec![Vec::new(); n];
+        let mut id = 0usize;
+        for c in connections {
+            let u = c[0] as usize;
+            let v = c[1] as usize;
+            self.adj[u].push((v, id));
+            self.adj[v].push((u, id));
+            id += 1;
+        }
+        self.disc = vec![0; n];
+        self.low = vec![0; n];
+        self.visited = vec![false; n];
+
+        for i in 0..n {
+            if !self.visited[i] { self.dfs(i, usize::MAX); } // usize::MAX = no incoming edge id
+        }
+        self.bridges.clone()
+    }
+
+    fn dfs(&mut self, u: usize, parent_edge_id: usize) {
+        self.visited[u] = true;
+        self.disc[u] = self.timer_;
+        self.low[u] = self.timer_;
+        self.timer_ += 1;
+        let neighbors = self.adj[u].clone();
+        for (v, eid) in neighbors {
+            if eid == parent_edge_id { continue; }     // don't go back over the same edge
+            if !self.visited[v] {
+                self.dfs(v, eid);
+                self.low[u] = self.low[u].min(self.low[v]);
+                if self.low[v] > self.disc[u] {        // bridge condition
+                    self.bridges.push(vec![u as i32, v as i32]);
                 }
             } else {
-                low[u] = min(low[u], disc[v]); // back edge
+                self.low[u] = self.low[u].min(self.disc[v]); // back edge
             }
         }
     }
-};
+}
 ```
 
 ### Detailed Dry-Run
 
 Take `n = 4`, `connections = [[0,1],[1,2],[2,0],[1,3]]`. Edge ids: `0=(0,1)`, `1=(1,2)`, `2=(2,0)`, `3=(1,3)`. Visually: nodes `0,1,2` form a triangle; node `3` hangs off node `1`. The only bridge should be `(1,3)`.
 
-Start `dfs(0, -1)`:
+Start `dfs(0, usize::MAX)`:
 
 | Step | Action | disc/low updates |
 | --- | --- | --- |
@@ -537,49 +585,60 @@ Given an undirected graph with `n` vertices and edge list, determine whether a p
 
 **Approach A — DSU.** Union every edge, then `source` and `destination` are connected iff they share a root.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-class PathExists {
-    vector<int> parent;
+struct PathExists {
+    parent: Vec<usize>,
+}
 
-    int find(int x) {
-        if (parent[x] != x) parent[x] = find(parent[x]);
-        return parent[x];
+impl PathExists {
+    fn new() -> Self {
+        PathExists { parent: Vec::new() }
     }
 
-    void unite(int x, int y) {
-        parent[find(x)] = find(y);
+    fn find(&mut self, mut x: usize) -> usize {
+        while self.parent[x] != x {
+            let pp = self.parent[self.parent[x]];
+            self.parent[x] = pp;
+            x = self.parent[x];
+        }
+        x
     }
 
-public:
-    bool validPath(int n, vector<vector<int>>& edges, int source, int destination) {
-        parent.resize(n);
-        iota(parent.begin(), parent.end(), 0);
-        for (auto& e : edges) unite(e[0], e[1]);
-        return find(source) == find(destination);
+    fn unite(&mut self, x: usize, y: usize) {
+        let fx = self.find(x);
+        let fy = self.find(y);
+        self.parent[fx] = fy;
+    }
+
+    fn valid_path(&mut self, n: usize, edges: &[Vec<i32>], source: usize, destination: usize) -> bool {
+        self.parent = (0..n).collect();
+        for e in edges { self.unite(e[0] as usize, e[1] as usize); }
+        self.find(source) == self.find(destination)
     }
 
     // Approach B — BFS reachability
-    bool validPathBFS(int n, vector<vector<int>>& edges, int source, int destination) {
-        vector<vector<int>> adj(n);
-        for (auto& e : edges) { adj[e[0]].push_back(e[1]); adj[e[1]].push_back(e[0]); }
+    fn valid_path_bfs(n: usize, edges: &[Vec<i32>], source: usize, destination: usize) -> bool {
+        let mut adj = vec![Vec::<usize>::new(); n];
+        for e in edges {
+            adj[e[0] as usize].push(e[1] as usize);
+            adj[e[1] as usize].push(e[0] as usize);
+        }
 
-        vector<bool> visited(n, false);
-        queue<int> q;
-        q.push(source);
+        let mut visited = vec![false; n];
+        let mut q: VecDeque<usize> = VecDeque::new();
+        q.push_back(source);
         visited[source] = true;
-        while (!q.empty()) {
-            int u = q.front(); q.pop();
-            if (u == destination) return true;
-            for (int v : adj[u]) {
-                if (!visited[v]) { visited[v] = true; q.push(v); }
+        while let Some(u) = q.pop_front() {
+            if u == destination { return true; }
+            for &v in &adj[u] {
+                if !visited[v] { visited[v] = true; q.push_back(v); }
             }
         }
-        return false;
+        false
     }
-};
+}
 ```
 
 **Complexity:** DSU `O(V + E·α(V))`; BFS `O(V + E)`.

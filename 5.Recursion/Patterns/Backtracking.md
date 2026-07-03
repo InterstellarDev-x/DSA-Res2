@@ -9,20 +9,17 @@
 
 **Try → Recurse → Undo.** At each decision point, make a choice, recurse to explore that branch, then undo the choice to restore state before trying the next option.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void backtrack(State& state, vector<Choice>& choices) {
-    if (goalReached(state)) {
-        results.push_back(copy of state);
+```rust
+fn backtrack(state: &mut State, choices: &[Choice]) {
+    if goal_reached(state) {
+        results.push(state.clone());
         return;
     }
-    for (auto& choice : choices) {
-        if (isValid(choice, state)) {
-            makeChoice(choice, state);    // Try
-            backtrack(nextState, ...);    // Recurse
-            undoChoice(choice, state);    // Undo
+    for choice in choices {
+        if is_valid(choice, state) {
+            make_choice(choice, state);    // Try
+            backtrack(next_state, ...);    // Recurse
+            undo_choice(choice, state);    // Undo
         }
     }
 }
@@ -36,76 +33,82 @@ void backtrack(State& state, vector<Choice>& choices) {
 
 Constraint: `open ≤ n`, `close ≤ open`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<string> generateParenthesis(int n) {
-    vector<string> result;
-    string sb;
-    backtrack(result, sb, 0, 0, n);
-    return result;
+```rust
+fn generate_parenthesis(n: i32) -> Vec<String> {
+    let mut result = Vec::new();
+    let mut sb = String::new();
+    backtrack(&mut result, &mut sb, 0, 0, n);
+    result
 }
 
-void backtrack(vector<string>& res, string& sb, int open, int close, int n) {
-    if (sb.length() == 2 * n) { res.push_back(sb); return; }
+fn backtrack(res: &mut Vec<String>, sb: &mut String, open: i32, close: i32, n: i32) {
+    if sb.len() == (2 * n) as usize { res.push(sb.clone()); return; }
 
-    if (open < n) {
-        sb += '(';
+    if open < n {
+        sb.push('(');
         backtrack(res, sb, open + 1, close, n);
-        sb.pop_back(); // undo
+        sb.pop(); // undo
     }
-    if (close < open) {
-        sb += ')';
+    if close < open {
+        sb.push(')');
         backtrack(res, sb, open, close + 1, n);
-        sb.pop_back(); // undo
+        sb.pop(); // undo
     }
 }
 ```
 
-**Note:** Use `string` with `+=` and `pop_back()` — `string` concatenation with `+` creates a new object at every call (O(n) per concat vs O(1) `+=`/`pop_back()`).
+**Note:** Use `String` with `push(char)` and `pop()` — `String` concatenation with `+` or `format!` creates a new allocation at every call (O(n) per concat vs O(1) `push`/`pop`).
 
 ---
 
 ## Template 2 — N-Queens (LC 51)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-vector<vector<string>> solveNQueens(int n) {
-    vector<vector<string>> result;
-    vector<int> queens(n, -1); // queens[row] = column
-    unordered_set<int> cols, diag1, diag2;
-    backtrack(result, queens, n, 0, cols, diag1, diag2);
-    return result;
+fn solve_n_queens(n: i32) -> Vec<Vec<String>> {
+    let mut result = Vec::new();
+    let mut queens = vec![-1i32; n as usize]; // queens[row] = column
+    let mut cols: HashSet<i32> = HashSet::new();
+    let mut diag1: HashSet<i32> = HashSet::new();
+    let mut diag2: HashSet<i32> = HashSet::new();
+    backtrack(&mut result, &mut queens, n, 0, &mut cols, &mut diag1, &mut diag2);
+    result
 }
 
-void backtrack(vector<vector<string>>& res, vector<int>& queens, int n, int row,
-               unordered_set<int>& cols, unordered_set<int>& diag1, unordered_set<int>& diag2) {
-    if (row == n) {
-        res.push_back(buildBoard(queens, n));
+fn backtrack(
+    res: &mut Vec<Vec<String>>,
+    queens: &mut Vec<i32>,
+    n: i32,
+    row: i32,
+    cols: &mut HashSet<i32>,
+    diag1: &mut HashSet<i32>,
+    diag2: &mut HashSet<i32>,
+) {
+    if row == n {
+        res.push(build_board(queens, n));
         return;
     }
-    for (int col = 0; col < n; col++) {
-        if (cols.count(col) || diag1.count(row - col) || diag2.count(row + col))
+    for col in 0..n {
+        if cols.contains(&col) || diag1.contains(&(row - col)) || diag2.contains(&(row + col)) {
             continue;
-        queens[row] = col;
+        }
+        queens[row as usize] = col;
         cols.insert(col); diag1.insert(row - col); diag2.insert(row + col);
         backtrack(res, queens, n, row + 1, cols, diag1, diag2);
-        queens[row] = -1;
-        cols.erase(col); diag1.erase(row - col); diag2.erase(row + col);
+        queens[row as usize] = -1;
+        cols.remove(&col); diag1.remove(&(row - col)); diag2.remove(&(row + col));
     }
 }
 
-vector<string> buildBoard(vector<int>& queens, int n) {
-    vector<string> board;
-    for (int row = 0; row < n; row++) {
-        string rowStr(n, '.');
-        rowStr[queens[row]] = 'Q';
-        board.push_back(rowStr);
+fn build_board(queens: &[i32], n: i32) -> Vec<String> {
+    let mut board = Vec::new();
+    for row in 0..n as usize {
+        let mut row_chars: Vec<char> = vec!['.'; n as usize];
+        row_chars[queens[row] as usize] = 'Q';
+        board.push(row_chars.iter().collect());
     }
-    return board;
+    board
 }
 ```
 
@@ -115,23 +118,21 @@ vector<string> buildBoard(vector<int>& queens, int n) {
 
 **Bit manipulation version for N-Queens II (count only):**
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int totalNQueens(int n) {
-    return solve(n, 0, 0, 0, 0);
+```rust
+fn total_n_queens(n: i32) -> i32 {
+    solve(n, 0, 0, 0, 0)
 }
-int solve(int n, int row, int cols, int diag1, int diag2) {
-    if (row == n) return 1;
-    int count = 0;
-    int availableMask = ((1 << n) - 1) & ~(cols | diag1 | diag2);
-    while (availableMask != 0) {
-        int bit = availableMask & (-availableMask); // lowest set bit
-        availableMask &= availableMask - 1;          // clear lowest bit
+
+fn solve(n: i32, row: i32, cols: i32, diag1: i32, diag2: i32) -> i32 {
+    if row == n { return 1; }
+    let mut count = 0;
+    let mut available_mask = ((1 << n) - 1) & !(cols | diag1 | diag2);
+    while available_mask != 0 {
+        let bit = available_mask & (-available_mask); // lowest set bit
+        available_mask &= available_mask - 1;          // clear lowest bit
         count += solve(n, row + 1, cols | bit, (diag1 | bit) << 1, (diag2 | bit) >> 1);
     }
-    return count;
+    count
 }
 ```
 
@@ -139,40 +140,38 @@ int solve(int n, int row, int cols, int diag1, int diag2) {
 
 ## Template 3 — Sudoku Solver (LC 37)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void solveSudoku(vector<vector<char>>& board) {
+```rust
+fn solve_sudoku(board: &mut Vec<Vec<char>>) {
     solve(board);
 }
 
-bool solve(vector<vector<char>>& board) {
-    for (int r = 0; r < 9; r++) {
-        for (int c = 0; c < 9; c++) {
-            if (board[r][c] != '.') continue;
-            for (char ch = '1'; ch <= '9'; ch++) {
-                if (isValid(board, r, c, ch)) {
+fn solve(board: &mut Vec<Vec<char>>) -> bool {
+    for r in 0..9 {
+        for c in 0..9 {
+            if board[r][c] != '.' { continue; }
+            for digit in b'1'..=b'9' {
+                let ch = digit as char;
+                if is_valid(board, r, c, ch) {
                     board[r][c] = ch;
-                    if (solve(board)) return true; // found solution
-                    board[r][c] = '.';             // undo
+                    if solve(board) { return true; } // found solution
+                    board[r][c] = '.';               // undo
                 }
             }
             return false; // no valid digit → backtrack
         }
     }
-    return true; // all cells filled
+    true // all cells filled
 }
 
-bool isValid(vector<vector<char>>& board, int r, int c, char ch) {
-    for (int i = 0; i < 9; i++) {
-        if (board[r][i] == ch) return false;             // same row
-        if (board[i][c] == ch) return false;             // same col
-        int boxR = 3 * (r / 3) + i / 3;
-        int boxC = 3 * (c / 3) + i % 3;
-        if (board[boxR][boxC] == ch) return false;       // same 3x3 box
+fn is_valid(board: &[Vec<char>], r: usize, c: usize, ch: char) -> bool {
+    for i in 0..9 {
+        if board[r][i] == ch { return false; }             // same row
+        if board[i][c] == ch { return false; }             // same col
+        let box_r = 3 * (r / 3) + i / 3;
+        let box_c = 3 * (c / 3) + i % 3;
+        if board[box_r][box_c] == ch { return false; }     // same 3x3 box
     }
-    return true;
+    true
 }
 ```
 
@@ -180,31 +179,33 @@ bool isValid(vector<vector<char>>& board, int r, int c, char ch) {
 
 ## Template 4 — Word Search (LC 79)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool exist(vector<vector<char>>& board, string word) {
-    int m = board.size(), n = board[0].size();
-    for (int r = 0; r < m; r++)
-        for (int c = 0; c < n; c++)
-            if (dfs(board, r, c, word, 0)) return true;
-    return false;
+```rust
+fn exist(board: &mut Vec<Vec<char>>, word: &str) -> bool {
+    let m = board.len();
+    let n = board[0].len();
+    let word: Vec<char> = word.chars().collect();
+    for r in 0..m {
+        for c in 0..n {
+            if dfs(board, r as i32, c as i32, &word, 0) { return true; }
+        }
+    }
+    false
 }
 
-bool dfs(vector<vector<char>>& board, int r, int c, string& word, int k) {
-    if (k == (int)word.length()) return true;
-    if (r < 0 || r >= (int)board.size() || c < 0 || c >= (int)board[0].size()) return false;
-    if (board[r][c] != word[k]) return false;
+fn dfs(board: &mut Vec<Vec<char>>, r: i32, c: i32, word: &[char], k: usize) -> bool {
+    if k == word.len() { return true; }
+    if r < 0 || r >= board.len() as i32 || c < 0 || c >= board[0].len() as i32 { return false; }
+    let (ru, cu) = (r as usize, c as usize);
+    if board[ru][cu] != word[k] { return false; }
 
-    char tmp = board[r][c];
-    board[r][c] = '#';  // mark visited in-place (no extra array)
-    bool found = dfs(board, r+1, c, word, k+1) ||
-                 dfs(board, r-1, c, word, k+1) ||
-                 dfs(board, r, c+1, word, k+1) ||
-                 dfs(board, r, c-1, word, k+1);
-    board[r][c] = tmp;  // restore
-    return found;
+    let tmp = board[ru][cu];
+    board[ru][cu] = '#';  // mark visited in-place (no extra array)
+    let found = dfs(board, r + 1, c, word, k + 1) ||
+                dfs(board, r - 1, c, word, k + 1) ||
+                dfs(board, r, c + 1, word, k + 1) ||
+                dfs(board, r, c - 1, word, k + 1);
+    board[ru][cu] = tmp;  // restore
+    found
 }
 ```
 
@@ -212,35 +213,37 @@ bool dfs(vector<vector<char>>& board, int r, int c, string& word, int k) {
 
 ## Template 5 — Palindrome Partitioning (LC 131)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<string>> partition(string s) {
-    vector<vector<string>> result;
-    vector<string> path;
-    backtrack(s, 0, path, result);
-    return result;
+```rust
+fn partition(s: &str) -> Vec<Vec<String>> {
+    let mut result = Vec::new();
+    let mut path: Vec<String> = Vec::new();
+    let chars: Vec<char> = s.chars().collect();
+    backtrack(&chars, 0, &mut path, &mut result);
+    result
 }
 
-void backtrack(string& s, int start, vector<string>& path, vector<vector<string>>& res) {
-    if (start == (int)s.length()) { res.push_back(path); return; }
-    for (int end = start + 1; end <= (int)s.length(); end++) {
-        if (isPalin(s, start, end - 1)) {
-            path.push_back(s.substr(start, end - start));
+fn backtrack(s: &[char], start: usize, path: &mut Vec<String>, res: &mut Vec<Vec<String>>) {
+    if start == s.len() { res.push(path.clone()); return; }
+    for end in (start + 1)..=s.len() {
+        if is_palin(s, start, end - 1) {
+            path.push(s[start..end].iter().collect());
             backtrack(s, end, path, res);
-            path.pop_back(); // undo
+            path.pop(); // undo
         }
     }
 }
 
-bool isPalin(string& s, int lo, int hi) {
-    while (lo < hi) if (s[lo++] != s[hi--]) return false;
-    return true;
+fn is_palin(s: &[char], mut lo: usize, mut hi: usize) -> bool {
+    while lo < hi {
+        if s[lo] != s[hi] { return false; }
+        lo += 1;
+        hi -= 1;
+    }
+    true
 }
 ```
 
-**Optimization:** Precompute a 2D palindrome table `dp[i][j]` so `isPalin` is O(1).
+**Optimization:** Precompute a 2D palindrome table `dp[i][j]` so `is_palin` is O(1).
 
 ---
 
@@ -261,8 +264,8 @@ bool isPalin(string& s, int lo, int hi) {
 | Mistake | Fix |
 |---------|-----|
 | Not undoing — state leaks into sibling branches | Mirror every make step with an undo step |
-| Forgetting to copy `path` when adding to results | `res.push_back(path)` copies by value in C++ |
-| String concat in inner loop | Use `string` with `+=` and `pop_back()` |
+| Forgetting to clone `path` when adding to results | `res.push(path.clone())` clones the Vec in Rust |
+| String concat in inner loop | Use `String` with `push(char)` and `pop()` |
 | Marking visited but not restoring — loses cells | Restore `board[r][c] = tmp` after DFS |
 | N-Queens diag: using only one diagonal set | Need two sets: `row - col` AND `row + col` |
 

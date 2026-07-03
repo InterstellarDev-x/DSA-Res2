@@ -20,51 +20,49 @@ A **variable-size window** expands its right boundary to include new elements an
 
 ## Template A: Maximize Window (Shrink on Violation)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
 // Find the longest window satisfying the constraint
-int left = 0, maxLen = 0;
-// data structure to track window state (unordered_map, array, counter)
+let mut left = 0usize;
+let mut max_len = 0usize;
+// data structure to track window state (HashMap, array, counter)
 
-for (int right = 0; right < n; right++) {
+for right in 0..n {
     // 1. Expand: add nums[right] to window
     add(nums[right]);
 
     // 2. Shrink: while constraint violated, remove from left
-    while (violated()) {
+    while violated() {
         remove(nums[left]);
-        left++;
+        left += 1;
     }
 
     // 3. Window [left..right] is now valid — update answer
-    maxLen = max(maxLen, right - left + 1);
+    max_len = max_len.max(right - left + 1);
 }
-return maxLen;
+max_len
 ```
 
 ---
 
 ## Template B: Minimize Window (Shrink While Valid)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
 // Find the smallest window satisfying the constraint
-int left = 0, minLen = INT_MAX;
+let mut left = 0usize;
+let mut min_len = usize::MAX;
 
-for (int right = 0; right < n; right++) {
+for right in 0..n {
     // 1. Expand: add nums[right]
     add(nums[right]);
 
     // 2. Shrink: while constraint is satisfied, try to make window smaller
-    while (satisfied()) {
-        minLen = min(minLen, right - left + 1);
+    while satisfied() {
+        min_len = min_len.min(right - left + 1);
         remove(nums[left]);
-        left++;
+        left += 1;
     }
 }
-return minLen == INT_MAX ? 0 : minLen;
+if min_len == usize::MAX { 0 } else { min_len }
 ```
 
 ---
@@ -73,20 +71,21 @@ return minLen == INT_MAX ? 0 : minLen;
 
 Find the minimum length subarray with sum ≥ target.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-int minSubArrayLen(int target, vector<int>& nums) {
-    int left = 0, sum = 0, minLen = INT_MAX;
+```rust
+fn min_sub_array_len(target: i32, nums: &[i32]) -> i32 {
+    let mut left = 0usize;
+    let mut sum = 0i32;
+    let mut min_len = i32::MAX;
 
-    for (int right = 0; right < (int)nums.size(); right++) {
+    for right in 0..nums.len() {
         sum += nums[right];
-        while (sum >= target) {            // constraint MET → shrink
-            minLen = min(minLen, right - left + 1);
-            sum -= nums[left++];
+        while sum >= target {            // constraint MET → shrink
+            min_len = min_len.min((right - left + 1) as i32);
+            sum -= nums[left];
+            left += 1;
         }
     }
-    return minLen == INT_MAX ? 0 : minLen;
+    if min_len == i32::MAX { 0 } else { min_len }
 }
 ```
 
@@ -98,44 +97,49 @@ int minSubArrayLen(int target, vector<int>& nums) {
 
 ## Problem 2: Longest Substring Without Repeating Characters — LC 3
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-int lengthOfLongestSubstring(string s) {
-    int freq[128] = {};  // ASCII
-    int left = 0, maxLen = 0;
+```rust
+fn length_of_longest_substring(s: &str) -> i32 {
+    let s: Vec<u8> = s.bytes().collect();
+    let mut freq = [0i32; 128];  // ASCII
+    let mut left = 0usize;
+    let mut max_len = 0i32;
 
-    for (int right = 0; right < (int)s.length(); right++) {
-        freq[s[right]]++;
+    for right in 0..s.len() {
+        freq[s[right] as usize] += 1;
 
-        while (freq[s[right]] > 1) {  // duplicate found → shrink
-            freq[s[left++]]--;
+        while freq[s[right] as usize] > 1 {  // duplicate found → shrink
+            freq[s[left] as usize] -= 1;
+            left += 1;
         }
 
-        maxLen = max(maxLen, right - left + 1);
+        max_len = max_len.max((right - left + 1) as i32);
     }
-    return maxLen;
+    max_len
 }
 ```
 
-**Alternative: std::unordered_map with last-seen index — jump left directly**
+**Alternative: HashMap with last-seen index — jump left directly**
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-int lengthOfLongestSubstring(string s) {
-    unordered_map<char, int> lastSeen;
-    int left = 0, maxLen = 0;
+```rust
+use std::collections::HashMap;
 
-    for (int right = 0; right < (int)s.length(); right++) {
-        char c = s[right];
-        if (lastSeen.count(c) && lastSeen[c] >= left) {
-            left = lastSeen[c] + 1;   // jump left past the duplicate
+fn length_of_longest_substring(s: &str) -> i32 {
+    let s: Vec<char> = s.chars().collect();
+    let mut last_seen: HashMap<char, usize> = HashMap::new();
+    let mut left = 0usize;
+    let mut max_len = 0i32;
+
+    for right in 0..s.len() {
+        let c = s[right];
+        if let Some(&idx) = last_seen.get(&c) {
+            if idx >= left {
+                left = idx + 1;   // jump left past the duplicate
+            }
         }
-        lastSeen[c] = right;
-        maxLen = max(maxLen, right - left + 1);
+        last_seen.insert(c, right);
+        max_len = max_len.max((right - left + 1) as i32);
     }
-    return maxLen;
+    max_len
 }
 ```
 
@@ -147,23 +151,23 @@ int lengthOfLongestSubstring(string s) {
 
 Flip at most `k` zeroes. Find the longest subarray of ones.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-int longestOnes(vector<int>& nums, int k) {
-    int left = 0, zeros = 0, maxLen = 0;
+```rust
+fn longest_ones(nums: &[i32], k: i32) -> i32 {
+    let mut left = 0usize;
+    let mut zeros = 0i32;
+    let mut max_len = 0i32;
 
-    for (int right = 0; right < (int)nums.size(); right++) {
-        if (nums[right] == 0) zeros++;
+    for right in 0..nums.len() {
+        if nums[right] == 0 { zeros += 1; }
 
-        while (zeros > k) {          // too many zeros → shrink
-            if (nums[left] == 0) zeros--;
-            left++;
+        while zeros > k {          // too many zeros → shrink
+            if nums[left] == 0 { zeros -= 1; }
+            left += 1;
         }
 
-        maxLen = max(maxLen, right - left + 1);
+        max_len = max_len.max((right - left + 1) as i32);
     }
-    return maxLen;
+    max_len
 }
 ```
 
@@ -175,25 +179,27 @@ int longestOnes(vector<int>& nums, int k) {
 
 Two baskets (at most 2 distinct fruit types). Find the longest subarray with ≤ 2 distinct values.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-int totalFruit(vector<int>& fruits) {
-    unordered_map<int, int> basket;
-    int left = 0, maxLen = 0;
+```rust
+use std::collections::HashMap;
 
-    for (int right = 0; right < (int)fruits.size(); right++) {
-        basket[fruits[right]]++;                       // add fruit
+fn total_fruit(fruits: &[i32]) -> i32 {
+    let mut basket: HashMap<i32, i32> = HashMap::new();
+    let mut left = 0usize;
+    let mut max_len = 0i32;
 
-        while (basket.size() > 2) {                    // > 2 types → shrink
-            basket[fruits[left]]--;
-            if (basket[fruits[left]] == 0) basket.erase(fruits[left]);
-            left++;
+    for right in 0..fruits.len() {
+        *basket.entry(fruits[right]).or_insert(0) += 1;  // add fruit
+
+        while basket.len() > 2 {                    // > 2 types → shrink
+            let entry = basket.entry(fruits[left]).or_insert(0);
+            *entry -= 1;
+            if *entry == 0 { basket.remove(&fruits[left]); }
+            left += 1;
         }
 
-        maxLen = max(maxLen, right - left + 1);
+        max_len = max_len.max((right - left + 1) as i32);
     }
-    return maxLen;
+    max_len
 }
 ```
 
@@ -207,33 +213,34 @@ Replace at most `k` characters. Find the longest substring where you can make al
 
 **Key insight:** In a valid window, the number of characters to replace = `window_size - max_frequency`. If this exceeds `k`, shrink.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-int characterReplacement(string s, int k) {
-    int freq[26] = {};
-    int left = 0, maxFreq = 0, maxLen = 0;
+```rust
+fn character_replacement(s: &str, k: i32) -> i32 {
+    let s: Vec<u8> = s.bytes().collect();
+    let mut freq = [0i32; 26];
+    let mut left = 0usize;
+    let mut max_freq = 0i32;
+    let mut max_len = 0i32;
 
-    for (int right = 0; right < (int)s.length(); right++) {
-        freq[s[right] - 'A']++;
-        maxFreq = max(maxFreq, freq[s[right] - 'A']);
+    for right in 0..s.len() {
+        freq[(s[right] - b'A') as usize] += 1;
+        max_freq = max_freq.max(freq[(s[right] - b'A') as usize]);
 
         // Window size - max_freq = chars to replace
-        if ((right - left + 1) - maxFreq > k) {   // shrink
-            freq[s[left] - 'A']--;
-            left++;
-            // Note: maxFreq is NOT recomputed — see explanation below
+        if (right - left + 1) as i32 - max_freq > k {   // shrink
+            freq[(s[left] - b'A') as usize] -= 1;
+            left += 1;
+            // Note: max_freq is NOT recomputed — see explanation below
         }
 
-        maxLen = max(maxLen, right - left + 1);
+        max_len = max_len.max((right - left + 1) as i32);
     }
-    return maxLen;
+    max_len
 }
 ```
 
-**Why don't we recompute `maxFreq` on shrink?** `maxFreq` can only increase or stay the same to improve the answer. Even if the current window's actual max frequency is lower, we don't need a shorter valid window than what we already have. We're looking for the maximum length, so `maxFreq` serves as a lower bound — any window with a smaller max frequency would be shorter, which isn't useful.
+**Why don't we recompute `max_freq` on shrink?** `max_freq` can only increase or stay the same to improve the answer. Even if the current window's actual max frequency is lower, we don't need a shorter valid window than what we already have. We're looking for the maximum length, so `max_freq` serves as a lower bound — any window with a smaller max frequency would be shorter, which isn't useful.
 
-**Formal:** `maxLen = right - left + 1` never shrinks (we shrink by exactly 1 when condition violated, so window size is non-decreasing). `maxFreq` correspondingly can only increase to allow a longer valid window.
+**Formal:** `max_len = right - left + 1` never shrinks (we shrink by exactly 1 when condition violated, so window size is non-decreasing). `max_freq` correspondingly can only increase to allow a longer valid window.
 
 **Complexity:** O(n) time, O(1) space (26-element array)
 
@@ -243,39 +250,45 @@ int characterReplacement(string s, int k) {
 
 Find the minimum window in `s` containing all characters of `t`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-string minWindow(string s, string t) {
-    if (s.length() < t.length()) return "";
+```rust
+fn min_window(s: &str, t: &str) -> String {
+    if s.len() < t.len() { return String::new(); }
 
-    int need[128] = {};
-    for (char c : t) need[c]++;
+    let s: Vec<u8> = s.bytes().collect();
+    let mut need = [0i32; 128];
+    for c in t.bytes() { need[c as usize] += 1; }
 
-    int left = 0, have = 0, required = t.length();
-    int minLen = INT_MAX, minLeft = 0;
+    let mut left = 0usize;
+    let mut have = 0i32;
+    let required = t.len() as i32;
+    let mut min_len = i32::MAX;
+    let mut min_left = 0usize;
 
-    for (int right = 0; right < (int)s.length(); right++) {
-        char c = s[right];
-        if (need[c] > 0) have++;    // we needed this char and now have one more
-        need[c]--;                  // reduce need (can go negative for excess chars)
+    for right in 0..s.len() {
+        let c = s[right] as usize;
+        if need[c] > 0 { have += 1; }    // we needed this char and now have one more
+        need[c] -= 1;                     // reduce need (can go negative for excess chars)
 
-        while (have == required) {   // all chars covered → try to shrink
-            if (right - left + 1 < minLen) {
-                minLen = right - left + 1;
-                minLeft = left;
+        while have == required {   // all chars covered → try to shrink
+            if (right - left + 1) as i32 < min_len {
+                min_len = (right - left + 1) as i32;
+                min_left = left;
             }
-            char l = s[left];
-            need[l]++;               // return char to need
-            if (need[l] > 0) have--; // now we need this char again
-            left++;
+            let l = s[left] as usize;
+            need[l] += 1;               // return char to need
+            if need[l] > 0 { have -= 1; } // now we need this char again
+            left += 1;
         }
     }
-    return minLen == INT_MAX ? "" : s.substr(minLeft, minLen);
+    if min_len == i32::MAX {
+        String::new()
+    } else {
+        String::from_utf8(s[min_left..min_left + min_len as usize].to_vec()).unwrap()
+    }
 }
 ```
 
-**Why `need[c] > 0` for `have++`?** `need` can be negative (we have excess of a char). We only increment `have` when we're actually satisfying a need (not just adding excess). Similarly, `need[l]++` returns the char; only if it becomes positive does `have--` (we lost a needed char, not just excess).
+**Why `need[c] > 0` for `have += 1`?** `need` can be negative (we have excess of a char). We only increment `have` when we're actually satisfying a need (not just adding excess). Similarly, `need[l] += 1` returns the char; only if it becomes positive does `have -= 1` (we lost a needed char, not just excess).
 
 **Complexity:** O(|s| + |t|) time, O(1) space (128-element array)
 
@@ -285,24 +298,24 @@ string minWindow(string s, string t) {
 
 Count substrings containing at least one each of 'a', 'b', 'c'.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-int numberOfSubstrings(string s) {
-    int count[3] = {};
-    int left = 0, result = 0;
+```rust
+fn number_of_substrings(s: &str) -> i32 {
+    let s: Vec<u8> = s.bytes().collect();
+    let mut count = [0i32; 3];
+    let mut left = 0usize;
+    let mut result = 0i32;
 
-    for (int right = 0; right < (int)s.length(); right++) {
-        count[s[right] - 'a']++;
+    for right in 0..s.len() {
+        count[(s[right] - b'a') as usize] += 1;
 
-        while (count[0] > 0 && count[1] > 0 && count[2] > 0) {
+        while count[0] > 0 && count[1] > 0 && count[2] > 0 {
             // All three chars present → count all extensions to the right
-            result += s.length() - right;   // [left..right], [left..right+1], ..., [left..n-1]
-            count[s[left] - 'a']--;
-            left++;
+            result += (s.len() - right) as i32;   // [left..right], [left..right+1], ..., [left..n-1]
+            count[(s[left] - b'a') as usize] -= 1;
+            left += 1;
         }
     }
-    return result;
+    result
 }
 ```
 
@@ -314,24 +327,24 @@ int numberOfSubstrings(string s) {
 
 Delete exactly one element. Find longest subarray of 1s.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-int longestSubarray(vector<int>& nums) {
-    int left = 0, zeros = 0, maxLen = 0;
+```rust
+fn longest_subarray(nums: &[i32]) -> i32 {
+    let mut left = 0usize;
+    let mut zeros = 0i32;
+    let mut max_len = 0i32;
 
-    for (int right = 0; right < (int)nums.size(); right++) {
-        if (nums[right] == 0) zeros++;
+    for right in 0..nums.len() {
+        if nums[right] == 0 { zeros += 1; }
 
-        while (zeros > 1) {
-            if (nums[left] == 0) zeros--;
-            left++;
+        while zeros > 1 {
+            if nums[left] == 0 { zeros -= 1; }
+            left += 1;
         }
 
         // -1 because we must delete exactly one element (the 0 in the window, or any 1)
-        maxLen = max(maxLen, right - left);  // right - left = window_size - 1
+        max_len = max_len.max((right - left) as i32);  // right - left = window_size - 1
     }
-    return maxLen;
+    max_len
 }
 ```
 
@@ -347,7 +360,7 @@ int longestSubarray(vector<int>& nums) {
 | LSWORC | freq array | always | freq > 1 (duplicate) |
 | Max Cons Ones III | zero count | always | zeros > k |
 | Fruits Into Baskets | fruit type map | always | map.size() > 2 |
-| Char Replacement | freq array + maxFreq | always | windowSize - maxFreq > k |
+| Char Replacement | freq array + max_freq | always | windowSize - max_freq > k |
 | Min Window Substring | need array, have count | always | have == required |
 | All Three Characters | char counts | always | all 3 counts > 0 |
 

@@ -6,14 +6,11 @@
 
 ## The Universal Sliding Window Template
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Step 1: Choose state representation
-//   - int counter for simple counts (zeros, odds)
-//   - int[] freq array for character frequencies
-//   - unordered_map<K,V> for arbitrary key frequencies/counts
+//   - i32 counter for simple counts (zeros, odds)
+//   - [i32; N] freq array for character frequencies
+//   - HashMap<K,V> for arbitrary key frequencies/counts
 
 // Step 2: Choose goal (maximize or minimize window)
 //   - Maximize: use 'if' for shrink, update answer after shrink
@@ -23,21 +20,21 @@ using namespace std;
 //   - Window size (right - left + 1)
 //   - Count of valid windows (result += right - left + 1)
 
-int left = 0;
+let mut left = 0usize;
 // state variables here
 
-for (int right = 0; right < n; right++) {
+for right in 0..n {
     // [EXPAND] Add nums[right] to window state
 
     // [SHRINK] While/if window is invalid/should shrink
-    while (isInvalid()) {  // or 'if' for max-length problems
+    while is_invalid() {  // or 'if' for max-length problems
         // Remove nums[left] from window state
-        left++;
+        left += 1;
     }
 
     // [RECORD] Update answer
-    // For max length: maxLen = max(maxLen, right - left + 1)
-    // For min length: minLen = min(minLen, right - left + 1) [inside while]
+    // For max length: max_len = max_len.max(right - left + 1)
+    // For min length: min_len = min_len.min(right - left + 1) [inside while]
     // For count: result += right - left + 1
 }
 ```
@@ -50,81 +47,89 @@ for (int right = 0; right < n; right++) {
 
 **Problems:** Max Consecutive Ones III, Fruits Into Baskets, LSWORC
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int left = 0, state = 0, maxLen = 0;
-for (int right = 0; right < n; right++) {
-    state += increase(nums[right]);           // expand
-    if (state > k) {                          // violated → if, not while
-        state -= decrease(nums[left++]);      // shrink by 1
+```rust
+let mut left = 0usize;
+let mut state = 0i32;
+let mut max_len = 0usize;
+for right in 0..n {
+    state += increase(nums[right]);            // expand
+    if state > k {                             // violated → if, not while
+        state -= decrease(nums[left]);         // shrink by 1
+        left += 1;
     }
-    maxLen = max(maxLen, right - left + 1);  // window is valid
+    max_len = max_len.max(right - left + 1);  // window is valid
 }
-return maxLen;
+max_len
 ```
 
 ### Template 2: Min Length — At Least Target Sum/Count
 
 **Problems:** Minimum Subarray Sum
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int left = 0, state = 0, minLen = INT_MAX;
-for (int right = 0; right < n; right++) {
-    state += nums[right];                     // expand
-    while (state >= target) {                 // valid → while, minimize
-        minLen = min(minLen, right - left + 1);
-        state -= nums[left++];
+```rust
+let mut left = 0usize;
+let mut state = 0i32;
+let mut min_len = usize::MAX;
+for right in 0..n {
+    state += nums[right];                      // expand
+    while state >= target {                    // valid → while, minimize
+        min_len = min_len.min(right - left + 1);
+        state -= nums[left];
+        left += 1;
     }
 }
-return minLen == INT_MAX ? 0 : minLen;
+if min_len == usize::MAX { 0 } else { min_len }
 ```
 
 ### Template 3: Min Length — All Chars Present
 
 **Problems:** Minimum Window Substring
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+let mut need = [0i32; 128];
+// populate need[] from t
+let mut left = 0usize;
+let mut have = 0i32;
+let required = t.len() as i32;
+let mut min_len = usize::MAX;
+let mut min_left = 0usize;
 
-int need[128] = {};
-// buildNeedArray equivalent: populate need[] from t
-int left = 0, have = 0, required = (int)t.length();
-int minLen = INT_MAX, minLeft = 0;
-
-for (int right = 0; right < n; right++) {
-    if (need[s[right]]-- > 0) have++;          // expand with condition
-    while (have == required) {                  // valid → while, minimize
-        if (right - left + 1 < minLen) { minLen = right - left + 1; minLeft = left; }
-        if (++need[s[left]] > 0) have--;        // shrink with condition
-        left++;
+let s_bytes = s.as_bytes();
+for right in 0..n {
+    let rc = s_bytes[right] as usize;
+    if need[rc] > 0 { have += 1; }
+    need[rc] -= 1;                              // expand with condition
+    while have == required {                    // valid → while, minimize
+        if right - left + 1 < min_len {
+            min_len = right - left + 1;
+            min_left = left;
+        }
+        let lc = s_bytes[left] as usize;
+        need[lc] += 1;
+        if need[lc] > 0 { have -= 1; }         // shrink with condition
+        left += 1;
     }
 }
-return minLen == INT_MAX ? "" : s.substr(minLeft, minLen);
+if min_len == usize::MAX { "".to_string() } else { s[min_left..min_left + min_len].to_string() }
 ```
 
 ### Template 4: Count Subarrays — At Most k
 
 **Problems:** Subarray Product < K, Binary Subarrays With Sum (combined with subtraction)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int left = 0, state = initialState, result = 0;
-for (int right = 0; right < n; right++) {
-    state = applyRight(state, nums[right]);    // expand
-    while (state > k || isInvalid(state)) {   // shrink until valid
-        state = removeLeft(state, nums[left++]);
+```rust
+let mut left = 0usize;
+let mut state = initial_state;
+let mut result = 0usize;
+for right in 0..n {
+    state = apply_right(state, nums[right]);   // expand
+    while state > k || is_invalid(state) {    // shrink until valid
+        state = remove_left(state, nums[left]);
+        left += 1;
     }
     result += right - left + 1;               // count all starting positions
 }
-return result;
+result
 ```
 
 ---
@@ -152,13 +157,13 @@ Problem says "subarray/substring"?
 
 | Window Property | State Variable | Init | Expand | Shrink | Violated When |
 |----------------|---------------|------|--------|--------|---------------|
-| Running sum | `int sum` | 0 | `sum += x` | `sum -= x` | `sum >= target` (for minimize) |
-| Zero count | `int zeros` | 0 | `if x==0: zeros++` | `if x==0: zeros--` | `zeros > k` |
-| Odd count | `int odds` | 0 | `if x%2==1: odds++` | `if x%2==1: odds--` | `odds > k` |
-| Running product | `int product` | 1 | `product *= x` | `product /= x` | `product >= k` |
-| Distinct count | `unordered_map + size` | empty | `put/merge x` | `remove if 0` | `map.size() > k` |
-| Char frequency | `int[] freq` | zeros | `freq[x]++` | `freq[x]--` | `freq[x] > 1` or `freq[x] > allowed` |
-| Have/need | `int have` | 0 | conditional `have++` | conditional `have--` | `have < required` |
+| Running sum | `i32 sum` | 0 | `sum += x` | `sum -= x` | `sum >= target` (for minimize) |
+| Zero count | `i32 zeros` | 0 | `if x==0: zeros+=1` | `if x==0: zeros-=1` | `zeros > k` |
+| Odd count | `i32 odds` | 0 | `if x%2==1: odds+=1` | `if x%2==1: odds-=1` | `odds > k` |
+| Running product | `i32 product` | 1 | `product *= x` | `product /= x` | `product >= k` |
+| Distinct count | `HashMap + len` | empty | `put/merge x` | `remove if 0` | `map.len() > k` |
+| Char frequency | `[i32; N] freq` | zeros | `freq[x]+=1` | `freq[x]-=1` | `freq[x] > 1` or `freq[x] > allowed` |
+| Have/need | `i32 have` | 0 | conditional `have+=1` | conditional `have-=1` | `have < required` |
 
 ---
 

@@ -8,180 +8,183 @@ Twelve recurring bugs as wrong/correct pairs. Each costs correctness or a TLE in
 
 ## 1. Marking visited at dequeue instead of enqueue → TLE / duplicates
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 // WRONG — same node enqueued by many neighbors before it's marked
-while (!q.empty()) {
-    int u = q.front(); q.pop();
-    if (visited[u]) continue;       // marked too late
+while let Some(u) = q.pop_front() {
+    if visited[u] { continue; }       // marked too late
     visited[u] = true;
-    for (int v : adj[u]) q.push(v);
+    for &v in &adj[u] { q.push_back(v); }
 }
 // CORRECT — mark the instant you enqueue
-visited[start] = true; q.push(start);
-while (!q.empty()) {
-    int u = q.front(); q.pop();
-    for (int v : adj[u])
-        if (!visited[v]) { visited[v] = true; q.push(v); }
+visited[start] = true; q.push_back(start);
+while let Some(u) = q.pop_front() {
+    for &v in &adj[u] {
+        if !visited[v] { visited[v] = true; q.push_back(v); }
+    }
 }
 ```
 
 ## 2. Subtraction in a PQ comparator → integer overflow
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-// WRONG — a[1] - b[1] overflows when distances are large
-auto cmp_wrong = [](auto& a, auto& b){ return a[1] - b[1] > 0; };
-priority_queue<vector<int>, vector<vector<int>>, decltype(cmp_wrong)> pq_wrong(cmp_wrong);
-// CORRECT
-auto cmp = [](auto& a, auto& b){ return a[1] > b[1]; }; // min-heap by dist
-priority_queue<vector<int>, vector<vector<int>>, decltype(cmp)> pq(cmp);
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
+// WRONG — subtraction overflows when distances are large
+// (a[1] - b[1] > 0 as an ordering expression is unsafe for large i32 values)
+// CORRECT — min-heap by dist using Reverse, no overflow
+let mut pq: BinaryHeap<Reverse<(i32, i32)>> = BinaryHeap::new(); // (dist, node)
+// push: pq.push(Reverse((dist, node)));
+// pop:  if let Some(Reverse((d, u))) = pq.pop() { ... }
 ```
 
 ## 3. Forgetting the stale-entry skip in Dijkstra
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Reverse;
 // WRONG — reprocesses finalized nodes, may relax with outdated d
-auto top = pq.top(); pq.pop();
-for (auto& e : adj[top[0]]) { /* relax using top[1] */ }
+if let Some(Reverse((d, u))) = pq.pop() {
+    for &(v, w) in &adj[u] { /* relax using d */ }
+}
 // CORRECT
-auto top = pq.top(); pq.pop();
-int u = top[0], d = top[1];
-if (d > dist[u]) continue;          // skip stale entry
-for (auto& e : adj[u]) { /* relax using d */ }
+if let Some(Reverse((d, u))) = pq.pop() {
+    if d > dist[u] { continue; }          // skip stale entry
+    for &(v, w) in &adj[u] { /* relax using d */ }
+}
 ```
 
 ## 4. Bellman-Ford for K-stops without cloning `dist`
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
 // WRONG — one round chains multiple edges → exceeds stop limit
-for (int round = 0; round <= k; round++)
-    for (auto& f : flights)
-        dist[f[1]] = min(dist[f[1]], dist[f[0]] + f[2]);
+for _round in 0..=k {
+    for f in &flights {
+        let (src, dst, cost) = (f[0], f[1], f[2]);
+        dist[dst] = dist[dst].min(dist[src] + cost);
+    }
+}
 // CORRECT — freeze previous round's distances
-for (int round = 0; round <= k; round++) {
-    vector<int> prev = dist;
-    for (auto& f : flights)
-        if (prev[f[0]] != INT_MAX)
-            dist[f[1]] = min(dist[f[1]], prev[f[0]] + f[2]);
+for _round in 0..=k {
+    let prev = dist.clone();
+    for f in &flights {
+        let (src, dst, cost) = (f[0], f[1], f[2]);
+        if prev[src] != i32::MAX {
+            dist[dst] = dist[dst].min(prev[src] + cost);
+        }
+    }
 }
 ```
 
 ## 5. Adding an undirected edge in only one direction
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
 // WRONG — half the graph is missing
-adj[u].push_back(v);
+adj[u].push(v);
 // CORRECT
-adj[u].push_back(v);
-adj[v].push_back(u);
+adj[u].push(v);
+adj[v].push(u);
 ```
 
 ## 6. DSU without path compression → near-O(n) find, TLE
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
 // WRONG — degenerate chains
-int find(int x) { while (parent[x] != x) x = parent[x]; return x; }
+fn find(parent: &[usize], mut x: usize) -> usize {
+    while parent[x] != x { x = parent[x]; }
+    x
+}
 // CORRECT — path compression (+ union by rank)
-int find(int x) { while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+fn find(parent: &mut Vec<usize>, mut x: usize) -> usize {
+    while parent[x] != x {
+        let gp = parent[parent[x]]; // path halving
+        parent[x] = gp;
+        x = parent[x];
+    }
+    x
+}
 ```
 
 ## 7. Directed cycle detection via parent-tracking → wrong
 
 Parent-skipping detects cycles in **undirected** graphs only. For directed graphs use 3-color.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
 // WRONG for directed — misses cycles like a->b->a's true direction semantics
-bool dfs(int u, int parent) {
-    for (int v : adj[u]) {
-        if (v == parent) continue;          // undirected idea, wrong here
-        if (visited[v] || dfs(v, u)) return true;
+fn dfs_wrong(u: usize, par: usize, adj: &[Vec<usize>], visited: &mut Vec<bool>) -> bool {
+    for &v in &adj[u] {
+        if v == par { continue; }                 // undirected idea, wrong here
+        if visited[v] || dfs_wrong(v, u, adj, visited) { return true; }
     }
-    return true;
+    true
 }
 // CORRECT for directed — gray = on current path
-bool dfs(int u) {
+fn dfs(u: usize, adj: &[Vec<usize>], color: &mut Vec<i32>) -> bool {
     color[u] = 1;
-    for (int v : adj[u]) {
-        if (color[v] == 1) return true;     // back edge
-        if (color[v] == 0 && dfs(v)) return true;
+    for &v in &adj[u] {
+        if color[v] == 1 { return true; }         // back edge
+        if color[v] == 0 && dfs(v, adj, color) { return true; }
     }
     color[u] = 2;
-    return false;
+    false
 }
 ```
 
 ## 8. Kahn's without checking all nodes processed → misses cycle
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 // WRONG — returns a partial "order" even with a cycle
-while (!q.empty()) { order.push_back(q.front()); q.pop(); /* ... */ }
+while let Some(u) = q.pop_front() { order.push(u); /* ... */ }
 return order;
 // CORRECT
-return (int)order.size() == n ? order : vector<int>{};   // cycle ⇒ empty
+if order.len() == n { order } else { vec![] }   // cycle ⇒ empty
 ```
 
 ## 9. Grid bounds check ordered after the array read → out-of-bounds
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-// WRONG — reads grid[r][c] before validating r,c
-if (grid[r][c] == '1' && r >= 0 && r < m && c >= 0 && c < n) ...
+```rust
+// WRONG — reads grid[r][c] before validating r,c (panics if out of bounds)
+if grid[r as usize][c as usize] == b'1' && r >= 0 && r < m && c >= 0 && c < n { ... }
 // CORRECT — bounds FIRST, short-circuit protects the read
-if (r >= 0 && r < m && c >= 0 && c < n && grid[r][c] == '1') ...
+if r >= 0 && r < m && c >= 0 && c < n && grid[r as usize][c as usize] == b'1' { ... }
 ```
 
 ## 10. Modifying the grid during BFS without marking → revisits / infinite loop
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
 // WRONG — neighbor added repeatedly; never marked
-for (auto& d : dirs) { int r=..., c=...; if (grid[r][c]==1) q.push({r,c}); }
+for &(dr, dc) in &dirs {
+    let (r, c) = (...);
+    if grid[r][c] == 1 { q.push_back((r, c)); }
+}
 // CORRECT — mark as you enqueue
-for (auto& d : dirs) {
-    int r=..., c=...;
-    if (inBounds(r,c) && grid[r][c]==1) { grid[r][c] = 2; q.push({r,c}); }
+for &(dr, dc) in &dirs {
+    let (r, c) = (...);
+    if in_bounds(r, c) && grid[r][c] == 1 { grid[r][c] = 2; q.push_back((r, c)); }
 }
 ```
 
 ## 11. Alien Dictionary missing the prefix-conflict check
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
 // WRONG — ["abc","ab"] should be invalid but slips through
-int j = 0; while (j < len && a[j]==b[j]) j++;
-if (j < len) addEdge(a[j], b[j]);
+let j = a.chars().zip(b.chars()).take_while(|(x, y)| x == y).count();
+if j < len { add_edge(a_chars[j], b_chars[j]); }
 // CORRECT
-if (j == len) { if (a.length() > b.length()) return ""; }   // longer word before its prefix
-else addEdge(a[j], b[j]);
+if j == len {
+    if a.len() > b.len() { return String::new(); }   // longer word before its prefix
+} else {
+    add_edge(a_chars[j], b_chars[j]);
+}
 ```
 
 ## 12. 8-direction vs 4-direction mix-up
 
 Number of Islands / Rotting Oranges are **4-directional**. Using `dirs8` over-connects and inflates/merges islands. Conversely, problems like *Shortest Path in Binary Matrix* are **8-directional** — using 4 dirs gives wrong (too-long or no) paths. Always confirm connectivity from the prompt before choosing `dirs` vs `dirs8`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-vector<vector<int>> dirs  = {{1,0},{-1,0},{0,1},{0,-1}};                         // islands, rotting
-vector<vector<int>> dirs8 = {{1,0},{-1,0},{0,1},{0,-1},{1,1},{1,-1},{-1,1},{-1,-1}}; // binary matrix path
+```rust
+let dirs: &[(i32, i32)]  = &[(1,0),(-1,0),(0,1),(0,-1)];                               // islands, rotting
+let dirs8: &[(i32, i32)] = &[(1,0),(-1,0),(0,1),(0,-1),(1,1),(1,-1),(-1,1),(-1,-1)];   // binary matrix path
 ```
 
 > **Last Updated:** 2026-06-26

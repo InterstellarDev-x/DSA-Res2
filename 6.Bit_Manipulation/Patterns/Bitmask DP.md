@@ -16,25 +16,27 @@ DP state: `dp[mask]` = answer considering exactly the elements in `mask`.
 ## Iterating Subsets
 
 **All subsets of n elements:**
-```cpp
-for (int mask = 0; mask < (1 << n); mask++) {
+```rust
+for mask in 0..(1 << n) {
     // process subset represented by mask
 }
 ```
 
 **All subsets of a given mask (submasks):**
-```cpp
-for (int sub = mask; sub > 0; sub = (sub - 1) & mask) {
+```rust
+let mut sub = mask;
+while sub > 0 {
     // process submask `sub` of `mask`
     // (sub - 1) & mask clears the lowest set bit of sub within mask's bits
+    sub = (sub - 1) & mask;
 }
 // Note: sub=0 (empty subset) is reached but the loop ends; handle separately if needed
 ```
 
 **Elements in a mask:**
-```cpp
-for (int i = 0; i < n; i++) {
-    if ((mask >> i & 1) == 1) {
+```rust
+for i in 0..n {
+    if (mask >> i & 1) == 1 {
         // element i is in the subset
     }
 }
@@ -44,21 +46,20 @@ for (int i = 0; i < n; i++) {
 
 ## Template 1 — Subsets via Bitmask (LC 78)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> subsets(vector<int>& nums) {
-    int n = nums.size();
-    vector<vector<int>> result;
-    for (int mask = 0; mask < (1 << n); mask++) {
-        vector<int> subset;
-        for (int i = 0; i < n; i++) {
-            if ((mask >> i & 1) == 1) subset.push_back(nums[i]);
+```rust
+fn subsets(nums: &[i32]) -> Vec<Vec<i32>> {
+    let n = nums.len();
+    let mut result = Vec::new();
+    for mask in 0..(1 << n) {
+        let mut subset = Vec::new();
+        for i in 0..n {
+            if (mask >> i & 1) == 1 {
+                subset.push(nums[i]);
+            }
         }
-        result.push_back(subset);
+        result.push(subset);
     }
-    return result;
+    result
 }
 ```
 
@@ -70,27 +71,24 @@ vector<vector<int>> subsets(vector<int>& nums) {
 
 Assign each element of `nums2` to one element of `nums1` (bijection). Minimize sum of `nums1[i] XOR nums2[assignment[i]]`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int minimumXORSum(vector<int>& nums1, vector<int>& nums2) {
-    int n = nums1.size();
-    vector<int> dp(1 << n, INT_MAX);
+```rust
+fn minimum_xor_sum(nums1: &[i32], nums2: &[i32]) -> i32 {
+    let n = nums1.len();
+    let mut dp = vec![i32::MAX; 1 << n];
     dp[0] = 0;
 
-    for (int mask = 0; mask < (1 << n); mask++) {
-        if (dp[mask] == INT_MAX) continue;
-        int i = __builtin_popcount(mask); // index in nums1 (number of bits set = next to assign)
-        if (i == n) continue;
-        for (int j = 0; j < n; j++) {
-            if ((mask >> j & 1) == 0) { // nums2[j] not yet assigned
-                int newMask = mask | (1 << j);
-                dp[newMask] = min(dp[newMask], dp[mask] + (nums1[i] ^ nums2[j]));
+    for mask in 0..(1 << n) {
+        if dp[mask] == i32::MAX { continue; }
+        let i = (mask as u32).count_ones() as usize; // index in nums1 (number of bits set = next to assign)
+        if i == n { continue; }
+        for j in 0..n {
+            if (mask >> j & 1) == 0 { // nums2[j] not yet assigned
+                let new_mask = mask | (1 << j);
+                dp[new_mask] = dp[new_mask].min(dp[mask] + (nums1[i] ^ nums2[j]));
             }
         }
     }
-    return dp[(1 << n) - 1];
+    dp[(1 << n) - 1]
 }
 ```
 
@@ -103,35 +101,32 @@ int minimumXORSum(vector<int>& nums1, vector<int>& nums2) {
 
 BFS with bitmask state: `(node, visited)`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-int shortestPathLength(vector<vector<int>>& graph) {
-    int n = graph.size();
-    int fullMask = (1 << n) - 1;
-    queue<vector<int>> q;
-    vector<vector<bool>> visited(n, vector<bool>(1 << n, false));
+fn shortest_path_length(graph: &[Vec<usize>]) -> i32 {
+    let n = graph.len();
+    let full_mask = (1 << n) - 1;
+    let mut q: VecDeque<(usize, usize, i32)> = VecDeque::new();
+    let mut visited = vec![vec![false; 1 << n]; n];
 
     // Start BFS from all nodes simultaneously
-    for (int i = 0; i < n; i++) {
-        q.push({i, 1 << i, 0}); // {node, visited_mask, distance}
+    for i in 0..n {
+        q.push_back((i, 1 << i, 0)); // (node, visited_mask, distance)
         visited[i][1 << i] = true;
     }
 
-    while (!q.empty()) {
-        auto curr = q.front(); q.pop();
-        int node = curr[0], mask = curr[1], dist = curr[2];
-        if (mask == fullMask) return dist;
-        for (int neighbor : graph[node]) {
-            int newMask = mask | (1 << neighbor);
-            if (!visited[neighbor][newMask]) {
-                visited[neighbor][newMask] = true;
-                q.push({neighbor, newMask, dist + 1});
+    while let Some((node, mask, dist)) = q.pop_front() {
+        if mask == full_mask { return dist; }
+        for &neighbor in &graph[node] {
+            let new_mask = mask | (1 << neighbor);
+            if !visited[neighbor][new_mask] {
+                visited[neighbor][new_mask] = true;
+                q.push_back((neighbor, new_mask, dist + 1));
             }
         }
     }
-    return -1;
+    -1
 }
 ```
 
@@ -141,35 +136,31 @@ int shortestPathLength(vector<vector<int>>& graph) {
 
 ## Template 4 — Partition to K Equal Sum Subsets (LC 698)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn can_partition_k_subsets(nums: &mut Vec<i32>, k: i32) -> bool {
+    let sum: i32 = nums.iter().sum();
+    if sum % k != 0 { return false; }
+    let target = sum / k;
+    nums.sort();
+    if *nums.last().unwrap() > target { return false; }
 
-bool canPartitionKSubsets(vector<int>& nums, int k) {
-    int sum = 0;
-    for (int x : nums) sum += x;
-    if (sum % k != 0) return false;
-    int target = sum / k;
-    sort(nums.begin(), nums.end());
-    if (nums[nums.size() - 1] > target) return false;
-
-    int n = nums.size();
-    vector<bool> dp(1 << n, false); // dp[mask] = can form valid k-1 subsets using nums in mask
+    let n = nums.len();
+    let mut dp = vec![false; 1 << n]; // dp[mask] = can form valid k-1 subsets using nums in mask
     dp[0] = true;
-    vector<int> curSum(1 << n, 0); // current bucket sum for each mask
+    let mut cur_sum = vec![0i32; 1 << n]; // current bucket sum for each mask
 
-    for (int mask = 0; mask < (1 << n); mask++) {
-        if (!dp[mask]) continue;
-        for (int i = 0; i < n; i++) {
-            int newMask = mask | (1 << i);
-            if (newMask == mask) continue; // i already in mask
-            if (curSum[mask] + nums[i] <= target) {
-                curSum[newMask] = (curSum[mask] + nums[i]) % target;
-                dp[newMask] = true;
+    for mask in 0..(1 << n) {
+        if !dp[mask] { continue; }
+        for i in 0..n {
+            let new_mask = mask | (1 << i);
+            if new_mask == mask { continue; } // i already in mask
+            if cur_sum[mask] + nums[i] <= target {
+                cur_sum[new_mask] = (cur_sum[mask] + nums[i]) % target;
+                dp[new_mask] = true;
             }
         }
     }
-    return dp[(1 << n) - 1];
+    dp[(1 << n) - 1]
 }
 ```
 

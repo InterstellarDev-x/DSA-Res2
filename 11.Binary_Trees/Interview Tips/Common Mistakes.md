@@ -4,43 +4,47 @@
 
 Ten bugs that show up over and over in binary-tree interviews. Each one pairs the broken version (❌) with the fix (✅). Node definition used throughout:
 
-```cpp
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
-};
+```rust
+#[derive(Debug)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
+
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 ---
 
-## 1. Missing null check before accessing `node->left` / `node->right`
+## 1. Missing null check before accessing `node.left` / `node.right`
 
-Dereferencing a child without first confirming the node exists is the classic crash (segmentation fault). Always handle `nullptr` as the first line.
+Dereferencing a child without first confirming the node exists is the classic crash (panic). Always handle `None` as the first line.
 
 ❌ **Wrong**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int maxDepth(TreeNode* node) {
-    int left = maxDepth(node->left);    // crash when node == nullptr
-    int right = maxDepth(node->right);
-    return 1 + max(left, right);
+```rust
+fn max_depth(node: Option<&TreeNode>) -> i32 {
+    let node = node.unwrap(); // panic when node is None
+    let left = max_depth(node.left.as_deref());
+    let right = max_depth(node.right.as_deref());
+    1 + left.max(right)
 }
 ```
 
 ✅ **Correct**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int maxDepth(TreeNode* node) {
-    if (node == nullptr) return 0;        // base case first
-    int left = maxDepth(node->left);
-    int right = maxDepth(node->right);
-    return 1 + max(left, right);
+```rust
+fn max_depth(node: Option<&TreeNode>) -> i32 {
+    let node = match node {
+        None => return 0,       // base case first
+        Some(n) => n,
+    };
+    let left = max_depth(node.left.as_deref());
+    let right = max_depth(node.right.as_deref());
+    1 + left.max(right)
 }
 ```
 
@@ -51,28 +55,29 @@ int maxDepth(TreeNode* node) {
 The helper must **return the height** but **record the diameter in a global**. Returning the local `left + right` upward corrupts the height calculation of ancestors.
 
 ❌ **Wrong**
-```cpp
-int diameter(TreeNode* node) {
-    if (node == nullptr) return 0;
-    int left = diameter(node->left);
-    int right = diameter(node->right);
-    return left + right;               // this is NOT a height; ancestors break
+```rust
+fn diameter(node: Option<&TreeNode>) -> i32 {
+    let node = match node {
+        None => return 0,
+        Some(n) => n,
+    };
+    let left = diameter(node.left.as_deref());
+    let right = diameter(node.right.as_deref());
+    left + right               // this is NOT a height; ancestors break
 }
 ```
 
 ✅ **Correct**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int best = 0;
-
-int height(TreeNode* node) {
-    if (node == nullptr) return 0;
-    int left = height(node->left);
-    int right = height(node->right);
-    best = max(best, left + right);   // diameter recorded globally
-    return 1 + max(left, right);      // height returned upward
+```rust
+fn height(node: Option<&TreeNode>, best: &mut i32) -> i32 {
+    let node = match node {
+        None => return 0,
+        Some(n) => n,
+    };
+    let left = height(node.left.as_deref(), best);
+    let right = height(node.right.as_deref(), best);
+    *best = (*best).max(left + right);   // diameter recorded via mutable reference
+    1 + left.max(right)                  // height returned upward
 }
 ```
 
@@ -83,30 +88,30 @@ int height(TreeNode* node) {
 Without clamping, a negative subtree contribution is allowed to drag the path total down, producing wrong answers on trees with negative values.
 
 ❌ **Wrong**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int gain(TreeNode* node) {
-    if (node == nullptr) return 0;
-    int left = gain(node->left);        // may be negative and still used
-    int right = gain(node->right);
-    best = max(best, node->val + left + right);
-    return node->val + max(left, right);
+```rust
+fn gain(node: Option<&TreeNode>, best: &mut i32) -> i32 {
+    let node = match node {
+        None => return 0,
+        Some(n) => n,
+    };
+    let left = gain(node.left.as_deref(), best);        // may be negative and still used
+    let right = gain(node.right.as_deref(), best);
+    *best = (*best).max(node.val + left + right);
+    node.val + left.max(right)
 }
 ```
 
 ✅ **Correct**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int gain(TreeNode* node) {
-    if (node == nullptr) return 0;
-    int left  = max(0, gain(node->left));    // prune negatives
-    int right = max(0, gain(node->right));
-    best = max(best, node->val + left + right);
-    return node->val + max(left, right);
+```rust
+fn gain(node: Option<&TreeNode>, best: &mut i32) -> i32 {
+    let node = match node {
+        None => return 0,
+        Some(n) => n,
+    };
+    let left  = 0_i32.max(gain(node.left.as_deref(), best));    // prune negatives
+    let right = 0_i32.max(gain(node.right.as_deref(), best));
+    *best = (*best).max(node.val + left + right);
+    node.val + left.max(right)
 }
 ```
 
@@ -117,34 +122,36 @@ int gain(TreeNode* node) {
 Reusing a shared list without removing the current node after recursion leaves stale entries, so sibling paths inherit nodes that aren't on them.
 
 ❌ **Wrong**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void dfs(TreeNode* node, int target, vector<int>& path, vector<vector<int>>& res) {
-    if (node == nullptr) return;
-    path.push_back(node->val);
-    if (node->left == nullptr && node->right == nullptr && node->val == target)
-        res.push_back(path);
-    dfs(node->left,  target - node->val, path, res);
-    dfs(node->right, target - node->val, path, res);
+```rust
+fn dfs(node: Option<&TreeNode>, target: i32, path: &mut Vec<i32>, res: &mut Vec<Vec<i32>>) {
+    let node = match node {
+        None => return,
+        Some(n) => n,
+    };
+    path.push(node.val);
+    if node.left.is_none() && node.right.is_none() && node.val == target {
+        res.push(path.clone());
+    }
+    dfs(node.left.as_deref(),  target - node.val, path, res);
+    dfs(node.right.as_deref(), target - node.val, path, res);
     // missing removal — path keeps growing across branches
 }
 ```
 
 ✅ **Correct**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void dfs(TreeNode* node, int target, vector<int>& path, vector<vector<int>>& res) {
-    if (node == nullptr) return;
-    path.push_back(node->val);
-    if (node->left == nullptr && node->right == nullptr && node->val == target)
-        res.push_back(path);
-    dfs(node->left,  target - node->val, path, res);
-    dfs(node->right, target - node->val, path, res);
-    path.pop_back();      // backtrack on every return
+```rust
+fn dfs(node: Option<&TreeNode>, target: i32, path: &mut Vec<i32>, res: &mut Vec<Vec<i32>>) {
+    let node = match node {
+        None => return,
+        Some(n) => n,
+    };
+    path.push(node.val);
+    if node.left.is_none() && node.right.is_none() && node.val == target {
+        res.push(path.clone());
+    }
+    dfs(node.left.as_deref(),  target - node.val, path, res);
+    dfs(node.right.as_deref(), target - node.val, path, res);
+    path.pop();      // backtrack on every return
 }
 ```
 
@@ -152,34 +159,40 @@ void dfs(TreeNode* node, int target, vector<int>& path, vector<vector<int>>& res
 
 ## 5. Level Order: not capturing size before the inner loop
 
-Reading `q.size()` inside the loop condition lets the bound drift as children are enqueued, merging levels together.
+Reading `q.len()` inside the loop condition lets the bound drift as children are enqueued, merging levels together.
 
 ❌ **Wrong**
-```cpp
-while (!q.empty()) {
-    vector<int> level;
-    for (int i = 0; i < (int)q.size(); i++) {   // size() changes mid-loop
-        TreeNode* node = q.front(); q.pop();
-        level.push_back(node->val);
-        if (node->left != nullptr) q.push(node->left);
-        if (node->right != nullptr) q.push(node->right);
+```rust
+use std::collections::VecDeque;
+
+while !q.is_empty() {
+    let mut level = Vec::new();
+    let mut i = 0;
+    while i < q.len() {                  // q.len() changes mid-loop
+        let node = q.pop_front().unwrap();
+        level.push(node.val);
+        if let Some(left) = node.left.as_deref() { q.push_back(left); }
+        if let Some(right) = node.right.as_deref() { q.push_back(right); }
+        i += 1;
     }
-    result.push_back(level);
+    result.push(level);
 }
 ```
 
 ✅ **Correct**
-```cpp
-while (!q.empty()) {
-    int size = (int)q.size();           // snapshot the level boundary
-    vector<int> level;
-    for (int i = 0; i < size; i++) {
-        TreeNode* node = q.front(); q.pop();
-        level.push_back(node->val);
-        if (node->left != nullptr) q.push(node->left);
-        if (node->right != nullptr) q.push(node->right);
+```rust
+use std::collections::VecDeque;
+
+while !q.is_empty() {
+    let size = q.len();                  // snapshot the level boundary
+    let mut level = Vec::new();
+    for _ in 0..size {
+        let node = q.pop_front().unwrap();
+        level.push(node.val);
+        if let Some(left) = node.left.as_deref() { q.push_back(left); }
+        if let Some(right) = node.right.as_deref() { q.push_back(right); }
     }
-    result.push_back(level);
+    result.push(level);
 }
 ```
 
@@ -187,19 +200,19 @@ while (!q.empty()) {
 
 ## 6. Construct from traversals: off-by-one in `leftSize`
 
-When splitting inorder around the root, the count of left-subtree nodes is `inIdx - inStart` (a *count* of elements strictly before the root), not `inIdx - inStart + 1` (which wrongly includes the root).
+When splitting inorder around the root, the count of left-subtree nodes is `in_idx - in_start` (a *count* of elements strictly before the root), not `in_idx - in_start + 1` (which wrongly includes the root).
 
 ❌ **Wrong**
-```cpp
-int inIdx = inMap[rootVal];
-int leftSize = inIdx - inStart + 1;    // includes the root — too large by one
+```rust
+let in_idx = in_map[&root_val];
+let left_size = in_idx - in_start + 1;    // includes the root — too large by one
 ```
 
 ✅ **Correct**
-```cpp
-int inIdx = inMap[rootVal];
-int leftSize = inIdx - inStart;        // nodes strictly left of the root
-// use leftSize to slice the preorder/postorder ranges for the left subtree
+```rust
+let in_idx = in_map[&root_val];
+let left_size = in_idx - in_start;        // nodes strictly left of the root
+// use left_size to slice the preorder/postorder ranges for the left subtree
 ```
 
 ---
@@ -209,121 +222,137 @@ int leftSize = inIdx - inStart;        // nodes strictly left of the root
 The greedy post-order returns states (0 = not covered, 1 = has camera, 2 = covered). After the recursion completes, if the **root itself** comes back uncovered (state 0), you must add one more camera — easy to forget.
 
 ❌ **Wrong**
-```cpp
-int cameras = 0;
-
-int minCameraCover(TreeNode* root) {
-    dfs(root);
-    return cameras;                    // ignores an uncovered root → undercount
+```rust
+fn min_camera_cover(root: Option<Box<TreeNode>>) -> i32 {
+    let mut cameras = 0_i32;
+    dfs(root.as_deref(), &mut cameras);
+    cameras                    // ignores an uncovered root → undercount
 }
 ```
 
 ✅ **Correct**
-```cpp
-int cameras = 0;
-
-int minCameraCover(TreeNode* root) {
-    if (dfs(root) == 0) cameras++;     // root left uncovered → place a camera
-    return cameras;
+```rust
+fn min_camera_cover(root: Option<Box<TreeNode>>) -> i32 {
+    let mut cameras = 0_i32;
+    if dfs(root.as_deref(), &mut cameras) == 0 {
+        cameras += 1;          // root left uncovered → place a camera
+    }
+    cameras
 }
 
 // dfs returns: 0 = needs cover, 1 = has camera, 2 = covered
-int dfs(TreeNode* node) {
-    if (node == nullptr) return 2;
-    int left = dfs(node->left);
-    int right = dfs(node->right);
-    if (left == 0 || right == 0) { cameras++; return 1; }
-    if (left == 1 || right == 1) return 2;
-    return 0;
+fn dfs(node: Option<&TreeNode>, cameras: &mut i32) -> i32 {
+    let node = match node {
+        None => return 2,
+        Some(n) => n,
+    };
+    let left = dfs(node.left.as_deref(), cameras);
+    let right = dfs(node.right.as_deref(), cameras);
+    if left == 0 || right == 0 { *cameras += 1; return 1; }
+    if left == 1 || right == 1 { return 2; }
+    0
 }
 ```
 
 ---
 
-## 8. LCA: returning `nullptr` incorrectly for nodes present in the tree
+## 8. LCA: returning `None` incorrectly for nodes present in the tree
 
-The lowest-common-ancestor base case must return the node when it matches `p` or `q`. Returning `nullptr` for a matched node (or short-circuiting before checking the match) loses the answer.
+The lowest-common-ancestor base case must return the node when it matches `p` or `q`. Returning `None` for a matched node (or short-circuiting before checking the match) loses the answer.
 
 ❌ **Wrong**
-```cpp
-TreeNode* lca(TreeNode* node, TreeNode* p, TreeNode* q) {
-    if (node == nullptr) return nullptr;
-    if (node->left == nullptr && node->right == nullptr) return nullptr;  // drops leaf matches
-    TreeNode* left = lca(node->left, p, q);
-    TreeNode* right = lca(node->right, p, q);
-    if (left != nullptr && right != nullptr) return node;
-    return left != nullptr ? left : right;
+```rust
+fn lca<'a>(node: Option<&'a TreeNode>, p: &TreeNode, q: &TreeNode) -> Option<&'a TreeNode> {
+    if node.is_none() { return None; }
+    let n = node.unwrap();
+    if n.left.is_none() && n.right.is_none() { return None; }  // drops leaf matches
+    let left = lca(n.left.as_deref(), p, q);
+    let right = lca(n.right.as_deref(), p, q);
+    if left.is_some() && right.is_some() { return Some(n); }
+    if left.is_some() { left } else { right }
 }
 ```
 
 ✅ **Correct**
-```cpp
-TreeNode* lca(TreeNode* node, TreeNode* p, TreeNode* q) {
-    if (node == nullptr || node == p || node == q) return node;   // match returns self
-    TreeNode* left = lca(node->left, p, q);
-    TreeNode* right = lca(node->right, p, q);
-    if (left != nullptr && right != nullptr) return node;            // split → this is LCA
-    return left != nullptr ? left : right;
+```rust
+fn lca<'a>(node: Option<&'a TreeNode>, p: &TreeNode, q: &TreeNode) -> Option<&'a TreeNode> {
+    let n = node?;
+    if std::ptr::eq(n, p) || std::ptr::eq(n, q) { return Some(n); }  // match returns self
+    let left = lca(n.left.as_deref(), p, q);
+    let right = lca(n.right.as_deref(), p, q);
+    if left.is_some() && right.is_some() { return Some(n); }  // split → this is LCA
+    if left.is_some() { left } else { right }
 }
 ```
 
 ---
 
-## 9. Zigzag: using `result[level].insert(result[level].begin(), val)` — O(n) — instead of a deque
+## 9. Zigzag: using `result[level].insert(0, val)` — O(n) — instead of a VecDeque
 
-Inserting at index 0 of a `vector` shifts every element, turning each level into O(n²). Use a `deque` and `push_front` for O(1) front insertion.
+Inserting at index 0 of a `Vec` shifts every element, turning each level into O(n²). Use a `VecDeque` and `push_front` for O(1) front insertion.
 
 ❌ **Wrong**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-vector<int> level;
+let mut level: Vec<i32> = Vec::new();
 // ... for each node on the level:
-if (leftToRight) level.push_back(node->val);
-else             level.insert(level.begin(), node->val);   // O(n) shift each insert
+if left_to_right { level.push(node.val); }
+else             { level.insert(0, node.val); }   // O(n) shift each insert
 ```
 
 ✅ **Correct**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-deque<int> level;
+let mut level: VecDeque<i32> = VecDeque::new();
 // ... for each node on the level:
-if (leftToRight) level.push_back(node->val);    // O(1)
-else             level.push_front(node->val);   // O(1)
-result.push_back(vector<int>(level.begin(), level.end()));
+if left_to_right { level.push_back(node.val); }   // O(1)
+else             { level.push_front(node.val); }   // O(1)
+result.push(Vec::from(level));
 ```
 
 ---
 
 ## 10. Max Width: integer overflow without index normalization
 
-Heap-style indices (`2*i`, `2*i+1`) blow past `int`/`long` range on deep sparse trees. Normalize each level against its leftmost index so only the differences — which is all the width needs — are preserved.
+Heap-style indices (`2*i`, `2*i+1`) blow past `i32`/`i64` range on deep sparse trees. Normalize each level against its leftmost index so only the differences — which is all the width needs — are preserved.
 
 ❌ **Wrong**
-```cpp
-for (int i = 0; i < size; i++) {
-    TreeNode* node = nodes.front(); nodes.pop();
-    int idx = idxs.front(); idxs.pop();                 // grows exponentially → overflow
-    if (node->left != nullptr)  { nodes.push(node->left);  idxs.push(2 * idx); }
-    if (node->right != nullptr) { nodes.push(node->right); idxs.push(2 * idx + 1); }
+```rust
+for _ in 0..size {
+    let node = nodes.pop_front().unwrap();
+    let idx = idxs.pop_front().unwrap();                  // grows exponentially → overflow
+    if let Some(left) = node.left.as_deref() {
+        nodes.push_back(left);
+        idxs.push_back(2 * idx);
+    }
+    if let Some(right) = node.right.as_deref() {
+        nodes.push_back(right);
+        idxs.push_back(2 * idx + 1);
+    }
 }
 ```
 
 ✅ **Correct**
-```cpp
-int leftmost = idxs.front();                // base for this level
-for (int i = 0; i < size; i++) {
-    TreeNode* node = nodes.front(); nodes.pop();
-    int idx = idxs.front() - leftmost; idxs.pop();      // NORMALIZE → indices stay small
-    if (i == 0) first = idx;
-    if (i == size - 1) last = idx;
-    if (node->left != nullptr)  { nodes.push(node->left);  idxs.push(2 * idx); }
-    if (node->right != nullptr) { nodes.push(node->right); idxs.push(2 * idx + 1); }
+```rust
+let leftmost = *idxs.front().unwrap();                    // base for this level
+let (mut first, mut last) = (0_usize, 0_usize);
+for i in 0..size {
+    let node = nodes.pop_front().unwrap();
+    let idx = idxs.pop_front().unwrap() - leftmost;       // NORMALIZE → indices stay small
+    if i == 0 { first = idx; }
+    if i == size - 1 { last = idx; }
+    if let Some(left) = node.left.as_deref() {
+        nodes.push_back(left);
+        idxs.push_back(2 * idx);
+    }
+    if let Some(right) = node.right.as_deref() {
+        nodes.push_back(right);
+        idxs.push_back(2 * idx + 1);
+    }
 }
-maxWidth = max(maxWidth, last - first + 1);
+max_width = max_width.max(last - first + 1);
 ```
 
 ---

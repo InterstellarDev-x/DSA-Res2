@@ -11,7 +11,7 @@
 2. [Interview Expectations](#interview-expectations)
 3. [Brute Force Approach](#brute-force-approach)
 4. [Optimal Approach](#optimal-approach)
-5. [C++ Implementation](#c-implementation)
+5. [Rust Implementation](#rust-implementation)
 6. [Complexity Analysis](#complexity-analysis)
 7. [Edge Cases](#edge-cases)
 8. [Similar Problems](#similar-problems)
@@ -22,7 +22,7 @@
 
 ## Problem Statement
 
-Design a dynamic array (similar to `std::vector`) that supports:
+Design a dynamic array (similar to `Vec`) that supports:
 
 - `void add(int val)` — append element; resize if needed
 - `int get(int index)` — return element at index
@@ -67,67 +67,72 @@ So amortized cost per insertion = O(1).
 
 ---
 
-## C++ Implementation
+## Rust Implementation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+pub struct DynamicArray {
+    data: Box<[i32]>,
+    sz: usize,
+    capacity: usize,
+}
 
-class DynamicArray {
-    int* data;
-    int sz;
-    int capacity;
-
-public:
-    DynamicArray() {
-        capacity = 2;
-        data = new int[capacity];
-        sz = 0;
+impl DynamicArray {
+    pub fn new() -> Self {
+        let capacity = 2;
+        DynamicArray {
+            data: vec![0; capacity].into_boxed_slice(),
+            sz: 0,
+            capacity,
+        }
     }
 
-    ~DynamicArray() {
-        delete[] data;
+    pub fn add(&mut self, val: i32) {
+        if self.sz == self.capacity {
+            self.resize(self.capacity * 2);
+        }
+        self.data[self.sz] = val;
+        self.sz += 1;
     }
 
-    void add(int val) {
-        if (sz == capacity) resize(capacity * 2);
-        data[sz++] = val;
+    pub fn get(&self, index: usize) -> i32 {
+        self.check_bounds(index);
+        self.data[index]
     }
 
-    int get(int index) {
-        checkBounds(index);
-        return data[index];
+    pub fn set(&mut self, index: usize, val: i32) {
+        self.check_bounds(index);
+        self.data[index] = val;
     }
 
-    void set(int index, int val) {
-        checkBounds(index);
-        data[index] = val;
-    }
-
-    void remove(int index) {
-        checkBounds(index);
-        copy(data + index + 1, data + sz, data + index);
-        sz--;
+    pub fn remove(&mut self, index: usize) {
+        self.check_bounds(index);
+        for i in index..self.sz - 1 {
+            self.data[i] = self.data[i + 1];
+        }
+        self.sz -= 1;
         // Shrink if using less than 25% capacity (avoid thrash: don't shrink at 50%)
-        if (sz > 0 && sz == capacity / 4) resize(capacity / 2);
+        if self.sz > 0 && self.sz == self.capacity / 4 {
+            self.resize(self.capacity / 2);
+        }
     }
 
-    int size() { return sz; }
-
-private:
-    void resize(int newCapacity) {
-        int* newData = new int[newCapacity];
-        copy(data, data + sz, newData);
-        delete[] data;
-        data = newData;
-        capacity = newCapacity;
+    pub fn size(&self) -> usize {
+        self.sz
     }
 
-    void checkBounds(int index) {
-        if (index < 0 || index >= sz)
-            throw out_of_range("Index: " + to_string(index) + ", Size: " + to_string(sz));
+    fn resize(&mut self, new_capacity: usize) {
+        let mut new_data = vec![0; new_capacity].into_boxed_slice();
+        new_data[..self.sz].copy_from_slice(&self.data[..self.sz]);
+        self.data = new_data;
+        self.capacity = new_capacity;
     }
-};
+
+    fn check_bounds(&self, index: usize) {
+        if index >= self.sz {
+            panic!("Index: {}, Size: {}", index, self.sz);
+        }
+    }
+}
 ```
 
 ---
@@ -147,8 +152,8 @@ private:
 
 ## Edge Cases
 
-- `get(-1)` or `get(size)` → must throw `std::out_of_range`
-- Remove last element → no shift needed, just `sz--`
+- `get(usize::MAX)` or `get(size)` → panics in `check_bounds`
+- Remove last element → no shift needed, just `self.sz -= 1`
 - Repeated remove → verify shrinking doesn't go below capacity 1
 - Add after remove → reuse existing space correctly
 - Capacity can never go below 1 (guard the shrink)
@@ -168,10 +173,10 @@ private:
 ## Follow-up Questions
 
 1. **Why shrink at 25% and not 50%?** — 50% causes thrashing: add one element (resize up), remove one (resize down), repeat. 25% gives a hysteresis buffer.
-2. **How does `std::vector` differ?** — It grows by a factor (typically 1.5x or 2x depending on the implementation), never shrinks automatically; use `shrink_to_fit()` explicitly.
-3. **Thread safety?** — Need a mutex or use `std::atomic` operations for concurrent access.
-4. **Generic version?** — Use a template class `template<typename T>` with `T*` as the internal array type.
-5. **Memory fragmentation?** — Each resize allocates a new contiguous block; old block is freed with `delete[]`.
+2. **How does `Vec` differ?** — It grows by a factor (typically 2x), never shrinks automatically; use `shrink_to_fit()` explicitly.
+3. **Thread safety?** — Need a `Mutex` or use atomic operations for concurrent access.
+4. **Generic version?** — Use a generic struct `DynamicArray<T>` with `Box<[T]>` as the internal storage.
+5. **Memory fragmentation?** — Each resize allocates a new contiguous block; the old `Box<[i32]>` is freed automatically when dropped.
 
 ---
 

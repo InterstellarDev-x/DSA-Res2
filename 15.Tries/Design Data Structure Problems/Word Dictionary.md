@@ -14,60 +14,76 @@ Design a data structure that supports:
 
 `addWord` is an ordinary trie insert. `search` is a DFS: a literal character follows one child, a `.` branches into **all** existing children.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct TrieNode {
+    children: [Option<Box<TrieNode>>; 26],
+    is_end: bool,
+}
 
-class WordDictionary {
-    struct TrieNode {
-        TrieNode* children[26];
-        bool isEnd = false;
-        TrieNode() {
-            fill(children, children + 26, nullptr);
+impl TrieNode {
+    fn new() -> Self {
+        TrieNode {
+            children: std::array::from_fn(|_| None),
+            is_end: false,
         }
-    };
+    }
+}
 
-    TrieNode* root;
+struct WordDictionary {
+    root: Box<TrieNode>,
+}
 
-public:
-    WordDictionary() {
-        root = new TrieNode();
+impl WordDictionary {
+    fn new() -> Self {
+        WordDictionary {
+            root: Box::new(TrieNode::new()),
+        }
     }
 
-    void addWord(string word) {
-        TrieNode* node = root;
-        for (int i = 0; i < (int)word.length(); i++) {
-            int idx = word[i] - 'a';
-            if (node->children[idx] == nullptr) {
-                node->children[idx] = new TrieNode();
+    fn add_word(&mut self, word: String) {
+        let mut node = &mut self.root;
+        for c in word.bytes() {
+            let idx = (c - b'a') as usize;
+            if node.children[idx].is_none() {
+                node.children[idx] = Some(Box::new(TrieNode::new()));
             }
-            node = node->children[idx];
+            node = node.children[idx].as_mut().unwrap();
         }
-        node->isEnd = true;
+        node.is_end = true;
     }
 
-    bool search(string word) {
-        return dfs(word, 0, root);
+    fn search(&self, word: String) -> bool {
+        Self::dfs(word.as_bytes(), 0, &self.root)
     }
 
-private:
-    bool dfs(string& word, int i, TrieNode* node) {
-        if (node == nullptr) return false;
-        if (i == (int)word.length()) return node->isEnd;
+    fn dfs(word: &[u8], i: usize, node: &TrieNode) -> bool {
+        if i == word.len() {
+            return node.is_end;
+        }
 
-        char c = word[i];
-        if (c == '.') {
-            for (auto child : node->children) {        // try every child
-                if (child != nullptr && dfs(word, i + 1, child)) return true;
+        let c = word[i];
+        if c == b'.' {
+            for child in &node.children {        // try every child
+                if let Some(child_node) = child {
+                    if Self::dfs(word, i + 1, child_node) {
+                        return true;
+                    }
+                }
             }
-            return false;
+            false
+        } else {
+            let idx = (c - b'a') as usize;
+            if let Some(child) = &node.children[idx] {
+                Self::dfs(word, i + 1, child)  // single concrete child
+            } else {
+                false
+            }
         }
-        return dfs(word, i + 1, node->children[c - 'a']);  // single concrete child
     }
-};
+}
 ```
 
-The base case `i == word.length()` returns `node->isEnd` — we matched every character and the path must terminate a real word, not just be a prefix.
+The base case `i == word.len()` returns `node.is_end` — we matched every character and the path must terminate a real word, not just be a prefix.
 
 ## Complexity
 
@@ -82,7 +98,7 @@ The base case `i == word.length()` returns `node->isEnd` — we matched every ch
 
 A `.` at some position forces the DFS to try **all 26** children, and each of those may hit *another* `.` deeper down. With `k` dots, the branching multiplies: in the pathological case (a densely populated trie and a query like `".....`") you explore up to `26^k` paths, each of length `L`. Concrete characters between dots only narrow the search; consecutive dots are the expensive case.
 
-In practice the trie is sparse — most child slots are `null` — so the `child != nullptr` guard prunes the vast majority of branches and real-world searches are far faster than the worst-case bound.
+In practice the trie is sparse — most child slots are `None` — so the `child != None` guard prunes the vast majority of branches and real-world searches are far faster than the worst-case bound.
 
 ## Follow-ups
 
@@ -92,7 +108,7 @@ In practice the trie is sparse — most child slots are `null` — so the `child
 
 3. **`*` matching zero-or-more characters:** that turns the problem into regex matching against a dictionary — typically solved by combining the trie walk with the wildcard DP from string-matching, not a plain DFS.
 
-4. **Bounding worst case:** if dots dominate, an alternative is to bucket words by **length** (an `unordered_map<int, vector<string>>`) and linearly scan only same-length words with a char-by-char `.`-aware compare — O(matching-length · count) which can beat `26^k` when there are few words.
+4. **Bounding worst case:** if dots dominate, an alternative is to bucket words by **length** (a `HashMap<i32, Vec<String>>`) and linearly scan only same-length words with a char-by-char `.`-aware compare — O(matching-length · count) which can beat `26^k` when there are few words.
 
 See also: [Trie with Search Variants](../Patterns/Trie%20with%20Search%20Variants.md), [Implement Trie.md](Implement%20Trie.md).
 

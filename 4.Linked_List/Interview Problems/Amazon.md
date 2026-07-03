@@ -22,28 +22,39 @@
 ### Q: Walk me through the O(1) LRU Cache design.
 
 **Answer framework:**
-1. We need O(1) `get` and O(1) `put`. std::unordered_map gives O(1) lookup; we need O(1) eviction.
+1. We need O(1) `get` and O(1) `put`. HashMap gives O(1) lookup; we need O(1) eviction.
 2. Eviction must always remove the "least recently used" — this is inherently ordered. A doubly linked list maintains this order.
-3. But iterating the list to find a key is O(n). So we combine: std::unordered_map for O(1) key→node lookup, DLL for O(1) front-insertion and back-removal.
+3. But iterating the list to find a key is O(n). So we combine: HashMap for O(1) key→node lookup, DLL for O(1) front-insertion and back-removal.
 4. Sentinel head/tail nodes avoid special-casing empty list and boundary nodes.
 
-```cpp
-// The 4 key operations on the DLL:
-void remove(Node* node) {
-    node->prev->next = node->next;
-    node->next->prev = node->prev;
+```rust
+#[derive(Debug, Clone)]
+struct Node {
+    val: i32,
+    key: i32,
+    prev: usize,
+    next: usize,
 }
 
-void insertFront(Node* node) {
-    node->next = head->next;
-    node->prev = head;
-    head->next->prev = node;
-    head->next = node;
+// The 4 key operations on the DLL (index-based; sentinel head=0, tail=1):
+fn remove(nodes: &mut Vec<Node>, idx: usize) {
+    let prev = nodes[idx].prev;
+    let next = nodes[idx].next;
+    nodes[prev].next = next;
+    nodes[next].prev = prev;
+}
+
+fn insert_front(nodes: &mut Vec<Node>, head: usize, idx: usize) {
+    let front = nodes[head].next;
+    nodes[idx].next = front;
+    nodes[idx].prev = head;
+    nodes[front].prev = idx;
+    nodes[head].next = idx;
 }
 ```
 
-**On `get`:** find node in map → remove from current position → insertFront → return val.
-**On `put`:** if key exists, remove old; if at capacity, evict `tail->prev` (LRU) and remove from map; create new node → insertFront → put in map.
+**On `get`:** find node in map → remove from current position → insert_front → return val.
+**On `put`:** if key exists, remove old; if at capacity, evict `nodes[tail].prev` (LRU) and remove from map; create new node → insert_front → put in map.
 
 ---
 
@@ -51,60 +62,74 @@ void insertFront(Node* node) {
 
 ### Two Approaches
 
-**Approach 1 — std::unordered_map (O(n) space):**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-Node* copyRandomList(Node* head) {
-    unordered_map<Node*, Node*> mp;
-    Node* curr = head;
-    while (curr != nullptr) { mp[curr] = new Node(curr->val); curr = curr->next; }
-    curr = head;
-    while (curr != nullptr) {
-        mp[curr]->next = mp[curr->next];
-        mp[curr]->random = mp[curr->random];
-        curr = curr->next;
+**Approach 1 — HashMap (O(n) space):**
+```rust
+use std::collections::HashMap;
+
+#[derive(Debug, Clone)]
+struct Node {
+    val: i32,
+    next: Option<usize>,    // index into arena, None = null
+    random: Option<usize>,  // index into arena, None = null
+}
+
+fn copy_random_list(nodes: &[Node]) -> Vec<Node> {
+    let n = nodes.len();
+    let mut mp: HashMap<usize, usize> = HashMap::new();
+    let mut clones: Vec<Node> = Vec::with_capacity(n);
+
+    // First pass: create all clone nodes
+    for (i, node) in nodes.iter().enumerate() {
+        clones.push(Node { val: node.val, next: None, random: None });
+        mp.insert(i, i);
     }
-    return mp[head];
+    // Second pass: wire next and random using the map
+    for (i, node) in nodes.iter().enumerate() {
+        clones[i].next = node.next.and_then(|j| mp.get(&j).copied());
+        clones[i].random = node.random.and_then(|j| mp.get(&j).copied());
+    }
+    clones
 }
 ```
 
 **Approach 2 — Interleaving (O(1) space):**
 
-```cpp
-Node* copyRandomList(Node* head) {
-    if (head == nullptr) return nullptr;
-
-    // Step 1: Interleave clones — 1 → 1' → 2 → 2' → 3 → 3' → ...
-    Node* curr = head;
-    while (curr != nullptr) {
-        Node* clone = new Node(curr->val);
-        clone->next = curr->next;
-        curr->next = clone;
-        curr = clone->next;
+```rust
+fn copy_random_list_interleave(nodes: &[Node]) -> Vec<Node> {
+    let n = nodes.len();
+    if n == 0 {
+        return vec![];
     }
 
-    // Step 2: Set random pointers — curr->next->random = curr->random->next (the clone of random)
-    curr = head;
-    while (curr != nullptr) {
-        if (curr->random != nullptr) curr->next->random = curr->random->next;
-        curr = curr->next->next;
+    // Step 1: Interleave clones — original[i] at 0..n, clone[i] at n..2n
+    // original[i].next = clone[i], clone[i].next = original[i+1]
+    let mut aug: Vec<Node> = nodes.to_vec();
+    aug.extend(nodes.iter().map(|nd| Node { val: nd.val, next: None, random: None }));
+    for i in 0..n {
+        aug[i].next = Some(n + i);       // original[i] -> clone[i]
+        aug[n + i].next = nodes[i].next; // clone[i] -> original[i+1]
     }
 
-    // Step 3: Separate lists
-    Node* cloneHead = head->next;
-    curr = head;
-    while (curr != nullptr) {
-        Node* clone = curr->next;
-        curr->next = clone->next;
-        clone->next = (clone->next != nullptr) ? clone->next->next : nullptr;
-        curr = curr->next;
+    // Step 2: Set random pointers — clone[i].random = clone of original[i].random
+    // aug[r].next = Some(n + r), which is the clone of node r
+    for i in 0..n {
+        if let Some(r) = nodes[i].random {
+            aug[n + i].random = aug[r].next; // points to n+r (the clone of r)
+        }
     }
-    return cloneHead;
+
+    // Step 3: Separate lists — extract clone list (n..2n), reindex to 0..n
+    (0..n)
+        .map(|i| Node {
+            val: aug[n + i].val,
+            next: aug[n + i].next, // original index == clone index after reindexing
+            random: aug[n + i].random.map(|j| j - n), // j = n+r => j-n = r
+        })
+        .collect()
 }
 ```
 
-**Key insight in step 2:** `curr->random->next` is the clone of `curr->random` because we interleaved all clones in step 1.
+**Key insight in step 2:** `aug[r].next` is `Some(n + r)` — the clone of node `r` — because we interleaved all clones in step 1.
 
 ---
 

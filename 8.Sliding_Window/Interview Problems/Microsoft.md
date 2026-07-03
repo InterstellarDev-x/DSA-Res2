@@ -8,18 +8,20 @@
 
 **LC 11** · Medium
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int maxArea(vector<int>& height) {
-    int left = 0, right = height.size() - 1, maxWater = 0;
-    while (left < right) {
-        maxWater = max(maxWater, min(height[left], height[right]) * (right - left));
-        if (height[left] <= height[right]) left++;
-        else right--;
+```rust
+fn max_area(height: &[i32]) -> i32 {
+    let mut left = 0;
+    let mut right = height.len() - 1;
+    let mut max_water = 0;
+    while left < right {
+        max_water = max_water.max(height[left].min(height[right]) * (right - left) as i32);
+        if height[left] <= height[right] {
+            left += 1;
+        } else {
+            right -= 1;
+        }
     }
-    return maxWater;
+    max_water
 }
 ```
 
@@ -35,29 +37,40 @@ A: The algorithm finds at least one — it doesn't need to enumerate all. For a 
 
 **LC 15** · Medium
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> threeSum(vector<int>& nums) {
-    sort(nums.begin(), nums.end());
-    vector<vector<int>> result;
-
-    for (int i = 0; i < (int)nums.size() - 2; i++) {
-        if (i > 0 && nums[i] == nums[i-1]) continue;
-        int left = i + 1, right = nums.size() - 1;
-        while (left < right) {
-            int sum = nums[i] + nums[left] + nums[right];
-            if (sum == 0) {
-                result.push_back({nums[i], nums[left], nums[right]});
-                while (left < right && nums[left] == nums[left+1]) left++;
-                while (left < right && nums[right] == nums[right-1]) right--;
-                left++; right--;
-            } else if (sum < 0) left++;
-            else right--;
+```rust
+fn three_sum(nums: &mut Vec<i32>) -> Vec<Vec<i32>> {
+    nums.sort();
+    let mut result = Vec::new();
+    let n = nums.len();
+    if n < 3 {
+        return result;
+    }
+    for i in 0..n - 2 {
+        if i > 0 && nums[i] == nums[i - 1] {
+            continue;
+        }
+        let mut left = i + 1;
+        let mut right = n - 1;
+        while left < right {
+            let sum = nums[i] + nums[left] + nums[right];
+            if sum == 0 {
+                result.push(vec![nums[i], nums[left], nums[right]]);
+                while left < right && nums[left] == nums[left + 1] {
+                    left += 1;
+                }
+                while left < right && nums[right] == nums[right - 1] {
+                    right -= 1;
+                }
+                left += 1;
+                right -= 1;
+            } else if sum < 0 {
+                left += 1;
+            } else {
+                right -= 1;
+            }
         }
     }
-    return result;
+    result
 }
 ```
 
@@ -77,37 +90,57 @@ A: We need at least 2 more elements for `left` and `right`. If `i = n-1`, `left 
 
 Microsoft asks this with emphasis on clean code and edge case handling:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn min_window(s: &str, t: &str) -> String {
+    if s.is_empty() || t.is_empty() || s.len() < t.len() {
+        return String::new();
+    }
 
-string minWindow(string s, string t) {
-    if (s.empty() || t.empty() || s.size() < t.size()) return "";
+    let s_bytes = s.as_bytes();
+    let mut need = [0i32; 128];
+    for &c in t.as_bytes() {
+        need[c as usize] += 1;
+    }
+    let required = t.len() as i32;
+    let mut have = 0i32;
+    let mut left = 0;
+    let mut min_len = i32::MAX;
+    let mut min_left = 0;
 
-    int need[128] = {};
-    for (char c : t) need[c]++;
-    int required = t.size(), have = 0, left = 0;
-    int minLen = INT_MAX, minLeft = 0;
+    for right in 0..s_bytes.len() {
+        let c = s_bytes[right] as usize;
+        if need[c] > 0 {
+            have += 1;
+        }
+        need[c] -= 1; // need[c] > 0 before decrement → satisfying need
 
-    for (int right = 0; right < (int)s.size(); right++) {
-        char c = s[right];
-        if (need[c]-- > 0) have++;  // need[c] > 0 before decrement → satisfying need
-
-        while (have == required) {
-            if (right - left + 1 < minLen) { minLen = right - left + 1; minLeft = left; }
-            if (++need[s[left]] > 0) have--;  // restore and check
-            left++;
+        while have == required {
+            if (right - left + 1) as i32 < min_len {
+                min_len = (right - left + 1) as i32;
+                min_left = left;
+            }
+            let lc = s_bytes[left] as usize;
+            need[lc] += 1; // restore and check
+            if need[lc] > 0 {
+                have -= 1;
+            }
+            left += 1;
         }
     }
-    return minLen == INT_MAX ? "" : s.substr(minLeft, minLen);
+
+    if min_len == i32::MAX {
+        String::new()
+    } else {
+        s[min_left..min_left + min_len as usize].to_string()
+    }
 }
 ```
 
 **Microsoft interview emphasis:**
-- Empty checks (`.empty()`)
+- Empty checks (`.is_empty()`)
 - Length check early return
 - Clear variable naming (`required`, `have`, `need`)
-- Correct `substr(start, len)` call
+- Correct slice `s[start..start+len].to_string()` call
 
 ---
 

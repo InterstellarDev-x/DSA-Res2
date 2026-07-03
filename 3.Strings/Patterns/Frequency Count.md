@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [C++ Templates](#c-templates)
+5. [Rust Templates](#rust-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -27,10 +27,10 @@ Frequency Count reduces string comparison problems to **counting character occur
 
 | Structure | Size | Use When |
 |-----------|------|----------|
-| `int[26]` | 26 | Only lowercase letters `a–z` |
-| `int[128]` | 128 | All ASCII characters |
-| `int[256]` | 256 | Extended ASCII |
-| `unordered_map<char, int>` | Dynamic | Unicode or unknown charset |
+| `[i32; 26]` | 26 | Only lowercase letters `a–z` |
+| `[i32; 128]` | 128 | All ASCII characters |
+| `[i32; 256]` | 256 | Extended ASCII |
+| `HashMap<char, i32>` | Dynamic | Unicode or unknown charset |
 
 ---
 
@@ -60,166 +60,146 @@ Frequency Count reduces string comparison problems to **counting character occur
 
 | Operation | Time | Space |
 |-----------|------|-------|
-| Build frequency array | O(n) | O(1) — `int[26]` |
+| Build frequency array | O(n) | O(1) — `[i32; 26]` |
 | Compare two frequency arrays | O(26) = O(1) | O(1) |
 | Group anagrams (n strings, avg len k) | O(n × k) | O(n × k) |
-| `std::equal` on `int[26]` | O(26) = O(1) | O(1) |
+| `.iter().eq()` on `[i32; 26]` | O(26) = O(1) | O(1) |
 
 ---
 
-## C++ Templates
+## Rust Templates
 
 ### 1. Valid Anagram (LC 242)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool isAnagram(string s, string t) {
-    if (s.length() != t.length()) return false;
-    int freq[26] = {};
-    for (char c : s) freq[c - 'a']++;
-    for (char c : t) freq[c - 'a']--;
-    for (int f : freq) if (f != 0) return false;
-    return true;
+```rust
+fn is_anagram(s: &str, t: &str) -> bool {
+    if s.len() != t.len() { return false; }
+    let mut freq = [0i32; 26];
+    for c in s.chars() { freq[(c as u8 - b'a') as usize] += 1; }
+    for c in t.chars() { freq[(c as u8 - b'a') as usize] -= 1; }
+    freq.iter().all(|&f| f == 0)
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 2. Group Anagrams (LC 49) — Sorted Key
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-vector<vector<string>> groupAnagrams(vector<string>& strs) {
-    unordered_map<string, vector<string>> map;
-    for (auto& s : strs) {
-        string key = s;
-        sort(key.begin(), key.end());
-        map[key].push_back(s);
+fn group_anagrams(strs: Vec<String>) -> Vec<Vec<String>> {
+    let mut map: HashMap<String, Vec<String>> = HashMap::new();
+    for s in strs {
+        let mut key: Vec<char> = s.chars().collect();
+        key.sort();
+        let key: String = key.into_iter().collect();
+        map.entry(key).or_default().push(s);
     }
-    vector<vector<string>> result;
-    for (auto& [k, v] : map) result.push_back(v);
-    return result;
+    map.into_values().collect()
 }
 // Time: O(n × k log k) | Space: O(n × k)
 ```
 
 ### 3. Group Anagrams — Frequency Key (No Sort, O(n×k))
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-vector<vector<string>> groupAnagrams(vector<string>& strs) {
-    unordered_map<string, vector<string>> map;
-    for (auto& s : strs) {
-        int freq[26] = {};
-        for (char c : s) freq[c - 'a']++;
+fn group_anagrams(strs: Vec<String>) -> Vec<Vec<String>> {
+    let mut map: HashMap<String, Vec<String>> = HashMap::new();
+    for s in strs {
+        let mut freq = [0u32; 26];
+        for c in s.chars() { freq[(c as u8 - b'a') as usize] += 1; }
         // Build canonical key: "#2#0#1#..."
-        string key;
-        for (int f : freq) key += '#' + to_string(f);
-        map[key].push_back(s);
+        let key: String = freq.iter().map(|f| format!("#{}", f)).collect();
+        map.entry(key).or_default().push(s);
     }
-    vector<vector<string>> result;
-    for (auto& [k, v] : map) result.push_back(v);
-    return result;
+    map.into_values().collect()
 }
 // Time: O(n × k) | Space: O(n × k)
 ```
 
 ### 4. Ransom Note (LC 383)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool canConstruct(string ransomNote, string magazine) {
-    int freq[26] = {};
-    for (char c : magazine) freq[c - 'a']++;
-    for (char c : ransomNote) {
-        if (--freq[c - 'a'] < 0) return false;
+```rust
+fn can_construct(ransom_note: &str, magazine: &str) -> bool {
+    let mut freq = [0i32; 26];
+    for c in magazine.chars() { freq[(c as u8 - b'a') as usize] += 1; }
+    for c in ransom_note.chars() {
+        freq[(c as u8 - b'a') as usize] -= 1;
+        if freq[(c as u8 - b'a') as usize] < 0 { return false; }
     }
-    return true;
+    true
 }
 // Time: O(m + n) | Space: O(1)
 ```
 
 ### 5. First Unique Character (LC 387)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int firstUniqChar(string s) {
-    int freq[26] = {};
-    for (char c : s) freq[c - 'a']++;
-    for (int i = 0; i < (int)s.length(); i++)
-        if (freq[s[i] - 'a'] == 1) return i;
-    return -1;
+```rust
+fn first_uniq_char(s: &str) -> i32 {
+    let mut freq = [0u32; 26];
+    for c in s.chars() { freq[(c as u8 - b'a') as usize] += 1; }
+    let bytes = s.as_bytes();
+    for i in 0..bytes.len() {
+        if freq[(bytes[i] - b'a') as usize] == 1 { return i as i32; }
+    }
+    -1
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 6. Minimum Steps to Make Two Strings Anagram (LC 1347)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int minSteps(string s, string t) {
-    int freq[26] = {};
-    for (char c : s) freq[c - 'a']++;
-    for (char c : t) freq[c - 'a']--;
-    int steps = 0;
-    for (int f : freq) if (f > 0) steps += f; // count chars s has in excess
-    return steps;
+```rust
+fn min_steps(s: &str, t: &str) -> i32 {
+    let mut freq = [0i32; 26];
+    for c in s.chars() { freq[(c as u8 - b'a') as usize] += 1; }
+    for c in t.chars() { freq[(c as u8 - b'a') as usize] -= 1; }
+    freq.iter().filter(|&&f| f > 0).sum() // count chars s has in excess
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 7. Sort Characters By Frequency (LC 451)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-string frequencySort(string s) {
-    int freq[128] = {};
-    for (char c : s) freq[(int)c]++;
+```rust
+fn frequency_sort(s: &str) -> String {
+    let mut freq = [0u32; 128];
+    for c in s.chars() { freq[c as usize] += 1; }
 
     // Sort characters by frequency descending
-    vector<char> chars;
-    for (int i = 0; i < 128; i++) if (freq[i] > 0) chars.push_back((char)i);
-    sort(chars.begin(), chars.end(), [&](char a, char b) {
-        return freq[(int)b] < freq[(int)a];
-    });
+    let mut chars: Vec<char> = (0u8..128)
+        .filter(|&i| freq[i as usize] > 0)
+        .map(|i| i as char)
+        .collect();
+    chars.sort_by(|&a, &b| freq[b as usize].cmp(&freq[a as usize]));
 
-    string sb;
-    for (char c : chars) {
-        for (int i = 0; i < freq[(int)c]; i++) sb += c;
+    let mut sb = String::new();
+    for c in chars {
+        for _ in 0..freq[c as usize] { sb.push(c); }
     }
-    return sb;
+    sb
 }
 // Time: O(n + 128 log 128) = O(n) | Space: O(n)
 ```
 
 ### 8. Isomorphic Strings (LC 205)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool isIsomorphic(string s, string t) {
-    int sToT[256] = {}, tToS[256] = {};
-    for (int i = 0; i < (int)s.length(); i++) {
-        int sc = s[i], tc = t[i];
-        if (sToT[sc] == 0 && tToS[tc] == 0) {
-            sToT[sc] = tc; tToS[tc] = sc;
-        } else if (sToT[sc] != tc || tToS[tc] != sc) return false;
+```rust
+fn is_isomorphic(s: &str, t: &str) -> bool {
+    let mut s_to_t = [0u8; 256];
+    let mut t_to_s = [0u8; 256];
+    let sb = s.as_bytes();
+    let tb = t.as_bytes();
+    for i in 0..sb.len() {
+        let sc = sb[i] as usize;
+        let tc = tb[i] as usize;
+        if s_to_t[sc] == 0 && t_to_s[tc] == 0 {
+            s_to_t[sc] = tb[i]; t_to_s[tc] = sb[i];
+        } else if s_to_t[sc] != tb[i] || t_to_s[tc] != sb[i] { return false; }
     }
-    return true;
+    true
 }
 // Time: O(n) | Space: O(1)
 ```
@@ -232,9 +212,9 @@ bool isIsomorphic(string s, string t) {
 |---------|-----|
 | Only checking one direction for isomorphic | Check both `s→t` and `t→s` mappings |
 | Group anagrams: using array-to-string as key without separator | Use `#` separator to distinguish `[12,0]` from `[1,20]` |
-| Not checking length before anagram check | Early return if `s.length() != t.length()` |
-| Using `unordered_map` when `int[26]` suffices | 26x faster; always prefer for lowercase-only problems |
-| `c - 'a'` on uppercase or non-alpha chars | Guard with `islower(c)` or use `int[128]` |
+| Not checking length before anagram check | Early return if `s.len() != t.len()` |
+| Using `HashMap` when `[i32; 26]` suffices | 26x faster; always prefer for lowercase-only problems |
+| `c - 'a'` on uppercase or non-alpha chars | Guard with `c.is_ascii_lowercase()` or use `[i32; 128]` |
 
 ---
 
@@ -245,7 +225,7 @@ bool isIsomorphic(string s, string t) {
 | Scramble string | Frequency check + recursion |
 | Check if subset anagram | All freqs of s ≤ freqs of t |
 | Minimum window anagram | See [Sliding Window on Strings](./Sliding%20Window%20on%20Strings.md) |
-| Word pattern (LC 290) | Two-way `unordered_map` mapping |
+| Word pattern (LC 290) | Two-way `HashMap` mapping |
 
 ---
 
@@ -272,6 +252,6 @@ bool isIsomorphic(string s, string t) {
 
 ---
 
-> **Interview Tip:** For `groupAnagrams`, the frequency-based key (`"#2#0#1..."`) is O(n×k) vs sorted key O(n×k log k). Mentioning both and explaining the trade-off signals strong algorithmic thinking.
+> **Interview Tip:** For `group_anagrams`, the frequency-based key (`"#2#0#1..."`) is O(n×k) vs sorted key O(n×k log k). Mentioning both and explaining the trade-off signals strong algorithmic thinking.
 
 > **Last Updated:** 2026-06-26

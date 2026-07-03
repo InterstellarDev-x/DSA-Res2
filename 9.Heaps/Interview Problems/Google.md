@@ -8,36 +8,58 @@
 
 **LC 295** · Hard
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
-class MedianFinder {
-    priority_queue<int> lo; // max-heap
-    priority_queue<int, vector<int>, greater<int>> hi; // min-heap
+struct MedianFinder {
+    lo: BinaryHeap<i32>,          // max-heap
+    hi: BinaryHeap<Reverse<i32>>, // min-heap
+}
 
-public:
-    void addNum(int num) {
-        if (lo.empty() || num <= lo.top()) lo.push(num);
-        else hi.push(num);
-        if (lo.size() > hi.size() + 1) { hi.push(lo.top()); lo.pop(); }
-        else if (hi.size() > lo.size()) { lo.push(hi.top()); hi.pop(); }
+impl MedianFinder {
+    fn new() -> Self {
+        MedianFinder {
+            lo: BinaryHeap::new(),
+            hi: BinaryHeap::new(),
+        }
     }
 
-    double findMedian() {
-        return lo.size() > hi.size() ? lo.top() : (lo.top() + hi.top()) / 2.0;
+    fn add_num(&mut self, num: i32) {
+        if self.lo.is_empty() || num <= *self.lo.peek().unwrap() {
+            self.lo.push(num);
+        } else {
+            self.hi.push(Reverse(num));
+        }
+        if self.lo.len() > self.hi.len() + 1 {
+            let top = self.lo.pop().unwrap();
+            self.hi.push(Reverse(top));
+        } else if self.hi.len() > self.lo.len() {
+            let Reverse(top) = self.hi.pop().unwrap();
+            self.lo.push(top);
+        }
     }
-};
+
+    fn find_median(&self) -> f64 {
+        if self.lo.len() > self.hi.len() {
+            *self.lo.peek().unwrap() as f64
+        } else {
+            let lo_top = *self.lo.peek().unwrap() as f64;
+            let Reverse(hi_top) = *self.hi.peek().unwrap();
+            (lo_top + hi_top as f64) / 2.0
+        }
+    }
+}
 ```
 
 **Q: What if the stream only contains integers in [0, 100]?**
-A: Use a frequency array of size 101. Track total count. For `findMedian`, walk the array finding the position(s) of the median. O(1) addNum, O(100) = O(1) findMedian, but truly O(1) space (not O(n)).
+A: Use a frequency array of size 101. Track total count. For `find_median`, walk the array finding the position(s) of the median. O(1) add_num, O(100) = O(1) find_median, but truly O(1) space (not O(n)).
 
 **Q: What if 99% of numbers are in [0, 100] with occasional outliers?**
 A: Hybrid approach: bucket array for [0..100], two small heaps for outliers. Median calculation walks the appropriate structure based on total count.
 
 **Q: What is the invariant that guarantees correctness?**
-A: Two invariants: (1) Size: `|lo.size - hi.size| ≤ 1`. (2) Order: `lo.top() ≤ hi.top()`. If both hold, the median is either `lo.top()` (odd total) or `(lo.top() + hi.top()) / 2` (even total).
+A: Two invariants: (1) Size: `|lo.len() - hi.len()| ≤ 1`. (2) Order: `lo.peek() ≤ hi.peek()`. If both hold, the median is either `lo.peek()` (odd total) or `(lo.peek() + hi.peek()) / 2` (even total).
 
 ---
 
@@ -45,29 +67,36 @@ A: Two invariants: (1) Size: `|lo.size - hi.size| ≤ 1`. (2) Order: `lo.top() �
 
 **LC 502** · Hard
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
-int findMaximizedCapital(int k, int w, vector<int>& profits, vector<int>& capital) {
-    int n = profits.size();
-    // min-heap by capital: {capital, profit}
-    priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> locked;
-    // max-heap by profit: {profit, capital}
-    priority_queue<pair<int,int>> available;
+fn find_maximized_capital(k: i32, mut w: i32, profits: Vec<i32>, capital: Vec<i32>) -> i32 {
+    let n = profits.len();
+    // min-heap by capital: (capital, profit)
+    let mut locked: BinaryHeap<Reverse<(i32, i32)>> = BinaryHeap::new();
+    // max-heap by profit: (profit, capital)
+    let mut available: BinaryHeap<(i32, i32)> = BinaryHeap::new();
 
-    for (int i = 0; i < n; i++) locked.push({capital[i], profits[i]});
-
-    for (int i = 0; i < k; i++) {
-        while (!locked.empty() && locked.top().first <= w) {
-            auto [cap, prof] = locked.top(); locked.pop();
-            available.push({prof, cap});
-        }
-        if (available.empty()) break;
-        w += available.top().first;
-        available.pop();
+    for i in 0..n {
+        locked.push(Reverse((capital[i], profits[i])));
     }
-    return w;
+
+    for _ in 0..k {
+        while let Some(&Reverse((cap, prof))) = locked.peek() {
+            if cap <= w {
+                locked.pop();
+                available.push((prof, cap));
+            } else {
+                break;
+            }
+        }
+        if available.is_empty() {
+            break;
+        }
+        w += available.pop().unwrap().0;
+    }
+    w
 }
 ```
 
@@ -86,41 +115,45 @@ A: Once `available` is empty (can't afford anything more), break early. With `k 
 
 **LC 632** · Hard
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
-vector<int> smallestRange(vector<vector<int>>& nums) {
-    // min-heap: {value, listIdx, elemIdx}
-    using T = tuple<int,int,int>;
-    priority_queue<T, vector<T>, greater<T>> heap;
-    int maxVal = INT_MIN;
+fn smallest_range(nums: Vec<Vec<i32>>) -> Vec<i32> {
+    // min-heap: (value, list_idx, elem_idx)
+    let mut heap: BinaryHeap<Reverse<(i32, usize, usize)>> = BinaryHeap::new();
+    let mut max_val = i32::MIN;
 
-    for (int i = 0; i < (int)nums.size(); i++) {
-        heap.push({nums[i][0], i, 0});
-        maxVal = max(maxVal, nums[i][0]);
+    for i in 0..nums.len() {
+        heap.push(Reverse((nums[i][0], i, 0)));
+        max_val = max_val.max(nums[i][0]);
     }
 
-    vector<int> result = {get<0>(heap.top()), maxVal};
+    let Reverse((init_val, _, _)) = *heap.peek().unwrap();
+    let mut result = vec![init_val, max_val];
 
-    while (true) {
-        auto [val, listIdx, elemIdx] = heap.top(); heap.pop();
-        if (elemIdx + 1 == (int)nums[listIdx].size()) break;
+    loop {
+        let Reverse((val, list_idx, elem_idx)) = heap.pop().unwrap();
+        let _ = val; // used via heap ordering
+        if elem_idx + 1 == nums[list_idx].len() {
+            break;
+        }
 
-        int next = nums[listIdx][elemIdx + 1];
-        heap.push({next, listIdx, elemIdx + 1});
-        maxVal = max(maxVal, next);
-        if (maxVal - get<0>(heap.top()) < result[1] - result[0]) {
-            result[0] = get<0>(heap.top());
-            result[1] = maxVal;
+        let next = nums[list_idx][elem_idx + 1];
+        heap.push(Reverse((next, list_idx, elem_idx + 1)));
+        max_val = max_val.max(next);
+        let Reverse((heap_min, _, _)) = *heap.peek().unwrap();
+        if max_val - heap_min < result[1] - result[0] {
+            result[0] = heap_min;
+            result[1] = max_val;
         }
     }
-    return result;
+    result
 }
 ```
 
-**Q: Why does `maxVal` only increase?**
-A: We only add elements from lists, and each list is sorted ascending. When we advance to the next element of a list, the new value is ≥ the old value. So `maxVal` is non-decreasing. The minimum of the heap (= `heap.top()`) is the range's lower bound; we minimize the range by advancing the minimum.
+**Q: Why does `max_val` only increase?**
+A: We only add elements from lists, and each list is sorted ascending. When we advance to the next element of a list, the new value is ≥ the old value. So `max_val` is non-decreasing. The minimum of the heap (= `heap.peek()`) is the range's lower bound; we minimize the range by advancing the minimum.
 
 **Q: Why stop when a list is exhausted?**
 A: We need exactly one element from each list. If list `i` is exhausted, the range's minimum is now determined by the second-smallest across lists. We can't include list `i` anymore — there's no valid range.

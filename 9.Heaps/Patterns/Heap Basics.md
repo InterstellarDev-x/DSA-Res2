@@ -11,37 +11,50 @@ A **heap** is a complete binary tree satisfying the heap property:
 - **Min-heap:** parent ≤ children → root = minimum element
 - **Max-heap:** parent ≥ children → root = maximum element
 
-C++'s `std::priority_queue` is a **max-heap** by default. To get a min-heap, use `greater<T>` as the comparator.
+Rust's `BinaryHeap` is a **max-heap** by default. To get a min-heap, use `Reverse<T>` as a wrapper.
 
 ---
 
-## C++ priority_queue API
+## Rust BinaryHeap API
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-// Min-heap
-priority_queue<int, vector<int>, greater<int>> minHeap;
+// Min-heap (wrap values in Reverse)
+let mut min_heap: BinaryHeap<Reverse<i32>> = BinaryHeap::new();
 
 // Max-heap (default)
-priority_queue<int> maxHeap;
+let mut max_heap: BinaryHeap<i32> = BinaryHeap::new();
 
 // Custom comparator — sort by absolute value (min-heap by abs value)
-auto cmp = [](int a, int b) { return abs(a) > abs(b); };
-priority_queue<int, vector<int>, decltype(cmp)> pq(cmp);
+// BinaryHeap doesn't support custom comparators directly; use a newtype wrapper.
+#[derive(Eq, PartialEq)]
+struct ByAbsMin(i32);
+impl Ord for ByAbsMin {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // Reverse so smaller abs value = higher priority (min-heap by abs)
+        other.0.abs().cmp(&self.0.abs())
+    }
+}
+impl PartialOrd for ByAbsMin {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+let mut pq: BinaryHeap<ByAbsMin> = BinaryHeap::new();
 
 // Operations
-pq.push(x);       // insert — O(log n)
-pq.pop();         // remove top (min or max) — O(log n); undefined behavior if empty
-pq.top();         // view top without removing — O(1); undefined behavior if empty
-pq.size();        // O(1)
-pq.empty();       // O(1)
+pq.push(ByAbsMin(x));   // insert — O(log n)
+pq.pop();               // remove top (min or max) — O(log n); returns None if empty
+pq.peek();              // view top without removing — O(1); returns None if empty
+pq.len();               // O(1)
+pq.is_empty();          // O(1)
 // contains: no direct equivalent — O(n) manual search
 // remove arbitrary element: no direct equivalent — use custom structures
 ```
 
-**Critical:** In C++, `std::priority_queue` is a max-heap by default (unlike Java). Use `greater<T>` for a min-heap. Never use subtraction in comparators — it overflows for extreme values like `INT_MIN`. Always use explicit comparisons.
+**Critical:** In Rust, `BinaryHeap` is a max-heap by default (unlike Java's `PriorityQueue`). Use `Reverse<T>` for a min-heap. Never use subtraction in comparators — it overflows for extreme values like `i32::MIN`. Always use explicit comparisons.
 
 ---
 
@@ -63,21 +76,20 @@ pq.empty();       // O(1)
 
 Repeatedly smash the two heaviest stones. If equal, both destroyed; otherwise `|y - x|` remains.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
 
-int lastStoneWeight(vector<int>& stones) {
-    priority_queue<int> maxHeap; // max-heap by default
-    for (int s : stones) maxHeap.push(s);
+fn last_stone_weight(stones: Vec<i32>) -> i32 {
+    let mut max_heap: BinaryHeap<i32> = BinaryHeap::new(); // max-heap by default
+    for s in stones { max_heap.push(s); }
 
-    while (maxHeap.size() > 1) {
-        int y = maxHeap.top(); maxHeap.pop();  // largest
-        int x = maxHeap.top(); maxHeap.pop();  // second largest
-        if (y != x) maxHeap.push(y - x);       // remainder
+    while max_heap.len() > 1 {
+        let y = max_heap.pop().unwrap(); // largest
+        let x = max_heap.pop().unwrap(); // second largest
+        if y != x { max_heap.push(y - x); } // remainder
     }
 
-    return maxHeap.empty() ? 0 : maxHeap.top();
+    max_heap.peek().copied().unwrap_or(0)
 }
 ```
 
@@ -104,48 +116,62 @@ int lastStoneWeight(vector<int>& stones) {
 
 ## Heap with Custom Objects
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
 // Sort by distance, then by index for ties (min-heap)
-auto cmp = [](const vector<int>& a, const vector<int>& b) {
-    if (a[0] != b[0]) return a[0] > b[0];  // primary: distance
-    return a[1] > b[1];                      // tie-break: index
-};
-priority_queue<vector<int>, vector<vector<int>>, decltype(cmp)> pq(cmp);
-pq.push({distance, index});
+// Use Reverse<(distance, index)>: tuples compare lexicographically, Reverse inverts order
+let mut pq: BinaryHeap<Reverse<(i32, i32)>> = BinaryHeap::new();
+pq.push(Reverse((distance, index)));
+// Access: if let Some(Reverse((dist, idx))) = pq.pop() { ... }
 ```
 
 **For Top K Frequent Words** (string comparison + frequency):
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Ordering;
 
-using Entry = pair<string, int>;
-auto cmp = [](const Entry& a, const Entry& b) {
-    if (a.second != b.second)
-        return a.second > b.second;   // fewer freq first (min-heap of freq)
-    return a.first < b.first;         // more lexicographic first for same freq
-};
-priority_queue<Entry, vector<Entry>, decltype(cmp)> pq(cmp);
+// Min-heap by frequency, then max by lexicographic order for same freq
+#[derive(Eq, PartialEq)]
+struct Entry {
+    word: String,
+    freq: i32,
+}
+
+impl Ord for Entry {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.freq != other.freq {
+            self.freq.cmp(&other.freq) // fewer freq first (min-heap of freq)
+        } else {
+            other.word.cmp(&self.word) // more lexicographic first for same freq
+        }
+    }
+}
+
+impl PartialOrd for Entry {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+let mut pq: BinaryHeap<Entry> = BinaryHeap::new();
 ```
 
 ---
 
 ## Heapify — Building from Array
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
 
-// C++: priority_queue constructor accepts iterators for O(n) heapify
-vector<int> arr = {3, 1, 4, 1, 5, 9, 2, 6};
-priority_queue<int> pq(arr.begin(), arr.end());   // O(n) heapify
+// Rust: BinaryHeap::from() accepts a Vec for O(n) heapify
+let arr = vec![3, 1, 4, 1, 5, 9, 2, 6];
+let mut pq: BinaryHeap<i32> = BinaryHeap::from(arr.clone()); // O(n) heapify
 
 // Alternatively, build via repeated inserts — O(n log n)
-priority_queue<int> pq2;
-for (int x : arr) pq2.push(x);
+let mut pq2: BinaryHeap<i32> = BinaryHeap::new();
+for x in &arr { pq2.push(*x); }
 ```
 
 ---

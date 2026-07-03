@@ -22,24 +22,23 @@ Stacks naturally model expression evaluation because they handle **nesting** and
 
 RPN has no precedence ambiguity — operators always apply to the two most recent operands.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int evalRPN(vector<string>& tokens) {
-    stack<int> stk;
-    for (auto& token : tokens) {
-        if (token == "+") { int b = stk.top(); stk.pop(); int a = stk.top(); stk.pop(); stk.push(a + b); }
-        else if (token == "-") { int b = stk.top(); stk.pop(); int a = stk.top(); stk.pop(); stk.push(a - b); }
-        else if (token == "*") { int b = stk.top(); stk.pop(); int a = stk.top(); stk.pop(); stk.push(a * b); }
-        else if (token == "/") { int b = stk.top(); stk.pop(); int a = stk.top(); stk.pop(); stk.push(a / b); }
-        else stk.push(stoi(token));
+```rust
+fn eval_rpn(tokens: Vec<String>) -> i32 {
+    let mut stk: Vec<i32> = Vec::new();
+    for token in &tokens {
+        match token.as_str() {
+            "+" => { let b = stk.pop().unwrap(); let a = stk.pop().unwrap(); stk.push(a + b); }
+            "-" => { let b = stk.pop().unwrap(); let a = stk.pop().unwrap(); stk.push(a - b); }
+            "*" => { let b = stk.pop().unwrap(); let a = stk.pop().unwrap(); stk.push(a * b); }
+            "/" => { let b = stk.pop().unwrap(); let a = stk.pop().unwrap(); stk.push(a / b); }
+            _   => { stk.push(token.parse::<i32>().unwrap()); }
+        }
     }
-    return stk.top();
+    *stk.last().unwrap()
 }
 ```
 
-**Order matters for `-` and `/`:** Pop `b` first, then `a = stk.top(); stk.pop()`. The result is `a op b`. For `+` and `*` order doesn't matter, but for `-` and `/` it does.
+**Order matters for `-` and `/`:** Pop `b` first, then `a = stk.pop().unwrap()`. The result is `a op b`. For `+` and `*` order doesn't matter, but for `-` and `/` it does.
 
 **Complexity:** O(n) time, O(n) space
 
@@ -49,35 +48,31 @@ int evalRPN(vector<string>& tokens) {
 
 `"3[a2[c]]"` → `"accaccacc"`. Nested brackets require a stack to save context.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn decode_string(s: String) -> String {
+    let mut count_stack: Vec<i32> = Vec::new();
+    let mut str_stack: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let mut k = 0i32;
 
-string decodeString(string s) {
-    stack<int> countStack;
-    stack<string> strStack;
-    string current = "";
-    int k = 0;
-
-    for (char c : s) {
-        if (isdigit(c)) {
-            k = k * 10 + (c - '0');          // handle multi-digit counts
-        } else if (c == '[') {
-            countStack.push(k);              // save current repeat count
-            strStack.push(current);          // save accumulated string so far
-            k = 0;                           // reset for inner expression
-            current = "";
-        } else if (c == ']') {
-            int times = countStack.top(); countStack.pop();
-            string prev = strStack.top(); strStack.pop();
-            string repeated = "";
-            for (int i = 0; i < times; i++) repeated += current;
-            current = prev + repeated;       // restore + append repeated
+    for c in s.chars() {
+        if c.is_ascii_digit() {
+            k = k * 10 + (c as i32 - '0' as i32);  // handle multi-digit counts
+        } else if c == '[' {
+            count_stack.push(k);               // save current repeat count
+            str_stack.push(current.clone());   // save accumulated string so far
+            k = 0;                             // reset for inner expression
+            current = String::new();
+        } else if c == ']' {
+            let times = count_stack.pop().unwrap();
+            let prev = str_stack.pop().unwrap();
+            let repeated = current.repeat(times as usize);
+            current = prev + &repeated;        // restore + append repeated
         } else {
-            current += c;
+            current.push(c);
         }
     }
-    return current;
+    current
 }
 ```
 
@@ -105,36 +100,36 @@ Handles `+`, `-`, `*`, `/` (no parentheses). Division truncates toward zero.
 
 **Strategy:** Use a stack of "pending terms." For `+`/`-`, push the signed operand. For `*`/`/`, pop the top, compute, and push the result. Final answer = sum of stack.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn calculate(s: String) -> i32 {
+    let mut stk: Vec<i32> = Vec::new();
+    let mut num = 0i32;
+    let mut sign = '+';   // sign before the current number
+    let bytes = s.as_bytes();
+    let n = bytes.len();
 
-int calculate(string s) {
-    stack<int> stk;
-    int num = 0;
-    char sign = '+';   // sign before the current number
+    for i in 0..n {
+        let c = bytes[i] as char;
 
-    for (int i = 0; i < (int)s.length(); i++) {
-        char c = s[i];
-
-        if (isdigit(c)) {
-            num = num * 10 + (c - '0');
+        if c.is_ascii_digit() {
+            num = num * 10 + (c as i32 - '0' as i32);
         }
 
         // Process when we hit an operator or end of string
-        if ((!isdigit(c) && c != ' ') || i == (int)s.length() - 1) {
-            if (sign == '+') stk.push(num);
-            else if (sign == '-') stk.push(-num);
-            else if (sign == '*') { int top = stk.top(); stk.pop(); stk.push(top * num); }
-            else if (sign == '/') { int top = stk.top(); stk.pop(); stk.push(top / num); }
+        if (!c.is_ascii_digit() && c != ' ') || i == n - 1 {
+            match sign {
+                '+' => stk.push(num),
+                '-' => stk.push(-num),
+                '*' => { let top = stk.pop().unwrap(); stk.push(top * num); }
+                '/' => { let top = stk.pop().unwrap(); stk.push(top / num); }
+                _   => {}
+            }
             sign = c;
             num = 0;
         }
     }
 
-    int result = 0;
-    while (!stk.empty()) { result += stk.top(); stk.pop(); }
-    return result;
+    stk.iter().sum()
 }
 ```
 
@@ -161,40 +156,40 @@ result = 3+4 = 7 ✓
 
 Rules: `()` = 1; `(A)` = 2×score(A); `AB` = score(A) + score(B)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int scoreOfParentheses(string s) {
-    stack<int> stk;
+```rust
+fn score_of_parentheses(s: String) -> i32 {
+    let mut stk: Vec<i32> = Vec::new();
     stk.push(0);   // base score for the outermost level
 
-    for (char c : s) {
-        if (c == '(') {
+    for c in s.chars() {
+        if c == '(' {
             stk.push(0);   // new level
         } else {
-            int inner = stk.top(); stk.pop();
-            int outer = stk.top(); stk.pop();
+            let inner = stk.pop().unwrap();
+            let outer = stk.pop().unwrap();
             // () → 1, (A) where A>0 → 2*A
-            stk.push(outer + max(2 * inner, 1));
+            stk.push(outer + (2 * inner).max(1));
         }
     }
-    return stk.top();
+    *stk.last().unwrap()
 }
 ```
 
 **Alternative O(1) space — count depth of each `()`:**
-```cpp
-int scoreOfParentheses(string s) {
-    int result = 0, depth = 0;
-    for (int i = 0; i < (int)s.length(); i++) {
-        if (s[i] == '(') depth++;
-        else {
-            depth--;
-            if (s[i - 1] == '(') result += (1 << depth);  // 2^depth
+```rust
+fn score_of_parentheses(s: String) -> i32 {
+    let mut result = 0i32;
+    let mut depth = 0i32;
+    let bytes = s.as_bytes();
+    for i in 0..s.len() {
+        if bytes[i] == b'(' {
+            depth += 1;
+        } else {
+            depth -= 1;
+            if bytes[i - 1] == b'(' { result += 1 << depth; }  // 2^depth
         }
     }
-    return result;
+    result
 }
 ```
 
@@ -208,37 +203,36 @@ Handles `+`, `-`, and parentheses (no `*`, `/`). Numbers can be large.
 
 **Strategy:** Stack saves `(result_so_far, sign_before_paren)` pairs. Inside parentheses, compute from scratch; on `)`, restore context.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn calculate(s: String) -> i32 {
+    let mut stk: Vec<i32> = Vec::new();
+    let mut result = 0i32;
+    let mut num = 0i32;
+    let mut sign = 1i32;  // sign: +1 or -1
 
-int calculate(string s) {
-    stack<int> stk;
-    int result = 0, num = 0, sign = 1;  // sign: +1 or -1
-
-    for (char c : s) {
-        if (isdigit(c)) {
-            num = num * 10 + (c - '0');
-        } else if (c == '+') {
+    for c in s.chars() {
+        if c.is_ascii_digit() {
+            num = num * 10 + (c as i32 - '0' as i32);
+        } else if c == '+' {
             result += sign * num;
             num = 0; sign = 1;
-        } else if (c == '-') {
+        } else if c == '-' {
             result += sign * num;
             num = 0; sign = -1;
-        } else if (c == '(') {
+        } else if c == '(' {
             // Push current context; start fresh inside parens
             stk.push(result);
             stk.push(sign);
             result = 0; sign = 1;
-        } else if (c == ')') {
+        } else if c == ')' {
             result += sign * num;
             num = 0;
-            result *= stk.top(); stk.pop();    // sign before '('
-            result += stk.top(); stk.pop();   // result before '('
+            result *= stk.pop().unwrap();    // sign before '('
+            result += stk.pop().unwrap();    // result before '('
         }
     }
     result += sign * num;  // don't forget last number
-    return result;
+    result
 }
 ```
 

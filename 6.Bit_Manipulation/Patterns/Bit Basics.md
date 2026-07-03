@@ -12,28 +12,25 @@
 | AND | `&` | `5 & 3` = `101 & 011` | `001` = 1 |
 | OR | `\|` | `5 \| 3` = `101 \| 011` | `111` = 7 |
 | XOR | `^` | `5 ^ 3` = `101 ^ 011` | `110` = 6 |
-| NOT | `~` | `~5` = `~00000101` | `11111010` = -6 |
+| NOT | `~` | `!5` = `!00000101` | `11111010` = -6 |
 | Left Shift | `<<` | `1 << 3` | `1000` = 8 |
 | Arithmetic Right | `>>` | `-8 >> 1` | `-4` (sign-extends) |
-| Logical Right | `(unsigned)n >> k` | `(unsigned)-8 >> 1` | `2147483644` (fills with 0) |
+| Logical Right | `n as u32 >> k` | `-8i32 as u32 >> 1` | `2147483644` (fills with 0) |
 
-**Note:** `~n = -(n+1)` in two's complement. `~0 = -1`, `~(-1) = 0`.
+**Note:** `!n == -(n+1)` in two's complement. `!0i32 == -1`, `!(-1i32) == 0`.
 
 ---
 
 ## Core Operations
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int getBit(int n, int k)    { return (n >> k) & 1; }
-int setBit(int n, int k)    { return n | (1 << k); }
-int clearBit(int n, int k)  { return n & ~(1 << k); }
-int toggleBit(int n, int k) { return n ^ (1 << k); }
-bool isPowerOf2(int n)      { return n > 0 && (n & (n - 1)) == 0; }
-int lowestSetBit(int n)     { return n & (-n); }         // isolate
-int clearLowest(int n)      { return n & (n - 1); }       // clear lowest
+```rust
+fn get_bit(n: i32, k: i32) -> i32    { (n >> k) & 1 }
+fn set_bit(n: i32, k: i32) -> i32    { n | (1 << k) }
+fn clear_bit(n: i32, k: i32) -> i32  { n & !(1 << k) }
+fn toggle_bit(n: i32, k: i32) -> i32 { n ^ (1 << k) }
+fn is_power_of_2(n: i32) -> bool     { n > 0 && (n & (n - 1)) == 0 }
+fn lowest_set_bit(n: i32) -> i32     { n & n.wrapping_neg() }  // isolate
+fn clear_lowest(n: i32) -> i32       { n & (n - 1) }           // clear lowest
 ```
 
 ---
@@ -42,21 +39,18 @@ int clearLowest(int n)      { return n & (n - 1); }       // clear lowest
 
 Process 32 bits one at a time: extract LSB from `n`, put into MSB of result.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int reverseBits(int n) {
-    int result = 0;
-    for (int i = 0; i < 32; i++) {
+```rust
+fn reverse_bits(mut n: u32) -> u32 {
+    let mut result: u32 = 0;
+    for _ in 0..32 {
         result = (result << 1) | (n & 1); // shift result left, put current LSB
-        n = (int)((unsigned int)n >> 1); // logical shift (unsigned) — fill with 0
+        n >>= 1; // logical shift for u32 — fills with 0
     }
-    return result;
+    result
 }
 ```
 
-**Note:** Must use `(unsigned int)n >> 1` (logical), not `n >> 1` (arithmetic). For negative `n`, arithmetic `>>` fills with 1s and gives wrong answer.
+**Note:** In Rust, `>>` on `u32` is already a logical (zero-filling) right shift, so no cast is needed. Using `u32` for this function avoids sign-extension issues entirely.
 
 ---
 
@@ -64,13 +58,13 @@ int reverseBits(int n) {
 
 A power of 2 has exactly one set bit. `n & (n-1)` clears the lowest set bit.
 
-```cpp
-bool isPowerOfTwo(int n) {
-    return n > 0 && (n & (n - 1)) == 0;
+```rust
+fn is_power_of_two(n: i32) -> bool {
+    n > 0 && (n & (n - 1)) == 0
 }
 ```
 
-**Generalize:** Power of 4 has its single bit at an even position: `n > 0 && (n & (n-1)) == 0 && (n & 0xAAAAAAAA) == 0` (0xAAAAAAAA = all even-position bits set).
+**Generalize:** Power of 4 has its single bit at an even position: `n > 0 && (n & (n-1)) == 0 && (n & 0xAAAAAAAAu32 as i32) == 0` (0xAAAAAAAA = all even-position bits set).
 
 ---
 
@@ -78,20 +72,20 @@ bool isPowerOfTwo(int n) {
 
 Simulate binary addition with carry:
 
-```cpp
-int getSum(int a, int b) {
-    while (b != 0) {
-        int carry = (a & b) << 1; // carry: positions where both bits are 1
-        a = a ^ b;                 // sum without carry
+```rust
+fn get_sum(mut a: i32, mut b: i32) -> i32 {
+    while b != 0 {
+        let carry = (a & b).wrapping_shl(1); // carry: positions where both bits are 1
+        a = a ^ b;                             // sum without carry
         b = carry;
     }
-    return a;
+    a
 }
 ```
 
 **Loop invariant:** At each iteration, `a` holds the partial sum (no carry), `b` holds the carry to be added. When `b == 0`, no more carries — `a` is the answer.
 
-**Note:** In C++, `int` is typically 32-bit on modern platforms. This terminates. In Python, integers are unbounded — need `& 0xFFFFFFFF` masking.
+**Note:** In Rust, `i32` is always 32-bit. `wrapping_shl` is used to avoid debug-mode overflow panics on the carry shift. In Python, integers are unbounded — need `& 0xFFFFFFFF` masking.
 
 ---
 
@@ -99,28 +93,28 @@ int getSum(int a, int b) {
 
 Use bit shifts to find the largest multiple of divisor ≤ dividend:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn divide(dividend: i32, divisor: i32) -> i32 {
+    if dividend == i32::MIN && divisor == -1 {
+        return i32::MAX; // overflow
+    }
 
-int divide(int dividend, int divisor) {
-    if (dividend == INT_MIN && divisor == -1) return INT_MAX; // overflow
+    let mut dvd = (dividend as i64).abs();
+    let dvs = (divisor as i64).abs();
+    let sign: i64 = if (dividend > 0) == (divisor > 0) { 1 } else { -1 };
+    let mut result: i64 = 0;
 
-    long dvd = abs((long) dividend);
-    long dvs = abs((long) divisor);
-    int sign = (dividend > 0) == (divisor > 0) ? 1 : -1;
-    long result = 0;
-
-    while (dvd >= dvs) {
-        long tmp = dvs, multiple = 1;
-        while (dvd >= (tmp << 1)) {
+    while dvd >= dvs {
+        let mut tmp = dvs;
+        let mut multiple: i64 = 1;
+        while dvd >= (tmp << 1) {
             tmp <<= 1;
             multiple <<= 1;
         }
         dvd -= tmp;
         result += multiple;
     }
-    return (int) (sign * result);
+    (sign * result) as i32
 }
 ```
 
@@ -134,22 +128,22 @@ All numbers in [m, n] AND'd together. Any differing bit in the range will have b
 
 The result is the **common prefix** of m and n in binary.
 
-```cpp
-int rangeBitwiseAnd(int m, int n) {
-    int shift = 0;
-    while (m != n) {
+```rust
+fn range_bitwise_and(mut m: i32, mut n: i32) -> i32 {
+    let mut shift: u32 = 0;
+    while m != n {
         m >>= 1;
         n >>= 1;
-        shift++;
+        shift += 1;
     }
-    return m << shift; // common prefix shifted back
+    m << shift // common prefix shifted back
 }
 ```
 
 **Alternative — Brian Kernighan:** Keep clearing lowest set bit of `n` until `n <= m`.
-```cpp
-while (n > m) n &= (n - 1);
-return n;
+```rust
+while n > m { n &= n - 1; }
+n
 ```
 
 ---
@@ -158,19 +152,16 @@ return n;
 
 Numbers 1, 2, ..., n concatenated in binary. Result mod 10^9+7.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int concatenatedBinary(int n) {
-    long result = 0;
-    const int MOD = (int)1e9 + 7;
-    for (int i = 1; i <= n; i++) {
-        int bits = (int)(log(i) / log(2)) + 1; // bit length of i
-        // OR: bits = 32 - __builtin_clz(i)
-        result = ((result << bits) | i) % MOD;
+```rust
+fn concatenated_binary(n: i32) -> i32 {
+    let mut result: i64 = 0;
+    const MOD: i64 = 1_000_000_007;
+    for i in 1..=n {
+        let bits = (i as f64).log2() as i32 + 1; // bit length of i
+        // OR: bits = 32 - (i as u32).leading_zeros() as i32
+        result = ((result << bits) | i as i64) % MOD;
     }
-    return (int) result;
+    result as i32
 }
 ```
 
@@ -178,9 +169,9 @@ int concatenatedBinary(int n) {
 
 ## Shift Operator Precedence Trap
 
-```cpp
+```rust
 // BUG: + has higher precedence than <<
-1 << n + 1  // = 1 << (n+1), not (1 << n) + 1
+// 1 << n + 1  // = 1 << (n+1), not (1 << n) + 1  -- same rules apply in Rust!
 
 // SAFE: always parenthesize shifts
 (1 << n) + 1
@@ -190,10 +181,10 @@ int concatenatedBinary(int n) {
 
 ## Two's Complement Reminders
 
-- `-n = ~n + 1`
-- `n & (-n)` = lowest set bit (from two's complement)
-- `INT_MIN = -2^31` has no positive counterpart in `int` → use `long`
-- `~INT_MIN = INT_MAX`
+- `-n == !n + 1`
+- `n & n.wrapping_neg()` = lowest set bit (from two's complement)
+- `i32::MIN = -2^31` has no positive counterpart in `i32` → use `i64`
+- `!i32::MIN == i32::MAX`
 
 ---
 
@@ -204,7 +195,7 @@ int concatenatedBinary(int n) {
 | Get/Set/Clear/Toggle bit | O(1) | O(1) |
 | Reverse Bits | O(32) = O(1) | O(1) |
 | Power of Two | O(1) | O(1) |
-| Sum (getSum) | O(32) = O(1) | O(1) |
+| Sum (get_sum) | O(32) = O(1) | O(1) |
 | Divide (bit shift) | O(log² n) | O(1) |
 | AND of Range | O(32) = O(1) | O(1) |
 

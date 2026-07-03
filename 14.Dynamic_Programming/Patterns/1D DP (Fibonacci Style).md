@@ -31,95 +31,94 @@ This is literally the Fibonacci sequence shifted by one — hence the pattern na
 
 ### Step 1 — Pure recursion (exponential, for intuition only)
 
-```cpp
-class Solution {
-public:
-    int climbStairs(int n) {
-        if (n <= 1) {
+```rust
+struct Solution;
+
+impl Solution {
+    pub fn climb_stairs(n: i32) -> i32 {
+        if n <= 1 {
             return 1;
         }
-        return climbStairs(n - 1) + climbStairs(n - 2);
+        Solution::climb_stairs(n - 1) + Solution::climb_stairs(n - 2)
     }
-};
+}
 ```
 
 Time `O(2^n)`, because the same sub-problems are recomputed repeatedly.
 
 ### Step 2 — Memoization (top-down)
 
-We cache results in `vector<int> memo` initialized with `-1` (a sentinel meaning "not yet computed").
+We cache results in `Vec<i32> memo` initialized with `-1` (a sentinel meaning "not yet computed").
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int climbStairs(int n) {
-        vector<int> memo(n + 1, -1);
-        return solve(n, memo);
+impl Solution {
+    pub fn climb_stairs(n: i32) -> i32 {
+        let mut memo = vec![-1; (n + 1) as usize];
+        Self::solve(n, &mut memo)
     }
 
-private:
-    int solve(int n, vector<int>& memo) {
-        if (n <= 1) {
+    fn solve(n: i32, memo: &mut Vec<i32>) -> i32 {
+        if n <= 1 {
             return 1;
         }
-        if (memo[n] != -1) {
-            return memo[n];
+        let idx = n as usize;
+        if memo[idx] != -1 {
+            return memo[idx];
         }
-        memo[n] = solve(n - 1, memo) + solve(n - 2, memo);
-        return memo[n];
+        memo[idx] = Self::solve(n - 1, memo) + Self::solve(n - 2, memo);
+        memo[idx]
     }
-};
+}
 ```
 
 Time `O(n)`, Space `O(n)` for the memo plus `O(n)` recursion stack.
 
 ### Step 3 — Tabulation (bottom-up)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int climbStairs(int n) {
-        if (n <= 1) {
+impl Solution {
+    pub fn climb_stairs(n: i32) -> i32 {
+        if n <= 1 {
             return 1;
         }
-        vector<int> dp(n + 1);
+        let n = n as usize;
+        let mut dp = vec![0; n + 1];
         dp[0] = 1;
         dp[1] = 1;
-        for (int i = 2; i <= n; i++) {
+        for i in 2..=n {
             dp[i] = dp[i - 1] + dp[i - 2];
         }
-        return dp[n];
+        dp[n]
     }
-};
+}
 ```
 
 ### Step 4 — Space-optimized O(1)
 
 Since `dp[i]` only depends on the previous two values, keep two rolling variables.
 
-```cpp
-class Solution {
-public:
-    int climbStairs(int n) {
-        if (n <= 1) {
+```rust
+struct Solution;
+
+impl Solution {
+    pub fn climb_stairs(n: i32) -> i32 {
+        if n <= 1 {
             return 1;
         }
-        int prev2 = 1; // dp[i-2]
-        int prev1 = 1; // dp[i-1]
-        for (int i = 2; i <= n; i++) {
-            int curr = prev1 + prev2;
+        let mut prev2 = 1; // dp[i-2]
+        let mut prev1 = 1; // dp[i-1]
+        for _ in 2..=n {
+            let curr = prev1 + prev2;
             prev2 = prev1;
             prev1 = curr;
         }
-        return prev1;
+        prev1
     }
-};
+}
 ```
 
 ### Dry run (`n = 5`)
@@ -158,55 +157,51 @@ Result: **8** distinct ways.
 
 ### Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int frogJump(vector<int>& height) {
-        int n = height.size();
-        if (n == 1) {
+impl Solution {
+    pub fn frog_jump(height: &[i32]) -> i32 {
+        let n = height.len();
+        if n == 1 {
             return 0;
         }
-        vector<int> dp(n);
+        let mut dp = vec![0; n];
         dp[0] = 0;
-        dp[1] = abs(height[1] - height[0]);
-        for (int i = 2; i < n; i++) {
-            int oneStep = dp[i - 1] + abs(height[i] - height[i - 1]);
-            int twoStep = dp[i - 2] + abs(height[i] - height[i - 2]);
-            dp[i] = min(oneStep, twoStep);
+        dp[1] = (height[1] - height[0]).abs();
+        for i in 2..n {
+            let one_step = dp[i - 1] + (height[i] - height[i - 1]).abs();
+            let two_step = dp[i - 2] + (height[i] - height[i - 2]).abs();
+            dp[i] = one_step.min(two_step);
         }
-        return dp[n - 1];
+        dp[n - 1]
     }
-};
+}
 ```
 
 ### Space-optimized O(1)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int frogJump(vector<int>& height) {
-        int n = height.size();
-        if (n == 1) {
+impl Solution {
+    pub fn frog_jump(height: &[i32]) -> i32 {
+        let n = height.len();
+        if n == 1 {
             return 0;
         }
-        int prev2 = 0;                                    // dp[i-2]
-        int prev1 = abs(height[1] - height[0]);           // dp[i-1]
-        for (int i = 2; i < n; i++) {
-            int oneStep = prev1 + abs(height[i] - height[i - 1]);
-            int twoStep = prev2 + abs(height[i] - height[i - 2]);
-            int curr = min(oneStep, twoStep);
+        let mut prev2 = 0; // dp[i-2]
+        let mut prev1 = (height[1] - height[0]).abs(); // dp[i-1]
+        for i in 2..n {
+            let one_step = prev1 + (height[i] - height[i - 1]).abs();
+            let two_step = prev2 + (height[i] - height[i - 2]).abs();
+            let curr = one_step.min(two_step);
             prev2 = prev1;
             prev1 = curr;
         }
-        return prev1;
+        prev1
     }
-};
+}
 ```
 
 ### Dry run (`height = [10, 30, 40, 20]`)
@@ -245,29 +240,27 @@ The recurrence now has an **inner loop over the `k` possible jumps**, so space o
 
 ### Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int frogJumpK(vector<int>& height, int k) {
-        int n = height.size();
-        vector<int> dp(n);
+impl Solution {
+    pub fn frog_jump_k(height: &[i32], k: usize) -> i32 {
+        let n = height.len();
+        let mut dp = vec![0; n];
         dp[0] = 0;
-        for (int i = 1; i < n; i++) {
-            int best = INT_MAX;
-            for (int j = 1; j <= k; j++) {
-                if (i - j >= 0) {
-                    int cost = dp[i - j] + abs(height[i] - height[i - j]);
-                    best = min(best, cost);
+        for i in 1..n {
+            let mut best = i32::MAX;
+            for j in 1..=k {
+                if i >= j {
+                    let cost = dp[i - j] + (height[i] - height[i - j]).abs();
+                    best = best.min(cost);
                 }
             }
             dp[i] = best;
         }
-        return dp[n - 1];
+        dp[n - 1]
     }
-};
+}
 ```
 
 ### Complexity
@@ -276,7 +269,7 @@ public:
 |---|---|---|
 | Tabulation | `O(n * k)` | `O(n)` |
 
-> **Note:** A naive `O(1)` two-variable trick fails here because the recurrence reaches back up to `k` slots. You could keep a sliding window of the last `k` `dp` values (a deque), but the `O(n)` array is the clean, correct baseline.
+> **Note:** A naive `O(1)` two-variable trick fails here because the recurrence reaches back up to `k` slots. You could keep a sliding window of the last `k` `dp` values (a `VecDeque`), but the `O(n)` array is the clean, correct baseline.
 
 ---
 
@@ -296,79 +289,77 @@ This is the classic **pick / not-pick** recurrence.
 
 ### Memoization (top-down)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int rob(vector<int>& nums) {
-        vector<int> memo(nums.size(), -1);
-        return solve(nums, nums.size() - 1, memo);
+impl Solution {
+    pub fn rob(nums: &[i32]) -> i32 {
+        let n = nums.len();
+        let mut memo = vec![-1; n];
+        Self::solve(nums, n as i32 - 1, &mut memo)
     }
 
-private:
-    int solve(vector<int>& nums, int i, vector<int>& memo) {
-        if (i < 0) {
+    fn solve(nums: &[i32], i: i32, memo: &mut Vec<i32>) -> i32 {
+        if i < 0 {
             return 0;
         }
-        if (i == 0) {
+        let idx = i as usize;
+        if i == 0 {
             return nums[0];
         }
-        if (memo[i] != -1) {
-            return memo[i];
+        if memo[idx] != -1 {
+            return memo[idx];
         }
-        int pick = nums[i] + solve(nums, i - 2, memo);
-        int notPick = solve(nums, i - 1, memo);
-        memo[i] = max(pick, notPick);
-        return memo[i];
+        let pick = nums[idx] + Self::solve(nums, i - 2, memo);
+        let not_pick = Self::solve(nums, i - 1, memo);
+        memo[idx] = pick.max(not_pick);
+        memo[idx]
     }
-};
+}
 ```
 
 ### Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int rob(vector<int>& nums) {
-        int n = nums.size();
-        if (n == 1) {
+impl Solution {
+    pub fn rob(nums: &[i32]) -> i32 {
+        let n = nums.len();
+        if n == 1 {
             return nums[0];
         }
-        vector<int> dp(n);
+        let mut dp = vec![0; n];
         dp[0] = nums[0];
-        dp[1] = max(nums[0], nums[1]);
-        for (int i = 2; i < n; i++) {
-            int pick = nums[i] + dp[i - 2];
-            int notPick = dp[i - 1];
-            dp[i] = max(pick, notPick);
+        dp[1] = nums[0].max(nums[1]);
+        for i in 2..n {
+            let pick = nums[i] + dp[i - 2];
+            let not_pick = dp[i - 1];
+            dp[i] = pick.max(not_pick);
         }
-        return dp[n - 1];
+        dp[n - 1]
     }
-};
+}
 ```
 
 ### Space-optimized O(1)
 
-```cpp
-class Solution {
-public:
-    int rob(vector<int>& nums) {
-        int prev2 = 0; // dp[i-2]
-        int prev1 = 0; // dp[i-1]
-        for (int i = 0; i < (int)nums.size(); i++) {
-            int pick = nums[i] + prev2;
-            int curr = max(pick, prev1);
+```rust
+struct Solution;
+
+impl Solution {
+    pub fn rob(nums: &[i32]) -> i32 {
+        let mut prev2 = 0; // dp[i-2]
+        let mut prev1 = 0; // dp[i-1]
+        for &num in nums {
+            let pick = num + prev2;
+            let curr = pick.max(prev1);
             prev2 = prev1;
             prev1 = curr;
         }
-        return prev1;
+        prev1
     }
-};
+}
 ```
 
 ### Dry run (`nums = [2, 7, 9, 3, 1]`)
@@ -406,36 +397,33 @@ If we cannot rob both the first and last house, then any optimal solution falls 
 
 The answer is the maximum of the two. (Handle `n == 1` separately.)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int rob(vector<int>& nums) {
-        int n = nums.size();
-        if (n == 1) {
+impl Solution {
+    pub fn rob(nums: &[i32]) -> i32 {
+        let n = nums.len();
+        if n == 1 {
             return nums[0];
         }
-        int excludeLast = robLinear(nums, 0, n - 2);
-        int excludeFirst = robLinear(nums, 1, n - 1);
-        return max(excludeLast, excludeFirst);
+        let exclude_last = Self::rob_linear(&nums[..n - 1]);
+        let exclude_first = Self::rob_linear(&nums[1..]);
+        exclude_last.max(exclude_first)
     }
 
-private:
     // Linear House Robber over the inclusive range [start, end].
-    int robLinear(vector<int>& nums, int start, int end) {
-        int prev2 = 0;
-        int prev1 = 0;
-        for (int i = start; i <= end; i++) {
-            int pick = nums[i] + prev2;
-            int curr = max(pick, prev1);
+    fn rob_linear(nums: &[i32]) -> i32 {
+        let mut prev2 = 0;
+        let mut prev1 = 0;
+        for &num in nums {
+            let pick = num + prev2;
+            let curr = pick.max(prev1);
             prev2 = prev1;
             prev1 = curr;
         }
-        return prev1;
+        prev1
     }
-};
+}
 ```
 
 ### Complexity
@@ -458,21 +446,22 @@ This is **exactly House Robber** — the "no two adjacent houses" constraint is 
 | **Recurrence** | `dp[i] = max(nums[i] + dp[i-2], dp[i-1])` |
 | **Base cases** | `dp[0] = nums[0]`; `dp[1] = max(nums[0], nums[1])` |
 
-```cpp
-class Solution {
-public:
-    int maxNonAdjacentSum(vector<int>& nums) {
-        int prev2 = 0; // best sum ending at or before i-2
-        int prev1 = 0; // best sum ending at or before i-1
-        for (int i = 0; i < (int)nums.size(); i++) {
-            int pick = nums[i] + prev2;
-            int curr = max(pick, prev1);
+```rust
+struct Solution;
+
+impl Solution {
+    pub fn max_non_adjacent_sum(nums: &[i32]) -> i32 {
+        let mut prev2 = 0; // best sum ending at or before i-2
+        let mut prev1 = 0; // best sum ending at or before i-1
+        for &num in nums {
+            let pick = num + prev2;
+            let curr = pick.max(prev1);
             prev2 = prev1;
             prev1 = curr;
         }
-        return prev1;
+        prev1
     }
-};
+}
 ```
 
 > **Equivalence note:** If you can solve House Robber, you have already solved this problem. Recognizing such equivalences is the single biggest accelerator in DP — many problems are the same recurrence wearing a different costume. (If negative values are allowed and the empty subset is permitted, this code already handles it correctly, since `prev1`/`prev2` start at 0 and `pick` competes against `prev1`.)
@@ -497,61 +486,57 @@ Here we look at the **1D precursor**: a single sequence of costs where, on each 
 
 This mirrors the structure of **Min Cost Climbing Stairs**: at each step you may have arrived from one of the previous one or two steps, and you want the cheapest arrival.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
+impl Solution {
     // Minimum running cost; from step i you may arrive from i-1 or i-2.
-    int minRunningCost(vector<int>& cost) {
-        int n = cost.size();
-        if (n == 0) {
+    pub fn min_running_cost(cost: &[i32]) -> i32 {
+        let n = cost.len();
+        if n == 0 {
             return 0;
         }
-        if (n == 1) {
+        if n == 1 {
             return cost[0];
         }
-        int prev2 = cost[0];
-        int prev1 = cost[1];
-        for (int i = 2; i < n; i++) {
-            int curr = cost[i] + min(prev1, prev2);
+        let mut prev2 = cost[0];
+        let mut prev1 = cost[1];
+        for i in 2..n {
+            let curr = cost[i] + prev1.min(prev2);
             prev2 = prev1;
             prev1 = curr;
         }
-        return prev1;
+        prev1
     }
-};
+}
 ```
 
 ### Max variant
 
 The maximum-cost (best reward) version is identical with `max` swapped in:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int maxRunningCost(vector<int>& cost) {
-        int n = cost.size();
-        if (n == 0) {
+impl Solution {
+    pub fn max_running_cost(cost: &[i32]) -> i32 {
+        let n = cost.len();
+        if n == 0 {
             return 0;
         }
-        if (n == 1) {
+        if n == 1 {
             return cost[0];
         }
-        int prev2 = cost[0];
-        int prev1 = cost[1];
-        for (int i = 2; i < n; i++) {
-            int curr = cost[i] + max(prev1, prev2);
+        let mut prev2 = cost[0];
+        let mut prev1 = cost[1];
+        for i in 2..n {
+            let curr = cost[i] + prev1.max(prev2);
             prev2 = prev1;
             prev1 = curr;
         }
-        return prev1;
+        prev1
     }
-};
+}
 ```
 
 ### Complexity
@@ -582,7 +567,7 @@ public:
 
 - **1D DP** problems have a state indexed by a single position; the recurrence reaches back a **fixed, small** number of indices.
 - Always progress mentally **recursion → memoization → tabulation → space optimization**, but in interviews you can often jump straight to tabulation or the `O(1)` two-variable form once you trust the recurrence.
-- **Memoization** uses `vector<int> memo` initialized with `-1` as the "not computed" sentinel.
+- **Memoization** uses `Vec<i32> memo` initialized with `-1` as the "not computed" sentinel.
 - When `dp[i]` depends only on `dp[i-1]` and `dp[i-2]`, replace the array with `prev1` / `prev2` for **`O(1)` space**.
 - The **k-distance frog** breaks the `O(1)` trick because it reaches back up to `k` slots, giving `O(n*k)` time.
 - **House Robber**, **Max Non-Adjacent Sum**, and **House Robber II** are the same pick/not-pick recurrence; the circular variant just runs the linear solver twice.

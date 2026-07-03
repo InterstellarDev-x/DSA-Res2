@@ -6,13 +6,19 @@ Microsoft interviews favor **clean implementation of the core operations** and s
 
 The node type used throughout:
 
-```cpp
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
-};
+```rust
+#[derive(Debug)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
+
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 ---
@@ -23,36 +29,40 @@ struct TreeNode {
 
 **Approach discussion.** First locate the node by the usual BST descent. Deletion then splits into three cases:
 
-1. **Leaf (no children):** detach it — return `nullptr`.
+1. **Leaf (no children):** detach it — return `None`.
 2. **One child:** splice it out — return the non-null child.
 3. **Two children:** the hard case. Replace the node's value with its **inorder successor** (the smallest value in the right subtree = the **leftmost node of the right subtree**), then delete that successor node from the right subtree. The successor has at most a right child, so its deletion falls into case 1 or 2 — no infinite recursion.
 
 Why the successor works: it is the next-larger value, so substituting it preserves "everything left < node < everything right." (Symmetrically, the inorder predecessor — rightmost of the left subtree — also works.)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+pub fn delete_node(root: Option<Box<TreeNode>>, key: i32) -> Option<Box<TreeNode>> {
+    match root {
+        None => None,
+        Some(mut node) => {
+            if key < node.val {
+                node.left = delete_node(node.left, key);
+                Some(node)
+            } else if key > node.val {
+                node.right = delete_node(node.right, key);
+                Some(node)
+            } else {
+                // found the node to delete
+                if node.left.is_none() { return node.right; }  // 0 or 1 child (right)
+                if node.right.is_none() { return node.left; }  // 1 child (left)
 
-TreeNode* deleteNode(TreeNode* root, int key) {
-    if (root == nullptr) return nullptr;
-
-    if (key < root->val) {
-        root->left = deleteNode(root->left, key);
-    } else if (key > root->val) {
-        root->right = deleteNode(root->right, key);
-    } else {
-        // found the node to delete
-        if (root->left == nullptr) return root->right;     // 0 or 1 child (right)
-        if (root->right == nullptr) return root->left;     // 1 child (left)
-
-        // two children: find inorder successor = leftmost of right subtree
-        TreeNode* succ = root->right;
-        while (succ->left != nullptr) succ = succ->left;
-
-        root->val = succ->val;                           // copy successor value up
-        root->right = deleteNode(root->right, succ->val);// delete the successor copy
+                // two children: find inorder successor = leftmost of right subtree
+                let mut succ = node.right.as_ref().unwrap();
+                while succ.left.is_some() {
+                    succ = succ.left.as_ref().unwrap();
+                }
+                let succ_val = succ.val;                             // copy successor value up
+                node.val = succ_val;
+                node.right = delete_node(node.right, succ_val);      // delete the successor copy
+                Some(node)
+            }
+        }
     }
-    return root;
 }
 ```
 
@@ -68,10 +78,10 @@ Delete `50` from:
     20 40 60  80
 ```
 
-1. `key == root->val (50)`. Both children exist → two-children case.
+1. `key == root.val (50)`. Both children exist → two-children case.
 2. Find the inorder successor: go right to `70`, then left as far as possible → `60`. (`60` is the smallest value greater than `50`.)
-3. Copy `succ->val = 60` into the root. The tree now has `60` at the top *and* still a `60` in the right subtree (a temporary duplicate).
-4. Recursively delete `60` from the right subtree. `60` is found as the left child of `70`; it has no left child, so case "one child / leaf" returns `60->right` (`nullptr`). `70->left` becomes `nullptr`.
+3. Copy `succ_val = 60` into the root. The tree now has `60` at the top *and* still a `60` in the right subtree (a temporary duplicate).
+4. Recursively delete `60` from the right subtree. `60` is found as the left child of `70`; it has no left child, so case "one child / leaf" returns `60.right` (`None`). `70.left` becomes `None`.
 
 Result:
 
@@ -93,29 +103,30 @@ The BST property holds, and `60` (the leftmost-of-right) had at most a right chi
 
 **Approach discussion.** Preorder visits *root, then left subtree, then right subtree*. The naive approach finds a split point per node (O(n²) worst case). The optimal **O(n) upper-bound technique** processes each value exactly once: maintain a global index `i` and a recursion that is handed an **upper bound** for the current subtree. A value belongs to the current subtree only if it is below that bound; otherwise it belongs to some ancestor's right subtree, and we return without consuming it.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution {
+    i: usize,
+    pre: Vec<i32>,
+}
 
-class Solution {
-    int i = 0;
-    vector<int> pre;
-
-    TreeNode* build(int bound) {
-        if (i == (int)pre.size() || pre[i] > bound) return nullptr;
-
-        TreeNode* node = new TreeNode(pre[i++]);     // consume this value
-        node->left = build(node->val);               // left subtree bounded by node
-        node->right = build(bound);                  // right subtree keeps parent bound
-        return node;
+impl Solution {
+    fn build(&mut self, bound: i32) -> Option<Box<TreeNode>> {
+        if self.i == self.pre.len() || self.pre[self.i] > bound {
+            return None;
+        }
+        let val = self.pre[self.i];
+        self.i += 1;                                    // consume this value
+        let mut node = Box::new(TreeNode::new(val));
+        node.left = self.build(val);                    // left subtree bounded by node
+        node.right = self.build(bound);                 // right subtree keeps parent bound
+        Some(node)
     }
 
-public:
-    TreeNode* bstFromPreorder(vector<int>& preorder) {
-        this->pre = preorder;
-        return build(INT_MAX);
+    pub fn bst_from_preorder(preorder: Vec<i32>) -> Option<Box<TreeNode>> {
+        let mut sol = Solution { i: 0, pre: preorder };
+        sol.build(i32::MAX)
     }
-};
+}
 ```
 
 **Why each element is consumed once.** The index `i` only ever advances — it increments exactly when a value is turned into a node, and never rewinds. Every recursive call either consumes the current value (creating a node and moving `i` forward) or returns immediately because `pre[i] > bound` (this value belongs higher up the tree). Since `i` goes from `0` to `n` monotonically and each step does O(1) work, the whole construction is O(n) time, O(h) recursion space.
@@ -126,42 +137,43 @@ The left child inherits the current node's value as its upper bound (everything 
 
 ## 3. BST Iterator (LC 173)
 
-**Prompt.** Implement an iterator over a BST that returns values in ascending (inorder) order. Support `next()` returning the next smallest value and `hasNext()` returning whether a next value exists.
+**Prompt.** Implement an iterator over a BST that returns values in ascending (inorder) order. Support `next()` returning the next smallest value and `has_next()` returning whether a next value exists.
 
-**Approach discussion.** This is **controlled inorder traversal** — we pause the walk between calls instead of running it to completion. Keep a stack pre-loaded with the path of left children from the current position. `next()` pops the top (the next smallest), then pushes the left spine of its right child. `hasNext()` is just "stack not empty."
+**Approach discussion.** This is **controlled inorder traversal** — we pause the walk between calls instead of running it to completion. Keep a stack pre-loaded with the path of left children from the current position. `next()` pops the top (the next smallest), then pushes the left spine of its right child. `has_next()` is just "stack not empty."
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct BSTIterator<'a> {
+    stk: Vec<&'a TreeNode>,
+}
 
-class BSTIterator {
-    stack<TreeNode*> stk;
-
-    void pushLeft(TreeNode* node) {
-        while (node != nullptr) {
-            stk.push(node);
-            node = node->left;
+impl<'a> BSTIterator<'a> {
+    fn push_left(&mut self, node: Option<&'a Box<TreeNode>>) {
+        let mut curr = node;
+        while let Some(n) = curr {
+            self.stk.push(n.as_ref());
+            curr = n.left.as_ref();
         }
     }
 
-public:
-    BSTIterator(TreeNode* root) {
-        pushLeft(root);
+    pub fn new(root: Option<&'a Box<TreeNode>>) -> Self {
+        let mut iter = BSTIterator { stk: Vec::new() };
+        iter.push_left(root);
+        iter
     }
 
-    int next() {
-        TreeNode* node = stk.top(); stk.pop();  // next smallest
-        pushLeft(node->right);                  // queue up its right subtree's left spine
-        return node->val;
+    pub fn next(&mut self) -> i32 {
+        let node = self.stk.pop().unwrap();   // next smallest
+        self.push_left(node.right.as_ref());  // queue up its right subtree's left spine
+        node.val
     }
 
-    bool hasNext() {
-        return !stk.empty();
+    pub fn has_next(&self) -> bool {
+        !self.stk.is_empty()
     }
-};
+}
 ```
 
-**Complexity.** `hasNext()` is O(1). `next()` is **amortized O(1)**: although a single call may push a long left spine, each node is pushed and popped exactly once across the entire iteration, so n calls do O(n) total work. Space is **O(h)** — the stack never holds more than one root-to-leaf path. This beats flattening the tree into a list up front (which would be O(n) space).
+**Complexity.** `has_next()` is O(1). `next()` is **amortized O(1)**: although a single call may push a long left spine, each node is pushed and popped exactly once across the entire iteration, so n calls do O(n) total work. Space is **O(h)** — the stack never holds more than one root-to-leaf path. This beats flattening the tree into a list up front (which would be O(n) space).
 
 For the full design write-up and variants, see [BST Iterator](../Design%20Data%20Structure%20Problems/BST%20Iterator.md).
 

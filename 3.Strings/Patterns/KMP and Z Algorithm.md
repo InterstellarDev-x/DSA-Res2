@@ -11,8 +11,8 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [KMP — C++ Implementation](#kmp--c-implementation)
-6. [Z-Algorithm — C++ Implementation](#z-algorithm--c-implementation)
+5. [KMP — Rust Implementation](#kmp--rust-implementation)
+6. [Z-Algorithm — Rust Implementation](#z-algorithm--rust-implementation)
 7. [Common Mistakes](#common-mistakes)
 8. [Applications](#applications)
 9. [Practice Problems](#practice-problems)
@@ -69,140 +69,156 @@ Z:    z[i]   = length of longest string starting from s[i] matching a prefix of 
 
 ---
 
-## KMP — C++ Implementation
+## KMP — Rust Implementation
 
 ### Step 1: Build LPS (Failure Function)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // lps[i] = length of longest proper prefix of p[0..i] that is also a suffix
-vector<int> buildLPS(const string& pattern) {
-    int m = pattern.length();
-    vector<int> lps(m);
-    int len = 0; // length of previous longest prefix suffix
-    int i = 1;
+fn build_lps(pattern: &[u8]) -> Vec<usize> {
+    let m = pattern.len();
+    let mut lps = vec![0usize; m];
+    let mut len = 0usize; // length of previous longest prefix suffix
+    let mut i = 1;
 
-    while (i < m) {
-        if (pattern[i] == pattern[len]) {
-            lps[i++] = ++len;
-        } else if (len > 0) {
+    while i < m {
+        if pattern[i] == pattern[len] {
+            len += 1;
+            lps[i] = len;
+            i += 1;
+        } else if len > 0 {
             len = lps[len - 1]; // don't increment i — try shorter prefix
         } else {
-            lps[i++] = 0;
+            lps[i] = 0;
+            i += 1;
         }
     }
-    return lps;
+    lps
 }
 ```
 
 ### Step 2: KMP Search
 
-```cpp
-vector<int> kmpSearch(const string& text, const string& pattern) {
-    vector<int> indices;
-    int n = text.length(), m = pattern.length();
-    if (m == 0) return indices;
+```rust
+fn kmp_search(text: &[u8], pattern: &[u8]) -> Vec<usize> {
+    let mut indices = Vec::new();
+    let n = text.len();
+    let m = pattern.len();
+    if m == 0 {
+        return indices;
+    }
 
-    vector<int> lps = buildLPS(pattern);
-    int i = 0, j = 0; // i = text index, j = pattern index
+    let lps = build_lps(pattern);
+    let mut i = 0usize; // text index
+    let mut j = 0usize; // pattern index
 
-    while (i < n) {
-        if (text[i] == pattern[j]) {
-            i++; j++;
+    while i < n {
+        if text[i] == pattern[j] {
+            i += 1;
+            j += 1;
         }
-        if (j == m) {
-            indices.push_back(i - j); // found at i - m
-            j = lps[j - 1];    // continue with partial match
-        } else if (i < n && text[i] != pattern[j]) {
-            if (j > 0) j = lps[j - 1]; // use LPS to skip
-            else i++;
+        if j == m {
+            indices.push(i - j); // found at i - m
+            j = lps[j - 1]; // continue with partial match
+        } else if i < n && text[i] != pattern[j] {
+            if j > 0 {
+                j = lps[j - 1]; // use LPS to skip
+            } else {
+                i += 1;
+            }
         }
     }
-    return indices;
+    indices
 }
 // Total: O(n + m) | Space: O(m)
 ```
 
 ### Application 1: Repeated Substring Pattern (LC 459)
 
-```cpp
-bool repeatedSubstringPattern(const string& s) {
-    int n = s.length();
-    vector<int> lps = buildLPS(s);
-    int len = lps[n - 1];
+```rust
+fn repeated_substring_pattern(s: &str) -> bool {
+    let n = s.len();
+    let lps = build_lps(s.as_bytes());
+    let len = lps[n - 1];
     // If len > 0 and n is divisible by (n - len), s is built from a repeating unit
-    return len > 0 && n % (n - len) == 0;
+    len > 0 && n % (n - len) == 0
 }
 // Example: "abababab" → lps[7]=6 → n%(n-6) = 8%2 = 0 → true
 ```
 
 ### Application 2: Shortest Palindrome by Prepending (LC 214)
 
-```cpp
-string shortestPalindrome(const string& s) {
+```rust
+fn shortest_palindrome(s: &str) -> String {
     // Find longest palindromic prefix using KMP
-    string rev = s;
-    reverse(rev.begin(), rev.end());
-    string combined = s + "#" + rev; // '#' prevents overlap
-    vector<int> lps = buildLPS(combined);
-    int longestPalinPrefix = lps[combined.length() - 1];
-    return rev.substr(0, s.length() - longestPalinPrefix) + s;
+    let rev: String = s.chars().rev().collect();
+    let combined = format!("{}#{}", s, rev); // '#' prevents overlap
+    let lps = build_lps(combined.as_bytes());
+    let longest_palin_prefix = lps[combined.len() - 1];
+    format!("{}{}", &rev[..s.len() - longest_palin_prefix], s)
 }
 // Time: O(n) | Space: O(n)
 ```
 
 ### Application 3: Is Rotation? (LC 796)
 
-```cpp
-bool isRotation(const string& s, const string& goal) {
-    if (s.length() != goal.length()) return false;
-    return !kmpSearch(s + s, goal).empty();
+```rust
+fn is_rotation(s: &str, goal: &str) -> bool {
+    if s.len() != goal.len() {
+        return false;
+    }
+    let doubled = format!("{}{}", s, s);
+    !kmp_search(doubled.as_bytes(), goal.as_bytes()).is_empty()
 }
 // Time: O(n) | Space: O(n)
 ```
 
 ---
 
-## Z-Algorithm — C++ Implementation
+## Z-Algorithm — Rust Implementation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // z[i] = length of longest substring starting at s[i] that matches a prefix of s
 // z[0] = 0 by convention (or n, depending on definition)
-vector<int> zFunction(const string& s) {
-    int n = s.length();
-    vector<int> z(n);
-    int l = 0, r = 0;
+fn z_function(s: &[u8]) -> Vec<usize> {
+    let n = s.len();
+    let mut z = vec![0usize; n];
+    let mut l = 0usize;
+    let mut r = 0usize;
 
-    for (int i = 1; i < n; i++) {
-        if (i < r) {
-            z[i] = min(r - i, z[i - l]);
+    for i in 1..n {
+        if i < r {
+            z[i] = (r - i).min(z[i - l]);
         }
-        while (i + z[i] < n && s[z[i]] == s[i + z[i]]) {
-            z[i]++;
+        while i + z[i] < n && s[z[i]] == s[i + z[i]] {
+            z[i] += 1;
         }
-        if (i + z[i] > r) { l = i; r = i + z[i]; }
+        if i + z[i] > r {
+            l = i;
+            r = i + z[i];
+        }
     }
-    return z;
+    z
 }
 ```
 
 ### Z-Algorithm Pattern Search
 
-```cpp
-vector<int> zSearch(const string& text, const string& pattern) {
-    string combined = pattern + "$" + text; // '$' not in alphabet
-    vector<int> z = zFunction(combined);
-    vector<int> result;
-    int m = pattern.length();
-    for (int i = m + 1; i < (int)combined.length(); i++) {
-        if (z[i] == m) result.push_back(i - m - 1); // offset in text
+```rust
+fn z_search(text: &[u8], pattern: &[u8]) -> Vec<usize> {
+    let m = pattern.len();
+    let mut combined = Vec::with_capacity(m + 1 + text.len());
+    combined.extend_from_slice(pattern);
+    combined.push(b'$'); // '$' not in alphabet
+    combined.extend_from_slice(text);
+    let z = z_function(&combined);
+    let mut result = Vec::new();
+    for i in (m + 1)..combined.len() {
+        if z[i] == m {
+            result.push(i - m - 1); // offset in text
+        }
     }
-    return result;
+    result
 }
 // Time: O(n + m) | Space: O(n + m)
 ```

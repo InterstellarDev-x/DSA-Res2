@@ -7,63 +7,54 @@
 
 ## Backtracking Template — Never Deviate
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void backtrack(state, choices, results) {
-    if (goal reached) {
-        results.push_back(state);  // vector copies by value — no explicit copy needed
+```rust
+fn backtrack(state: &mut State, valid_choices: &[Choice], results: &mut Vec<State>) {
+    if goal_reached(state) {
+        results.push(state.clone()); // clone to capture current state
         return;
     }
-    for (auto& choice : validChoices) {
-        makeChoice(state, choice);   // mutate state
-        backtrack(state, ...);       // recurse
-        undoChoice(state, choice);   // restore state exactly
+    for choice in valid_choices {
+        make_choice(state, choice);   // mutate state
+        backtrack(state, ...);        // recurse
+        undo_choice(state, choice);   // restore state exactly
     }
 }
 ```
 
 Every backtracking problem fits this template. Identify:
 1. What is `state`? (path list, grid cell, queen positions)
-2. What is `validChoices`? (digits 1–9, positions 0..n-1, indices start..n)
-3. What is `copy`? (`vector<int>(path)` — or just `path` since `push_back` copies, `board` snapshot via copy)
-4. What is `undo`? (`path.pop_back()`, `board[r][c] = '.'`)
+2. What is `valid_choices`? (digits 1–9, positions 0..n-1, indices start..n)
+3. What is `copy`? (`path.clone()` — or just `path` since `push` clones on capture, `board` snapshot via `.clone()`)
+4. What is `undo`? (`path.pop()`, `board[r][c] = '.'`)
 
 ---
 
-## String with pop_back for Path (not concat)
+## String with pop for Path (not concat)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // SLOW — O(n) per concat, O(n²) total for path of length n
-string path = "";
-path += ch;                        // creates new string object every time via +=
-path = path.substr(0, path.length()-1); // undo is O(n)
+let mut path = String::new();
+path.push(ch);                              // push a char O(1) amortized
+path = path[..path.len() - 1].to_string(); // undo is O(n) — reallocates
 
 // FAST — O(1) amortized append/delete
-string sb = "";
-sb += ch;
-sb.pop_back(); // O(1) undo
+let mut sb = String::new();
+sb.push(ch);
+sb.pop(); // O(1) undo — returns Option<char>
 ```
 
-Rule: If you're building a string incrementally in a recursion, always use `string` with `pop_back()` for undo instead of `substr`.
+Rule: If you're building a string incrementally in a recursion, always use `String` with `pop()` for undo instead of a slice-and-clone.
 
 ---
 
-## Vector Path Copy (not Reference)
+## Vec Path Clone (not Reference)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+// NOTE: In Rust, clone() explicitly copies the Vec — no aliasing bug
+result.push(path.clone()); // safe: clones the current state
 
-// NOTE: In C++, push_back already copies the vector — no pointer aliasing bug
-result.push_back(path); // safe: copies the current state
-
-// Explicit copy (equivalent, sometimes clearer):
-result.push_back(vector<int>(path));
+// Equivalent (same thing):
+result.push(path.to_vec());
 ```
 
 ---
@@ -72,42 +63,36 @@ result.push_back(vector<int>(path));
 
 Always sort the input before backtracking when:
 1. You need to skip duplicates (`i > start && nums[i] == nums[i-1]`)
-2. You want to prune with `if (nums[i] > remaining) break`
+2. You want to prune with `if nums[i] > remaining { break; }`
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-sort(nums.begin(), nums.end()); // O(n log n) one time — enables O(1) pruning per node
+```rust
+nums.sort(); // O(n log n) one time — enables O(1) pruning per node
 ```
 
 ---
 
-## INT_MIN in Pow(x, n)
+## i32::MIN in Pow(x, n)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+// OVERFLOW: i32::MIN.wrapping_neg() = i32::MIN (still negative; debug mode panics!)
+let n: i32 = i32::MIN;
+let _ = n.wrapping_neg(); // BUG: still i32::MIN
 
-// OVERFLOW: -INT_MIN = INT_MIN (still negative!)
-int n = INT_MIN;
-n = -n; // BUG: still INT_MIN
-
-// FIX: cast to long before negating
-long N = (long) n;
-N = -N; // correct: 2147483648
+// FIX: cast to i64 before negating
+let big_n: i64 = n as i64;
+let big_n = -big_n; // correct: 2147483648
 ```
 
 ---
 
 ## In-Place Grid Marking (Word Search)
 
-Instead of a separate `vector<vector<bool>> visited` array:
+Instead of a separate `Vec<Vec<bool>>` visited array:
 
-```cpp
-char tmp = board[r][c];
-board[r][c] = '#';  // mark — any non-letter sentinel
-dfs(board, r+1, c, word, k+1);
+```rust
+let tmp = board[r][c];
+board[r][c] = '#'; // mark — any non-letter sentinel
+dfs(board, r + 1, c, word, k + 1);
 board[r][c] = tmp;  // restore
 ```
 
@@ -117,9 +102,9 @@ Saves O(m×n) extra space.
 
 ## `used[i-1]` Duplicate Trick in Permutations II
 
-```cpp
+```rust
 // Skip duplicate at same recursion level:
-if (i > 0 && nums[i] == nums[i-1] && !used[i-1]) continue;
+if i > 0 && nums[i] == nums[i - 1] && !used[i - 1] { continue; }
 ```
 
 Mental model: among equal elements, we always pick them left-to-right. If `nums[i-1]` was picked and backtracked (`!used[i-1]`), picking `nums[i]` (same value) again at this level would create a duplicate permutation.

@@ -51,17 +51,15 @@
 | **Skill tested** | Single-pass greedy |
 | **Pattern** | Prefix min tracking |
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int maxProfit(vector<int>& prices) {
-    int minPrice = INT_MAX, maxProfit = 0;
-    for (auto& price : prices) {
-        minPrice = min(minPrice, price);
-        maxProfit = max(maxProfit, price - minPrice);
+```rust
+fn max_profit(prices: &[i32]) -> i32 {
+    let mut min_price = i32::MAX;
+    let mut max_profit = 0;
+    for &price in prices {
+        min_price = min_price.min(price);
+        max_profit = max_profit.max(price - min_price);
     }
-    return maxProfit;
+    max_profit
 }
 ```
 
@@ -81,19 +79,21 @@ int maxProfit(vector<int>& prices) {
 | **Skill tested** | In-place reversal trick |
 | **Pattern** | Three-reverse |
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void reverseArr(vector<int>& arr, int l, int r) {
-    while (l < r) { int t = arr[l]; arr[l++] = arr[r]; arr[r--] = t; }
+```rust
+fn reverse_arr(arr: &mut Vec<i32>, mut l: usize, mut r: usize) {
+    while l < r {
+        arr.swap(l, r);
+        l += 1;
+        r -= 1;
+    }
 }
 
-void rotate(vector<int>& nums, int k) {
-    k %= nums.size();
-    reverseArr(nums, 0, nums.size() - 1);
-    reverseArr(nums, 0, k - 1);
-    reverseArr(nums, k, nums.size() - 1);
+fn rotate(nums: &mut Vec<i32>, k: i32) {
+    let n = nums.len();
+    let k = (k as usize) % n;
+    reverse_arr(nums, 0, n - 1);
+    reverse_arr(nums, 0, k - 1);
+    reverse_arr(nums, k, n - 1);
 }
 ```
 

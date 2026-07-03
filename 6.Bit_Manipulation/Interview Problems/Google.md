@@ -20,38 +20,34 @@
 
 ### Approach 1: Binary Trie (O(n) time, O(n) space)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int findMaximumXOR(vector<int>& nums) {
-    TrieNode* root = new TrieNode();
-    for (int n : nums) insert(root, n);
-    int maxVal = 0;
-    for (int n : nums) maxVal = max(maxVal, maxXOR(root, n));
-    return maxVal;
+```rust
+fn find_maximum_xor(nums: &[i32]) -> i32 {
+    let mut root = TrieNode::new();
+    for &n in nums { insert(&mut root, n); }
+    let mut max_val = 0;
+    for &n in nums { max_val = max_val.max(max_xor(&root, n)); }
+    max_val
 }
 ```
 
-### Approach 2: Greedy with `std::unordered_set` (O(n) time, O(n) space, simpler)
+### Approach 2: Greedy with `HashSet` (O(n) time, O(n) space, simpler)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-int findMaximumXOR(vector<int>& nums) {
-    int maxXor = 0, mask = 0;
-    for (int bit = 31; bit >= 0; bit--) {
-        mask |= (1 << bit);
-        unordered_set<int> prefixes;
-        for (int n : nums) prefixes.insert(n & mask);
+fn find_maximum_xor(nums: &[i32]) -> i32 {
+    let mut max_xor = 0i32;
+    let mut mask = 0i32;
+    for bit in (0..32).rev() {
+        mask |= 1 << bit;
+        let prefixes: HashSet<i32> = nums.iter().map(|&n| n & mask).collect();
 
-        int candidate = maxXor | (1 << bit);
-        for (int p : prefixes) {
-            if (prefixes.count(candidate ^ p)) { maxXor = candidate; break; }
+        let candidate = max_xor | (1 << bit);
+        for &p in &prefixes {
+            if prefixes.contains(&(candidate ^ p)) { max_xor = candidate; break; }
         }
     }
-    return maxXor;
+    max_xor
 }
 ```
 
@@ -74,18 +70,15 @@ Sort + offline processing. See [Bit Search & Trie](../Patterns/Bit%20Search%20an
 Pairwise hamming distance = for each bit position, count pairs that differ.
 If `k` numbers have bit `i` set: those `k` pair with the `n-k` that don't → `k × (n-k)` differing pairs.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int totalHammingDistance(vector<int>& nums) {
-    int total = 0, n = nums.size();
-    for (int bit = 0; bit < 32; bit++) {
-        int ones = 0;
-        for (int num : nums) ones += (num >> bit) & 1;
+```rust
+fn total_hamming_distance(nums: &[i32]) -> i32 {
+    let mut total = 0i32;
+    let n = nums.len() as i32;
+    for bit in 0..32 {
+        let ones: i32 = nums.iter().map(|&num| (num >> bit) & 1).sum();
         total += ones * (n - ones);
     }
-    return total;
+    total
 }
 ```
 

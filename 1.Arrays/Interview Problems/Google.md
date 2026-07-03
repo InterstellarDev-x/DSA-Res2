@@ -40,24 +40,22 @@
 | **Optimal solution** | O(n) time, O(1) extra space |
 | **LeetCode** | [LC 238](https://leetcode.com/problems/product-of-array-except-self/) |
 
-**C++ Solution:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> productExceptSelf(vector<int>& nums) {
-    int n = nums.size();
-    vector<int> result(n);
-    result[0] = 1;
+**Rust Solution:**
+```rust
+fn product_except_self(nums: &[i32]) -> Vec<i32> {
+    let n = nums.len();
+    let mut result = vec![1i32; n];
     // Left pass: result[i] = product of all nums[0..i-1]
-    for (int i = 1; i < n; i++) result[i] = result[i - 1] * nums[i - 1];
+    for i in 1..n {
+        result[i] = result[i - 1] * nums[i - 1];
+    }
     // Right pass: multiply by suffix product
-    int right = 1;
-    for (int i = n - 1; i >= 0; i--) {
+    let mut right = 1;
+    for i in (0..n).rev() {
         result[i] *= right;
         right *= nums[i];
     }
-    return result;
+    result
 }
 // Time: O(n) | Space: O(1) excluding output array
 ```
@@ -91,25 +89,25 @@ vector<int> productExceptSelf(vector<int>& nums) {
 |-------|--------|
 | **Difficulty** | Medium |
 | **Round** | Phone, Round 1 |
-| **Skill tested** | unordered_set, O(n) without sorting |
-| **Optimal solution** | unordered_set, only extend sequences from their start |
+| **Skill tested** | HashSet, O(n) without sorting |
+| **Optimal solution** | HashSet, only extend sequences from their start |
 | **LeetCode** | [LC 128](https://leetcode.com/problems/longest-consecutive-sequence/) |
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-int longestConsecutive(vector<int>& nums) {
-    unordered_set<int> set(nums.begin(), nums.end());
-    int maxLen = 0;
-    for (auto& n : set) {
-        if (set.find(n - 1) == set.end()) { // start of a sequence
-            int cur = n, len = 1;
-            while (set.count(cur + 1)) { cur++; len++; }
-            maxLen = max(maxLen, len);
+fn longest_consecutive(nums: Vec<i32>) -> i32 {
+    let set: HashSet<i32> = nums.into_iter().collect();
+    let mut max_len = 0;
+    for &n in &set {
+        if !set.contains(&(n - 1)) { // start of a sequence
+            let mut cur = n;
+            let mut len = 1;
+            while set.contains(&(cur + 1)) { cur += 1; len += 1; }
+            max_len = max_len.max(len);
         }
     }
-    return maxLen;
+    max_len
 }
 // Time: O(n) | Space: O(n)
 ```

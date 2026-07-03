@@ -22,28 +22,28 @@ We maintain a window `[L, R]` — the rightmost segment we have seen that is *kn
 - Then we try to **extend** by comparing characters past `R`.
 - If we extended past `R`, update the window `L = i, R = i + z[i]`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> buildZ(const string& s) {
-    int n = s.length();
-    vector<int> z(n, 0);
-    int L = 0, R = 0;            // current rightmost match window [L, R)
-    for (int i = 1; i < n; i++) {
-        if (i < R) {
-            z[i] = min(R - i, z[i - L]);   // reuse mirror, capped at window
+```rust
+fn build_z(s: &str) -> Vec<usize> {
+    let s = s.as_bytes();
+    let n = s.len();
+    let mut z = vec![0usize; n];
+    let mut l = 0usize;
+    let mut r = 0usize; // current rightmost match window [l, r)
+    for i in 1..n {
+        if i < r {
+            z[i] = (r - i).min(z[i - l]); // reuse mirror, capped at window
         }
         // try to extend the match beyond what we reused
-        while (i + z[i] < n && s[z[i]] == s[i + z[i]]) {
-            z[i]++;
+        while i + z[i] < n && s[z[i]] == s[i + z[i]] {
+            z[i] += 1;
         }
-        if (i + z[i] > R) {       // extended past R -> slide the window
-            L = i;
-            R = i + z[i];
+        if i + z[i] > r {
+            // extended past r -> slide the window
+            l = i;
+            r = i + z[i];
         }
     }
-    return z;
+    z
 }
 ```
 
@@ -55,21 +55,18 @@ The `min(R - i, z[i - L])` cap is the subtle part: the mirror value may claim mo
 
 To find pattern `P` inside text `T`, build the Z-array of `P + '$' + T` where `$` does not occur in either string. Every index `i` (in the `T` region) with `z[i] == |P|` marks an occurrence.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> zSearch(const string& text, const string& pattern) {
-    string combined = pattern + '$' + text;
-    vector<int> z = buildZ(combined);
-    int m = pattern.length();
-    vector<int> result;
-    for (int i = m + 1; i < (int)combined.length(); i++) {
-        if (z[i] == m) {
-            result.push_back(i - m - 1);   // offset back into the original text
+```rust
+fn z_search(text: &str, pattern: &str) -> Vec<usize> {
+    let combined: String = format!("{}${}", pattern, text);
+    let z = build_z(&combined);
+    let m = pattern.len();
+    let mut result = Vec::new();
+    for i in (m + 1)..combined.len() {
+        if z[i] == m {
+            result.push(i - m - 1); // offset back into the original text
         }
     }
-    return result;
+    result
 }
 ```
 
@@ -84,22 +81,21 @@ Treat a string as a number in base `B`:
 > `hash(s) = (s[0]*B^(m-1) + s[1]*B^(m-2) + ... + s[m-1]*B^0) mod M`
 
 - **Base `B`:** a value larger than the alphabet, commonly `31`, `131`, or `256`.
-- **Modulus `M`:** a large prime such as `1'000'000'007LL` to keep values in `long long` range and spread collisions.
+- **Modulus `M`:** a large prime such as `1_000_000_007i64` to keep values in `i64` range and spread collisions.
 - **Precompute powers** `B^0..B^(m)` once so a window hash updates in O(1).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-const long long MOD = 1000000007LL;
-const long long BASE = 131LL;
+```rust
+const MOD: i64 = 1_000_000_007;
+const BASE: i64 = 131;
 
 // Precompute base powers up to length n.
-vector<long long> powers(int n) {
-    vector<long long> p(n + 1);
+fn powers(n: usize) -> Vec<i64> {
+    let mut p = vec![0i64; n + 1];
     p[0] = 1;
-    for (int i = 1; i <= n; i++) p[i] = p[i - 1] * BASE % MOD;
-    return p;
+    for i in 1..=n {
+        p[i] = p[i - 1] * BASE % MOD;
+    }
+    p
 }
 ```
 
@@ -114,31 +110,39 @@ Rolling forward by one character (drop leftmost, append rightmost):
 
 An anagram is purely a **multiset of characters**, so a 26-slot frequency window is the natural, collision-free tool. This is fundamentally a fixed-size sliding window — see the [Sliding Window topic](../../8.Sliding_Window/Patterns/Fixed%20Size%20Window.md).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    vector<int> findAnagrams(string s, string p) {
-        vector<int> res;
-        int n = s.length(), m = p.length();
-        if (n < m) return res;
-        vector<int> need(26, 0), win(26, 0);
-        for (auto& c : p) need[c - 'a']++;
-        for (int i = 0; i < n; i++) {
-            win[s[i] - 'a']++;            // add right edge
-            if (i >= m) win[s[i - m] - 'a']--;  // remove left edge
-            if (i >= m - 1 && win == need) {
-                res.push_back(i - m + 1);
+impl Solution {
+    pub fn find_anagrams(s: String, p: String) -> Vec<i32> {
+        let mut res = Vec::new();
+        let s = s.as_bytes();
+        let p_bytes = p.as_bytes();
+        let n = s.len();
+        let m = p_bytes.len();
+        if n < m {
+            return res;
+        }
+        let mut need = [0i32; 26];
+        let mut win = [0i32; 26];
+        for &c in p_bytes {
+            need[(c - b'a') as usize] += 1;
+        }
+        for i in 0..n {
+            win[(s[i] - b'a') as usize] += 1; // add right edge
+            if i >= m {
+                win[(s[i - m] - b'a') as usize] -= 1; // remove left edge
+            }
+            if i >= m - 1 && win == need {
+                res.push((i - m + 1) as i32);
             }
         }
-        return res;
+        res
     }
-};
+}
 ```
 
-**Complexity:** O(n * 26) ≈ O(n) time, O(1) space. `==` on two `vector<int>` of size 26 is constant.
+**Complexity:** O(n * 26) ≈ O(n) time, O(1) space. `==` on two `[i32; 26]` of size 26 is constant.
 
 **Hashing alternative.** Instead of comparing arrays you can keep a *commutative* hash of the window — e.g. a fixed-length 26-vector difference counter, or a polynomial over the sorted multiset. Frequency comparison is simpler and exact, so prefer it for anagrams; rolling hash earns its keep when *order matters* (exact substring), not for anagrams.
 
@@ -150,60 +154,79 @@ public:
 
 **Strategy: binary search on the length + Rabin-Karp.** A duplicate of length `L` existing implies a duplicate of every length `< L` exists (a prefix of it), so the predicate "exists a duplicate of length `L`" is monotonic — binary-search `L` in `[1, n-1]`. For a fixed `L`, slide a rolling hash over all length-`L` windows and store hashes in a set; a repeat hash (verified) means a duplicate.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-class Solution {
-    static const long long MOD = (1LL << 61) - 1;   // large Mersenne prime, room in long long
-    static const long long BASE = 131LL;
+struct Solution;
 
-public:
-    string longestDupSubstring(string s) {
-        int n = s.length();
-        vector<int> a(n);
-        for (int i = 0; i < n; i++) a[i] = s[i] - 'a' + 1;
-        int lo = 1, hi = n - 1, start = -1, bestLen = 0;
-        while (lo <= hi) {
-            int mid = (lo + hi) >> 1;
-            int pos = search(a, mid);
-            if (pos != -1) { start = pos; bestLen = mid; lo = mid + 1; }
-            else { hi = mid - 1; }
-        }
-        return start == -1 ? "" : s.substr(start, bestLen);
-    }
+impl Solution {
+    const MOD: u64 = (1u64 << 61) - 1; // large Mersenne prime, room in u64
+    const BASE: u64 = 131;
 
-private:
-    // Returns the start index of some duplicated substring of length L, or -1.
-    int search(const vector<int>& a, int L) {
-        long long pow = 1;
-        for (int i = 0; i < L; i++) pow = mulmod(pow, BASE);
-        long long h = 0;
-        for (int i = 0; i < L; i++) h = (mulmod(h, BASE) + a[i]) % MOD;
-        unordered_map<long long, vector<int>> seen;
-        seen[h].push_back(0);
-        for (int i = L; i < (int)a.size(); i++) {
-            h = (mulmod(h, BASE) + a[i] - mulmod(a[i - L], pow) % MOD + MOD * MOD) % MOD;
-            int startIdx = i - L + 1;
-            auto it = seen.find(h);
-            if (it != seen.end()) {
-                // verify to defeat spurious hash hits (collision safety)
-                for (int j : it->second) if (equalsAt(a, j, startIdx, L)) return startIdx;
+    pub fn longest_dup_substring(s: String) -> String {
+        let n = s.len();
+        let a: Vec<u64> = s.bytes().map(|b| (b - b'a' + 1) as u64).collect();
+        let mut lo = 1i32;
+        let mut hi = (n as i32) - 1;
+        let mut start: i32 = -1;
+        let mut best_len = 0usize;
+        while lo <= hi {
+            let mid = (lo + hi) >> 1;
+            let pos = Self::search(&a, mid as usize);
+            if pos != -1 {
+                start = pos;
+                best_len = mid as usize;
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;
             }
-            seen[h].push_back(startIdx);
         }
-        return -1;
+        if start == -1 {
+            String::new()
+        } else {
+            s[start as usize..start as usize + best_len].to_string()
+        }
     }
 
-    bool equalsAt(const vector<int>& a, int x, int y, int L) {
-        for (int k = 0; k < L; k++) if (a[x + k] != a[y + k]) return false;
-        return true;
+    // Returns the start index of some duplicated substring of length l, or -1.
+    fn search(a: &[u64], l: usize) -> i32 {
+        let mut pow = 1u64;
+        for _ in 0..l {
+            pow = Self::mulmod(pow, Self::BASE);
+        }
+        let mut h = 0u64;
+        for i in 0..l {
+            h = (Self::mulmod(h, Self::BASE) + a[i]) % Self::MOD;
+        }
+        let mut seen: HashMap<u64, Vec<usize>> = HashMap::new();
+        seen.entry(h).or_default().push(0);
+        for i in l..a.len() {
+            h = (Self::mulmod(h, Self::BASE) + a[i] + Self::MOD * Self::MOD
+                - Self::mulmod(a[i - l], pow) % Self::MOD)
+                % Self::MOD;
+            let start_idx = i - l + 1;
+            // verify to defeat spurious hash hits (collision safety)
+            let found = if let Some(positions) = seen.get(&h) {
+                positions.iter().any(|&j| Self::equals_at(a, j, start_idx, l))
+            } else {
+                false
+            };
+            if found {
+                return start_idx as i32;
+            }
+            seen.entry(h).or_default().push(start_idx);
+        }
+        -1
     }
 
-    long long mulmod(long long x, long long y) {
-        return (x % MOD) * (y % MOD) % MOD;   // fits because MOD < 2^61, x,y < MOD
+    fn equals_at(a: &[u64], x: usize, y: usize, l: usize) -> bool {
+        a[x..x + l] == a[y..y + l]
     }
-};
+
+    fn mulmod(x: u64, y: u64) -> u64 {
+        ((x as u128 * y as u128) % (Self::MOD as u128)) as u64 // fits because MOD < 2^61, x,y < MOD
+    }
+}
 ```
 
 **Complexity:** O(n log n) average — `log n` binary-search steps, each an O(n) rolling pass. **Double hashing** (two independent (BASE, MOD) pairs, compare both) makes a collision astronomically unlikely and lets you skip the explicit verification; we kept the verification here for a guaranteed-correct answer.
@@ -216,38 +239,41 @@ private:
 
 A substring `s[i..i+2k-1]` is an echo iff its first half `s[i..i+k-1]` equals its second half `s[i+k..i+2k-1]`. With prefix hashes, comparing two halves is O(1); store every distinct echo as a (hash) to dedupe.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-class Solution {
-public:
-    int distinctEchoSubstrings(string text) {
-        int n = text.length();
-        const long long MOD = 1000000007LL, BASE = 131LL;
-        vector<long long> h(n + 1, 0), pw(n + 1, 0);
+struct Solution;
+
+impl Solution {
+    pub fn distinct_echo_substrings(text: String) -> i32 {
+        let n = text.len();
+        let text = text.as_bytes();
+        const MOD: i64 = 1_000_000_007;
+        const BASE: i64 = 131;
+        let mut h = vec![0i64; n + 1];
+        let mut pw = vec![0i64; n + 1];
         pw[0] = 1;
-        for (int i = 0; i < n; i++) {
-            h[i + 1] = (h[i] * BASE + text[i]) % MOD;
+        for i in 0..n {
+            h[i + 1] = (h[i] * BASE + text[i] as i64) % MOD;
             pw[i + 1] = pw[i] * BASE % MOD;
         }
-        unordered_set<long long> distinct;
-        for (int len = 1; 2 * len <= n; len++) {           // half-length
-            for (int i = 0; i + 2 * len <= n; i++) {
-                long long first  = sub(h, pw, MOD, i, i + len);
-                long long second = sub(h, pw, MOD, i + len, i + 2 * len);
-                if (first == second) distinct.insert(first); // dedupe by half-hash
+        // hash of text[l..r) from prefix hashes
+        let sub = |l: usize, r: usize| -> i64 {
+            ((h[r] - h[l] * pw[r - l]) % MOD + MOD) % MOD
+        };
+        let mut distinct: HashSet<i64> = HashSet::new();
+        for len in 1..=(n / 2) { // half-length
+            for i in 0..=(n - 2 * len) {
+                let first  = sub(i, i + len);
+                let second = sub(i + len, i + 2 * len);
+                if first == second {
+                    distinct.insert(first); // dedupe by half-hash
+                }
             }
         }
-        return distinct.size();
+        distinct.len() as i32
     }
-
-private:
-    // hash of text[l..r) from prefix hashes.
-    long long sub(const vector<long long>& h, const vector<long long>& pw, long long MOD, int l, int r) {
-        return ((h[r] - h[l] * pw[r - l]) % MOD + MOD) % MOD;
-    }
-};
+}
 ```
 
 **Complexity:** O(n^2) hashing comparisons, O(n^2) distinct entries worst-case. Note the `(... + MOD) % MOD` to fix the negative produced by `h[r] - h[l]*pw[]`. For full collision safety in interviews, mention double hashing on the stored key.

@@ -10,53 +10,61 @@ Microsoft values clean, correct implementations and precise complexity reasoning
 
 Deep-copy a connected undirected graph from a node reference.
 
-### The unordered_map dual role
+### The HashMap dual role
 
-A single `unordered_map<Node*, Node*>` from **original → clone** serves two purposes at once: it's the **visited set** (key presence) *and* the **clone registry** (value). When you meet a node, if it's already a key you reuse its clone; otherwise you create one, store it, and recurse/enqueue. This is what makes cycles safe — you never re-create a node, so traversal terminates.
+A single `HashMap<i32, Vec<i32>>` from **node value → neighbor list** serves two purposes at once: it's the **visited set** (key presence) *and* the **clone registry** (value). When you meet a node, if it's already a key you reuse its clone; otherwise you create one, store it, and recurse/enqueue. This is what makes cycles safe — you never re-create a node, so traversal terminates.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, VecDeque};
+
+// Graph represented as adjacency list: node_val -> list of neighbor vals
+// (node values are unique and serve as node IDs)
 
 // BFS
-Node* cloneGraph(Node* node) {
-    if (node == nullptr) return nullptr;
-    unordered_map<Node*, Node*> clones;
-    clones[node] = new Node(node->val);
-    queue<Node*> q;
-    q.push(node);
-    while (!q.empty()) {
-        Node* cur = q.front(); q.pop();
-        for (auto& nb : cur->neighbors) {
-            if (!clones.count(nb)) {
-                clones[nb] = new Node(nb->val);
-                q.push(nb);
+fn clone_graph_bfs(start: i32, graph: &HashMap<i32, Vec<i32>>) -> HashMap<i32, Vec<i32>> {
+    if !graph.contains_key(&start) {
+        return HashMap::new();
+    }
+    let mut cloned: HashMap<i32, Vec<i32>> = HashMap::new();
+    let mut q: VecDeque<i32> = VecDeque::new();
+    q.push_back(start);
+    cloned.insert(start, Vec::new());
+    while let Some(cur) = q.pop_front() {
+        let neighbors = graph[&cur].clone();
+        for nb in neighbors {
+            if !cloned.contains_key(&nb) {
+                cloned.insert(nb, Vec::new());
+                q.push_back(nb);
             }
-            clones[cur]->neighbors.push_back(clones[nb]);
+            cloned.get_mut(&cur).unwrap().push(nb);
         }
     }
-    return clones[node];
+    cloned
 }
 
 // DFS alternative
-Node* dfs(Node* node, unordered_map<Node*, Node*>& clones) {
-    if (node == nullptr) return nullptr;
-    if (clones.count(node)) return clones[node];
-    Node* copy = new Node(node->val);
-    clones[node] = copy;                 // store BEFORE recursing (breaks cycles)
-    for (auto& nb : node->neighbors)
-        copy->neighbors.push_back(dfs(nb, clones));
-    return copy;
+fn dfs(node: i32, graph: &HashMap<i32, Vec<i32>>, cloned: &mut HashMap<i32, Vec<i32>>) {
+    if cloned.contains_key(&node) { return; }
+    cloned.insert(node, Vec::new()); // store BEFORE recursing (breaks cycles)
+    if let Some(neighbors) = graph.get(&node) {
+        let neighbors = neighbors.clone();
+        for nb in neighbors {
+            dfs(nb, graph, cloned);
+            cloned.get_mut(&node).unwrap().push(nb);
+        }
+    }
 }
-Node* cloneGraphDfs(Node* node) {
-    unordered_map<Node*, Node*> clones;
-    return dfs(node, clones);
+
+fn clone_graph_dfs(start: i32, graph: &HashMap<i32, Vec<i32>>) -> HashMap<i32, Vec<i32>> {
+    let mut cloned: HashMap<i32, Vec<i32>> = HashMap::new();
+    dfs(start, graph, &mut cloned);
+    cloned
 }
 ```
 
 **BFS vs DFS here:** identical complexity O(V+E); DFS is shorter but risks deep recursion on long chains, BFS uses an explicit queue. The critical detail in DFS is putting the clone in the map **before** recursing into neighbors — otherwise a cycle re-enters and overflows.
 
-### Edge cases — null input → nullptr; single node with no neighbors; self-loop; node referencing itself.
+### Edge cases — null input → `None`; single node with no neighbors; self-loop; node referencing itself.
 
 ### Follow-ups — clone a graph with random pointers; serialize/deserialize a graph.
 
@@ -70,41 +78,43 @@ Time for a signal from node `k` to reach all nodes; `-1` if some unreachable.
 
 A binary heap doesn't support decrease-key cheaply, so the standard trick is **lazy deletion**: push a new `(dist, node)` whenever you relax, and when you pop, **skip the entry if its distance is worse than the best known**. This keeps the heap correct without an indexed PQ.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, BinaryHeap};
+use std::cmp::Reverse;
 
-int networkDelayTime(vector<vector<int>>& times, int n, int k) {
-    unordered_map<int, vector<pair<int,int>>> adj;
-    for (auto& t : times)
-        adj[t[0]].push_back({t[1], t[2]});
-    vector<int> dist(n + 1, INT_MAX);
-    dist[k] = 0;
-    priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> pq; // min-heap by distance
-    pq.push({0, k});
-    while (!pq.empty()) {
-        auto [d, node] = pq.top(); pq.pop();
-        if (d > dist[node]) continue;            // STALE entry — skip
-        if (adj.count(node)) {
-            for (auto& [v, w] : adj[node]) {
-                int nd = d + w;
-                if (nd < dist[v]) {
-                    dist[v] = nd;
-                    pq.push({nd, v});
+fn network_delay_time(times: Vec<Vec<i32>>, n: i32, k: i32) -> i32 {
+    let mut adj: HashMap<i32, Vec<(i32, i32)>> = HashMap::new();
+    for t in &times {
+        adj.entry(t[0]).or_default().push((t[1], t[2]));
+    }
+    let n = n as usize;
+    let mut dist = vec![i32::MAX; n + 1];
+    dist[k as usize] = 0;
+    // min-heap by distance: (Reverse(dist), node)
+    let mut pq: BinaryHeap<(Reverse<i32>, i32)> = BinaryHeap::new();
+    pq.push((Reverse(0), k));
+    while let Some((Reverse(d), node)) = pq.pop() {
+        if d > dist[node as usize] { continue; }            // STALE entry - skip
+        if let Some(neighbors) = adj.get(&node) {
+            for &(v, w) in neighbors {
+                let nd = d + w;
+                if nd < dist[v as usize] {
+                    dist[v as usize] = nd;
+                    pq.push((Reverse(nd), v));
                 }
             }
         }
     }
-    int ans = 0;
-    for (int i = 1; i <= n; i++) {
-        if (dist[i] == INT_MAX) return -1;
-        ans = max(ans, dist[i]);
+    let mut ans = 0;
+    for i in 1..=n {
+        if dist[i] == i32::MAX { return -1; }
+        ans = ans.max(dist[i]);
     }
-    return ans;
+    ans
 }
 ```
 
-**Two non-negotiables:** comparator uses `greater<pair<int,int>>` for min-heap (subtraction overflows on large weights); and the `if (d > dist[node]) continue` skip avoids reprocessing finalized nodes — without it you can still get the right answer but with wasted work, and it's the detail interviewers probe.
+**Two non-negotiables:** use `BinaryHeap<(Reverse<i32>, i32)>` with `Reverse` for min-heap (subtraction comparators overflow on large weights); and the `if d > dist[node as usize] { continue }` skip avoids reprocessing finalized nodes — without it you can still get the right answer but with wasted work, and it's the detail interviewers probe.
 
 ### Edge cases — unreachable node → `-1`; `k` itself counts (distance 0); duplicate edges → keep the cheaper via relaxation.
 
@@ -122,22 +132,20 @@ Plain Dijkstra fails because the cheapest cost ignoring the stop limit may use t
 
 The subtlety: within a single round you must relax using the **previous round's** distances, not values updated earlier in the same round. Otherwise one round could chain multiple edges (more than one extra stop). So **clone `dist` at the start of each round** and read from the clone, write to the live array.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int findCheapestPrice(int n, vector<vector<int>>& flights, int src, int dst, int k) {
-    vector<int> dist(n, INT_MAX);
-    dist[src] = 0;
-    for (int round = 0; round <= k; round++) {       // k+1 relaxations
-        vector<int> prev = dist;                     // freeze this round's source
-        for (auto& f : flights) {
-            int u = f[0], v = f[1], w = f[2];
-            if (prev[u] == INT_MAX) continue;
-            dist[v] = min(dist[v], prev[u] + w);
+```rust
+fn find_cheapest_price(n: i32, flights: Vec<Vec<i32>>, src: i32, dst: i32, k: i32) -> i32 {
+    let n = n as usize;
+    let mut dist = vec![i32::MAX; n];
+    dist[src as usize] = 0;
+    for _round in 0..=k {                              // k+1 relaxations
+        let prev = dist.clone();                       // freeze this round's source
+        for f in &flights {
+            let (u, v, w) = (f[0] as usize, f[1] as usize, f[2]);
+            if prev[u] == i32::MAX { continue; }
+            dist[v] = dist[v].min(prev[u] + w);
         }
     }
-    return dist[dst] == INT_MAX ? -1 : dist[dst];
+    if dist[dst as usize] == i32::MAX { -1 } else { dist[dst as usize] }
 }
 ```
 
@@ -157,27 +165,35 @@ Capture all `'O'` regions not connected to the border (flip them to `'X'`).
 
 Instead of finding enclosed regions (hard to define directly), **invert the problem**: an `'O'` survives only if it's connected to a border `'O'`. DFS/BFS from every **border** `'O'`, marking the safe ones with a temporary sentinel (`'#'`). Then sweep the grid: remaining `'O'` → `'X'` (captured), `'#'` → `'O'` (restore).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void mark(vector<vector<char>>& board, int r, int c) {
-    if (r < 0 || r >= (int)board.size() || c < 0 || c >= (int)board[0].size() || board[r][c] != 'O') return;
-    board[r][c] = '#';                       // sentinel for border-connected
+```rust
+fn mark(board: &mut Vec<Vec<char>>, r: i32, c: i32) {
+    if r < 0 || r >= board.len() as i32 || c < 0 || c >= board[0].len() as i32 {
+        return;
+    }
+    if board[r as usize][c as usize] != 'O' { return; }
+    board[r as usize][c as usize] = '#';               // sentinel for border-connected
     mark(board, r + 1, c); mark(board, r - 1, c);
     mark(board, r, c + 1); mark(board, r, c - 1);
 }
 
-void solve(vector<vector<char>>& board) {
-    if (board.empty() || board[0].empty()) return;
-    int m = board.size(), n = board[0].size();
-    for (int i = 0; i < m; i++) { mark(board, i, 0); mark(board, i, n - 1); }
-    for (int j = 0; j < n; j++) { mark(board, 0, j); mark(board, m - 1, j); }
-    for (int i = 0; i < m; i++)
-        for (int j = 0; j < n; j++) {
-            if (board[i][j] == 'O') board[i][j] = 'X';    // enclosed → capture
-            else if (board[i][j] == '#') board[i][j] = 'O'; // border-safe → restore
+fn solve(board: &mut Vec<Vec<char>>) {
+    if board.is_empty() || board[0].is_empty() { return; }
+    let m = board.len();
+    let n = board[0].len();
+    for i in 0..m {
+        mark(board, i as i32, 0);
+        mark(board, i as i32, n as i32 - 1);
+    }
+    for j in 0..n {
+        mark(board, 0, j as i32);
+        mark(board, m as i32 - 1, j as i32);
+    }
+    for i in 0..m {
+        for j in 0..n {
+            if board[i][j] == 'O' { board[i][j] = 'X'; }       // enclosed -> capture
+            else if board[i][j] == '#' { board[i][j] = 'O'; }  // border-safe -> restore
         }
+    }
 }
 ```
 
@@ -191,8 +207,8 @@ void solve(vector<vector<char>>& board) {
 
 | Dimension | Expectation |
 |-----------|-------------|
-| Correctness | Handle `-1` / nullptr / single-cell cases |
-| Clarity | `int[][] dirs`, named helpers, no subtraction comparators |
+| Correctness | Handle `-1` / `None` / single-cell cases |
+| Clarity | `let dirs`, named helpers, no subtraction comparators |
 | Complexity | State `O(V+E)`, `O((V+E) log V)`, `O(V·E)` precisely |
 | Reasoning | Explain *why* the algorithm fits (negative/limited stops → Bellman-Ford) |
 

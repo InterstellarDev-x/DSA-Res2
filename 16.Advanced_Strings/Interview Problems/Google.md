@@ -20,42 +20,49 @@ Now the KMP trick. Let `r = reverse(s)`. A prefix `s[0..k)` is a palindrome iff 
 combined = s + '#' + reverse(s)
 ```
 
-The `'#'` is a separator **not appearing in `s`**, so a border of `combined` can never exceed `|s|` (it cannot straddle the `#`). The value `lps[combined.length() - 1]` is the length of the longest prefix of `s` that matches a suffix of `reverse(s)` — i.e. the longest palindromic prefix length `p`.
+The `'#'` is a separator **not appearing in `s`**, so a border of `combined` can never exceed `|s|` (it cannot straddle the `#`). The value `lps[combined.len() - 1]` is the length of the longest prefix of `s` that matches a suffix of `reverse(s)` — i.e. the longest palindromic prefix length `p`.
 
 ### Why the separator matters
 
 Without `'#'`, the prefix-function fallback could match characters of `s` against characters of `s` (since `reverse(s)` begins with `s`'s last char), producing a border **longer than `|s|`** and a wrong answer. The separator caps every border at `|s|`. Picking a separator that *can* occur in the input is the classic bug — use a sentinel guaranteed absent (here inputs are lowercase letters, so `'#'` is safe).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    string shortestPalindrome(string s) {
-        if (s.empty() || s.length() <= 1) return s;
-        string rev = s;
-        reverse(rev.begin(), rev.end());
-        string combined = s + "#" + rev;
-        vector<int> lps = buildLPS(combined);
-        int p = lps[combined.length() - 1];      // longest palindromic prefix length
-        string toPrepend = rev.substr(0, s.length() - p);
-        return toPrepend + s;
-    }
-
-private:
-    vector<int> buildLPS(string s) {
-        int n = s.length();
-        vector<int> lps(n);
-        int len = 0, i = 1;
-        while (i < n) {
-            if (s[i] == s[len]) { lps[i++] = ++len; }
-            else if (len > 0) { len = lps[len - 1]; }
-            else { lps[i++] = 0; }
+impl Solution {
+    pub fn shortest_palindrome(s: String) -> String {
+        if s.is_empty() || s.len() <= 1 {
+            return s;
         }
-        return lps;
+        let rev: String = s.chars().rev().collect();
+        let combined = format!("{}#{}", s, rev);
+        let lps = Self::build_lps(&combined);
+        let p = lps[combined.len() - 1]; // longest palindromic prefix length
+        let to_prepend = &rev[..s.len() - p];
+        format!("{}{}", to_prepend, s)
     }
-};
+
+    fn build_lps(s: &str) -> Vec<usize> {
+        let chars: Vec<char> = s.chars().collect();
+        let n = chars.len();
+        let mut lps = vec![0usize; n];
+        let mut len = 0usize;
+        let mut i = 1;
+        while i < n {
+            if chars[i] == chars[len] {
+                len += 1;
+                lps[i] = len;
+                i += 1;
+            } else if len > 0 {
+                len = lps[len - 1];
+            } else {
+                lps[i] = 0;
+                i += 1;
+            }
+        }
+        lps
+    }
+}
 ```
 
 **Complexity:** O(n) time and space. Full LPS construction in [String Matching (KMP)](../Patterns/String%20Matching%20(KMP).md); the palindrome side in [Palindrome Algorithms](../Patterns/Palindrome%20Algorithms.md).
@@ -69,63 +76,75 @@ private:
 ### Two ideas stacked
 
 1. **Monotonicity → binary search on length.** If a duplicate of length `L` exists, then so does one of length `L-1` (take any prefix of it). So `feasible(L)` is monotone, and we binary search the largest `L` in `[1, n-1]`.
-2. **Rabin-Karp for `feasible(L)`.** Hash every length-`L` window; if a hash repeats, a duplicate of length `L` likely exists. Use an `std::unordered_set` of hashes for O(n) per check.
+2. **Rabin-Karp for `feasible(L)`.** Hash every length-`L` window; if a hash repeats, a duplicate of length `L` likely exists. Use a `HashSet` of hashes for O(n) per check.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-class Solution {
-    static const long long MOD1 = 1000000007LL;
-    static const long long MOD2 = 998244353LL;
-    static const long long BASE = 131LL;
+struct Solution;
 
-public:
-    string longestDupSubstring(string s) {
-        int n = s.length();
-        vector<long long> h1(n + 1), h2(n + 1);
-        vector<long long> p1(n + 1), p2(n + 1);
-        p1[0] = p2[0] = 1;
-        for (int i = 0; i < n; i++) {
-            h1[i + 1] = (h1[i] * BASE + s[i]) % MOD1;
-            h2[i + 1] = (h2[i] * BASE + s[i]) % MOD2;
-            p1[i + 1] = (p1[i] * BASE) % MOD1;
-            p2[i + 1] = (p2[i] * BASE) % MOD2;
+impl Solution {
+    const MOD1: i64 = 1_000_000_007;
+    const MOD2: i64 = 998_244_353;
+    const BASE: i64 = 131;
+
+    pub fn longest_dup_substring(s: String) -> String {
+        let n = s.len();
+        let bytes = s.as_bytes();
+        let mut h1 = vec![0i64; n + 1];
+        let mut h2 = vec![0i64; n + 1];
+        let mut p1 = vec![0i64; n + 1];
+        let mut p2 = vec![0i64; n + 1];
+        p1[0] = 1;
+        p2[0] = 1;
+        for i in 0..n {
+            h1[i + 1] = (h1[i] * Self::BASE + bytes[i] as i64) % Self::MOD1;
+            h2[i + 1] = (h2[i] * Self::BASE + bytes[i] as i64) % Self::MOD2;
+            p1[i + 1] = (p1[i] * Self::BASE) % Self::MOD1;
+            p2[i + 1] = (p2[i] * Self::BASE) % Self::MOD2;
         }
 
-        int lo = 1, hi = n - 1, start = -1, bestLen = 0;
-        while (lo <= hi) {
-            int mid = lo + (hi - lo) / 2;
-            int found = firstDup(s, mid, h1, h2, p1, p2);
-            if (found != -1) {
-                start = found; bestLen = mid; lo = mid + 1;
+        let (mut lo, mut hi) = (1i32, n as i32 - 1);
+        let mut start: i32 = -1;
+        let mut best_len = 0usize;
+        while lo <= hi {
+            let mid = lo + (hi - lo) / 2;
+            let found = Self::first_dup(&s, mid as usize, &h1, &h2, &p1, &p2);
+            if found != -1 {
+                start = found;
+                best_len = mid as usize;
+                lo = mid + 1;
             } else {
                 hi = mid - 1;
             }
         }
-        return start == -1 ? "" : s.substr(start, bestLen);
+        if start == -1 {
+            String::new()
+        } else {
+            s[start as usize..start as usize + best_len].to_string()
+        }
     }
 
-private:
     // Returns the start index of a duplicated length-L substring, or -1.
-    int firstDup(string& s, int L, vector<long long>& h1, vector<long long>& h2,
-                 vector<long long>& p1, vector<long long>& p2) {
-        int n = s.length();
-        unordered_set<long long> seen;
-        for (int i = 0; i + L <= n; i++) {
-            long long a = ((h1[i + L] - h1[i] * p1[L]) % MOD1 + MOD1) % MOD1;
-            long long b = ((h2[i + L] - h2[i] * p2[L]) % MOD2 + MOD2) % MOD2;
-            long long combined = a * MOD2 + b;   // double hash packed into one long
-            if (!seen.insert(combined).second) return i;
+    fn first_dup(s: &str, l: usize, h1: &[i64], h2: &[i64], p1: &[i64], p2: &[i64]) -> i32 {
+        let n = s.len();
+        let mut seen: HashSet<i64> = HashSet::new();
+        for i in 0..=n - l {
+            let a = ((h1[i + l] - h1[i] * p1[l]) % Self::MOD1 + Self::MOD1) % Self::MOD1;
+            let b = ((h2[i + l] - h2[i] * p2[l]) % Self::MOD2 + Self::MOD2) % Self::MOD2;
+            let combined = a * Self::MOD2 + b; // double hash packed into one i64
+            if !seen.insert(combined) {
+                return i as i32;
+            }
         }
-        return -1;
+        -1
     }
-};
+}
 ```
 
 ### Double hashing for collisions
 
-A **single** hash near `10^9` is provably breakable — LeetCode's hard test cases include adversarial collisions. Using **two** independent moduli (`MOD1`, `MOD2`) drops the collision probability to ~`10^-18`, packed into one `long` for O(1) set lookups. Note the negative-safe `(x % MOD + MOD) % MOD` on every subtraction. Full hashing reference: [Rolling Hash (Rabin-Karp)](../Design%20Data%20Structure%20Problems/Rolling%20Hash%20(Rabin-Karp).md).
+A **single** hash near `10^9` is provably breakable — LeetCode's hard test cases include adversarial collisions. Using **two** independent moduli (`MOD1`, `MOD2`) drops the collision probability to ~`10^-18`, packed into one `i64` for O(1) set lookups. Note the negative-safe `(x % MOD + MOD) % MOD` on every subtraction. Full hashing reference: [Rolling Hash (Rabin-Karp)](../Design%20Data%20Structure%20Problems/Rolling%20Hash%20(Rabin-Karp).md).
 
 **Complexity:** O(n log n) time, O(n) space.
 
@@ -137,24 +156,31 @@ A **single** hash near `10^9` is provably breakable — LeetCode's hard test cas
 
 This is the prefix function **by definition** — no extra work. `lps[n-1]` is the length of the longest proper prefix of the whole string that is also a suffix.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    string longestPrefix(string s) {
-        int n = s.length();
-        vector<int> lps(n);
-        int len = 0, i = 1;
-        while (i < n) {
-            if (s[i] == s[len]) { lps[i++] = ++len; }
-            else if (len > 0) { len = lps[len - 1]; }
-            else { lps[i++] = 0; }
+impl Solution {
+    pub fn longest_prefix(s: String) -> String {
+        let chars: Vec<char> = s.chars().collect();
+        let n = chars.len();
+        let mut lps = vec![0usize; n];
+        let mut len = 0usize;
+        let mut i = 1;
+        while i < n {
+            if chars[i] == chars[len] {
+                len += 1;
+                lps[i] = len;
+                i += 1;
+            } else if len > 0 {
+                len = lps[len - 1];
+            } else {
+                lps[i] = 0;
+                i += 1;
+            }
         }
-        return s.substr(0, lps[n - 1]);
+        s[..lps[n - 1]].to_string()
     }
-};
+}
 ```
 
 **Complexity:** O(n) time and space. The interview signal is recognizing that "prefix that is also a suffix" *is* the LPS — candidates who reinvent it with hashing miss the elegance.

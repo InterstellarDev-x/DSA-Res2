@@ -27,30 +27,25 @@ Suppose optimal solution keeps interval `X` but not `Y`, where `Y` ends before `
 - Therefore swapping to `Y` is at least as good.
 - By induction, always choosing the earliest-ending non-overlapping interval is optimal. ∎
 
-### Full C++ Solution
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int eraseOverlapIntervals(vector<vector<int>>& intervals) {
+### Full Rust Solution
+```rust
+fn erase_overlap_intervals(intervals: &mut Vec<Vec<i32>>) -> i32 {
     // Sort by end time — greedy choice: keep interval that ends earliest
-    sort(intervals.begin(), intervals.end(), [](const vector<int>& a, const vector<int>& b) {
-        return a[1] < b[1];
-    });
+    intervals.sort_by(|a, b| a[1].cmp(&b[1]));
 
-    int kept = 0;                // Count of kept (non-overlapping) intervals
-    int prevEnd = INT_MIN;       // End time of last kept interval
+    let mut kept = 0;              // Count of kept (non-overlapping) intervals
+    let mut prev_end = i32::MIN;   // End time of last kept interval
 
-    for (auto& interval : intervals) {
-        if (interval[0] >= prevEnd) {
+    for interval in intervals.iter() {
+        if interval[0] >= prev_end {
             // No overlap with previous kept interval — keep this one
-            kept++;
-            prevEnd = interval[1];
+            kept += 1;
+            prev_end = interval[1];
         }
         // Else: overlaps — skip (increment removal count implicitly)
     }
 
-    return (int)intervals.size() - kept; // Minimum removals = total - max kept
+    intervals.len() as i32 - kept // Minimum removals = total - max kept
 }
 ```
 
@@ -99,34 +94,34 @@ Phase 3: [6,9] added as-is
 Result: [[1,5],[6,9]] ✓
 ```
 
-### Full C++ Solution
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+### Full Rust Solution
+```rust
+fn insert(intervals: &Vec<Vec<i32>>, new_interval: &mut Vec<i32>) -> Vec<Vec<i32>> {
+    let mut result: Vec<Vec<i32>> = Vec::new();
+    let mut i = 0;
+    let n = intervals.len();
 
-vector<vector<int>> insert(vector<vector<int>>& intervals, vector<int>& newInterval) {
-    vector<vector<int>> result;
-    int i = 0, n = (int)intervals.size();
-
-    // Phase 1: Add all intervals ending before newInterval starts (no overlap)
-    while (i < n && intervals[i][1] < newInterval[0]) {
-        result.push_back(intervals[i++]);
+    // Phase 1: Add all intervals ending before new_interval starts (no overlap)
+    while i < n && intervals[i][1] < new_interval[0] {
+        result.push(intervals[i].clone());
+        i += 1;
     }
 
-    // Phase 2: Merge all overlapping intervals into newInterval
-    while (i < n && intervals[i][0] <= newInterval[1]) {
-        newInterval[0] = min(newInterval[0], intervals[i][0]);
-        newInterval[1] = max(newInterval[1], intervals[i][1]);
-        i++;
+    // Phase 2: Merge all overlapping intervals into new_interval
+    while i < n && intervals[i][0] <= new_interval[1] {
+        new_interval[0] = new_interval[0].min(intervals[i][0]);
+        new_interval[1] = new_interval[1].max(intervals[i][1]);
+        i += 1;
     }
-    result.push_back(newInterval); // Add the merged interval
+    result.push(new_interval.clone()); // Add the merged interval
 
     // Phase 3: Add remaining non-overlapping intervals
-    while (i < n) {
-        result.push_back(intervals[i++]);
+    while i < n {
+        result.push(intervals[i].clone());
+        i += 1;
     }
 
-    return result;
+    result
 }
 ```
 

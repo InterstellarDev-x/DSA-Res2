@@ -2,7 +2,7 @@
 
 # Graphs
 
-A complete, production-quality reference for the **Graphs** topic — 53 problems across 7 core patterns, each with full C++ solutions, complexity analysis, dry-runs, and recognition signals. Graphs unify a huge slice of interview questions: connectivity, ordering with dependencies, shortest paths, and spanning structures all reduce to a handful of reusable templates.
+A complete, production-quality reference for the **Graphs** topic — 53 problems across 7 core patterns, each with full Rust solutions, complexity analysis, dry-runs, and recognition signals. Graphs unify a huge slice of interview questions: connectivity, ordering with dependencies, shortest paths, and spanning structures all reduce to a handful of reusable templates.
 
 ---
 
@@ -86,21 +86,20 @@ How you store the graph drives both correctness and performance. Pick the repres
 
 ### Adjacency list (default for sparse graphs)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
 // Unweighted, nodes 0..n-1
-vector<vector<int>> adj(n);
-for (auto& e : edges) {
-    adj[e[0]].push_back(e[1]);
-    adj[e[1]].push_back(e[0]); // omit for directed graphs
+let mut adj: Vec<Vec<i32>> = vec![vec![]; n];
+for e in &edges {
+    adj[e[0] as usize].push(e[1]);
+    adj[e[1] as usize].push(e[0]); // omit for directed graphs
 }
 
-// Weighted: store {neighbor, weight}
-unordered_map<int, vector<pair<int,int>>> wadj;
-for (auto& e : edges) {
-    wadj[e[0]].push_back({e[1], e[2]});
+// Weighted: store (neighbor, weight)
+let mut wadj: HashMap<i32, Vec<(i32, i32)>> = HashMap::new();
+for e in &edges {
+    wadj.entry(e[0]).or_default().push((e[1], e[2]));
 }
 ```
 
@@ -109,11 +108,9 @@ for (auto& e : edges) {
 
 ### Adjacency matrix
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> g(n, vector<int>(n, 0)); // g[i][j] = weight, or 0/INT_MAX for "no edge"
+```rust
+// g[i][j] = weight, or 0/i32::MAX for "no edge"
+let mut g: Vec<Vec<i32>> = vec![vec![0; n]; n];
 ```
 
 - Space `O(V^2)`. Edge existence lookup `O(1)`.
@@ -127,7 +124,7 @@ vector<vector<int>> g(n, vector<int>(n, 0)); // g[i][j] = weight, or 0/INT_MAX f
 | Dense graph / all-pairs distances | Adjacency matrix |
 | Input already a matrix (provinces, grids) | Matrix / treat grid cell as node |
 | Need fast "is there an edge u→v?" lookups | Adjacency matrix |
-| Weighted edges for Dijkstra / Prim | `unordered_map<int, vector<pair<int,int>>>` list |
+| Weighted edges for Dijkstra / Prim | `HashMap<i32, Vec<(i32, i32)>>` list |
 
 ---
 
@@ -177,7 +174,7 @@ The single most important graph skill is mapping the problem to the right algori
 2. Layer on **Topological Sort** and **Cycle Detection** (closely related — both reason about the order of DFS/dependencies).
 3. Master the **Shortest Path** decision table; most "minimum cost / minimum time" problems map to one of its five algorithms.
 4. Learn **Union Find** thoroughly — it powers MST (Kruskal), connectivity, and grouping problems, and reappears in the design section.
-5. For each problem: read the idea, study the C++ solution, then re-derive the recognition signal so you can spot the pattern under interview pressure.
+5. For each problem: read the idea, study the Rust solution, then re-derive the recognition signal so you can spot the pattern under interview pressure.
 
 ---
 

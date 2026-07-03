@@ -2,7 +2,7 @@
 
 # Microsoft — DP Interview Deep Dives
 
-Microsoft favors classic DP with a production framing — decoding, grid counting, diff tools, and the maximal-square subproblem behind image/region detection. These four deep dives carry the full state/recurrence/base/C++/complexity treatment plus the edge cases Microsoft hidden tests love.
+Microsoft favors classic DP with a production framing — decoding, grid counting, diff tools, and the maximal-square subproblem behind image/region detection. These four deep dives carry the full state/recurrence/base/Rust/complexity treatment plus the edge cases Microsoft hidden tests love.
 
 See also: [OA-Qns → Microsoft](../OA-Qns/Microsoft.md) · [Interview Problems → Amazon](./Amazon.md) · [Interview Problems → Google](./Google.md) · [Topic README](../README.md)
 
@@ -27,29 +27,27 @@ See also: [OA-Qns → Microsoft](../OA-Qns/Microsoft.md) · [Interview Problems 
 - `"30"` → 0 ways (`30` is out of `10..26`, and standalone `'0'` is invalid).
 - `"100"` → 0 ways (the trailing `'0'` has no valid partner).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int numDecodings(string s) {
-    int n = s.length();
-    if (n == 0 || s[0] == '0') return 0;
-    vector<int> dp(n + 1);
+```rust
+fn num_decodings(s: &str) -> i32 {
+    let s: Vec<char> = s.chars().collect();
+    let n = s.len();
+    if n == 0 || s[0] == '0' { return 0; }
+    let mut dp = vec![0i32; n + 1];
     dp[0] = 1;
     dp[1] = 1;                              // s[0] != '0' guaranteed above
-    for (int i = 2; i <= n; i++) {
-        char one = s[i - 1];
-        char ten = s[i - 2];
-        if (one != '0') {                   // valid single digit
+    for i in 2..=n {
+        let one = s[i - 1];
+        let ten = s[i - 2];
+        if one != '0' {                     // valid single digit
             dp[i] += dp[i - 1];
         }
-        int two = (ten - '0') * 10 + (one - '0');
-        if (two >= 10 && two <= 26) {       // valid two-digit code
+        let two = (ten as i32 - '0' as i32) * 10 + (one as i32 - '0' as i32);
+        if two >= 10 && two <= 26 {         // valid two-digit code
             dp[i] += dp[i - 2];
         }
         // if neither branch fired, dp[i] stays 0 → dead end
     }
-    return dp[n];
+    dp[n]
 }
 ```
 
@@ -71,18 +69,17 @@ Time `O(n)`, space `O(n)` (trivially reducible to O(1) with two variables). The 
 - **Base:** first row and first column are all `1` (only one straight-line way).
 - **Recurrence:** `dp[i][j] = dp[i-1][j] + dp[i][j-1]`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int uniquePaths(int m, int n) {
-    vector<int> dp(n, 1);                    // first row
-    for (int i = 1; i < m; i++) {
-        for (int j = 1; j < n; j++) {
-            dp[j] += dp[j - 1];             // dp[j] (old=up) + dp[j-1] (left)
+```rust
+fn unique_paths(m: i32, n: i32) -> i32 {
+    let m = m as usize;
+    let n = n as usize;
+    let mut dp = vec![1i32; n];             // first row
+    for _i in 1..m {
+        for j in 1..n {
+            dp[j] += dp[j - 1];            // dp[j] (old=up) + dp[j-1] (left)
         }
     }
-    return dp[n - 1];
+    dp[n - 1]
 }
 ```
 
@@ -92,16 +89,13 @@ Time `O(m·n)`, space `O(n)` (rolling row).
 
 The robot makes exactly `(m-1)` downs and `(n-1)` rights in some order → choose positions: `C(m+n-2, m-1)`. Compute it incrementally to avoid overflow:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int uniquePaths(int m, int n) {
-    long long result = 1;
-    for (int i = 1; i <= m - 1; i++) {
-        result = result * (n - 1 + i) / i;  // build C(m+n-2, m-1) step by step
+```rust
+fn unique_paths(m: i32, n: i32) -> i32 {
+    let mut result: i64 = 1;
+    for i in 1..m {
+        result = result * (n as i64 - 1 + i as i64) / i as i64;  // build C(m+n-2, m-1) step by step
     }
-    return (int) result;
+    result as i32
 }
 ```
 
@@ -123,26 +117,27 @@ int uniquePaths(int m, int n) {
 - Match → `dp[i-1][j-1]`; else `1 + min(delete dp[i-1][j], insert dp[i][j-1], replace dp[i-1][j-1])`.
 - Base: `dp[i][0]=i`, `dp[0][j]=j` (cost of building from / down to empty).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int minDistance(string word1, string word2) {
-    int m = word1.length(), n = word2.length();
-    vector<vector<int>> dp(m + 1, vector<int>(n + 1));
-    for (int i = 0; i <= m; i++) dp[i][0] = i;
-    for (int j = 0; j <= n; j++) dp[0][j] = j;
-    for (int i = 1; i <= m; i++) {
-        for (int j = 1; j <= n; j++) {
-            if (word1[i - 1] == word2[j - 1]) {
+```rust
+fn min_distance(word1: String, word2: String) -> i32 {
+    let m = word1.len();
+    let n = word2.len();
+    let w1: Vec<char> = word1.chars().collect();
+    let w2: Vec<char> = word2.chars().collect();
+    let mut dp = vec![vec![0i32; n + 1]; m + 1];
+    for i in 0..=m { dp[i][0] = i as i32; }
+    for j in 0..=n { dp[0][j] = j as i32; }
+    for i in 1..=m {
+        for j in 1..=n {
+            if w1[i - 1] == w2[j - 1] {
                 dp[i][j] = dp[i - 1][j - 1];
             } else {
-                dp[i][j] = 1 + min(dp[i - 1][j - 1],
-                              min(dp[i - 1][j], dp[i][j - 1]));
+                dp[i][j] = 1 + dp[i - 1][j - 1]
+                    .min(dp[i - 1][j])
+                    .min(dp[i][j - 1]);
             }
         }
     }
-    return dp[m][n];
+    dp[m][n]
 }
 ```
 
@@ -170,24 +165,23 @@ int minDistance(string word1, string word2) {
 - **Why `min` of three neighbors:** a square of side `s` ending at `(i,j)` requires squares of side `s-1` ending at the cell above, the cell to the left, and the diagonal — the smallest of those three caps how far you can extend.
 - **Base:** first row/column equal the cell value (square of side 1 if it's a `1`).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int maximalSquare(vector<vector<char>>& matrix) {
-    int m = matrix.size(), n = matrix[0].size();
-    vector<vector<int>> dp(m + 1, vector<int>(n + 1));     // 1-indexed → no boundary checks
-    int maxSide = 0;
-    for (int i = 1; i <= m; i++) {
-        for (int j = 1; j <= n; j++) {
-            if (matrix[i - 1][j - 1] == '1') {
-                dp[i][j] = 1 + min(dp[i - 1][j - 1],
-                               min(dp[i - 1][j], dp[i][j - 1]));
-                maxSide = max(maxSide, dp[i][j]);
+```rust
+fn maximal_square(matrix: Vec<Vec<char>>) -> i32 {
+    let m = matrix.len();
+    let n = matrix[0].len();
+    let mut dp = vec![vec![0i32; n + 1]; m + 1];  // 1-indexed → no boundary checks
+    let mut max_side = 0;
+    for i in 1..=m {
+        for j in 1..=n {
+            if matrix[i - 1][j - 1] == '1' {
+                dp[i][j] = 1 + dp[i - 1][j - 1]
+                    .min(dp[i - 1][j])
+                    .min(dp[i][j - 1]);
+                max_side = max_side.max(dp[i][j]);
             }
         }
     }
-    return maxSide * maxSide;                // area
+    max_side * max_side                    // area
 }
 ```
 

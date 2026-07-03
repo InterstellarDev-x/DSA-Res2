@@ -20,14 +20,16 @@
 
 ### The Carry Simulation Loop
 
-```cpp
-int getSum(int a, int b) {
-    while (b != 0) {
-        int carry = (a & b) << 1; // AND gives carry positions; left shift moves them up
+```rust
+fn get_sum(a: i32, b: i32) -> i32 {
+    let mut a = a as u32;
+    let mut b = b as u32;
+    while b != 0 {
+        let carry = (a & b) << 1; // AND gives carry positions; left shift moves them up
         a = a ^ b;                 // XOR gives sum without carry
         b = carry;                 // carry becomes the new "b" to add
     }
-    return a;
+    a as i32
 }
 ```
 
@@ -39,34 +41,35 @@ int getSum(int a, int b) {
 ### Amazon Follow-ups
 
 **Q: What about subtraction?**
-`a - b = a + (~b + 1) = getSum(a, getSum(~b, 1))`
+`a - b = a + (~b + 1) = get_sum(a, get_sum(!b as i32, 1))`
 
 **Q: What about overflow?**
-In C++, `int` is 32-bit and signed integer overflow is undefined behavior; use `unsigned int` or cast to `unsigned` for safe wraparound. The carry eventually shifts out of 32 bits.
+In Rust, left-shifting a signed `i32` can panic in debug mode on overflow; cast to `u32` for safe wraparound. The carry eventually shifts out of 32 bits.
 
 ---
 
 ## Deep Dive: Single Number II
 
 **Method 1 — State machine (O(1) space):**
-```cpp
-int ones = 0, twos = 0;
-for (int n : nums) {
-    ones = (ones ^ n) & ~twos;
-    twos = (twos ^ n) & ~ones;
+```rust
+let mut ones = 0i32;
+let mut twos = 0i32;
+for &n in &nums {
+    ones = (ones ^ n) & !twos;
+    twos = (twos ^ n) & !ones;
 }
-return ones;
+// ones holds the single number
 ```
 
 **Method 2 — Bit counting (more explainable in interviews):**
-```cpp
-int result = 0;
-for (int bit = 0; bit < 32; bit++) {
-    int bitSum = 0;
-    for (int n : nums) bitSum += (n >> bit) & 1;
-    result |= (bitSum % 3) << bit;
+```rust
+let mut result = 0i32;
+for bit in 0..32 {
+    let mut bit_sum = 0i32;
+    for &n in &nums { bit_sum += (n >> bit) & 1; }
+    result |= (bit_sum % 3) << bit;
 }
-return result;
+// result holds the single number
 ```
 
 Method 2 is easier to explain: "Count how many numbers have each bit set. Divide by 3. Remainder = bit value of the unique number." Amazon interviewers appreciate the clear explanation.
@@ -77,7 +80,7 @@ Method 2 is easier to explain: "Count how many numbers have each bit set. Divide
 
 | Problem | LP Principle |
 |---------|-------------|
-| Single Number | Invent and Simplify — O(1) XOR vs O(n) `unordered_set` |
+| Single Number | Invent and Simplify — O(1) XOR vs O(n) `HashSet` |
 | Sum of Two Integers | Dive Deep — carry simulation requires bit-level reasoning |
 | Single Number II | Are Right, A Lot — both methods work; explain tradeoffs |
 

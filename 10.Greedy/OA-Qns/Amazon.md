@@ -26,20 +26,19 @@
 3. "What is the minimum number of jumps if you can start from any index?" (→ modified BFS)
 
 **Code they want to see:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int jump(vector<int>& nums) {
-    int jumps = 0, curEnd = 0, farthest = 0;
-    for (int i = 0; i < (int)nums.size() - 1; i++) {
-        farthest = max(farthest, i + nums[i]);
-        if (i == curEnd) {
-            jumps++;
-            curEnd = farthest;
+```rust
+fn jump(nums: &[i32]) -> i32 {
+    let mut jumps = 0i32;
+    let mut cur_end = 0usize;
+    let mut farthest = 0usize;
+    for i in 0..nums.len().saturating_sub(1) {
+        farthest = farthest.max(i + nums[i] as usize);
+        if i == cur_end {
+            jumps += 1;
+            cur_end = farthest;
         }
     }
-    return jumps;
+    jumps
 }
 ```
 
@@ -62,22 +61,21 @@ int jump(vector<int>& nums) {
 3. "What if roads have varying distances?" (→ same algorithm, different cost array)
 
 **Code they want to see:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
-    int totalGain = 0, currentGain = 0, startStation = 0;
-    for (int i = 0; i < (int)gas.size(); i++) {
-        int gain = gas[i] - cost[i];
-        totalGain += gain;
-        currentGain += gain;
-        if (currentGain < 0) {
-            startStation = i + 1;
-            currentGain = 0;
+```rust
+fn can_complete_circuit(gas: &[i32], cost: &[i32]) -> i32 {
+    let mut total_gain = 0i32;
+    let mut current_gain = 0i32;
+    let mut start_station = 0usize;
+    for i in 0..gas.len() {
+        let gain = gas[i] - cost[i];
+        total_gain += gain;
+        current_gain += gain;
+        if current_gain < 0 {
+            start_station = i + 1;
+            current_gain = 0;
         }
     }
-    return totalGain >= 0 ? startStation : -1;
+    if total_gain >= 0 { start_station as i32 } else { -1 }
 }
 ```
 

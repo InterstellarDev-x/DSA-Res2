@@ -21,28 +21,31 @@
 ### Key Considerations
 
 1. **No `*`, `/`, `%`** — use bit shifts
-2. **Overflow:** `INT_MIN / -1 = 2^31` — exceeds `INT_MAX`, return `INT_MAX`
+2. **Overflow:** `i32::MIN / -1 = 2^31` — exceeds `i32::MAX`, return `i32::MAX`
 3. **Signs:** Compute absolute values; apply sign at end
-4. **Use `long`** — `abs(INT_MIN)` overflows `int`
+4. **Use `i64`** — `abs(i32::MIN)` overflows `i32`
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn divide(dividend: i32, divisor: i32) -> i32 {
+    if dividend == i32::MIN && divisor == -1 {
+        return i32::MAX;
+    }
+    let mut dvd = (dividend as i64).abs();
+    let dvs = (divisor as i64).abs();
+    let sign: i64 = if (dividend > 0) == (divisor > 0) { 1 } else { -1 };
+    let mut result: i64 = 0;
 
-int divide(int dividend, int divisor) {
-    if (dividend == INT_MIN && divisor == -1) return INT_MAX;
-    long dvd = abs((long) dividend);
-    long dvs = abs((long) divisor);
-    int sign = (dividend > 0) == (divisor > 0) ? 1 : -1;
-    long result = 0;
-
-    while (dvd >= dvs) {
-        long tmp = dvs, multiple = 1;
-        while (dvd >= (tmp << 1)) { tmp <<= 1; multiple <<= 1; }
+    while dvd >= dvs {
+        let mut tmp = dvs;
+        let mut multiple: i64 = 1;
+        while dvd >= (tmp << 1) && (tmp << 1) > 0 {
+            tmp <<= 1;
+            multiple <<= 1;
+        }
         dvd -= tmp;
         result += multiple;
     }
-    return (int)(sign * result);
+    (sign * result) as i32
 }
 ```
 
@@ -53,8 +56,8 @@ int divide(int dividend, int divisor) {
 **Q: What if you could only use shifts, not multiplication in the inner loop check?**
 `tmp << 1` IS a shift — this is already compliant.
 
-**Q: Handle when dvd = LONG_MAX?**
-`tmp << 1` could overflow `long`. Guard: `dvd >= (tmp << 1) && (tmp << 1) > 0`.
+**Q: Handle when dvd = i64::MAX?**
+`tmp << 1` could overflow `i64`. Guard: `dvd >= (tmp << 1) && (tmp << 1) > 0`.
 
 ---
 

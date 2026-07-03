@@ -52,108 +52,99 @@ for any input that fits in the universe.
 
 ## 1. Production `UnionFind` for integer nodes `[0, n)`
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Disjoint Set Union (Union-Find) over the integer universe [0, n).
 //
 // Supports near-constant-time unite and find via
 // path compression and union by rank. Also tracks the current number of
 // disjoint components.
-class UnionFind {
-
+pub struct UnionFind {
     // parent[x] is the parent of x; a root r satisfies parent[r] == r.
-    vector<int> parent;
+    parent: Vec<usize>,
 
     // rnk[x] is an upper bound on the height of the tree rooted at x.
-    vector<int> rnk;
+    rnk: Vec<usize>,
 
     // Current number of disjoint sets (components).
-    int cnt;
+    cnt: usize,
+}
 
-public:
+impl UnionFind {
     // Creates a structure with n singleton sets {0}, {1}, ..., {n-1}.
-    // n: the number of elements; must be non-negative
-    UnionFind(int n) {
-        if (n < 0) {
-            throw invalid_argument("n must be non-negative: " + to_string(n));
-        }
-        parent.resize(n);
-        rnk.resize(n, 0);
-        cnt = n;
-        for (int i = 0; i < n; i++) {
-            parent[i] = i;   // each element is its own root initially
+    // n: the number of elements
+    pub fn new(n: usize) -> Self {
+        UnionFind {
+            parent: (0..n).collect(),
+            rnk: vec![0; n],
+            cnt: n,
         }
     }
 
     // Returns the representative (root) of the set containing x,
     // applying iterative path compression so that every node on the path
     // points directly at the root afterwards.
-    int find(int x) {
+    pub fn find(&mut self, x: usize) -> usize {
         // First pass: locate the root.
-        int root = x;
-        while (root != parent[root]) {
-            root = parent[root];
+        let mut root = x;
+        while root != self.parent[root] {
+            root = self.parent[root];
         }
         // Second pass: compress the path by repointing each node to root.
-        while (x != root) {
-            int next = parent[x];
-            parent[x] = root;
-            x = next;
+        let mut cur = x;
+        while cur != root {
+            let next = self.parent[cur];
+            self.parent[cur] = root;
+            cur = next;
         }
-        return root;
+        root
     }
 
     // Merges the sets containing a and b using union by rank.
     // Returns true if a and b were in different sets and a merge
     // occurred; false if they were already connected.
-    bool unite(int a, int b) {
-        int rootA = find(a);
-        int rootB = find(b);
-        if (rootA == rootB) {
-            return false;   // already in the same set, nothing to do
+    pub fn unite(&mut self, a: usize, b: usize) -> bool {
+        let root_a = self.find(a);
+        let root_b = self.find(b);
+        if root_a == root_b {
+            return false; // already in the same set, nothing to do
         }
         // Attach the lower-rank tree under the higher-rank tree.
-        if (rnk[rootA] < rnk[rootB]) {
-            parent[rootA] = rootB;
-        } else if (rnk[rootA] > rnk[rootB]) {
-            parent[rootB] = rootA;
+        if self.rnk[root_a] < self.rnk[root_b] {
+            self.parent[root_a] = root_b;
+        } else if self.rnk[root_a] > self.rnk[root_b] {
+            self.parent[root_b] = root_a;
         } else {
-            parent[rootB] = rootA;
-            rnk[rootA]++;   // equal ranks: pick one as root and bump its rank
+            self.parent[root_b] = root_a;
+            self.rnk[root_a] += 1; // equal ranks: pick one as root and bump its rank
         }
-        cnt--;
-        return true;
+        self.cnt -= 1;
+        true
     }
 
     // Reports whether a and b belong to the same set.
-    bool connected(int a, int b) {
-        return find(a) == find(b);
+    pub fn connected(&mut self, a: usize, b: usize) -> bool {
+        self.find(a) == self.find(b)
     }
 
     // Returns the current number of disjoint components.
-    int count() {
-        return cnt;
+    pub fn count(&self) -> usize {
+        self.cnt
     }
-};
+}
 ```
 
 ### Example: counting connected components
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Graph with 5 vertices and edges (0-1), (1-2), (3-4).
-UnionFind uf(5);
+let mut uf = UnionFind::new(5);
 uf.unite(0, 1);
 uf.unite(1, 2);
 uf.unite(3, 4);
 
-cout << uf.count() << "\n";          // 2  -> {0,1,2} and {3,4}
-cout << uf.connected(0, 2) << "\n";  // true
-cout << uf.connected(0, 3) << "\n";  // false
+println!("{}", uf.count());          // 2  -> {0,1,2} and {3,4}
+println!("{}", uf.connected(0, 2));  // true
+println!("{}", uf.connected(0, 3));  // false
 ```
 
 ---
@@ -164,105 +155,111 @@ When nodes are strings, longs, or custom objects (e.g. account emails,
 city names, coordinate pairs), back the structure with hash maps instead of
 arrays. Elements are created lazily on first reference.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
+use std::hash::Hash;
 
 // Generic Disjoint Set Union over an arbitrary element type T.
 //
-// Elements are introduced lazily: any element passed to makeSet,
+// Elements are introduced lazily: any element passed to make_set,
 // find, or unite that is not yet known becomes a new
-// singleton set. T must have well-behaved == and std::hash support.
-//
-// @tparam T the element type
-template<typename T>
-class UnionFind {
-
+// singleton set. T must implement Eq, Hash, and Clone.
+pub struct UnionFind<T: Eq + Hash + Clone> {
     // Maps each element to its parent; a root maps to itself.
-    unordered_map<T, T> parent;
+    parent: HashMap<T, T>,
 
     // Maps each root candidate to its rank (tree height upper bound).
-    unordered_map<T, int> rnk;
+    rnk: HashMap<T, usize>,
 
     // Current number of disjoint sets.
-    int cnt = 0;
+    cnt: usize,
+}
 
-public:
+impl<T: Eq + Hash + Clone> UnionFind<T> {
+    pub fn new() -> Self {
+        UnionFind {
+            parent: HashMap::new(),
+            rnk: HashMap::new(),
+            cnt: 0,
+        }
+    }
+
     // Ensures x exists as a singleton set if it is not already known.
-    void makeSet(const T& x) {
-        if (!parent.count(x)) {
-            parent[x] = x;
-            rnk[x] = 0;
-            cnt++;
+    pub fn make_set(&mut self, x: &T) {
+        if !self.parent.contains_key(x) {
+            self.parent.insert(x.clone(), x.clone());
+            self.rnk.insert(x.clone(), 0);
+            self.cnt += 1;
         }
     }
 
     // Returns the representative of x's set, registering x
     // first if needed, with full path compression.
-    T find(const T& x) {
-        makeSet(x);
-        // Locate the root.
-        T root = x;
-        while (!(root == parent[root])) {
-            root = parent[root];
+    pub fn find(&mut self, x: &T) -> T {
+        self.make_set(x);
+        // Collect path from x up to (but not including) the root.
+        let mut path: Vec<T> = Vec::new();
+        let mut cur = x.clone();
+        loop {
+            let p = self.parent[&cur].clone();
+            if p == cur {
+                break; // cur is the root
+            }
+            path.push(cur);
+            cur = p;
         }
-        // Compress the path.
-        T cur = x;
-        while (!(cur == root)) {
-            T next = parent[cur];
-            parent[cur] = root;
-            cur = next;
+        let root = cur;
+        // Compress the path: point every node directly at the root.
+        for node in &path {
+            self.parent.insert(node.clone(), root.clone());
         }
-        return root;
+        root
     }
 
     // Merges the sets containing a and b by rank.
     // Returns true if a merge occurred, false if already joined.
-    bool unite(const T& a, const T& b) {
-        T rootA = find(a);
-        T rootB = find(b);
-        if (rootA == rootB) {
+    pub fn unite(&mut self, a: &T, b: &T) -> bool {
+        let root_a = self.find(a);
+        let root_b = self.find(b);
+        if root_a == root_b {
             return false;
         }
-        int rankA = rnk[rootA];
-        int rankB = rnk[rootB];
-        if (rankA < rankB) {
-            parent[rootA] = rootB;
-        } else if (rankA > rankB) {
-            parent[rootB] = rootA;
+        let rank_a = self.rnk[&root_a];
+        let rank_b = self.rnk[&root_b];
+        if rank_a < rank_b {
+            self.parent.insert(root_a, root_b);
+        } else if rank_a > rank_b {
+            self.parent.insert(root_b, root_a);
         } else {
-            parent[rootB] = rootA;
-            rnk[rootA] = rankA + 1;
+            self.parent.insert(root_b.clone(), root_a.clone());
+            self.rnk.insert(root_a, rank_a + 1);
         }
-        cnt--;
-        return true;
+        self.cnt -= 1;
+        true
     }
 
     // Reports whether a and b are in the same set.
-    bool connected(const T& a, const T& b) {
-        return find(a) == find(b);
+    pub fn connected(&mut self, a: &T, b: &T) -> bool {
+        self.find(a) == self.find(b)
     }
 
     // Returns the current number of disjoint sets.
-    int count() {
-        return cnt;
+    pub fn count(&self) -> usize {
+        self.cnt
     }
-};
+}
 ```
 
 ### Example: grouping strings
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+let mut uf: UnionFind<String> = UnionFind::new();
+uf.unite(&"alice@a.com".to_string(), &"alice@b.com".to_string());
+uf.unite(&"bob@x.com".to_string(),   &"bob@y.com".to_string());
 
-UnionFind<string> uf;
-uf.unite("alice@a.com", "alice@b.com");
-uf.unite("bob@x.com",   "bob@y.com");
-
-cout << uf.connected("alice@a.com", "alice@b.com") << "\n"; // true
-cout << uf.connected("alice@a.com", "bob@x.com") << "\n";   // false
-cout << uf.count() << "\n";                                  // 2
+println!("{}", uf.connected(&"alice@a.com".to_string(), &"alice@b.com".to_string())); // true
+println!("{}", uf.connected(&"alice@a.com".to_string(), &"bob@x.com".to_string()));   // false
+println!("{}", uf.count());                                                            // 2
 ```
 
 ---
@@ -281,7 +278,7 @@ ever be stored in practice (well beyond the number of atoms in the universe).
 | `unite(a, b)`            | O(α(n)) amortized | O(α(n)) amortized*     | two finds + a constant merge |
 | `connected(a, b)`        | O(α(n)) amortized | O(α(n)) amortized*     | two finds |
 | `count()`                | O(1)              | O(1)                   | maintained incrementally |
-| Construction / `makeSet` | O(n) / O(1)       | O(1) per element       | array init vs. lazy insert |
+| Construction / `make_set` | O(n) / O(1)      | O(1) per element       | array init vs. lazy insert |
 | **Space**                | **O(n)**          | **O(n)**               | arrays vs. two hash maps |
 
 > Without path compression *or* union by rank, a single `find` can degrade to
@@ -306,9 +303,8 @@ Below is a multiplicative-ratio version (Evaluate Division). `find` accumulates
 the product of edge weights while compressing, and `unite(a, b, ratio)` records
 `a / b == ratio`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
 // Weighted (relational) Disjoint Set Union for ratio constraints of the form
 // value(a) / value(b) == ratio.
@@ -316,45 +312,73 @@ using namespace std;
 // weight[x] stores value(x) / value(parent[x]).
 // Path compression multiplies weights along the path so each node ends up
 // storing its ratio directly to the root.
-class WeightedUnionFind {
+pub struct WeightedUnionFind {
+    parent: HashMap<String, String>,
+    weight: HashMap<String, f64>,
+}
 
-    unordered_map<string, string> parent;
-    unordered_map<string, double> weight;
+impl WeightedUnionFind {
+    pub fn new() -> Self {
+        WeightedUnionFind {
+            parent: HashMap::new(),
+            weight: HashMap::new(),
+        }
+    }
 
-public:
     // Registers x as a singleton with ratio 1.0 to itself.
-    void makeSet(const string& x) {
-        if (!parent.count(x)) {
-            parent[x] = x;
-            weight[x] = 1.0;
+    pub fn make_set(&mut self, x: &str) {
+        if !self.parent.contains_key(x) {
+            self.parent.insert(x.to_string(), x.to_string());
+            self.weight.insert(x.to_string(), 1.0);
         }
     }
 
     // Finds the root of x while accumulating the multiplicative weight
     // from x up to the root, and compresses the path so that
     // weight[x] becomes value(x) / value(root).
-    string find(const string& x) {
-        makeSet(x);
-        if (parent[x] == x) {
-            return x;
+    pub fn find(&mut self, x: &str) -> String {
+        self.make_set(x);
+        // Collect path from x up to (but not including) the root.
+        let mut path: Vec<String> = Vec::new();
+        let mut cur = x.to_string();
+        loop {
+            let p = self.parent[&cur].clone();
+            if p == cur {
+                break; // cur is the root
+            }
+            path.push(cur);
+            cur = p;
         }
-        string p = parent[x];
-        string root = find(p);                     // recurse: now weight[p] = p/root
-        weight[x] = weight[x] * weight[p];         // x/root = x/p * p/root
-        parent[x] = root;                          // point directly at root
-        return root;
+        let root = cur;
+        if path.is_empty() {
+            return root;
+        }
+        // Compute each node's weight relative to the root using suffix products.
+        // path[i] / root = weight[path[i]] * weight[path[i+1]] * ... * weight[path[last]]
+        let n = path.len();
+        let mut weights_to_root = vec![0.0f64; n];
+        weights_to_root[n - 1] = self.weight[&path[n - 1]]; // path[n-1] / root
+        for i in (0..n - 1).rev() {
+            weights_to_root[i] = self.weight[&path[i]] * weights_to_root[i + 1]; // x/root = x/p * p/root
+        }
+        // Apply path compression: point every node directly at root with updated weight.
+        for i in 0..n {
+            self.parent.insert(path[i].clone(), root.clone());
+            self.weight.insert(path[i].clone(), weights_to_root[i]);
+        }
+        root
     }
 
     // Records the relation value(a) / value(b) == ratio by merging the
     // two sets. If they are already connected this is treated as consistent
     // input and ignored.
     // a: numerator element, b: denominator element, ratio: value(a) / value(b)
-    void unite(const string& a, const string& b, double ratio) {
-        makeSet(a);
-        makeSet(b);
-        string rootA = find(a);
-        string rootB = find(b);
-        if (rootA == rootB) {
+    pub fn unite(&mut self, a: &str, b: &str, ratio: f64) {
+        self.make_set(a);
+        self.make_set(b);
+        let root_a = self.find(a);
+        let root_b = self.find(b);
+        if root_a == root_b {
             return; // already related (assumes consistent input)
         }
         // We need: value(a)/value(b) = ratio.
@@ -363,39 +387,38 @@ public:
         //   a/b = (a/rootA) * (rootA/rootB) * (rootB/b) = ratio
         // => rootA/rootB = ratio * (b/rootB) / (a/rootA)
         //               = ratio * weight[b] / weight[a]
-        weight[rootA] = ratio * weight[b] / weight[a];
-        parent[rootA] = rootB;
+        let wa = self.weight[a];
+        let wb = self.weight[b];
+        self.weight.insert(root_a.clone(), ratio * wb / wa);
+        self.parent.insert(root_a, root_b);
     }
 
     // Returns value(a) / value(b) if both are known and connected,
     // otherwise -1.0 (the LeetCode "Evaluate Division" sentinel).
-    double query(const string& a, const string& b) {
-        if (!parent.count(a) || !parent.count(b)) {
+    pub fn query(&mut self, a: &str, b: &str) -> f64 {
+        if !self.parent.contains_key(a) || !self.parent.contains_key(b) {
             return -1.0;
         }
-        string rootA = find(a);
-        string rootB = find(b);
-        if (rootA != rootB) {
+        let root_a = self.find(a);
+        let root_b = self.find(b);
+        if root_a != root_b {
             return -1.0;
         }
         // a/b = (a/root) / (b/root) = weight[a] / weight[b]
-        return weight[a] / weight[b];
+        self.weight[a] / self.weight[b]
     }
-};
+}
 ```
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // a/b = 2, b/c = 3  =>  a/c = 6, c/a = 1/6, x unknown.
-WeightedUnionFind wuf;
+let mut wuf = WeightedUnionFind::new();
 wuf.unite("a", "b", 2.0);
 wuf.unite("b", "c", 3.0);
 
-cout << wuf.query("a", "c") << "\n";  // 6.0
-cout << wuf.query("c", "a") << "\n";  // 0.1666...
-cout << wuf.query("a", "x") << "\n";  // -1.0  (x not present)
+println!("{}", wuf.query("a", "c"));  // 6.0
+println!("{}", wuf.query("c", "a"));  // 0.1666...
+println!("{}", wuf.query("a", "x"));  // -1.0  (x not present)
 ```
 
 > For **additive** problems (parity, "differences between variables") replace
@@ -415,118 +438,111 @@ reverse order. This requires:
   inverse Ackermann.
 - A **history stack** recording exactly what each `unite` changed.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Rollback (undoable) Disjoint Set Union using union by rank WITHOUT path
 // compression. Every successful unite can be reversed in O(1) via
 // rollback(), in last-in-first-out order.
 //
 // find is O(log n) because path compression is intentionally
 // omitted to keep unions undoable.
-class RollbackUnionFind {
 
-    vector<int> parent;
-    vector<int> rnk;
-    int cnt;
+// One reversible change: the root that was attached, plus whether the
+// surviving root's rank was incremented during this unite.
+struct Change {
+    attached_root:  usize, // root whose parent was changed
+    surviving_root: usize, // root that remained a root
+    rank_increased: bool,  // did the surviving root's rank go up?
+}
 
-    // One reversible change: the root that was attached, plus whether the
-    // surviving root's rank was incremented during this unite.
-    struct Change {
-        int attachedRoot;       // root whose parent was changed
-        bool rankIncreased;     // did the surviving root's rank go up?
-        int survivingRoot;      // root that remained a root
+pub struct RollbackUnionFind {
+    parent: Vec<usize>,
+    rnk:    Vec<usize>,
+    cnt:    usize,
+    // history stack (Vec used as LIFO stack via push/pop)
+    history: Vec<Change>,
+}
 
-        Change(int attachedRoot, int survivingRoot, bool rankIncreased)
-            : attachedRoot(attachedRoot), survivingRoot(survivingRoot),
-              rankIncreased(rankIncreased) {}
-    };
-
-    stack<Change> history;
-
-public:
+impl RollbackUnionFind {
     // Creates n singleton sets {0}, ..., {n-1}.
-    RollbackUnionFind(int n) : parent(n), rnk(n, 0), cnt(n) {
-        for (int i = 0; i < n; i++) {
-            parent[i] = i;
+    pub fn new(n: usize) -> Self {
+        RollbackUnionFind {
+            parent:  (0..n).collect(),
+            rnk:     vec![0; n],
+            cnt:     n,
+            history: Vec::new(),
         }
     }
 
     // Returns the root of x WITHOUT path compression.
-    int find(int x) {
-        while (x != parent[x]) {
-            x = parent[x];
+    pub fn find(&self, mut x: usize) -> usize {
+        while x != self.parent[x] {
+            x = self.parent[x];
         }
-        return x;
+        x
     }
 
     // Merges the sets of a and b by rank, pushing the change
     // onto the history stack so it can be undone.
     // Returns true if a merge happened (a rollback point was pushed),
     // false if already connected (nothing pushed).
-    bool unite(int a, int b) {
-        int rootA = find(a);
-        int rootB = find(b);
-        if (rootA == rootB) {
+    pub fn unite(&mut self, a: usize, b: usize) -> bool {
+        let mut root_a = self.find(a);
+        let mut root_b = self.find(b);
+        if root_a == root_b {
             return false; // no change recorded
         }
-        // Ensure rootA is the higher (or equal) rank root.
-        if (rnk[rootA] < rnk[rootB]) {
-            swap(rootA, rootB);
+        // Ensure root_a is the higher (or equal) rank root.
+        if self.rnk[root_a] < self.rnk[root_b] {
+            std::mem::swap(&mut root_a, &mut root_b);
         }
-        // Attach rootB under rootA.
-        bool rankIncreased = (rnk[rootA] == rnk[rootB]);
-        parent[rootB] = rootA;
-        if (rankIncreased) {
-            rnk[rootA]++;
+        // Attach root_b under root_a.
+        let rank_increased = self.rnk[root_a] == self.rnk[root_b];
+        self.parent[root_b] = root_a;
+        if rank_increased {
+            self.rnk[root_a] += 1;
         }
-        cnt--;
-        history.push(Change(rootB, rootA, rankIncreased));
-        return true;
+        self.cnt -= 1;
+        self.history.push(Change { attached_root: root_b, surviving_root: root_a, rank_increased });
+        true
     }
 
     // Undoes the most recent successful unite. Call only when at least
     // one unite is on the history stack.
-    void rollback() {
-        Change c = history.top();
-        history.pop();
-        parent[c.attachedRoot] = c.attachedRoot; // detach: make it a root again
-        if (c.rankIncreased) {
-            rnk[c.survivingRoot]--;              // undo the rank bump
+    pub fn rollback(&mut self) {
+        let c = self.history.pop().unwrap();
+        self.parent[c.attached_root] = c.attached_root; // detach: make it a root again
+        if c.rank_increased {
+            self.rnk[c.surviving_root] -= 1; // undo the rank bump
         }
-        cnt++;
+        self.cnt += 1;
     }
 
     // Reports whether a and b are currently connected.
-    bool connected(int a, int b) {
-        return find(a) == find(b);
+    pub fn connected(&self, a: usize, b: usize) -> bool {
+        self.find(a) == self.find(b)
     }
 
     // Returns the current number of components.
-    int count() {
-        return cnt;
+    pub fn count(&self) -> usize {
+        self.cnt
     }
 
     // Returns the number of undoable unions currently on the history stack.
-    int historySize() {
-        return (int)history.size();
+    pub fn history_size(&self) -> usize {
+        self.history.len()
     }
-};
+}
 ```
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-RollbackUnionFind ruf(4);
+```rust
+let mut ruf = RollbackUnionFind::new(4);
 ruf.unite(0, 1);
 ruf.unite(2, 3);
-cout << ruf.count() << "\n";          // 2
+println!("{}", ruf.count());          // 2
 ruf.unite(1, 2);
-cout << ruf.connected(0, 3) << "\n";  // true,  count == 1
+println!("{}", ruf.connected(0, 3));  // true,  count == 1
 ruf.rollback();                        // undo unite(1, 2)
-cout << ruf.connected(0, 3) << "\n";  // false, count == 2
+println!("{}", ruf.connected(0, 3));  // false, count == 2
 ```
 
 > A persistent/rollback DSU plugged into a **segment tree over the timeline**

@@ -10,7 +10,7 @@
 1. [Problem Statement](#problem-statement)
 2. [Interview Expectations](#interview-expectations)
 3. [Core Operations](#core-operations)
-4. [C++ Implementation](#c-implementation)
+4. [Rust Implementation](#rust-implementation)
 5. [Complexity Analysis](#complexity-analysis)
 6. [Edge Cases](#edge-cases)
 7. [Similar Problems](#similar-problems)
@@ -23,12 +23,12 @@
 
 Design and implement a Binary Search Tree supporting:
 
-- `void insert(int val)` — insert a value
-- `bool search(int val)` — return true if value exists
-- `void deleteVal(int val)` — remove a value
-- `int floor(int val)` — largest value ≤ val
-- `int ceil(int val)` — smallest value ≥ val
-- `int kthSmallest(int k)` — kth smallest element
+- `fn insert(&mut self, val: i32)` — insert a value
+- `fn search(&self, val: i32) -> bool` — return true if value exists
+- `fn delete_val(&mut self, val: i32)` — remove a value
+- `fn floor(&self, val: i32) -> i32` — largest value ≤ val
+- `fn ceil(&self, val: i32) -> i32` — smallest value ≥ val
+- `fn kth_smallest(&self, k: usize) -> i32` — kth smallest element
 
 ---
 
@@ -64,120 +64,160 @@ For every node N:
 
 ---
 
-## C++ Implementation
+## Rust Implementation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+#[derive(Debug)]
+pub struct TreeNode {
+    pub val: i32,
+    pub size: usize, // size for kth-smallest augmentation
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
 
-struct TreeNode {
-    int val, size; // size for kth-smallest augmentation
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int val) : val(val), size(1), left(nullptr), right(nullptr) {}
-};
-
-class BST {
-private:
-    TreeNode* root;
-
-    // ---------- INSERT ----------
-    TreeNode* insert(TreeNode* node, int val) {
-        if (node == nullptr) return new TreeNode(val);
-        if (val < node->val)       node->left  = insert(node->left, val);
-        else if (val > node->val)  node->right = insert(node->right, val);
-        // if val == node->val: duplicate, ignore (or count)
-        node->size = 1 + size(node->left) + size(node->right);
-        return node;
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, size: 1, left: None, right: None }
     }
+}
 
-    // ---------- SEARCH ----------
-    bool searchNode(TreeNode* node, int val) {
-        if (node == nullptr) return false;
-        if (val == node->val) return true;
-        return val < node->val ? searchNode(node->left, val) : searchNode(node->right, val);
-    }
+pub struct BST {
+    root: Option<Box<TreeNode>>,
+}
 
-    // ---------- DELETE ----------
-    TreeNode* deleteNode(TreeNode* node, int val) {
-        if (node == nullptr) return nullptr;
-        if (val < node->val) {
-            node->left = deleteNode(node->left, val);
-        } else if (val > node->val) {
-            node->right = deleteNode(node->right, val);
-        } else {
-            // Case 1 & 2: leaf or one child
-            if (node->left == nullptr)  return node->right;
-            if (node->right == nullptr) return node->left;
-            // Case 3: two children — replace with in-order successor
-            TreeNode* successor = leftmost(node->right);
-            node->val = successor->val;
-            node->right = deleteNode(node->right, successor->val);
+fn node_size(node: &Option<Box<TreeNode>>) -> usize {
+    node.as_ref().map_or(0, |n| n.size)
+}
+
+// ---------- INSERT ----------
+fn insert_node(node: Option<Box<TreeNode>>, val: i32) -> Box<TreeNode> {
+    match node {
+        None => Box::new(TreeNode::new(val)),
+        Some(mut n) => {
+            if val < n.val {
+                n.left = Some(insert_node(n.left, val));
+            } else if val > n.val {
+                n.right = Some(insert_node(n.right, val));
+            }
+            // if val == n.val: duplicate, ignore (or count)
+            n.size = 1 + node_size(&n.left) + node_size(&n.right);
+            n
         }
-        node->size = 1 + size(node->left) + size(node->right);
-        return node;
     }
+}
 
-    TreeNode* leftmost(TreeNode* node) {
-        while (node->left != nullptr) node = node->left;
-        return node;
+// ---------- SEARCH ----------
+fn search_node(node: &Option<Box<TreeNode>>, val: i32) -> bool {
+    match node {
+        None => false,
+        Some(n) => {
+            if val == n.val { true }
+            else if val < n.val { search_node(&n.left, val) }
+            else { search_node(&n.right, val) }
+        }
     }
+}
 
-    // ---------- FLOOR ----------
-    TreeNode* floorNode(TreeNode* node, int val) {
-        if (node == nullptr) return nullptr;
-        if (node->val == val) return node;
-        if (node->val > val)  return floorNode(node->left, val);
-        TreeNode* right = floorNode(node->right, val);
-        return right != nullptr ? right : node;
+fn leftmost_val(node: &Box<TreeNode>) -> i32 {
+    let mut curr = node;
+    while let Some(ref left) = curr.left {
+        curr = left;
     }
+    curr.val
+}
 
-    // ---------- CEIL ----------
-    TreeNode* ceilNode(TreeNode* node, int val) {
-        if (node == nullptr) return nullptr;
-        if (node->val == val) return node;
-        if (node->val < val)  return ceilNode(node->right, val);
-        TreeNode* left = ceilNode(node->left, val);
-        return left != nullptr ? left : node;
+// ---------- DELETE ----------
+fn delete_node(node: Option<Box<TreeNode>>, val: i32) -> Option<Box<TreeNode>> {
+    match node {
+        None => None,
+        Some(mut n) => {
+            if val < n.val {
+                n.left = delete_node(n.left, val);
+            } else if val > n.val {
+                n.right = delete_node(n.right, val);
+            } else {
+                // Case 1 & 2: leaf or one child
+                if n.left.is_none() { return n.right; }
+                if n.right.is_none() { return n.left; }
+                // Case 3: two children — replace with in-order successor
+                let successor_val = leftmost_val(n.right.as_ref().unwrap());
+                n.val = successor_val;
+                n.right = delete_node(n.right, successor_val);
+            }
+            n.size = 1 + node_size(&n.left) + node_size(&n.right);
+            Some(n)
+        }
     }
+}
 
-    // ---------- KTH SMALLEST (augmented) ----------
-    int kthSmallestNode(TreeNode* node, int k) {
-        int leftSize = size(node->left);
-        if (k == leftSize + 1) return node->val;
-        if (k <= leftSize)     return kthSmallestNode(node->left, k);
-        return kthSmallestNode(node->right, k - leftSize - 1);
+// ---------- FLOOR ----------
+fn floor_node(node: &Option<Box<TreeNode>>, val: i32) -> Option<i32> {
+    match node {
+        None => None,
+        Some(n) => {
+            if n.val == val { Some(n.val) }
+            else if n.val > val { floor_node(&n.left, val) }
+            else { floor_node(&n.right, val).or(Some(n.val)) }
+        }
     }
+}
 
-    int size(TreeNode* node) { return node == nullptr ? 0 : node->size; }
+// ---------- CEIL ----------
+fn ceil_node(node: &Option<Box<TreeNode>>, val: i32) -> Option<i32> {
+    match node {
+        None => None,
+        Some(n) => {
+            if n.val == val { Some(n.val) }
+            else if n.val < val { ceil_node(&n.right, val) }
+            else { ceil_node(&n.left, val).or(Some(n.val)) }
+        }
+    }
+}
 
-public:
-    BST() : root(nullptr) {}
+// ---------- KTH SMALLEST (augmented) ----------
+fn kth_smallest_node(node: &Option<Box<TreeNode>>, k: usize) -> i32 {
+    let n = node.as_ref().unwrap();
+    let left_size = node_size(&n.left);
+    if k == left_size + 1 { n.val }
+    else if k <= left_size { kth_smallest_node(&n.left, k) }
+    else { kth_smallest_node(&n.right, k - left_size - 1) }
+}
+
+impl BST {
+    pub fn new() -> Self {
+        BST { root: None }
+    }
 
     // ---------- INSERT ----------
-    void insert(int val) { root = insert(root, val); }
+    pub fn insert(&mut self, val: i32) {
+        self.root = Some(insert_node(self.root.take(), val));
+    }
 
     // ---------- SEARCH ----------
-    bool search(int val) { return searchNode(root, val); }
+    pub fn search(&self, val: i32) -> bool {
+        search_node(&self.root, val)
+    }
 
     // ---------- DELETE ----------
-    void deleteVal(int val) { root = deleteNode(root, val); }
+    pub fn delete_val(&mut self, val: i32) {
+        self.root = delete_node(self.root.take(), val);
+    }
 
     // ---------- FLOOR ----------
-    int floor(int val) {
-        TreeNode* res = floorNode(root, val);
-        return res == nullptr ? -1 : res->val;
+    pub fn floor(&self, val: i32) -> i32 {
+        floor_node(&self.root, val).unwrap_or(-1)
     }
 
     // ---------- CEIL ----------
-    int ceil(int val) {
-        TreeNode* res = ceilNode(root, val);
-        return res == nullptr ? -1 : res->val;
+    pub fn ceil(&self, val: i32) -> i32 {
+        ceil_node(&self.root, val).unwrap_or(-1)
     }
 
     // ---------- KTH SMALLEST (augmented) ----------
-    int kthSmallest(int k) { return kthSmallestNode(root, k); }
-};
+    pub fn kth_smallest(&self, k: usize) -> i32 {
+        kth_smallest_node(&self.root, k)
+    }
+}
 ```
 
 ---
@@ -200,10 +240,10 @@ public:
 ## Edge Cases
 
 - Deleting a node that doesn't exist → do nothing (no crash)
-- `kthSmallest(0)` or `k > size` → throw `std::invalid_argument`
+- `kth_smallest(0)` or `k > size` → panic or return sentinel
 - Inserting duplicate values → define behaviour (ignore, count, allow)
-- Floor/Ceil on empty tree → return -1 or throw
-- Tree with a single node → deletion returns null root
+- Floor/Ceil on empty tree → return -1 or use `Option`
+- Tree with a single node → deletion returns `None` root
 
 ---
 
@@ -221,10 +261,10 @@ public:
 
 ## Follow-up Questions
 
-1. **BST degrades to O(n) — how do you fix it?** → Self-balancing: AVL (strict height balance), Red-Black (relaxed, used in `std::map`)
-2. **`std::map` vs BST?** → `std::map` is a Red-Black tree. `find/insert/erase` all O(log n) guaranteed.
+1. **BST degrades to O(n) — how do you fix it?** → Self-balancing: AVL (strict height balance), Red-Black (relaxed, used in `BTreeMap`)
+2. **`BTreeMap` vs BST?** → `BTreeMap` is a B-tree. `get/insert/remove` all O(log n) guaranteed.
 3. **How does augmentation with `size` help?** → kth smallest in O(log n) vs O(n) with in-order traversal
-4. **Thread-safe BST?** → Use concurrent data structures or protect with `std::mutex` for thread-safe sorted access
+4. **Thread-safe BST?** → Use concurrent data structures or protect with `std::sync::Mutex` for thread-safe sorted access
 
 ---
 

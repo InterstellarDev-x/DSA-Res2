@@ -24,41 +24,39 @@ Quick mental flowchart:
 4. Need every pair, and `V` is small (<= ~400)? -> **Floyd-Warshall**.
 5. Otherwise (non-negative weights, single source) -> **Dijkstra**.
 
-> **Critical pitfall:** when ordering a `std::priority_queue` with a custom comparator, NEVER use `a[1] - b[1]` as the comparison value. The subtraction can overflow for large weights and silently corrupt the heap order. Always use explicit `<` or `>` comparisons.
+> **Critical pitfall:** when ordering a `BinaryHeap` with a custom comparator, NEVER use `a[1] - b[1]` as the comparison value. The subtraction can overflow for large weights and silently corrupt the heap order. Always use explicit `<` or `>` comparisons.
 
 ---
 
 ## Dijkstra Template
 
-Greedy single-source shortest path for **non-negative** weights. Maintain a `dist[]` array, push `{dist, node}` onto a min-heap, and pop the closest unfinished node. Because we may push the same node multiple times, **skip stale entries** (a popped distance larger than the recorded `dist[node]`).
+Greedy single-source shortest path for **non-negative** weights. Maintain a `dist[]` array, push `(dist, node)` onto a min-heap, and pop the closest unfinished node. Because we may push the same node multiple times, **skip stale entries** (a popped distance larger than the recorded `dist[node]`).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-vector<int> dijkstra(int n, vector<vector<pair<int,int>>>& adj, int src) {
-    // adj[u] holds entries {v, weight}
-    vector<int> dist(n, INT_MAX);
+fn dijkstra(n: usize, adj: &Vec<Vec<(usize, i32)>>, src: usize) -> Vec<i32> {
+    // adj[u] holds entries (v, weight)
+    let mut dist = vec![i32::MAX; n];
     dist[src] = 0;
 
-    // min-heap ordered by distance; {dist, node}
-    priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> pq;
-    pq.push({0, src});
+    // min-heap ordered by distance; (dist, node)
+    let mut pq: BinaryHeap<Reverse<(i32, usize)>> = BinaryHeap::new();
+    pq.push(Reverse((0, src)));
 
-    while (!pq.empty()) {
-        auto [d, u] = pq.top(); pq.pop();
-
+    while let Some(Reverse((d, u))) = pq.pop() {
         // skip stale entry: a better distance was already finalized
-        if (d > dist[u]) continue;
+        if d > dist[u] { continue; }
 
-        for (auto& [v, w] : adj[u]) {
-            if (dist[u] + w < dist[v]) {
+        for &(v, w) in &adj[u] {
+            if dist[u] + w < dist[v] {
                 dist[v] = dist[u] + w;
-                pq.push({dist[v], v});
+                pq.push(Reverse((dist[v], v)));
             }
         }
     }
-    return dist;
+    dist
 }
 ```
 
@@ -68,33 +66,34 @@ vector<int> dijkstra(int n, vector<vector<pair<int,int>>>& adj, int src) {
 
 Handles **negative** edge weights and detects negative cycles. Relax every edge `V-1` times: after `i` rounds, all shortest paths using at most `i` edges are correct. A `V`-th round that still relaxes something proves a negative cycle.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> bellmanFord(int n, vector<vector<int>>& edges, int src) {
-    // edges[i] = {u, v, w}
-    vector<int> dist(n, INT_MAX);
+```rust
+fn bellman_ford(n: usize, edges: &Vec<Vec<i32>>, src: usize) -> Vec<i32> {
+    // edges[i] = [u, v, w]
+    let mut dist = vec![i32::MAX; n];
     dist[src] = 0;
 
     // V - 1 relaxation rounds
-    for (int i = 0; i < n - 1; i++) {
-        for (auto& e : edges) {
-            int u = e[0], v = e[1], w = e[2];
-            if (dist[u] != INT_MAX && dist[u] + w < dist[v]) {
+    for _ in 0..n - 1 {
+        for e in edges {
+            let u = e[0] as usize;
+            let v = e[1] as usize;
+            let w = e[2];
+            if dist[u] != i32::MAX && dist[u] + w < dist[v] {
                 dist[v] = dist[u] + w;
             }
         }
     }
 
     // optional: negative-cycle check
-    for (auto& e : edges) {
-        int u = e[0], v = e[1], w = e[2];
-        if (dist[u] != INT_MAX && dist[u] + w < dist[v]) {
+    for e in edges {
+        let u = e[0] as usize;
+        let v = e[1] as usize;
+        let w = e[2];
+        if dist[u] != i32::MAX && dist[u] + w < dist[v] {
             // negative cycle reachable from src
         }
     }
-    return dist;
+    dist
 }
 ```
 
@@ -104,32 +103,30 @@ vector<int> bellmanFord(int n, vector<vector<int>>& edges, int src) {
 
 All-pairs shortest path via dynamic programming. `dist[i][j]` is iteratively improved by allowing each vertex `k` as an intermediate. The triple loop is `O(V³)` — the `k` loop **must** be outermost.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn floyd_warshall(n: usize, edges: &Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+    const INF: i32 = 1_000_000_000;
+    let mut dist = vec![vec![INF; n]; n];
+    for i in 0..n { dist[i][i] = 0; }
 
-vector<vector<int>> floydWarshall(int n, vector<vector<int>>& edges) {
-    const int INF = 1'000'000'000;
-    vector<vector<int>> dist(n, vector<int>(n, INF));
-    for (int i = 0; i < n; i++) dist[i][i] = 0;
-
-    for (auto& e : edges) {
-        dist[e[0]][e[1]] = min(dist[e[0]][e[1]], e[2]);
-        dist[e[1]][e[0]] = min(dist[e[1]][e[0]], e[2]); // drop if directed
+    for e in edges {
+        let (i, j, w) = (e[0] as usize, e[1] as usize, e[2]);
+        dist[i][j] = dist[i][j].min(w);
+        dist[j][i] = dist[j][i].min(w); // drop if directed
     }
 
     // k outermost: "can we route i->j through k?"
-    for (int k = 0; k < n; k++) {
-        for (int i = 0; i < n; i++) {
-            if (dist[i][k] == INF) continue;          // micro-optimization
-            for (int j = 0; j < n; j++) {
-                if (dist[i][k] + dist[k][j] < dist[i][j]) {
+    for k in 0..n {
+        for i in 0..n {
+            if dist[i][k] == INF { continue; }          // micro-optimization
+            for j in 0..n {
+                if dist[i][k] + dist[k][j] < dist[i][j] {
                     dist[i][j] = dist[i][k] + dist[k][j];
                 }
             }
         }
     }
-    return dist;
+    dist
 }
 ```
 
@@ -139,31 +136,29 @@ vector<vector<int>> floydWarshall(int n, vector<vector<int>>& edges) {
 
 When every edge costs **0 or 1**, a plain deque beats Dijkstra's log factor. Push 0-weight relaxations to the **front** (`push_front`) and 1-weight ones to the **back** (`push_back`). The deque stays sorted by distance, so the first time you pop a node its distance is final.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-vector<int> zeroOneBfs(int n, vector<vector<pair<int,int>>>& adj, int src) {
-    // adj[u] holds entries {v, weight in {0,1}}
-    vector<int> dist(n, INT_MAX);
+fn zero_one_bfs(n: usize, adj: &Vec<Vec<(usize, i32)>>, src: usize) -> Vec<i32> {
+    // adj[u] holds entries (v, weight in {0,1})
+    let mut dist = vec![i32::MAX; n];
     dist[src] = 0;
 
-    deque<pair<int,int>> dq;  // {node, dist}
-    dq.push_front({src, 0});
+    let mut dq: VecDeque<(usize, i32)> = VecDeque::new();  // (node, dist)
+    dq.push_front((src, 0));
 
-    while (!dq.empty()) {
-        auto [u, d] = dq.front(); dq.pop_front();
-        if (d > dist[u]) continue;          // stale
+    while let Some((u, d)) = dq.pop_front() {
+        if d > dist[u] { continue; }  // stale
 
-        for (auto& [v, w] : adj[u]) {
-            if (dist[u] + w < dist[v]) {
+        for &(v, w) in &adj[u] {
+            if dist[u] + w < dist[v] {
                 dist[v] = dist[u] + w;
-                if (w == 0) dq.push_front({v, dist[v]});
-                else        dq.push_back({v, dist[v]});
+                if w == 0 { dq.push_front((v, dist[v])); }
+                else       { dq.push_back((v, dist[v])); }
             }
         }
     }
-    return dist;
+    dist
 }
 ```
 
@@ -188,42 +183,42 @@ vector<int> zeroOneBfs(int n, vector<vector<pair<int,int>>>& adj, int src) {
 
 **Idea:** Run Dijkstra from source `k`; the answer is the maximum finalized distance (the time for the *last* node to receive the signal), or `-1` if any node is unreachable.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-class Solution {
-public:
-    int networkDelayTime(vector<vector<int>>& times, int n, int k) {
-        vector<vector<pair<int,int>>> adj(n + 1);
-        for (auto& t : times) adj[t[0]].push_back({t[1], t[2]});
+struct Solution;
 
-        vector<int> dist(n + 1, INT_MAX);
+impl Solution {
+    pub fn network_delay_time(times: Vec<Vec<i32>>, n: i32, k: i32) -> i32 {
+        let n = n as usize;
+        let k = k as usize;
+        let mut adj: Vec<Vec<(usize, i32)>> = vec![vec![]; n + 1];
+        for t in &times {
+            adj[t[0] as usize].push((t[1] as usize, t[2]));
+        }
+
+        let mut dist = vec![i32::MAX; n + 1];
         dist[k] = 0;
 
-        priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> pq;
-        pq.push({0, k});
+        let mut pq: BinaryHeap<Reverse<(i32, usize)>> = BinaryHeap::new();
+        pq.push(Reverse((0, k)));
 
-        while (!pq.empty()) {
-            auto [d, u] = pq.top(); pq.pop();
-            if (d > dist[u]) continue;            // stale entry
+        while let Some(Reverse((d, u))) = pq.pop() {
+            if d > dist[u] { continue; }  // stale entry
 
-            for (auto& [v, w] : adj[u]) {
-                if (dist[u] + w < dist[v]) {
+            for &(v, w) in &adj[u] {
+                if dist[u] + w < dist[v] {
                     dist[v] = dist[u] + w;
-                    pq.push({dist[v], v});
+                    pq.push(Reverse((dist[v], v)));
                 }
             }
         }
 
-        int ans = 0;
-        for (int i = 1; i <= n; i++) {
-            if (dist[i] == INT_MAX) return -1;   // unreachable
-            ans = max(ans, dist[i]);
-        }
-        return ans;
+        let ans = dist[1..=n].iter().copied().max().unwrap_or(i32::MAX);
+        if ans == i32::MAX { -1 } else { ans }
     }
-};
+}
 ```
 
 **Complexity:** Time `O(E log V)`, Space `O(V + E)`.
@@ -252,30 +247,32 @@ Note how the heap ordering by distance guarantees node 2's neighbors are settled
 
 **Idea:** Bellman-Ford limited to `K+1` edge-relaxation rounds; **clone** the `dist` array each round so a single round can only extend paths from the *previous* round (preventing more than the allowed number of stops).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int findCheapestPrice(int n, vector<vector<int>>& flights, int src, int dst, int k) {
-        const int INF = INT_MAX;
-        vector<int> dist(n, INF);
+impl Solution {
+    pub fn find_cheapest_price(n: i32, flights: Vec<Vec<i32>>, src: i32, dst: i32, k: i32) -> i32 {
+        let n = n as usize;
+        let src = src as usize;
+        let dst = dst as usize;
+        let mut dist = vec![i32::MAX; n];
         dist[src] = 0;
 
         // K stops => at most K+1 edges => K+1 relaxation rounds
-        for (int i = 0; i <= k; i++) {
-            vector<int> prev = dist;   // freeze last round's distances
-            for (auto& f : flights) {
-                int u = f[0], v = f[1], w = f[2];
-                if (prev[u] != INF && prev[u] + w < dist[v]) {
+        for _ in 0..=k {
+            let prev = dist.clone();  // freeze last round's distances
+            for f in &flights {
+                let u = f[0] as usize;
+                let v = f[1] as usize;
+                let w = f[2];
+                if prev[u] != i32::MAX && prev[u] + w < dist[v] {
                     dist[v] = prev[u] + w;
                 }
             }
         }
-        return dist[dst] == INF ? -1 : dist[dst];
+        if dist[dst] == i32::MAX { -1 } else { dist[dst] }
     }
-};
+}
 ```
 
 **Why clone:** without the snapshot, relaxing edge A then edge B in the same round could chain two new edges, sneaking in an extra stop beyond `K`.
@@ -288,41 +285,44 @@ public:
 
 **Idea:** Dijkstra on the grid where the "distance" of a path is the **maximum** absolute height difference between adjacent cells along it (minimax). Relaxation uses `max(currentEffort, |h - hNeighbor|)`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-class Solution {
-public:
-    int minimumEffortPath(vector<vector<int>>& heights) {
-        int rows = heights.size(), cols = heights[0].size();
-        vector<vector<int>> dirs = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+struct Solution;
 
-        vector<vector<int>> effort(rows, vector<int>(cols, INT_MAX));
+impl Solution {
+    pub fn minimum_effort_path(heights: Vec<Vec<i32>>) -> i32 {
+        let rows = heights.len();
+        let cols = heights[0].len();
+        let dirs: [(i32, i32); 4] = [(0, 1), (1, 0), (0, -1), (-1, 0)];
+
+        let mut effort = vec![vec![i32::MAX; cols]; rows];
         effort[0][0] = 0;
 
-        // {effortSoFar, row, col}
-        priority_queue<tuple<int,int,int>, vector<tuple<int,int,int>>, greater<tuple<int,int,int>>> pq;
-        pq.push({0, 0, 0});
+        // (effortSoFar, row, col)
+        let mut pq: BinaryHeap<Reverse<(i32, usize, usize)>> = BinaryHeap::new();
+        pq.push(Reverse((0, 0, 0)));
 
-        while (!pq.empty()) {
-            auto [e, r, c] = pq.top(); pq.pop();
-            if (e > effort[r][c]) continue;                 // stale
-            if (r == rows - 1 && c == cols - 1) return e;    // first pop is optimal
+        while let Some(Reverse((e, r, c))) = pq.pop() {
+            if e > effort[r][c] { continue; }  // stale
+            if r == rows - 1 && c == cols - 1 { return e; }  // first pop is optimal
 
-            for (auto& d : dirs) {
-                int nr = r + d[0], nc = c + d[1];
-                if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-                int ne = max(e, abs(heights[nr][nc] - heights[r][c]));
-                if (ne < effort[nr][nc]) {
+            for &(dr, dc) in &dirs {
+                let nr = r as i32 + dr;
+                let nc = c as i32 + dc;
+                if nr < 0 || nr >= rows as i32 || nc < 0 || nc >= cols as i32 { continue; }
+                let (nr, nc) = (nr as usize, nc as usize);
+                let ne = e.max((heights[nr][nc] - heights[r][c]).abs());
+                if ne < effort[nr][nc] {
                     effort[nr][nc] = ne;
-                    pq.push({ne, nr, nc});
+                    pq.push(Reverse((ne, nr, nc)));
                 }
             }
         }
-        return 0; // single cell grid
+        0 // single cell grid
     }
-};
+}
 ```
 
 **Complexity:** Time `O(R·C·log(R·C))`, Space `O(R·C)`.
@@ -333,36 +333,39 @@ public:
 
 **Idea:** The time to reach the bottom-right equals the **minimum over all paths of the maximum elevation** on that path — another minimax Dijkstra. The cost of stepping onto a cell is its elevation; the path cost is the max elevation seen.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-class Solution {
-public:
-    int swimInWater(vector<vector<int>>& grid) {
-        int n = grid.size();
-        vector<vector<int>> dirs = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+struct Solution;
 
-        vector<vector<bool>> visited(n, vector<bool>(n, false));
-        // {maxElevationSoFar, row, col}
-        priority_queue<tuple<int,int,int>, vector<tuple<int,int,int>>, greater<tuple<int,int,int>>> pq;
-        pq.push({grid[0][0], 0, 0});
+impl Solution {
+    pub fn swim_in_water(grid: Vec<Vec<i32>>) -> i32 {
+        let n = grid.len();
+        let dirs: [(i32, i32); 4] = [(0, 1), (1, 0), (0, -1), (-1, 0)];
 
-        while (!pq.empty()) {
-            auto [t, r, c] = pq.top(); pq.pop();
-            if (visited[r][c]) continue;
+        let mut visited = vec![vec![false; n]; n];
+        // (maxElevationSoFar, row, col)
+        let mut pq: BinaryHeap<Reverse<(i32, usize, usize)>> = BinaryHeap::new();
+        pq.push(Reverse((grid[0][0], 0, 0)));
+
+        while let Some(Reverse((t, r, c))) = pq.pop() {
+            if visited[r][c] { continue; }
             visited[r][c] = true;
-            if (r == n - 1 && c == n - 1) return t;   // first arrival is optimal
+            if r == n - 1 && c == n - 1 { return t; }  // first arrival is optimal
 
-            for (auto& d : dirs) {
-                int nr = r + d[0], nc = c + d[1];
-                if (nr < 0 || nr >= n || nc < 0 || nc >= n || visited[nr][nc]) continue;
-                pq.push({max(t, grid[nr][nc]), nr, nc});
+            for &(dr, dc) in &dirs {
+                let nr = r as i32 + dr;
+                let nc = c as i32 + dc;
+                if nr < 0 || nr >= n as i32 || nc < 0 || nc >= n as i32 { continue; }
+                let (nr, nc) = (nr as usize, nc as usize);
+                if visited[nr][nc] { continue; }
+                pq.push(Reverse((t.max(grid[nr][nc]), nr, nc)));
             }
         }
-        return -1; // unreachable (won't happen on valid input)
+        -1 // unreachable (won't happen on valid input)
     }
-};
+}
 ```
 
 **Complexity:** Time `O(N²·log N)`, Space `O(N²)`.
@@ -373,45 +376,48 @@ public:
 
 **Idea:** Dijkstra with a **max-heap**, maximizing the **product** of edge probabilities. Since probabilities are in `[0,1]`, products only shrink, so the greedy "pop the largest first" property holds just like minimizing a sum.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
 
-class Solution {
-public:
-    double maxProbability(int n, vector<vector<int>>& edges, vector<double>& succProb,
-                          int start, int end) {
-        vector<vector<pair<int,double>>> adj(n);
-        for (int i = 0; i < (int)edges.size(); i++) {
-            int u = edges[i][0], v = edges[i][1];
-            double p = succProb[i];
-            adj[u].push_back({v, p});
-            adj[v].push_back({u, p});
+struct Solution;
+
+impl Solution {
+    pub fn max_probability(n: i32, edges: Vec<Vec<i32>>, succ_prob: Vec<f64>, start: i32, end: i32) -> f64 {
+        let n = n as usize;
+        let start = start as usize;
+        let end = end as usize;
+        let mut adj: Vec<Vec<(usize, f64)>> = vec![vec![]; n];
+        for i in 0..edges.len() {
+            let u = edges[i][0] as usize;
+            let v = edges[i][1] as usize;
+            let p = succ_prob[i];
+            adj[u].push((v, p));
+            adj[v].push((u, p));
         }
 
-        vector<double> prob(n, 0.0);
+        let mut prob = vec![0.0f64; n];
         prob[start] = 1.0;
 
-        // max-heap by probability; {prob, node}
-        priority_queue<pair<double,int>> pq;
-        pq.push({1.0, start});
+        // max-heap by probability; encode f64 as bits for ordering (valid for non-negative values)
+        let mut pq: BinaryHeap<(u64, usize)> = BinaryHeap::new();
+        pq.push((1.0f64.to_bits(), start));
 
-        while (!pq.empty()) {
-            auto [p, u] = pq.top(); pq.pop();
-            if (p < prob[u]) continue;          // stale
-            if (u == end) return p;             // first pop of end is optimal
+        while let Some((p_bits, u)) = pq.pop() {
+            let p = f64::from_bits(p_bits);
+            if p < prob[u] { continue; }  // stale
+            if u == end { return p; }     // first pop of end is optimal
 
-            for (auto& [v, ep] : adj[u]) {
-                double np = p * ep;
-                if (np > prob[v]) {
+            for &(v, ep) in &adj[u] {
+                let np = p * ep;
+                if np > prob[v] {
                     prob[v] = np;
-                    pq.push({np, v});
+                    pq.push((np.to_bits(), v));
                 }
             }
         }
-        return 0.0; // end unreachable
+        0.0 // end unreachable
     }
-};
+}
 ```
 
 **Complexity:** Time `O(E log V)`, Space `O(V + E)`.
@@ -422,44 +428,48 @@ public:
 
 **Idea:** Compute all-pairs shortest paths with Floyd-Warshall, then for each city count how many others lie within `distanceThreshold`; pick the city with the fewest such neighbors, breaking ties by the **largest** index.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int findTheCity(int n, vector<vector<int>>& edges, int distanceThreshold) {
-        const int INF = 1'000'000'000;
-        vector<vector<int>> dist(n, vector<int>(n, INF));
-        for (int i = 0; i < n; i++) dist[i][i] = 0;
+impl Solution {
+    pub fn find_the_city(n: i32, edges: Vec<Vec<i32>>, distance_threshold: i32) -> i32 {
+        let n = n as usize;
+        const INF: i32 = 1_000_000_000;
+        let mut dist = vec![vec![INF; n]; n];
+        for i in 0..n { dist[i][i] = 0; }
 
-        for (auto& e : edges) {
-            dist[e[0]][e[1]] = e[2];
-            dist[e[1]][e[0]] = e[2];   // undirected
+        for e in &edges {
+            let (u, v, w) = (e[0] as usize, e[1] as usize, e[2]);
+            dist[u][v] = w;
+            dist[v][u] = w;  // undirected
         }
 
-        for (int k = 0; k < n; k++)
-            for (int i = 0; i < n; i++) {
-                if (dist[i][k] == INF) continue;
-                for (int j = 0; j < n; j++)
-                    if (dist[i][k] + dist[k][j] < dist[i][j])
+        for k in 0..n {
+            for i in 0..n {
+                if dist[i][k] == INF { continue; }
+                for j in 0..n {
+                    if dist[i][k] + dist[k][j] < dist[i][j] {
                         dist[i][j] = dist[i][k] + dist[k][j];
-            }
-
-        int bestCity = -1, fewest = INT_MAX;
-        for (int i = 0; i < n; i++) {
-            int count = 0;
-            for (int j = 0; j < n; j++)
-                if (i != j && dist[i][j] <= distanceThreshold) count++;
-            // <= so that on ties we keep the larger index
-            if (count <= fewest) {
-                fewest = count;
-                bestCity = i;
+                    }
+                }
             }
         }
-        return bestCity;
+
+        let mut best_city = -1i32;
+        let mut fewest = i32::MAX;
+        for i in 0..n {
+            let count = (0..n)
+                .filter(|&j| i != j && dist[i][j] <= distance_threshold)
+                .count() as i32;
+            // <= so that on ties we keep the larger index
+            if count <= fewest {
+                fewest = count;
+                best_city = i as i32;
+            }
+        }
+        best_city
     }
-};
+}
 ```
 
 **Complexity:** Time `O(V³)`, Space `O(V²)`.
@@ -470,42 +480,44 @@ public:
 
 **Idea:** 0-1 BFS. Each cell points a direction; **following** the arrow costs `0`, **changing** it (moving any other direction) costs `1`. Find the minimum-cost path from top-left to bottom-right.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-class Solution {
-public:
-    int minCost(vector<vector<int>>& grid) {
-        int rows = grid.size(), cols = grid[0].size();
+struct Solution;
+
+impl Solution {
+    pub fn min_cost(grid: Vec<Vec<i32>>) -> i32 {
+        let rows = grid.len();
+        let cols = grid[0].len();
         // grid value 1=right, 2=left, 3=down, 4=up -> matching dirs index
-        vector<vector<int>> dirs = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+        let dirs: [(i32, i32); 4] = [(0, 1), (0, -1), (1, 0), (-1, 0)];
 
-        vector<vector<int>> dist(rows, vector<int>(cols, INT_MAX));
+        let mut dist = vec![vec![i32::MAX; cols]; rows];
         dist[0][0] = 0;
 
-        deque<tuple<int,int,int>> dq;   // {row, col, cost}
-        dq.push_front({0, 0, 0});
+        let mut dq: VecDeque<(usize, usize, i32)> = VecDeque::new();  // (row, col, cost)
+        dq.push_front((0, 0, 0));
 
-        while (!dq.empty()) {
-            auto [r, c, cost] = dq.front(); dq.pop_front();
-            if (cost > dist[r][c]) continue;            // stale
+        while let Some((r, c, cost)) = dq.pop_front() {
+            if cost > dist[r][c] { continue; }  // stale
 
-            for (int dir = 0; dir < 4; dir++) {
-                int nr = r + dirs[dir][0], nc = c + dirs[dir][1];
-                if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+            for dir in 0..4usize {
+                let nr = r as i32 + dirs[dir].0;
+                let nc = c as i32 + dirs[dir].1;
+                if nr < 0 || nr >= rows as i32 || nc < 0 || nc >= cols as i32 { continue; }
+                let (nr, nc) = (nr as usize, nc as usize);
                 // grid is 1-indexed direction; arrow already points dir -> cost 0
-                int w = (grid[r][c] == dir + 1) ? 0 : 1;
-                if (cost + w < dist[nr][nc]) {
+                let w = if grid[r][c] == dir as i32 + 1 { 0 } else { 1 };
+                if cost + w < dist[nr][nc] {
                     dist[nr][nc] = cost + w;
-                    if (w == 0) dq.push_front({nr, nc, cost});
-                    else        dq.push_back({nr, nc, cost + 1});
+                    if w == 0 { dq.push_front((nr, nc, cost)); }
+                    else       { dq.push_back((nr, nc, cost + 1)); }
                 }
             }
         }
-        return dist[rows - 1][cols - 1];
+        dist[rows - 1][cols - 1]
     }
-};
+}
 ```
 
 **Complexity:** Time `O(R·C)`, Space `O(R·C)`.
@@ -516,46 +528,47 @@ public:
 
 **Idea:** Unweighted shortest path over a **state graph** `(node, visitedMask)`. BFS layer by layer; the goal is any node whose mask equals all-ones (`(1<<n)-1`). Because `n <= 12`, the total state count `n · 2^n` is small.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-class Solution {
-public:
-    int shortestPathLength(vector<vector<int>>& graph) {
-        int n = graph.size();
-        if (n == 1) return 0;
-        int full = (1 << n) - 1;
+struct Solution;
 
-        vector<vector<bool>> visited(n, vector<bool>(1 << n, false));
-        deque<pair<int,int>> queue;   // {node, mask}
+impl Solution {
+    pub fn shortest_path_length(graph: Vec<Vec<i32>>) -> i32 {
+        let n = graph.len();
+        if n == 1 { return 0; }
+        let full = (1 << n) - 1;
+
+        let mut visited = vec![vec![false; 1 << n]; n];
+        let mut queue: VecDeque<(usize, usize)> = VecDeque::new();  // (node, mask)
 
         // can start from any node
-        for (int i = 0; i < n; i++) {
-            queue.push_back({i, 1 << i});
+        for i in 0..n {
+            queue.push_back((i, 1 << i));
             visited[i][1 << i] = true;
         }
 
-        int steps = 0;
-        while (!queue.empty()) {
-            int size = queue.size();
-            for (int s = 0; s < size; s++) {
-                auto [node, mask] = queue.front(); queue.pop_front();
-                if (mask == full) return steps;     // all nodes visited
+        let mut steps = 0i32;
+        while !queue.is_empty() {
+            let size = queue.len();
+            for _ in 0..size {
+                let (node, mask) = queue.pop_front().unwrap();
+                if mask == full { return steps; }  // all nodes visited
 
-                for (int next : graph[node]) {
-                    int nextMask = mask | (1 << next);
-                    if (!visited[next][nextMask]) {
-                        visited[next][nextMask] = true;
-                        queue.push_back({next, nextMask});
+                for &next in &graph[node] {
+                    let next = next as usize;
+                    let next_mask = mask | (1 << next);
+                    if !visited[next][next_mask] {
+                        visited[next][next_mask] = true;
+                        queue.push_back((next, next_mask));
                     }
                 }
             }
-            steps++;
+            steps += 1;
         }
-        return -1; // graph guaranteed connected, so unreachable
+        -1 // graph guaranteed connected, so unreachable
     }
-};
+}
 ```
 
 **Complexity:** Time `O(n² · 2ⁿ)`, Space `O(n · 2ⁿ)`.

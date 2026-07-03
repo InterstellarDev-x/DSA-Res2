@@ -72,25 +72,29 @@
 | **LeetCode** | [LC 410](https://leetcode.com/problems/split-array-largest-sum/) |
 | **Variants** | Book Allocation (GFG), Painter's Partition (GFG) — same solution |
 
-**C++ solution:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int splitArray(vector<int>& nums, int k) {
-    int lo = *max_element(nums.begin(), nums.end());
-    int hi = accumulate(nums.begin(), nums.end(), 0);
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        int parts = 1, cur = 0;
-        for (int n : nums) {
-            if (cur + n > mid) { parts++; cur = 0; }
+**Rust solution:**
+```rust
+fn split_array(nums: &[i32], k: i32) -> i32 {
+    let mut lo = *nums.iter().max().unwrap();
+    let mut hi: i32 = nums.iter().sum();
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        let mut parts = 1;
+        let mut cur = 0;
+        for &n in nums {
+            if cur + n > mid {
+                parts += 1;
+                cur = 0;
+            }
             cur += n;
         }
-        if (parts <= k) hi = mid;
-        else lo = mid + 1;
+        if parts <= k {
+            hi = mid;
+        } else {
+            lo = mid + 1;
+        }
     }
-    return lo;
+    lo
 }
 // Time: O(n log(sum)) | Space: O(1)
 ```

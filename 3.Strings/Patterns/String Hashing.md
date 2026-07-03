@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [C++ Templates](#c-templates)
+5. [Rust Templates](#rust-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Applications](#applications)
 8. [Practice Problems](#practice-problems)
@@ -73,130 +73,145 @@ hash(s[l..r]) = (prefix[r+1] - prefix[l] * B^(r-l+1)) mod M
 
 ---
 
-## C++ Templates
+## Rust Templates
 
 ### 1. Polynomial Prefix Hash (Build + Query)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 struct StringHasher {
-    static const long long BASE = 131;
-    static const long long MOD  = (long long)1e9 + 7;
+    prefix: Vec<i64>,
+    power: Vec<i64>,
+}
 
-    vector<long long> prefix;
-    vector<long long> power;
+impl StringHasher {
+    const BASE: i64 = 131;
+    const MOD: i64 = 1_000_000_007;
 
-    StringHasher(const string& s) {
-        int n = s.length();
-        prefix.resize(n + 1);
-        power.resize(n + 1);
+    fn new(s: &str) -> Self {
+        let n = s.len();
+        let bytes = s.as_bytes();
+        let mut prefix = vec![0i64; n + 1];
+        let mut power = vec![0i64; n + 1];
         power[0] = 1;
 
-        for (int i = 0; i < n; i++) {
-            prefix[i + 1] = (prefix[i] * BASE + s[i]) % MOD;
-            power[i + 1]  = power[i] * BASE % MOD;
+        for i in 0..n {
+            prefix[i + 1] = (prefix[i] * Self::BASE + bytes[i] as i64) % Self::MOD;
+            power[i + 1] = power[i] * Self::BASE % Self::MOD;
         }
+
+        StringHasher { prefix, power }
     }
 
     // Hash of s[l..r] inclusive, 0-indexed
-    long long hash(int l, int r) {
-        return (prefix[r + 1] - prefix[l] * power[r - l + 1] % MOD + MOD * MOD) % MOD;
+    fn hash_range(&self, l: usize, r: usize) -> i64 {
+        (self.prefix[r + 1] - self.prefix[l] * self.power[r - l + 1] % Self::MOD
+            + Self::MOD * Self::MOD)
+            % Self::MOD
     }
-};
+}
 // Build: O(n) | Query: O(1)
 ```
 
 ### 2. Rabin-Karp Pattern Search
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn rabin_karp(text: &str, pattern: &str) -> Vec<usize> {
+    let mut result = Vec::new();
+    let n = text.len();
+    let m = pattern.len();
+    if m > n {
+        return result;
+    }
 
-vector<int> rabinKarp(const string& text, const string& pattern) {
-    vector<int> result;
-    int n = text.length(), m = pattern.length();
-    if (m > n) return result;
+    let th = StringHasher::new(text);
+    let ph = StringHasher::new(pattern);
+    let pat_hash = ph.hash_range(0, m - 1);
+    let text_bytes = text.as_bytes();
+    let pat_bytes = pattern.as_bytes();
 
-    StringHasher th(text);
-    StringHasher ph(pattern);
-    long long patHash = ph.hash(0, m - 1);
-
-    for (int i = 0; i <= n - m; i++) {
-        if (th.hash(i, i + m - 1) == patHash) {
+    for i in 0..=(n - m) {
+        if th.hash_range(i, i + m - 1) == pat_hash {
             // Verify to handle hash collisions
-            if (text.substr(i, m) == pattern) result.push_back(i);
+            if &text_bytes[i..i + m] == pat_bytes {
+                result.push(i);
+            }
         }
     }
-    return result;
+    result
 }
 // Time: O(n + m) average | O(nm) worst (hash collisions)
 ```
 
 ### 3. Count Distinct Substrings
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-int countDistinctSubstrings(const string& s) {
-    int n = s.length();
-    unordered_set<long long> seen;
-    StringHasher hasher(s);
+fn count_distinct_substrings(s: &str) -> usize {
+    let n = s.len();
+    let mut seen: HashSet<i64> = HashSet::new();
+    let hasher = StringHasher::new(s);
 
-    for (int len = 1; len <= n; len++) {
-        for (int i = 0; i <= n - len; i++) {
-            seen.insert(hasher.hash(i, i + len - 1));
+    for len in 1..=n {
+        for i in 0..=(n - len) {
+            seen.insert(hasher.hash_range(i, i + len - 1));
         }
     }
-    return seen.size();
+    seen.len()
     // Time: O(n²) | Space: O(n²)
 }
 ```
 
 ### 4. Longest Repeated Substring (Binary Search + Hash)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-int findRepeated(StringHasher& h, const string& s, int n, int len) {
-    unordered_set<long long> seen;
-    for (int i = 0; i <= n - len; i++) {
-        long long hash = h.hash(i, i + len - 1);
-        if (!seen.insert(hash).second) return i - 1; // collision possible; accept for now
+fn find_repeated(h: &StringHasher, n: usize, len: usize) -> Option<usize> {
+    let mut seen: HashSet<i64> = HashSet::new();
+    for i in 0..=(n - len) {
+        let hash_val = h.hash_range(i, i + len - 1);
+        if !seen.insert(hash_val) {
+            return Some(i - 1); // collision possible; accept for now
+        }
     }
-    return -1;
+    None
 }
 
-string longestRepeatedSubstring(const string& s) {
-    int n = s.length();
-    StringHasher hasher(s);
-    int lo = 1, hi = n - 1, bestStart = -1, bestLen = 0;
+fn longest_repeated_substring(s: &str) -> String {
+    let n = s.len();
+    let hasher = StringHasher::new(s);
+    let mut lo = 1usize;
+    let mut hi = n - 1;
+    let mut best_start: Option<usize> = None;
+    let mut best_len = 0usize;
 
-    while (lo <= hi) {
-        int mid = lo + (hi - lo) / 2;
-        int start = findRepeated(hasher, s, n, mid);
-        if (start != -1) { bestStart = start; bestLen = mid; lo = mid + 1; }
-        else hi = mid - 1;
+    while lo <= hi {
+        let mid = lo + (hi - lo) / 2;
+        if let Some(start) = find_repeated(&hasher, n, mid) {
+            best_start = Some(start);
+            best_len = mid;
+            lo = mid + 1;
+        } else {
+            hi = mid - 1;
+        }
     }
-    return bestStart == -1 ? "" : s.substr(bestStart, bestLen);
+    match best_start {
+        None => String::new(),
+        Some(start) => s[start..start + best_len].to_string(),
+    }
 }
 // Time: O(n log n) | Space: O(n)
 ```
 
 ### 5. Double Hashing (Reduce Collision Probability)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Use two independent hash functions to reduce false positive probability
-pair<long long, long long> doubleHash(const string& s, int l, int r) {
-    long long h1 = hashWith(s, l, r, 131, (long long)1e9+7);
-    long long h2 = hashWith(s, l, r, 137, (long long)1e9+9);
-    return {h1, h2};
+fn double_hash(s: &str, l: usize, r: usize) -> (i64, i64) {
+    let h1 = hash_with(s, l, r, 131, 1_000_000_007);
+    let h2 = hash_with(s, l, r, 137, 1_000_000_009);
+    (h1, h2)
 }
 // Collision probability ≈ 1/(1e9+7) × 1/(1e9+9) ≈ 10^{-18}
 ```
@@ -208,11 +223,11 @@ pair<long long, long long> doubleHash(const string& s, int l, int r) {
 | Mistake | Fix |
 |---------|-----|
 | Negative hash values | Add `MOD` before taking `% MOD`: `(val % MOD + MOD) % MOD` |
-| Using `int` for hash values | Use `long long` — intermediate products overflow `int` |
+| Using `i32` for hash values | Use `i64` — intermediate products overflow `i32` |
 | Not verifying on hash match | Always do `==` check when hash matches (collision guard) |
 | Single hash with small MOD | Use double hashing or MOD ≈ 10^9+7 |
 | `power` array not initialized | `power[0] = 1` then `power[i+1] = power[i] * BASE % MOD` |
-| Substring bounds: `.substr(l, len)` vs `.substr(l, r)` | C++'s `.substr(pos, len)` takes position and length; use `.substr(l, r - l + 1)` for inclusive `r` |
+| Substring bounds: `&s[l..l+len]` vs `&s[l..r+1]` | Rust's `&s[l..r+1]` uses exclusive end; use `&s[l..=r]` or `&s[l..r+1]` for inclusive `r` |
 
 ---
 

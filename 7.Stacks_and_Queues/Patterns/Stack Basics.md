@@ -13,15 +13,13 @@ A stack is LIFO (Last-In-First-Out). It naturally handles:
 - **Path resolution**: directory traversal with `.` and `..`
 - **DFS state**: explicit stack instead of call stack
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-// Always use stack<> from STL
-stack<char> stk;
+```rust
+// Always use Vec<T> as a stack in Rust
+let mut stk: Vec<char> = Vec::new();
 stk.push(c);          // push to top
-stk.pop();            // remove from top
-stk.top();            // view top without removing
-stk.empty();          // check empty
+stk.pop();            // remove from top (returns Option<char>)
+stk.last();           // view top without removing (returns Option<&char>)
+stk.is_empty();       // check empty
 ```
 
 ---
@@ -30,23 +28,22 @@ stk.empty();          // check empty
 
 **Template:**
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-unordered_map<char, char> map = {{')', '('}, {']', '['}, {'}', '{'}};
-stack<char> stk;
-for (auto& c : s) {
-    if (!map.count(c)) {              // opening bracket
+```rust
+use std::collections::HashMap;
+let map: HashMap<char, char> = [(')', '('), (']', '['), ('}', '{')].iter().cloned().collect();
+let mut stk: Vec<char> = Vec::new();
+for c in s.chars() {
+    if !map.contains_key(&c) {              // opening bracket
         stk.push(c);
-    } else {                          // closing bracket
-        if (stk.empty() || stk.top() != map[c]) return false;
+    } else {                               // closing bracket
+        if stk.is_empty() || stk.last() != Some(&map[&c]) { return false; }
         stk.pop();
     }
 }
-return stk.empty();
+stk.is_empty()
 ```
 
-**Why `stk.empty()` at end?** Unclosed `((` would leave items in stack — must be empty for valid.
+**Why `stk.is_empty()` at end?** Unclosed `((` would leave items in stack — must be empty for valid.
 
 ---
 
@@ -54,23 +51,21 @@ return stk.empty();
 
 **Input:** `s = "()[]{}"` → `true`; `s = "([)]"` → `false`
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-bool isValid(string s) {
-    stack<char> stk;
-    for (auto& c : s) {
-        if (c == '(' || c == '[' || c == '{') {
+```rust
+fn is_valid(s: String) -> bool {
+    let mut stk: Vec<char> = Vec::new();
+    for c in s.chars() {
+        if c == '(' || c == '[' || c == '{' {
             stk.push(c);
         } else {
-            if (stk.empty()) return false;
-            char top = stk.top(); stk.pop();
-            if (c == ')' && top != '(') return false;
-            if (c == ']' && top != '[') return false;
-            if (c == '}' && top != '{') return false;
+            if stk.is_empty() { return false; }
+            let top = stk.pop().unwrap();
+            if c == ')' && top != '(' { return false; }
+            if c == ']' && top != '[' { return false; }
+            if c == '}' && top != '{' { return false; }
         }
     }
-    return stk.empty();
+    stk.is_empty()
 }
 ```
 
@@ -90,52 +85,51 @@ bool isValid(string s) {
 
 ### Approach 1: Stack Simulation — O(n) time, O(n) space
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-string process(string s) {
-    stack<char> stk;
-    for (auto& c : s) {
-        if (c != '#') {
+```rust
+fn process(s: &str) -> String {
+    let mut stk: Vec<char> = Vec::new();
+    for c in s.chars() {
+        if c != '#' {
             stk.push(c);
-        } else if (!stk.empty()) {
+        } else if !stk.is_empty() {
             stk.pop();
         }
     }
-    string result = "";
-    while (!stk.empty()) { result += stk.top(); stk.pop(); }
-    return result;
+    stk.iter().collect()
 }
 
-bool backspaceCompare(string s, string t) {
-    return process(s) == process(t);
+fn backspace_compare(s: String, t: String) -> bool {
+    process(&s) == process(&t)
 }
 ```
 
 ### Approach 2: Two Pointers from End — O(n) time, O(1) space
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-bool backspaceCompare(string s, string t) {
-    int i = s.length() - 1, j = t.length() - 1;
-    int skipS = 0, skipT = 0;
-    while (i >= 0 || j >= 0) {
-        while (i >= 0) {
-            if (s[i] == '#') { skipS++; i--; }
-            else if (skipS > 0) { skipS--; i--; }
-            else break;
+```rust
+fn backspace_compare(s: String, t: String) -> bool {
+    let s: Vec<char> = s.chars().collect();
+    let t: Vec<char> = t.chars().collect();
+    let mut i = s.len() as i32 - 1;
+    let mut j = t.len() as i32 - 1;
+    let mut skip_s = 0i32;
+    let mut skip_t = 0i32;
+    while i >= 0 || j >= 0 {
+        while i >= 0 {
+            if s[i as usize] == '#' { skip_s += 1; i -= 1; }
+            else if skip_s > 0 { skip_s -= 1; i -= 1; }
+            else { break; }
         }
-        while (j >= 0) {
-            if (t[j] == '#') { skipT++; j--; }
-            else if (skipT > 0) { skipT--; j--; }
-            else break;
+        while j >= 0 {
+            if t[j as usize] == '#' { skip_t += 1; j -= 1; }
+            else if skip_t > 0 { skip_t -= 1; j -= 1; }
+            else { break; }
         }
-        if (i >= 0 && j >= 0 && s[i] != t[j]) return false;
-        if ((i >= 0) != (j >= 0)) return false;
-        i--; j--;
+        if i >= 0 && j >= 0 && s[i as usize] != t[j as usize] { return false; }
+        if (i >= 0) != (j >= 0) { return false; }
+        i -= 1;
+        j -= 1;
     }
-    return true;
+    true
 }
 ```
 
@@ -148,22 +142,20 @@ bool backspaceCompare(string s, string t) {
 **Input:** `"(()())(())"` → `"()()()"`
 **Rule:** Decompose into primitive parenthesizations (balanced, no proper prefix is balanced). Remove outer layer of each.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-string removeOuterParentheses(string s) {
-    string result = "";
-    int depth = 0;
-    for (auto& c : s) {
-        if (c == '(') {
-            if (depth > 0) result += c;   // append inner (not outermost opening)
-            depth++;
+```rust
+fn remove_outer_parentheses(s: String) -> String {
+    let mut result = String::new();
+    let mut depth = 0;
+    for c in s.chars() {
+        if c == '(' {
+            if depth > 0 { result.push(c); }  // append inner (not outermost opening)
+            depth += 1;
         } else {
-            depth--;
-            if (depth > 0) result += c;   // append inner (not outermost closing)
+            depth -= 1;
+            if depth > 0 { result.push(c); }  // append inner (not outermost closing)
         }
     }
-    return result;
+    result
 }
 ```
 
@@ -183,45 +175,40 @@ Rules:
 - `""` = multiple slashes — ignore
 - Anything else = valid directory name — push
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-string simplifyPath(string path) {
-    stack<string> stk;
-    stringstream ss(path);
-    string part;
-    while (getline(ss, part, '/')) {
-        if (part == "..") {
-            if (!stk.empty()) stk.pop();
-        } else if (!part.empty() && part != ".") {
-            stk.push(part);
+```rust
+fn simplify_path(path: String) -> String {
+    let mut stk: Vec<String> = Vec::new();
+    for part in path.split('/') {
+        if part == ".." {
+            if !stk.is_empty() { stk.pop(); }
+        } else if !part.is_empty() && part != "." {
+            stk.push(part.to_string());
         }
     }
-    string result = "";
-    // stack has most recent on top — need to reverse
-    stack<string> reversed;
-    while (!stk.empty()) { reversed.push(stk.top()); stk.pop(); }
-    while (!reversed.empty()) { result += "/" + reversed.top(); reversed.pop(); }
-    return result.empty() ? "/" : result;
+    let mut result = String::new();
+    // Vec has most recent at end — reverse into another Vec for correct order
+    let mut reversed: Vec<String> = Vec::new();
+    while let Some(top) = stk.pop() { reversed.push(top); }
+    while let Some(top) = reversed.pop() {
+        result.push('/');
+        result.push_str(&top);
+    }
+    if result.is_empty() { "/".to_string() } else { result }
 }
 ```
 
-**Alternative: Use `std::vector<string>` as stack with `push_back`/`pop_back` — iterate directly for correct order.**
+**Alternative: Use `Vec<String>` as stack with `push`/`pop` — iterate directly for correct order.**
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-string simplifyPath(string path) {
-    vector<string> stk;
-    stringstream ss(path);
-    string part;
-    while (getline(ss, part, '/')) {
-        if (part == "..") { if (!stk.empty()) stk.pop_back(); }
-        else if (!part.empty() && part != ".") stk.push_back(part);
+```rust
+fn simplify_path(path: String) -> String {
+    let mut stk: Vec<String> = Vec::new();
+    for part in path.split('/') {
+        if part == ".." { if !stk.is_empty() { stk.pop(); } }
+        else if !part.is_empty() && part != "." { stk.push(part.to_string()); }
     }
-    string result = "";
-    for (auto& s : stk) result += "/" + s;
-    return result.empty() ? "/" : result;
+    let mut result = String::new();
+    for s in &stk { result.push('/'); result.push_str(s); }
+    if result.is_empty() { "/".to_string() } else { result }
 }
 ```
 
@@ -244,7 +231,7 @@ string simplifyPath(string path) {
 ## Common Follow-ups
 
 **Q: Can Valid Parentheses handle multiple types of brackets?**
-A: Yes — the `std::unordered_map` approach handles `N` types without code changes.
+A: Yes — the `HashMap` approach handles `N` types without code changes.
 
 **Q: Backspace Compare with O(1) space?**
 A: Two-pointer from right (shown above) — skip characters using counters.

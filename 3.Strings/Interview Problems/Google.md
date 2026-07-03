@@ -28,27 +28,32 @@
 | **Skill** | Expand around center (O(n)) vs DP (O(n²) space) |
 | **LeetCode** | [LC 5](https://leetcode.com/problems/longest-palindromic-substring/) |
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int expand(const string& s, int l, int r) {
-    while (l >= 0 && r < (int)s.length() && s[l] == s[r]) { l--; r++; }
-    return r - l - 1; // length of palindrome
+```rust
+fn expand(s: &[u8], l: i32, r: i32) -> i32 {
+    let mut l = l;
+    let mut r = r;
+    while l >= 0 && r < s.len() as i32 && s[l as usize] == s[r as usize] {
+        l -= 1;
+        r += 1;
+    }
+    r - l - 1 // length of palindrome
 }
 
-string longestPalindrome(string s) {
-    int start = 0, maxLen = 1;
-    for (int i = 0; i < (int)s.length(); i++) {
-        int odd  = expand(s, i, i);     // odd-length
-        int even = expand(s, i, i + 1); // even-length
-        int len  = max(odd, even);
-        if (len > maxLen) {
-            maxLen = len;
-            start = i - (len - 1) / 2;
+fn longest_palindrome(s: String) -> String {
+    let bytes = s.as_bytes();
+    let n = s.len() as i32;
+    let mut start = 0usize;
+    let mut max_len = 1i32;
+    for i in 0..n {
+        let odd  = expand(bytes, i, i);      // odd-length
+        let even = expand(bytes, i, i + 1);  // even-length
+        let len  = odd.max(even);
+        if len > max_len {
+            max_len = len;
+            start = (i - (len - 1) / 2) as usize;
         }
     }
-    return s.substr(start, maxLen);
+    s[start..start + max_len as usize].to_string()
 }
 // Time: O(n) | Space: O(1)
 ```

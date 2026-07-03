@@ -17,8 +17,8 @@ hash(s) = (s[0]·B^(m-1) + s[1]·B^(m-2) + ... + s[m-1]·B^0) mod MOD
 ```
 
 - **Base `B`:** any value larger than the alphabet works. `31` is the canonical small base for lowercase strings; `256` treats each byte as a digit. Both are fine — pick one and stay consistent.
-- **Modulus `MOD`:** a large prime, `1_000_000_007L`. A prime modulus spreads hashes uniformly and keeps the probability of a random collision near `1/MOD`.
-- **`long long` everywhere:** `B·hash` can reach `31 · 10^9 ≈ 3.1·10^10`, which overflows a 32-bit `int`. Use `long long` and reduce mod `MOD` after every multiply.
+- **Modulus `MOD`:** a large prime, `1_000_000_007`. A prime modulus spreads hashes uniformly and keeps the probability of a random collision near `1/MOD`.
+- **`i64` everywhere:** `B·hash` can reach `31 · 10^9 ≈ 3.1·10^10`, which overflows a 32-bit `i32`. Use `i64` and reduce mod `MOD` after every multiply.
 
 ---
 
@@ -36,7 +36,7 @@ newHash = ( (oldHash - s[i]·B^(m-1)) · B + s[i+m] ) mod MOD
 
 Because subtraction can produce a **negative** value under modular arithmetic, always normalize:
 
-```cpp
+```rust
 hash = ((hash % MOD) + MOD) % MOD;
 ```
 
@@ -44,59 +44,58 @@ hash = ((hash % MOD) + MOD) % MOD;
 
 ## 3. Full Rabin-Karp — Single Hash
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct RabinKarp;
 
-class RabinKarp {
+impl RabinKarp {
+    const MOD: i64 = 1_000_000_007;
+    const BASE: i64 = 256; // each char treated as a base-256 digit
 
-    static const long long MOD = 1000000007LL;
-    static const long long BASE = 256LL; // each char treated as a base-256 digit
+    // Returns the first index where pattern occurs in text, or None.
+    fn search(text: &str, pattern: &str) -> Option<usize> {
+        let text = text.as_bytes();
+        let pattern = pattern.as_bytes();
+        let n = text.len();
+        let m = pattern.len();
+        if m == 0 { return Some(0); }
+        if m > n { return None; }
 
-public:
-    // Returns the first index where pattern occurs in text, or -1.
-    int search(string text, string pattern) {
-        int n = text.length(), m = pattern.length();
-        if (m == 0) return 0;
-        if (m > n) return -1;
-
-        // highPow = BASE^(m-1) mod MOD  -> weight of the leftmost character.
-        long long highPow = 1LL;
-        for (int i = 0; i < m - 1; i++) {
-            highPow = (highPow * BASE) % MOD;
+        // high_pow = BASE^(m-1) mod MOD  -> weight of the leftmost character.
+        let mut high_pow: i64 = 1;
+        for _ in 0..m - 1 {
+            high_pow = (high_pow * Self::BASE) % Self::MOD;
         }
 
-        long long patternHash = 0LL;
-        long long windowHash = 0LL;
-        for (int i = 0; i < m; i++) {
-            patternHash = (patternHash * BASE + pattern[i]) % MOD;
-            windowHash = (windowHash * BASE + text[i]) % MOD;
+        let mut pattern_hash: i64 = 0;
+        let mut window_hash: i64 = 0;
+        for i in 0..m {
+            pattern_hash = (pattern_hash * Self::BASE + pattern[i] as i64) % Self::MOD;
+            window_hash = (window_hash * Self::BASE + text[i] as i64) % Self::MOD;
         }
 
-        for (int i = 0; i + m <= n; i++) {
+        for i in 0..=(n - m) {
             // Hash match -> verify the actual characters (guard against spurious hits).
-            if (windowHash == patternHash && matches(text, i, pattern)) {
-                return i;
+            if window_hash == pattern_hash && Self::matches(text, i, pattern) {
+                return Some(i);
             }
             // Roll the window forward by one, unless we are at the last position.
-            if (i + m < n) {
-                long long leaving = (text[i] * highPow) % MOD;
-                windowHash = ((windowHash - leaving) % MOD + MOD) % MOD; // negative-safe
-                windowHash = (windowHash * BASE + text[i + m]) % MOD;
+            if i + m < n {
+                let leaving = (text[i] as i64 * high_pow) % Self::MOD;
+                window_hash = ((window_hash - leaving) % Self::MOD + Self::MOD) % Self::MOD; // negative-safe
+                window_hash = (window_hash * Self::BASE + text[i + m] as i64) % Self::MOD;
             }
         }
-        return -1;
+        None
     }
 
-private:
     // Character-by-character verification; only called when hashes collide.
-    bool matches(string& text, int start, string& pattern) {
-        for (int k = 0; k < (int)pattern.length(); k++) {
-            if (text[start + k] != pattern[k]) return false;
+    fn matches(text: &[u8], start: usize, pattern: &[u8]) -> bool {
+        for k in 0..pattern.len() {
+            if text[start + k] != pattern[k] { return false; }
         }
-        return true;
+        true
     }
-};
+}
 ```
 
 **Why `matches`?** Two distinct substrings can share a hash (a **spurious hit** / collision). A hash match is *necessary* but not *sufficient* — never return on a hash match alone. The verification keeps Rabin-Karp **correct**; it stays O(n+m) on average because collisions are rare.
@@ -115,50 +114,51 @@ But adversarial inputs (or anti-hash test cases on Codeforces, and occasionally 
 
 Maintain two independent hashes with different `(BASE, MOD)` pairs and treat two substrings as equal only when **both** match. The effective collision probability becomes roughly `1/(MOD1·MOD2) ≈ 10^-18`, small enough to skip character verification in many competitive settings (though verifying is still safest in interviews).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct DoubleHash {
+    h1: Vec<i64>, // prefix hashes
+    h2: Vec<i64>,
+    p1: Vec<i64>, // base powers
+    p2: Vec<i64>,
+    n: usize,
+}
 
-class DoubleHash {
+impl DoubleHash {
+    const MOD1: i64 = 1_000_000_007;
+    const MOD2: i64 = 998_244_353;
+    const BASE1: i64 = 131;
+    const BASE2: i64 = 137;
 
-    static const long long MOD1 = 1000000007LL;
-    static const long long MOD2 = 998244353LL;
-    static const long long BASE1 = 131LL;
-    static const long long BASE2 = 137LL;
-
-    vector<long long> h1, h2;   // prefix hashes
-    vector<long long> p1, p2;   // base powers
-    int n;
-
-public:
-    DoubleHash(string s) {
-        n = s.length();
-        h1.resize(n + 1);
-        h2.resize(n + 1);
-        p1.resize(n + 1);
-        p2.resize(n + 1);
-        p1[0] = 1LL;
-        p2[0] = 1LL;
-        for (int i = 0; i < n; i++) {
-            h1[i + 1] = (h1[i] * BASE1 + s[i]) % MOD1;
-            h2[i + 1] = (h2[i] * BASE2 + s[i]) % MOD2;
-            p1[i + 1] = (p1[i] * BASE1) % MOD1;
-            p2[i + 1] = (p2[i] * BASE2) % MOD2;
+    fn new(s: &str) -> Self {
+        let s = s.as_bytes();
+        let n = s.len();
+        let mut h1 = vec![0i64; n + 1];
+        let mut h2 = vec![0i64; n + 1];
+        let mut p1 = vec![0i64; n + 1];
+        let mut p2 = vec![0i64; n + 1];
+        p1[0] = 1;
+        p2[0] = 1;
+        for i in 0..n {
+            h1[i + 1] = (h1[i] * Self::BASE1 + s[i] as i64) % Self::MOD1;
+            h2[i + 1] = (h2[i] * Self::BASE2 + s[i] as i64) % Self::MOD2;
+            p1[i + 1] = (p1[i] * Self::BASE1) % Self::MOD1;
+            p2[i + 1] = (p2[i] * Self::BASE2) % Self::MOD2;
         }
+        DoubleHash { h1, h2, p1, p2, n }
     }
 
     // Packed hash of substring s[l..r) (half-open), 0 <= l <= r <= n.
-    long long hash(int l, int r) {
-        long long a = ((h1[r] - h1[l] * p1[r - l]) % MOD1 + MOD1) % MOD1;
-        long long b = ((h2[r] - h2[l] * p2[r - l]) % MOD2 + MOD2) % MOD2;
-        return a * MOD2 + b; // pack two 32-bit-ish values into one comparable long long
+    fn hash(&self, l: usize, r: usize) -> i64 {
+        let a = ((self.h1[r] - self.h1[l] * self.p1[r - l]) % Self::MOD1 + Self::MOD1) % Self::MOD1;
+        let b = ((self.h2[r] - self.h2[l] * self.p2[r - l]) % Self::MOD2 + Self::MOD2) % Self::MOD2;
+        a * Self::MOD2 + b // pack two 32-bit-ish values into one comparable i64
     }
 
     // True if s[l1..l1+len) equals s[l2..l2+len).
-    bool equal(int l1, int l2, int len) {
-        return hash(l1, l1 + len) == hash(l2, l2 + len);
+    fn equal(&self, l1: usize, l2: usize, len: usize) -> bool {
+        self.hash(l1, l1 + len) == self.hash(l2, l2 + len)
     }
-};
+}
 ```
 
 The **prefix-hash** form above (`h[r] - h[l]·B^(r-l)`) is the most reusable shape: build once in O(n), then query the hash of *any* substring in O(1). This is exactly what Longest Duplicate Substring needs.
@@ -181,23 +181,25 @@ The O(nm) worst case is the reason double hashing matters: it makes adversarial 
 ## 7. Follow-ups
 
 ### Substring deduplication ("count distinct substrings of length k")
-Slide a window of length `k`, push each window's hash into an `unordered_set<long long>`, and the set size is the count of distinct length-`k` substrings. Use double hashing to avoid counting two different substrings as one. This generalizes to Distinct Echo Substrings (LC 1316), where you hash both halves and require them equal.
+Slide a window of length `k`, push each window's hash into a `HashSet<i64>`, and the set size is the count of distinct length-`k` substrings. Use double hashing to avoid counting two different substrings as one. This generalizes to Distinct Echo Substrings (LC 1316), where you hash both halves and require them equal.
 
-```cpp
-int distinctSubstringsOfLength(string s, int k) {
-    int n = s.length();
-    if (k > n) return 0;
-    DoubleHash dh(s);
-    unordered_set<long long> seen;
-    for (int i = 0; i + k <= n; i++) {
+```rust
+use std::collections::HashSet;
+
+fn distinct_substrings_of_length(s: &str, k: usize) -> usize {
+    let n = s.len();
+    if k > n { return 0; }
+    let dh = DoubleHash::new(s);
+    let mut seen: HashSet<i64> = HashSet::new();
+    for i in 0..=(n - k) {
         seen.insert(dh.hash(i, i + k));
     }
-    return seen.size();
+    seen.len()
 }
 ```
 
 ### Longest Duplicate Substring (LC 1044) — binary search on length + Rabin-Karp
-The answer length is **monotone**: if a duplicate of length `L` exists, one of length `L-1` exists too. Binary search `L` in `[1, n-1]`; for each `L`, hash every length-`L` window and check an `unordered_set` for a repeat in O(n). Total O(n log n). Double hashing is essential here because LeetCode's hard cases probe single-hash collisions.
+The answer length is **monotone**: if a duplicate of length `L` exists, one of length `L-1` exists too. Binary search `L` in `[1, n-1]`; for each `L`, hash every length-`L` window and check a `HashSet` for a repeat in O(n). Total O(n log n). Double hashing is essential here because LeetCode's hard cases probe single-hash collisions.
 
 ### Plagiarism / fingerprinting framing
 Break each document into overlapping `k`-grams, hash each with a rolling hash, and compare the resulting sets of fingerprints (Jaccard similarity). Winnowing selects a deterministic subset of fingerprints so two documents that share a passage share fingerprints regardless of alignment — the production form of "compare many substrings fast."

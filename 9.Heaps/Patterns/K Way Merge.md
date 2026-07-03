@@ -21,38 +21,59 @@ Each element enters and exits the heap at most once → **O(n log k)** total, wh
 
 ## Problem 1: Merge K Sorted Lists — LC 23
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
-struct ListNode { int val; ListNode* next; ListNode(int x): val(x), next(nullptr){} };
+#[derive(Debug)]
+pub struct ListNode {
+    pub val: i32,
+    pub next: Option<Box<ListNode>>,
+}
 
-ListNode* mergeKLists(vector<ListNode*>& lists) {
-    // Heap stores nodes; compare by val
-    auto cmp = [](ListNode* a, ListNode* b) { return a->val > b->val; };
-    priority_queue<ListNode*, vector<ListNode*>, decltype(cmp)> heap(cmp);
+impl ListNode {
+    pub fn new(val: i32) -> Self {
+        ListNode { val, next: None }
+    }
+}
+
+fn merge_k_lists(mut lists: Vec<Option<Box<ListNode>>>) -> Option<Box<ListNode>> {
+    // Min-heap: (value, list_index)
+    let mut heap: BinaryHeap<Reverse<(i32, usize)>> = BinaryHeap::new();
 
     // Initialize: push head of each non-empty list
-    for (auto node : lists) {
-        if (node != nullptr) heap.push(node);
+    for (i, list) in lists.iter().enumerate() {
+        if let Some(node) = list {
+            heap.push(Reverse((node.val, i)));
+        }
     }
 
-    ListNode* dummy = new ListNode(0), *tail = dummy;
+    let mut sorted_vals: Vec<i32> = Vec::new();
 
-    while (!heap.empty()) {
-        ListNode* node = heap.top(); heap.pop();
-        tail->next = node;
-        tail = tail->next;
-        if (node->next != nullptr) heap.push(node->next);
+    while let Some(Reverse((val, idx))) = heap.pop() {
+        sorted_vals.push(val);
+        // Advance the list head to next node
+        let next = lists[idx].take().and_then(|node| node.next);
+        lists[idx] = next;
+        if let Some(next_node) = &lists[idx] {
+            heap.push(Reverse((next_node.val, idx)));
+        }
     }
 
-    return dummy->next;
+    // Rebuild linked list from sorted values
+    let mut head: Option<Box<ListNode>> = None;
+    for &v in sorted_vals.iter().rev() {
+        let mut node = Box::new(ListNode::new(v));
+        node.next = head;
+        head = Some(node);
+    }
+    head
 }
 ```
 
 **Complexity:** O(n log k) time, O(k) space (heap holds at most one node per list)
 
-**Why comparator on `n->val` not subtraction?** Node values could be `INT_MIN` / `INT_MAX` — subtraction overflows. Use a lambda `[](ListNode* a, ListNode* b){ return a->val > b->val; }` or explicit compare.
+**Why compare on `node.val` not subtraction?** Node values could be `i32::MIN` / `i32::MAX` — subtraction overflows. In Rust, use `Reverse((node.val, idx))` in the heap entry to get min-heap behavior without a custom comparator.
 
 ---
 
@@ -60,29 +81,32 @@ ListNode* mergeKLists(vector<ListNode*>& lists) {
 
 Each element is at most k positions away from its correct position.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
-vector<int> sortKSortedArray(vector<int>& arr, int k) {
-    priority_queue<int, vector<int>, greater<int>> minHeap;
-    vector<int> result(arr.size());
-    int idx = 0;
+fn sort_k_sorted_array(arr: &[i32], k: usize) -> Vec<i32> {
+    let mut min_heap: BinaryHeap<Reverse<i32>> = BinaryHeap::new();
+    let mut result = Vec::with_capacity(arr.len());
 
     // Add first k+1 elements to the heap
-    for (int i = 0; i < min(k + 1, (int)arr.size()); i++) {
-        minHeap.push(arr[i]);
+    for &x in arr.iter().take(k + 1) {
+        min_heap.push(Reverse(x));
     }
 
     // Slide window: for each new element, extract minimum
-    for (int i = k + 1; i < (int)arr.size(); i++) {
-        result[idx++] = minHeap.top(); minHeap.pop();
-        minHeap.push(arr[i]);
+    for &x in arr.iter().skip(k + 1) {
+        if let Some(Reverse(min)) = min_heap.pop() {
+            result.push(min);
+        }
+        min_heap.push(Reverse(x));
     }
 
     // Drain the heap
-    while (!minHeap.empty()) { result[idx++] = minHeap.top(); minHeap.pop(); }
-    return result;
+    while let Some(Reverse(min)) = min_heap.pop() {
+        result.push(min);
+    }
+    result
 }
 ```
 
@@ -96,32 +120,34 @@ vector<int> sortKSortedArray(vector<int>& arr, int k) {
 
 Given sorted arrays `nums1`, `nums2`, find k pairs `(nums1[i], nums2[j])` with smallest sums.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
-vector<vector<int>> kSmallestPairs(vector<int>& nums1, vector<int>& nums2, int k) {
-    vector<vector<int>> result;
-    if (nums1.empty() || nums2.empty()) return result;
-
-    // Min-heap: [sum, i, j] — initially push (nums1[i], nums2[0]) for all i
-    auto cmp = [](vector<int>& a, vector<int>& b) { return a[0] > b[0]; };
-    priority_queue<vector<int>, vector<vector<int>>, decltype(cmp)> heap(cmp);
-
-    // Key optimization: only push first min(k, nums1.size()) pairs initially
-    for (int i = 0; i < min(k, (int)nums1.size()); i++) {
-        heap.push({nums1[i] + nums2[0], i, 0});
+fn k_smallest_pairs(nums1: &[i32], nums2: &[i32], k: usize) -> Vec<Vec<i32>> {
+    let mut result: Vec<Vec<i32>> = Vec::new();
+    if nums1.is_empty() || nums2.is_empty() {
+        return result;
     }
 
-    while (!heap.empty() && (int)result.size() < k) {
-        auto curr = heap.top(); heap.pop();
-        int i = curr[1], j = curr[2];
-        result.push_back({nums1[i], nums2[j]});
-        if (j + 1 < (int)nums2.size()) {
-            heap.push({nums1[i] + nums2[j + 1], i, j + 1});
+    // Min-heap: (sum, i, j) — initially push (nums1[i], nums2[0]) for all i
+    let mut heap: BinaryHeap<Reverse<(i32, usize, usize)>> = BinaryHeap::new();
+
+    // Key optimization: only push first min(k, nums1.len()) pairs initially
+    for i in 0..nums1.len().min(k) {
+        heap.push(Reverse((nums1[i] + nums2[0], i, 0)));
+    }
+
+    while let Some(Reverse((_, i, j))) = heap.pop() {
+        result.push(vec![nums1[i], nums2[j]]);
+        if result.len() == k {
+            break;
+        }
+        if j + 1 < nums2.len() {
+            heap.push(Reverse((nums1[i] + nums2[j + 1], i, j + 1)));
         }
     }
-    return result;
+    result
 }
 ```
 
@@ -135,29 +161,30 @@ vector<vector<int>> kSmallestPairs(vector<int>& nums1, vector<int>& nums2, int k
 
 Matrix where each row and column is sorted.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
-int kthSmallest(vector<vector<int>>& matrix, int k) {
-    int n = matrix.size();
-    // Min-heap: [value, row, col]
-    auto cmp = [](vector<int>& a, vector<int>& b) { return a[0] > b[0]; };
-    priority_queue<vector<int>, vector<vector<int>>, decltype(cmp)> heap(cmp);
+fn kth_smallest(matrix: &[Vec<i32>], k: usize) -> i32 {
+    let n = matrix.len();
+    // Min-heap: (value, row, col)
+    let mut heap: BinaryHeap<Reverse<(i32, usize, usize)>> = BinaryHeap::new();
 
     // Push first element of each row (first column)
-    for (int r = 0; r < min(n, k); r++) {
-        heap.push({matrix[r][0], r, 0});
+    for r in 0..n.min(k) {
+        heap.push(Reverse((matrix[r][0], r, 0)));
     }
 
-    int result = 0;
-    for (int i = 0; i < k; i++) {
-        auto curr = heap.top(); heap.pop();
-        result = curr[0];
-        int r = curr[1], c = curr[2];
-        if (c + 1 < n) heap.push({matrix[r][c + 1], r, c + 1});
+    let mut result = 0;
+    for _ in 0..k {
+        if let Some(Reverse((val, r, c))) = heap.pop() {
+            result = val;
+            if c + 1 < n {
+                heap.push(Reverse((matrix[r][c + 1], r, c + 1)));
+            }
+        }
     }
-    return result;
+    result
 }
 ```
 
@@ -172,44 +199,46 @@ Binary search on the answer value; for each mid, count elements ≤ mid using th
 
 Find the smallest range `[a, b]` such that each of the k lists has at least one element in `[a, b]`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
-vector<int> smallestRange(vector<vector<int>>& nums) {
-    // Min-heap: [value, list-index, element-index]
-    auto cmp = [](vector<int>& a, vector<int>& b) { return a[0] > b[0]; };
-    priority_queue<vector<int>, vector<vector<int>>, decltype(cmp)> heap(cmp);
-    int maxVal = INT_MIN;
+fn smallest_range(nums: &[Vec<i32>]) -> Vec<i32> {
+    // Min-heap: (value, list_index, element_index)
+    let mut heap: BinaryHeap<Reverse<(i32, usize, usize)>> = BinaryHeap::new();
+    let mut max_val = i32::MIN;
 
     // Push first element from each list
-    for (int i = 0; i < (int)nums.size(); i++) {
-        heap.push({nums[i][0], i, 0});
-        maxVal = max(maxVal, nums[i][0]);
+    for (i, list) in nums.iter().enumerate() {
+        heap.push(Reverse((list[0], i, 0)));
+        max_val = max_val.max(list[0]);
     }
 
-    vector<int> result = {heap.top()[0], maxVal};
+    let mut range_min = heap.peek().unwrap().0.0;
+    let mut result = vec![range_min, max_val];
 
-    while (true) {
-        auto curr = heap.top(); heap.pop();
-        int val = curr[0], listIdx = curr[1], elemIdx = curr[2];
+    loop {
+        let Reverse((_, list_idx, elem_idx)) = heap.pop().unwrap();
 
-        if (elemIdx + 1 == (int)nums[listIdx].size()) break;  // exhausted a list
+        if elem_idx + 1 == nums[list_idx].len() {
+            break; // exhausted a list
+        }
 
-        int nextVal = nums[listIdx][elemIdx + 1];
-        heap.push({nextVal, listIdx, elemIdx + 1});
-        maxVal = max(maxVal, nextVal);
+        let next_val = nums[list_idx][elem_idx + 1];
+        heap.push(Reverse((next_val, list_idx, elem_idx + 1)));
+        max_val = max_val.max(next_val);
 
-        int minVal = heap.top()[0];
-        if (maxVal - minVal < result[1] - result[0]) {
-            result[0] = minVal; result[1] = maxVal;
+        range_min = heap.peek().unwrap().0.0;
+        if max_val - range_min < result[1] - result[0] {
+            result[0] = range_min;
+            result[1] = max_val;
         }
     }
-    return result;
+    result
 }
 ```
 
-**Invariant:** At all times, the heap contains exactly one element from each list. The range is `[heap.top(), maxVal]`. We minimize this range by advancing the minimum (popping heap root and pushing next from same list). We track `maxVal` separately as it can only increase.
+**Invariant:** At all times, the heap contains exactly one element from each list. The range is `[heap.peek(), max_val]`. We minimize this range by advancing the minimum (popping heap root and pushing next from same list). We track `max_val` separately as it can only increase.
 
 **Why stop when a list is exhausted?** We need one element from each list. If any list has no more elements, the current minimum cannot be replaced — the range can only get worse.
 
@@ -219,11 +248,11 @@ vector<int> smallestRange(vector<vector<int>>& nums) {
 
 | Problem | Heap Entry | Compare By |
 |---------|-----------|------------|
-| Merge K Sorted Lists | `ListNode*` | `node->val` |
-| K Pairs Smallest Sums | `[sum, i, j]` | `sum` |
-| Kth Smallest in Matrix | `[val, row, col]` | `val` |
-| Smallest Range | `[val, listIdx, elemIdx]` | `val` |
-| Sort K-Sorted | `int` | natural order |
+| Merge K Sorted Lists | `ListNode` | `node.val` |
+| K Pairs Smallest Sums | `(sum, i, j)` | `sum` |
+| Kth Smallest in Matrix | `(val, row, col)` | `val` |
+| Smallest Range | `(val, list_idx, elem_idx)` | `val` |
+| Sort K-Sorted | `i32` | natural order |
 
 ---
 

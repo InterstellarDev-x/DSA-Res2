@@ -13,7 +13,7 @@ The five problems below progress from the classic LIS, through reconstruction, i
 | 37 | Longest Increasing Subsequence | LC 300 | `O(n^2)` DP **and** `O(n log n)` tails array |
 | 38 | Print LIS | GFG | Parent pointers to reconstruct the sequence |
 | 39 | Largest Divisible Subset | LC 368 | Predicate becomes `nums[i] % nums[j] == 0` |
-| 40 | Longest String Chain | LC 1048 | Predicate is "is a predecessor word"; DP over an `std::unordered_map` |
+| 40 | Longest String Chain | LC 1048 | Predicate is "is a predecessor word"; DP over a `HashMap` |
 | 41 | Number of LIS | LC 673 | Add a `count[]` array alongside `length[]` |
 
 Sibling patterns: [Partition DP (MCM)](./Partition%20DP%20(MCM).md) · [DP on Subsequences](./DP%20on%20Subsequences.md)
@@ -64,30 +64,28 @@ That is the entire insight. Now let's apply it.
 
 **Answer.** `max(dp[i])`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int lengthOfLIS(vector<int>& nums) {
-        int n = nums.size();
-        if (n == 0) return 0;
+impl Solution {
+    pub fn length_of_lis(nums: Vec<i32>) -> i32 {
+        let n = nums.len();
+        if n == 0 { return 0; }
 
-        vector<int> dp(n, 1);          // every element is an LIS of length 1
+        let mut dp = vec![1i32; n];          // every element is an LIS of length 1
 
-        int best = 1;
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < i; j++) {
-                if (nums[j] < nums[i]) {      // canExtend predicate
-                    dp[i] = max(dp[i], dp[j] + 1);
+        let mut best = 1;
+        for i in 0..n {
+            for j in 0..i {
+                if nums[j] < nums[i] {      // canExtend predicate
+                    dp[i] = dp[i].max(dp[j] + 1);
                 }
             }
-            best = max(best, dp[i]);
+            best = best.max(dp[i]);
         }
-        return best;
+        best
     }
-};
+}
 ```
 
 **Complexity**
@@ -125,54 +123,50 @@ We maintain an array `tails`, where **`tails[len - 1]` holds the smallest possib
 
 Because `tails` is sorted, "find the leftmost tail `>= x`" is a `lower_bound` binary search.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int lengthOfLIS(vector<int>& nums) {
-        int n = nums.size();
-        vector<int> tails(n);   // tails[k] = smallest tail of an increasing subseq of length k+1
-        int size = 0;               // current length of the LIS / number of valid tails
+impl Solution {
+    pub fn length_of_lis(nums: Vec<i32>) -> i32 {
+        let n = nums.len();
+        let mut tails = vec![0i32; n];  // tails[k] = smallest tail of an increasing subseq of length k+1
+        let mut size = 0usize;          // current length of the LIS / number of valid tails
 
-        for (int x : nums) {
-            int pos = lowerBound(tails, size, x);   // first index with tails[pos] >= x
-            tails[pos] = x;                          // overwrite, or append if pos == size
-            if (pos == size) {
-                size++;
+        for &x in &nums {
+            let pos = Self::lower_bound(&tails, size, x); // first index with tails[pos] >= x
+            tails[pos] = x;                               // overwrite, or append if pos == size
+            if pos == size {
+                size += 1;
             }
         }
-        return size;
+        size as i32
     }
 
     // Returns the first index in [0, size) whose value is >= target.
     // If none, returns size (i.e. target is larger than all current tails).
-    int lowerBound(vector<int>& tails, int size, int target) {
-        int lo = 0, hi = size;        // search in [lo, hi)
-        while (lo < hi) {
-            int mid = lo + (hi - lo) / 2;
-            if (tails[mid] < target) {
+    fn lower_bound(tails: &[i32], size: usize, target: i32) -> usize {
+        let mut lo = 0usize;
+        let mut hi = size;        // search in [lo, hi)
+        while lo < hi {
+            let mid = lo + (hi - lo) / 2;
+            if tails[mid] < target {
                 lo = mid + 1;
             } else {
                 hi = mid;
             }
         }
-        return lo;
+        lo
     }
-};
+}
 ```
 
-**Using `lower_bound` instead of a manual search.** `lower_bound(tails.begin(), tails.begin() + size, x)` returns an iterator to the first element `>= x`. To get the index:
+**Using the standard library instead of a manual search.** The slice method `partition_point` returns the first index where the predicate turns false — equivalent to `lower_bound`. To get the index:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int pos = (int)(lower_bound(tails.begin(), tails.begin() + size, x) - tails.begin());
+```rust
+let pos = tails[..size].partition_point(|&t| t < x);
 ```
 
-Note `lower_bound` always finds the leftmost element `>= x`, which is exactly what we want for a strictly increasing LIS. The manual `lowerBound` function in the solution above and this `lower_bound` call are equivalent — use whichever is clearer. For strictly increasing LIS the difference is moot because we always overwrite at the insertion point and equal values map to the same slot.
+Note `partition_point` always finds the leftmost index where `t >= x`, which is exactly what we want for a strictly increasing LIS. The manual `lower_bound` function in the solution above and this `partition_point` call are equivalent — use whichever is clearer. For strictly increasing LIS the difference is moot because we always overwrite at the insertion point and equal values map to the same slot.
 
 **Complexity**
 
@@ -210,46 +204,44 @@ We extend the `O(n^2)` DP with a **parent (hash) pointer** array. `parent[i]` st
 
 **State.** Same `dp[i]` as Problem 37, plus `parent[i]` = predecessor index (or `i` itself / `-1` if the chain starts here).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    vector<int> printLIS(vector<int>& nums) {
-        int n = nums.size();
-        vector<int> result;
-        if (n == 0) return result;
+impl Solution {
+    pub fn print_lis(nums: Vec<i32>) -> Vec<i32> {
+        let n = nums.len();
+        if n == 0 { return vec![]; }
 
-        vector<int> dp(n, 1);
-        vector<int> parent(n);
-        for (int i = 0; i < n; i++) {
-            parent[i] = i;          // self-reference marks a chain start
-        }
+        let mut dp = vec![1i32; n];
+        let mut parent: Vec<usize> = (0..n).collect(); // self-reference marks a chain start
 
-        int bestLen = 1, bestIdx = 0;
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < i; j++) {
-                if (nums[j] < nums[i] && dp[j] + 1 > dp[i]) {
+        let mut best_len = 1i32;
+        let mut best_idx = 0usize;
+        for i in 0..n {
+            for j in 0..i {
+                if nums[j] < nums[i] && dp[j] + 1 > dp[i] {
                     dp[i] = dp[j] + 1;
                     parent[i] = j;          // remember where we came from
                 }
             }
-            if (dp[i] > bestLen) {
-                bestLen = dp[i];
-                bestIdx = i;
+            if dp[i] > best_len {
+                best_len = dp[i];
+                best_idx = i;
             }
         }
 
-        // Walk the parent chain backwards from bestIdx.
-        for (int cur = bestIdx; ; cur = parent[cur]) {
-            result.push_back(nums[cur]);
-            if (parent[cur] == cur) break;   // reached a chain start
+        // Walk the parent chain backwards from best_idx.
+        let mut result = Vec::new();
+        let mut cur = best_idx;
+        loop {
+            result.push(nums[cur]);
+            if parent[cur] == cur { break; }   // reached a chain start
+            cur = parent[cur];
         }
-        reverse(result.begin(), result.end());
-        return result;
+        result.reverse();
+        result
     }
-};
+}
 ```
 
 **Complexity**
@@ -290,47 +282,45 @@ Collected `[101, 7, 5, 2]`, reversed → **`[2, 5, 7, 101]`**.
 
 Reconstruction uses parent pointers exactly like Problem 38.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    vector<int> largestDivisibleSubset(vector<int>& nums) {
-        int n = nums.size();
-        vector<int> result;
-        if (n == 0) return result;
+impl Solution {
+    pub fn largest_divisible_subset(mut nums: Vec<i32>) -> Vec<i32> {
+        let n = nums.len();
+        if n == 0 { return vec![]; }
 
-        sort(nums.begin(), nums.end());                 // ascending; enables single-direction divisibility
+        nums.sort();                                    // ascending; enables single-direction divisibility
 
-        vector<int> dp(n, 1);
-        vector<int> parent(n);
-        for (int i = 0; i < n; i++) {
-            parent[i] = i;
-        }
+        let mut dp = vec![1i32; n];
+        let mut parent: Vec<usize> = (0..n).collect();
 
-        int bestLen = 1, bestIdx = 0;
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < i; j++) {
-                if (nums[i] % nums[j] == 0 && dp[j] + 1 > dp[i]) {   // changed predicate
+        let mut best_len = 1i32;
+        let mut best_idx = 0usize;
+        for i in 0..n {
+            for j in 0..i {
+                if nums[i] % nums[j] == 0 && dp[j] + 1 > dp[i] {   // changed predicate
                     dp[i] = dp[j] + 1;
                     parent[i] = j;
                 }
             }
-            if (dp[i] > bestLen) {
-                bestLen = dp[i];
-                bestIdx = i;
+            if dp[i] > best_len {
+                best_len = dp[i];
+                best_idx = i;
             }
         }
 
-        for (int cur = bestIdx; ; cur = parent[cur]) {
-            result.push_back(nums[cur]);
-            if (parent[cur] == cur) break;
+        let mut result = Vec::new();
+        let mut cur = best_idx;
+        loop {
+            result.push(nums[cur]);
+            if parent[cur] == cur { break; }
+            cur = parent[cur];
         }
-        reverse(result.begin(), result.end());
-        return result;
+        result.reverse();
+        result
     }
-};
+}
 ```
 
 **Complexity**
@@ -362,38 +352,37 @@ public:
 **The variation.** Same template, but:
 
 1. **Sort by length.** A chain only ever goes from a shorter word to a word exactly one longer, so process words in increasing length order — every potential predecessor is seen before the word that extends it.
-2. **Predicate via "remove one char."** Instead of comparing all pairs (`O(n^2 * L)`), for each word we generate its `L` possible predecessors (drop one character at a time) and look them up in an `std::unordered_map`. This is the "can extend" predicate, computed by deletion rather than comparison.
-3. **DP over an `std::unordered_map`.** `dp[word]` = longest chain ending at `word`.
+2. **Predicate via "remove one char."** Instead of comparing all pairs (`O(n^2 * L)`), for each word we generate its `L` possible predecessors (drop one character at a time) and look them up in a `HashMap`. This is the "can extend" predicate, computed by deletion rather than comparison.
+3. **DP over a `HashMap`.** `dp[word]` = longest chain ending at `word`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-class Solution {
-public:
-    int longestStrChain(vector<string>& words) {
+struct Solution;
+
+impl Solution {
+    pub fn longest_str_chain(mut words: Vec<String>) -> i32 {
         // Sort by ascending length so predecessors are processed first.
-        sort(words.begin(), words.end(), [](const string& a, const string& b) {
-            return a.length() < b.length();
-        });
+        words.sort_by_key(|w| w.len());
 
-        unordered_map<string, int> dp;   // word -> longest chain ending here
-        int best = 1;
+        let mut dp: HashMap<String, i32> = HashMap::new();  // word -> longest chain ending here
+        let mut best = 1;
 
-        for (auto& word : words) {
-            int curBest = 1;                          // the word by itself
-            for (int i = 0; i < (int)word.length(); i++) {
-                string predecessor = word.substr(0, i) + word.substr(i + 1);   // candidate predecessor
-                if (dp.count(predecessor)) {
-                    curBest = max(curBest, dp[predecessor] + 1);
+        for word in &words {
+            let mut cur_best = 1i32;                         // the word by itself
+            for i in 0..word.len() {
+                // candidate predecessor: remove character at position i
+                let predecessor = format!("{}{}", &word[..i], &word[i + 1..]);
+                if let Some(&prev) = dp.get(&predecessor) {
+                    cur_best = cur_best.max(prev + 1);
                 }
             }
-            dp[word] = curBest;
-            best = max(best, curBest);
+            dp.insert(word.clone(), cur_best);
+            best = best.max(cur_best);
         }
-        return best;
+        best
     }
-};
+}
 ```
 
 **Complexity** — let `n` = number of words, `L` = max word length.
@@ -401,7 +390,7 @@ public:
 | Metric | Value |
 |--------|-------|
 | Time | `O(n * L^2)` (for each word, `L` deletions, each building an `O(L)` string) |
-| Space | `O(n * L)` (the `std::unordered_map` of words) |
+| Space | `O(n * L)` (the `HashMap` of words) |
 
 #### Dry run
 
@@ -433,43 +422,41 @@ public:
 
 Finally, sum `count[i]` over all `i` where `length[i]` equals the global maximum length.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int findNumberOfLIS(vector<int>& nums) {
-        int n = nums.size();
-        if (n == 0) return 0;
+impl Solution {
+    pub fn find_number_of_lis(nums: Vec<i32>) -> i32 {
+        let n = nums.len();
+        if n == 0 { return 0; }
 
-        vector<int> length(n, 1);   // length of LIS ending at i
-        vector<int> count(n, 1);    // number of LIS of that length ending at i
+        let mut length = vec![1i32; n];   // length of LIS ending at i
+        let mut count = vec![1i32; n];    // number of LIS of that length ending at i
 
-        int maxLen = 1;
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < i; j++) {
-                if (nums[j] < nums[i]) {
-                    if (length[j] + 1 > length[i]) {
+        let mut max_len = 1i32;
+        for i in 0..n {
+            for j in 0..i {
+                if nums[j] < nums[i] {
+                    if length[j] + 1 > length[i] {
                         length[i] = length[j] + 1;   // found a longer chain: reset
                         count[i] = count[j];
-                    } else if (length[j] + 1 == length[i]) {
+                    } else if length[j] + 1 == length[i] {
                         count[i] += count[j];        // same length: accumulate
                     }
                 }
             }
-            maxLen = max(maxLen, length[i]);
+            max_len = max_len.max(length[i]);
         }
 
-        int total = 0;
-        for (int i = 0; i < n; i++) {
-            if (length[i] == maxLen) {
+        let mut total = 0i32;
+        for i in 0..n {
+            if length[i] == max_len {
                 total += count[i];
             }
         }
-        return total;
+        total
     }
-};
+}
 ```
 
 **Complexity**
@@ -506,7 +493,7 @@ Answer **2** (the two LISs: `1,3,5,7` and `1,3,4,7`).
 | "strictly increasing" / "monotonic" chain of values | LIS `O(n^2)` or `O(n log n)` |
 | Need the **actual** sequence, not just its length | Add parent pointers (Problem 38) |
 | Pairwise **divisibility** of a subset | Largest Divisible Subset (sort + `% == 0` predicate) |
-| Build longer **words/strings** by adding/removing one element | Longest String Chain (sort by length + `std::unordered_map` DP) |
+| Build longer **words/strings** by adding/removing one element | Longest String Chain (sort by length + `HashMap` DP) |
 | "**how many** longest ..." / count of optimal subsequences | Number of LIS (`length[]` + `count[]`) |
 | `n <= ~2500` and an `O(n^2)` chain DP is fast enough | `O(n^2)` template |
 | `n` up to `~10^5`, only the **length** is needed | `O(n log n)` tails / patience sorting |

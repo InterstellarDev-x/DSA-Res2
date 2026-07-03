@@ -22,31 +22,55 @@
 ### Common Follow-ups at Google
 
 **Q1: What if k > length of remaining list?**
-Leave them in original order. The check `getKth(groupPrev, k) == null` handles this.
+Leave them in original order. The check `getKth(groupPrev, k) == None` handles this.
 
 **Q2: Can you do it recursively?**
 
-```cpp
-ListNode* reverseKGroup(ListNode* head, int k) {
+```rust
+#[derive(Debug)]
+pub struct ListNode {
+    pub val: i32,
+    pub next: Option<Box<ListNode>>,
+}
+
+impl ListNode {
+    pub fn new(val: i32) -> Self {
+        ListNode { val, next: None }
+    }
+}
+
+fn reverse_k_group(head: Option<Box<ListNode>>, k: i32) -> Option<Box<ListNode>> {
     // Check if k nodes exist
-    ListNode* node = head;
-    for (int i = 0; i < k; i++) {
-        if (node == nullptr) return head; // < k nodes, no reversal
-        node = node->next;
+    let mut node = &head;
+    for _ in 0..k {
+        match node {
+            None => return head, // < k nodes, no reversal
+            Some(n) => node = &n.next,
+        }
     }
 
-    // Reverse k nodes
-    ListNode* prev = nullptr, *curr = head;
-    for (int i = 0; i < k; i++) {
-        ListNode* nxt = curr->next;
-        curr->next = prev;
-        prev = curr;
-        curr = nxt;
+    // Collect k nodes, detaching them from the rest
+    let mut curr = head;
+    let mut segment: Vec<Box<ListNode>> = Vec::with_capacity(k as usize);
+    for _ in 0..k {
+        if let Some(mut boxed) = curr {
+            curr = boxed.next.take();
+            segment.push(boxed);
+        }
     }
+    // segment = [a1, a2, ..., ak], curr = rest
 
     // head is now tail of reversed group; connect to recursed rest
-    head->next = reverseKGroup(curr, k);
-    return prev; // prev is new head
+    let mut result = reverse_k_group(curr, k);
+
+    // Build reversed chain by iterating forward through segment:
+    // a1, a2, ..., ak  becomes  ak -> a(k-1) -> ... -> a1 -> result
+    for mut node in segment.into_iter() {
+        node.next = result;
+        result = Some(node);
+    }
+
+    result // result is new head (prev in iterative version)
 }
 ```
 
@@ -73,22 +97,20 @@ next:   1  3  4  2  2
 Graph: 0→1→3→2→4→2 (cycle at 2)
 ```
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int findDuplicate(vector<int>& nums) {
-    int slow = nums[0], fast = nums[nums[0]];
-    while (slow != fast) {
-        slow = nums[slow];
-        fast = nums[nums[fast]];
+```rust
+fn find_duplicate(nums: &[i32]) -> i32 {
+    let mut slow = nums[0] as usize;
+    let mut fast = nums[nums[0] as usize] as usize;
+    while slow != fast {
+        slow = nums[slow] as usize;
+        fast = nums[nums[fast] as usize] as usize;
     }
     slow = 0;
-    while (slow != fast) {
-        slow = nums[slow];
-        fast = nums[fast];
+    while slow != fast {
+        slow = nums[slow] as usize;
+        fast = nums[fast] as usize;
     }
-    return slow;
+    slow as i32
 }
 ```
 

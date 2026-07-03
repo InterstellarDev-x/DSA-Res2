@@ -6,66 +6,70 @@ Every level-order problem is the same BFS skeleton with a small per-level twist.
 template once; then "take the last node" → right side view, "average" → averages, "max" →
 largest values, and so on.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+#[derive(Debug)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
 
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
-};
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 ---
 
 ## The BFS Template (size-snapshot)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-queue<TreeNode*> q;
-q.push(root);                               // assume root != nullptr (guard separately)
-while (!q.empty()) {
-    int size = q.size();                    // SNAPSHOT before the inner loop
-    for (int i = 0; i < size; i++) {
-        TreeNode* node = q.front(); q.pop();
+let mut q: VecDeque<Box<TreeNode>> = VecDeque::new();
+q.push_back(root); // assume root is Some(...) (guard separately)
+while !q.is_empty() {
+    let size = q.len();                     // SNAPSHOT before the inner loop
+    for i in 0..size {
+        let node = q.pop_front().unwrap();
         // ... per-node work (often using i == 0 or i == size-1) ...
-        if (node->left  != nullptr) q.push(node->left);
-        if (node->right != nullptr) q.push(node->right);
+        if let Some(left) = node.left  { q.push_back(left); }
+        if let Some(right) = node.right { q.push_back(right); }
     }
     // ... per-level aggregation ...
 }
 ```
 
-> ⚠️ The single most common BFS bug: reading `q.size()` *inside* the loop after you've
+> ⚠️ The single most common BFS bug: reading `q.len()` *inside* the loop after you've
 > already enqueued children. **Snapshot it first.**
 
 ---
 
 ## 1. Right Side View (LC 199) — last node per level
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-vector<int> rightSideView(TreeNode* root) {
-    vector<int> result;
-    if (root == nullptr) return result;
-    queue<TreeNode*> q;
-    q.push(root);
-    while (!q.empty()) {
-        int size = q.size();
-        for (int i = 0; i < size; i++) {
-            TreeNode* node = q.front(); q.pop();
-            if (i == size - 1) result.push_back(node->val);   // rightmost node on this level
-            if (node->left  != nullptr) q.push(node->left);
-            if (node->right != nullptr) q.push(node->right);
+fn right_side_view(root: Option<Box<TreeNode>>) -> Vec<i32> {
+    let mut result = Vec::new();
+    let root = match root {
+        None => return result,
+        Some(r) => r,
+    };
+    let mut q: VecDeque<Box<TreeNode>> = VecDeque::new();
+    q.push_back(root);
+    while !q.is_empty() {
+        let size = q.len();
+        for i in 0..size {
+            let node = q.pop_front().unwrap();
+            if i == size - 1 { result.push(node.val); }  // rightmost node on this level
+            if let Some(left) = node.left  { q.push_back(left); }
+            if let Some(right) = node.right { q.push_back(right); }
         }
     }
-    return result;
+    result
 }
 ```
 
@@ -73,28 +77,28 @@ vector<int> rightSideView(TreeNode* root) {
 
 ## 2. Average of Levels (LC 637) — sum / size per level
 
-Use a `double`/`long long` accumulator to avoid `int` overflow when summing.
+Use a `f64`/`i64` accumulator to avoid `i32` overflow when summing.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-vector<double> averageOfLevels(TreeNode* root) {
-    vector<double> result;
-    queue<TreeNode*> q;
-    q.push(root);
-    while (!q.empty()) {
-        int size = q.size();
-        long long sum = 0;
-        for (int i = 0; i < size; i++) {
-            TreeNode* node = q.front(); q.pop();
-            sum += node->val;
-            if (node->left  != nullptr) q.push(node->left);
-            if (node->right != nullptr) q.push(node->right);
+fn average_of_levels(root: Option<Box<TreeNode>>) -> Vec<f64> {
+    let mut result = Vec::new();
+    if root.is_none() { return result; }
+    let mut q: VecDeque<Box<TreeNode>> = VecDeque::new();
+    q.push_back(root.unwrap());
+    while !q.is_empty() {
+        let size = q.len();
+        let mut sum: i64 = 0;
+        for _ in 0..size {
+            let node = q.pop_front().unwrap();
+            sum += node.val as i64;
+            if let Some(left) = node.left  { q.push_back(left); }
+            if let Some(right) = node.right { q.push_back(right); }
         }
-        result.push_back((double) sum / size);
+        result.push(sum as f64 / size as f64);
     }
-    return result;
+    result
 }
 ```
 
@@ -102,27 +106,26 @@ vector<double> averageOfLevels(TreeNode* root) {
 
 ## 3. Find Largest Value in Each Row (LC 515) — max per level
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-vector<int> largestValues(TreeNode* root) {
-    vector<int> result;
-    if (root == nullptr) return result;
-    queue<TreeNode*> q;
-    q.push(root);
-    while (!q.empty()) {
-        int size = q.size();
-        int maxVal = INT_MIN;
-        for (int i = 0; i < size; i++) {
-            TreeNode* node = q.front(); q.pop();
-            maxVal = max(maxVal, node->val);
-            if (node->left  != nullptr) q.push(node->left);
-            if (node->right != nullptr) q.push(node->right);
+fn largest_values(root: Option<Box<TreeNode>>) -> Vec<i32> {
+    let mut result = Vec::new();
+    if root.is_none() { return result; }
+    let mut q: VecDeque<Box<TreeNode>> = VecDeque::new();
+    q.push_back(root.unwrap());
+    while !q.is_empty() {
+        let size = q.len();
+        let mut max_val = i32::MIN;
+        for _ in 0..size {
+            let node = q.pop_front().unwrap();
+            max_val = max_val.max(node.val);
+            if let Some(left) = node.left  { q.push_back(left); }
+            if let Some(right) = node.right { q.push_back(right); }
         }
-        result.push_back(maxVal);
+        result.push(max_val);
     }
-    return result;
+    result
 }
 ```
 
@@ -130,30 +133,29 @@ vector<int> largestValues(TreeNode* root) {
 
 ## 4. Level Order Traversal II (LC 107) — bottom-up
 
-Same BFS; prepend each level so the result is bottom-to-top. Use `deque::push_front` (O(1))
-or `std::reverse` at the end.
+Same BFS; prepend each level so the result is bottom-to-top. Use `VecDeque::push_front` (O(1))
+or `.reverse()` at the end.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-vector<vector<int>> levelOrderBottom(TreeNode* root) {
-    deque<vector<int>> dq;
-    if (root == nullptr) return {};
-    queue<TreeNode*> q;
-    q.push(root);
-    while (!q.empty()) {
-        int size = q.size();
-        vector<int> level;
-        for (int i = 0; i < size; i++) {
-            TreeNode* node = q.front(); q.pop();
-            level.push_back(node->val);
-            if (node->left  != nullptr) q.push(node->left);
-            if (node->right != nullptr) q.push(node->right);
+fn level_order_bottom(root: Option<Box<TreeNode>>) -> Vec<Vec<i32>> {
+    if root.is_none() { return vec![]; }
+    let mut dq: VecDeque<Vec<i32>> = VecDeque::new();
+    let mut q: VecDeque<Box<TreeNode>> = VecDeque::new();
+    q.push_back(root.unwrap());
+    while !q.is_empty() {
+        let size = q.len();
+        let mut level = Vec::new();
+        for _ in 0..size {
+            let node = q.pop_front().unwrap();
+            level.push(node.val);
+            if let Some(left) = node.left  { q.push_back(left); }
+            if let Some(right) = node.right { q.push_back(right); }
         }
         dq.push_front(level);               // prepend -> bottom-up order, O(1)
     }
-    return vector<vector<int>>(dq.begin(), dq.end());
+    dq.into_iter().collect()
 }
 ```
 
@@ -161,33 +163,33 @@ vector<vector<int>> levelOrderBottom(TreeNode* root) {
 
 ## 5. N-ary Level Order (LC 429)
 
-Children come from `node->children` instead of `left`/`right` — otherwise identical.
+Children come from `node.children` instead of `left`/`right` — otherwise identical.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-struct Node {
-    int val;
-    vector<Node*> children;
-};
+#[derive(Debug)]
+pub struct Node {
+    pub val: i32,
+    pub children: Vec<Box<Node>>,
+}
 
-vector<vector<int>> levelOrder(Node* root) {
-    vector<vector<int>> result;
-    if (root == nullptr) return result;
-    queue<Node*> q;
-    q.push(root);
-    while (!q.empty()) {
-        int size = q.size();
-        vector<int> level;
-        for (int i = 0; i < size; i++) {
-            Node* node = q.front(); q.pop();
-            level.push_back(node->val);
-            for (auto& child : node->children) q.push(child);
+fn level_order(root: Option<Box<Node>>) -> Vec<Vec<i32>> {
+    let mut result = Vec::new();
+    if root.is_none() { return result; }
+    let mut q: VecDeque<Box<Node>> = VecDeque::new();
+    q.push_back(root.unwrap());
+    while !q.is_empty() {
+        let size = q.len();
+        let mut level = Vec::new();
+        for _ in 0..size {
+            let node = q.pop_front().unwrap();
+            level.push(node.val);
+            for child in node.children { q.push_back(child); }
         }
-        result.push_back(level);
+        result.push(level);
     }
-    return result;
+    result
 }
 ```
 
@@ -200,31 +202,43 @@ For an arbitrary tree, children may be missing, so the perfect-tree trick (LC 11
 sentinel `dummy` precedes the next level, and `tail` extends the chain. This is **O(1) extra
 space** (no queue).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+Index-based representation is used here to avoid cyclic reference issues with `next` pointers.
 
+```rust
+// Node stores indices (usize) into a flat Vec for tree structure
 struct Node {
-    int val;
-    Node* left;
-    Node* right;
-    Node* next;
-    Node() : val(0), left(nullptr), right(nullptr), next(nullptr) {}
-};
+    val: i32,
+    left: Option<usize>,
+    right: Option<usize>,
+    next: Option<usize>,
+}
 
-Node* connect(Node* root) {
-    Node* curr = root;
-    while (curr != nullptr) {
-        Node dummy;                      // sentinel head of the NEXT level
-        Node* tail = &dummy;
-        while (curr != nullptr) {        // walk current level via next pointers
-            if (curr->left != nullptr)  { tail->next = curr->left;  tail = tail->next; }
-            if (curr->right != nullptr) { tail->next = curr->right; tail = tail->next; }
-            curr = curr->next;
+fn connect(nodes: &mut Vec<Node>, root: Option<usize>) -> Option<usize> {
+    let mut curr = root;
+    while let Some(curr_idx) = curr {
+        let mut dummy_next: Option<usize> = None;  // sentinel head of the NEXT level
+        let mut tail: Option<usize> = None;
+        let mut c = Some(curr_idx);
+        while let Some(ci) = c {
+            // copy fields to locals to satisfy borrow checker
+            let left  = nodes[ci].left;
+            let right = nodes[ci].right;
+            let next  = nodes[ci].next;
+            for child_opt in [left, right] {
+                if let Some(child_idx) = child_opt {
+                    if let Some(ti) = tail {
+                        nodes[ti].next = Some(child_idx);
+                    } else {
+                        dummy_next = Some(child_idx);
+                    }
+                    tail = Some(child_idx);
+                }
+            }
+            c = next;
         }
-        curr = dummy.next;               // descend to the next level's head
+        curr = dummy_next;               // descend to the next level's head
     }
-    return root;
+    root
 }
 ```
 

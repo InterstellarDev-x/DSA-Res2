@@ -26,38 +26,44 @@ Idea: a node can only appear in the ordering once all of its prerequisites are p
 
 **Cycle check:** count how many nodes you actually pop from the queue. If `processed < V`, some nodes were stuck with indegree > 0 forever — they form (or depend on) a cycle, so no topo order exists.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
 // n nodes labelled 0..n-1, edges given as directed [from, to]
-vector<int> topoSort(int n, vector<vector<int>>& edges) {
-    vector<vector<int>> adj(n);
-    vector<int> indegree(n, 0);
+fn topo_sort(n: usize, edges: &Vec<Vec<i32>>) -> Vec<usize> {
+    let mut adj: Vec<Vec<usize>> = vec![vec![]; n];
+    let mut indegree: Vec<usize> = vec![0; n];
 
-    for (auto& e : edges) {
-        int from = e[0], to = e[1];
-        adj[from].push_back(to);
-        indegree[to]++;
+    for e in edges {
+        let from = e[0] as usize;
+        let to = e[1] as usize;
+        adj[from].push(to);
+        indegree[to] += 1;
     }
 
-    queue<int> q;
-    for (int i = 0; i < n; i++) {
-        if (indegree[i] == 0) q.push(i);
+    let mut q: VecDeque<usize> = VecDeque::new();
+    for i in 0..n {
+        if indegree[i] == 0 {
+            q.push_back(i);
+        }
     }
 
-    vector<int> order;
-    while (!q.empty()) {
-        int node = q.front(); q.pop();
-        order.push_back(node);
-        for (int next : adj[node]) {
-            if (--indegree[next] == 0) q.push(next);
+    let mut order: Vec<usize> = Vec::new();
+    while let Some(node) = q.pop_front() {
+        order.push(node);
+        for &next in &adj[node] {
+            indegree[next] -= 1;
+            if indegree[next] == 0 {
+                q.push_back(next);
+            }
         }
     }
 
     // If we couldn't place every node, a cycle exists -> no valid order.
-    if ((int)order.size() != n) return {};
-    return order;
+    if order.len() != n {
+        return vec![];
+    }
+    order
 }
 ```
 
@@ -74,53 +80,68 @@ Idea: run DFS. After fully exploring all descendants of a node (postorder), push
 
 If DFS reaches a **GRAY** node, there is a back edge → a cycle → no topo order.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct DfsTopoTemplate {
+    adj: Vec<Vec<usize>>,
+    color: Vec<i32>,   // 0 = white, 1 = gray, 2 = black
+    stk: Vec<usize>,
+    has_cycle: bool,
+}
 
-class DfsTopoTemplate {
-    vector<vector<int>> adj;
-    vector<int> color;   // 0 = white, 1 = gray, 2 = black
-    stack<int> stk;
-    bool hasCycle;
+impl DfsTopoTemplate {
+    fn new() -> Self {
+        DfsTopoTemplate {
+            adj: vec![],
+            color: vec![],
+            stk: vec![],
+            has_cycle: false,
+        }
+    }
 
-    void dfs(int node) {
-        color[node] = 1; // gray: on the recursion stack
-        for (int next : adj[node]) {
-            if (color[next] == 1) {      // back edge -> cycle
-                hasCycle = true;
+    fn dfs(&mut self, node: usize) {
+        self.color[node] = 1; // gray: on the recursion stack
+        let neighbors: Vec<usize> = self.adj[node].clone(); // clone to avoid borrow conflict
+        for next in neighbors {
+            if self.color[next] == 1 {      // back edge -> cycle
+                self.has_cycle = true;
                 return;
             }
-            if (color[next] == 0) {
-                dfs(next);
-                if (hasCycle) return;
+            if self.color[next] == 0 {
+                self.dfs(next);
+                if self.has_cycle {
+                    return;
+                }
             }
         }
-        color[node] = 2;   // black: done
-        stk.push(node);  // postorder; stack reverses it for us
+        self.color[node] = 2;   // black: done
+        self.stk.push(node);  // postorder; stack reverses it for us
     }
 
-public:
-    vector<int> topoSort(int n, vector<vector<int>>& edges) {
-        adj.assign(n, {});
-        for (auto& e : edges) adj[e[0]].push_back(e[1]);
-
-        color.assign(n, 0);
-        hasCycle = false;
-
-        for (int i = 0; i < n; i++) {
-            if (color[i] == 0) dfs(i);
-            if (hasCycle) return {};
+    fn topo_sort(&mut self, n: usize, edges: &Vec<Vec<i32>>) -> Vec<usize> {
+        self.adj = vec![vec![]; n];
+        for e in edges {
+            self.adj[e[0] as usize].push(e[1] as usize);
         }
 
-        vector<int> order;
-        while (!stk.empty()) {
-            order.push_back(stk.top());
-            stk.pop();
+        self.color = vec![0; n];
+        self.has_cycle = false;
+
+        for i in 0..n {
+            if self.color[i] == 0 {
+                self.dfs(i);
+            }
+            if self.has_cycle {
+                return vec![];
+            }
         }
-        return order;
+
+        let mut order: Vec<usize> = Vec::new();
+        while let Some(node) = self.stk.pop() {
+            order.push(node);
+        }
+        order
     }
-};
+}
 ```
 
 ---
@@ -144,39 +165,45 @@ public:
 
 **Idea:** Model courses as nodes and prerequisites as directed edges `prereq -> course`. You can finish all courses iff the graph is a DAG (no cycle). Use Kahn's: if every node gets processed, no cycle.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-class Solution {
-public:
-    bool canFinish(int numCourses, vector<vector<int>>& prerequisites) {
-        vector<vector<int>> adj(numCourses);
-        vector<int> indegree(numCourses, 0);
+struct Solution;
+
+impl Solution {
+    pub fn can_finish(num_courses: i32, prerequisites: Vec<Vec<i32>>) -> bool {
+        let n = num_courses as usize;
+        let mut adj: Vec<Vec<usize>> = vec![vec![]; n];
+        let mut indegree: Vec<usize> = vec![0; n];
 
         // prerequisites[i] = [course, prereq]: must take prereq before course
-        for (auto& p : prerequisites) {
-            int course = p[0], prereq = p[1];
-            adj[prereq].push_back(course);
-            indegree[course]++;
+        for p in &prerequisites {
+            let course = p[0] as usize;
+            let prereq = p[1] as usize;
+            adj[prereq].push(course);
+            indegree[course] += 1;
         }
 
-        queue<int> q;
-        for (int i = 0; i < numCourses; i++) {
-            if (indegree[i] == 0) q.push(i);
-        }
-
-        int processed = 0;
-        while (!q.empty()) {
-            int node = q.front(); q.pop();
-            processed++;
-            for (int next : adj[node]) {
-                if (--indegree[next] == 0) q.push(next);
+        let mut q: VecDeque<usize> = VecDeque::new();
+        for i in 0..n {
+            if indegree[i] == 0 {
+                q.push_back(i);
             }
         }
-        return processed == numCourses;
+
+        let mut processed = 0;
+        while let Some(node) = q.pop_front() {
+            processed += 1;
+            for &next in &adj[node] {
+                indegree[next] -= 1;
+                if indegree[next] == 0 {
+                    q.push_back(next);
+                }
+            }
+        }
+        processed == n
     }
-};
+}
 ```
 
 **Complexity:** Time `O(V + E)`, Space `O(V + E)`.
@@ -187,39 +214,45 @@ public:
 
 **Idea:** Same setup as LC207, but record the order in which nodes are popped. If a cycle prevents processing all nodes, return an empty array.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-class Solution {
-public:
-    vector<int> findOrder(int numCourses, vector<vector<int>>& prerequisites) {
-        vector<vector<int>> adj(numCourses);
-        vector<int> indegree(numCourses, 0);
+struct Solution;
 
-        for (auto& p : prerequisites) {
-            int course = p[0], prereq = p[1];
-            adj[prereq].push_back(course);
-            indegree[course]++;
+impl Solution {
+    pub fn find_order(num_courses: i32, prerequisites: Vec<Vec<i32>>) -> Vec<i32> {
+        let n = num_courses as usize;
+        let mut adj: Vec<Vec<usize>> = vec![vec![]; n];
+        let mut indegree: Vec<usize> = vec![0; n];
+
+        for p in &prerequisites {
+            let course = p[0] as usize;
+            let prereq = p[1] as usize;
+            adj[prereq].push(course);
+            indegree[course] += 1;
         }
 
-        queue<int> q;
-        for (int i = 0; i < numCourses; i++) {
-            if (indegree[i] == 0) q.push(i);
-        }
-
-        vector<int> order;
-        while (!q.empty()) {
-            int node = q.front(); q.pop();
-            order.push_back(node);
-            for (int next : adj[node]) {
-                if (--indegree[next] == 0) q.push(next);
+        let mut q: VecDeque<usize> = VecDeque::new();
+        for i in 0..n {
+            if indegree[i] == 0 {
+                q.push_back(i);
             }
         }
 
-        return (int)order.size() == numCourses ? order : vector<int>{};
+        let mut order: Vec<i32> = Vec::new();
+        while let Some(node) = q.pop_front() {
+            order.push(node as i32);
+            for &next in &adj[node] {
+                indegree[next] -= 1;
+                if indegree[next] == 0 {
+                    q.push_back(next);
+                }
+            }
+        }
+
+        if order.len() == n { order } else { vec![] }
     }
-};
+}
 ```
 
 **Complexity:** Time `O(V + E)`, Space `O(V + E)`.
@@ -247,62 +280,71 @@ Initial indegrees: `[0, 1, 1, 2]` (node 0 has none; node 3 depends on 1 and 2).
 
 **Idea:** The words are sorted by an unknown alphabet. For each adjacent pair of words, the **first differing character** gives an ordering edge `c1 -> c2`. Topologically sort the characters. Edge case: if word A is longer than word B, A comes after B, yet B is a prefix of A (no differing char), that is invalid → return `""`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, HashSet, VecDeque};
 
-class Solution {
-public:
-    string alienOrder(vector<string>& words) {
+struct Solution;
+
+impl Solution {
+    pub fn alien_order(words: Vec<String>) -> String {
         // Track all characters that appear, and the dependency graph.
-        unordered_map<char, unordered_set<char>> adj;
-        unordered_map<char, int> indegree;
+        let mut adj: HashMap<char, HashSet<char>> = HashMap::new();
+        let mut indegree: HashMap<char, usize> = HashMap::new();
 
-        for (auto& w : words) {
-            for (char c : w) {
-                if (!adj.count(c)) adj[c] = {};
-                if (!indegree.count(c)) indegree[c] = 0;
+        for w in &words {
+            for c in w.chars() {
+                adj.entry(c).or_default();
+                indegree.entry(c).or_insert(0);
             }
         }
 
         // Build edges from each adjacent pair of words.
-        for (int i = 0; i + 1 < (int)words.size(); i++) {
-            auto& a = words[i]; auto& b = words[i + 1];
-            int minLen = min(a.length(), b.length());
-            int j = 0;
-            while (j < (int)minLen && a[j] == b[j]) j++;
+        for i in 0..words.len().saturating_sub(1) {
+            let a: Vec<char> = words[i].chars().collect();
+            let b: Vec<char> = words[i + 1].chars().collect();
+            let min_len = a.len().min(b.len());
+            let mut j = 0;
+            while j < min_len && a[j] == b[j] {
+                j += 1;
+            }
 
-            if (j < (int)minLen) {
-                char from = a[j], to = b[j];
-                if (!adj[from].count(to)) {
-                    adj[from].insert(to);
-                    indegree[to]++;
+            if j < min_len {
+                let from = a[j];
+                let to = b[j];
+                if !adj[&from].contains(&to) {
+                    adj.get_mut(&from).unwrap().insert(to);
+                    *indegree.entry(to).or_insert(0) += 1;
                 }
-            } else if (a.length() > b.length()) {
+            } else if a.len() > b.len() {
                 // b is a prefix of a but comes first -> invalid ordering
-                return "";
+                return String::new();
             }
         }
 
-        queue<char> q;
-        for (auto& [c, deg] : indegree) {
-            if (deg == 0) q.push(c);
+        let mut q: VecDeque<char> = VecDeque::new();
+        for (&c, &deg) in &indegree {
+            if deg == 0 {
+                q.push_back(c);
+            }
         }
 
-        string result;
-        while (!q.empty()) {
-            char c = q.front(); q.pop();
-            result += c;
-            for (char next : adj[c]) {
-                indegree[next]--;
-                if (indegree[next] == 0) q.push(next);
+        let mut result = String::new();
+        while let Some(c) = q.pop_front() {
+            result.push(c);
+            let neighbors: Vec<char> = adj[&c].iter().cloned().collect();
+            for next in neighbors {
+                let deg = indegree.get_mut(&next).unwrap();
+                *deg -= 1;
+                if *deg == 0 {
+                    q.push_back(next);
+                }
             }
         }
 
         // If not all characters placed, there was a cycle.
-        return result.length() == indegree.size() ? result : "";
+        if result.len() == indegree.len() { result } else { String::new() }
     }
-};
+}
 ```
 
 **Complexity:** Time `O(C)` where `C` is total content length across words (graph has at most 26 nodes and 26*26 edges), Space `O(1)` for the fixed alphabet (or `O(U + edges)` for the distinct chars).
@@ -338,43 +380,47 @@ All 5 chars placed → result `"wertf"`.
 
 **Idea:** The roots that minimize tree height are the **centroids** of the tree, and there are at most 2 of them. Find them by **trimming leaves layer by layer** (a topo-style peel on an undirected graph): repeatedly remove all degree-1 nodes. The last 1 or 2 nodes remaining are the answers.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-class Solution {
-public:
-    vector<int> findMinHeightTrees(int n, vector<vector<int>>& edges) {
-        if (n == 1) return {0};
+struct Solution;
 
-        vector<unordered_set<int>> adj(n);
-        for (auto& e : edges) {
-            adj[e[0]].insert(e[1]);
-            adj[e[1]].insert(e[0]);
+impl Solution {
+    pub fn find_min_height_trees(n: i32, edges: Vec<Vec<i32>>) -> Vec<i32> {
+        let n = n as usize;
+        if n == 1 {
+            return vec![0];
+        }
+
+        let mut adj: Vec<HashSet<usize>> = vec![HashSet::new(); n];
+        for e in &edges {
+            let u = e[0] as usize;
+            let v = e[1] as usize;
+            adj[u].insert(v);
+            adj[v].insert(u);
         }
 
         // Initial leaves: degree 1.
-        vector<int> leaves;
-        for (int i = 0; i < n; i++) {
-            if (adj[i].size() == 1) leaves.push_back(i);
-        }
+        let mut leaves: Vec<usize> = (0..n).filter(|&i| adj[i].len() == 1).collect();
 
-        int remaining = n;
-        while (remaining > 2) {
-            remaining -= leaves.size();
-            vector<int> newLeaves;
-            for (int leaf : leaves) {
+        let mut remaining = n;
+        while remaining > 2 {
+            remaining -= leaves.len();
+            let mut new_leaves: Vec<usize> = Vec::new();
+            for &leaf in &leaves {
                 // Each leaf has exactly one neighbor; detach it.
-                int neighbor = *adj[leaf].begin();
-                adj[neighbor].erase(leaf);
-                if (adj[neighbor].size() == 1) newLeaves.push_back(neighbor);
+                let neighbor = *adj[leaf].iter().next().unwrap();
+                adj[neighbor].remove(&leaf);
+                if adj[neighbor].len() == 1 {
+                    new_leaves.push(neighbor);
+                }
             }
-            leaves = newLeaves;
+            leaves = new_leaves;
         }
 
-        return leaves; // the 1 or 2 centroids
+        leaves.iter().map(|&x| x as i32).collect() // the 1 or 2 centroids
     }
-};
+}
 ```
 
 **Complexity:** Time `O(V + E)`, Space `O(V + E)`.
@@ -385,56 +431,68 @@ public:
 
 **Idea:** Check whether `org` is the **unique** topological order consistent with the given subsequences `seqs`. Build a graph from consecutive elements within each sequence, then run Kahn's. Uniqueness holds iff at every step the queue contains **exactly one** node, the produced order matches `org`, and every element of `org` appears.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, VecDeque};
 
-class Solution {
-public:
-    bool sequenceReconstruction(vector<int>& org, vector<vector<int>>& seqs) {
-        int n = org.size();
-        unordered_map<int, vector<int>> adj;
-        unordered_map<int, int> indegree;
+struct Solution;
+
+impl Solution {
+    pub fn sequence_reconstruction(org: Vec<i32>, seqs: Vec<Vec<i32>>) -> bool {
+        let n = org.len();
+        let mut adj: HashMap<i32, Vec<i32>> = HashMap::new();
+        let mut indegree: HashMap<i32, i32> = HashMap::new();
 
         // Register every value that appears in seqs.
-        for (auto& seq : seqs) {
-            for (int v : seq) {
-                if (!adj.count(v)) adj[v] = {};
-                if (!indegree.count(v)) indegree[v] = 0;
+        for seq in &seqs {
+            for &v in seq {
+                adj.entry(v).or_default();
+                indegree.entry(v).or_insert(0);
             }
         }
 
-        for (auto& seq : seqs) {
-            for (int i = 0; i + 1 < (int)seq.size(); i++) {
-                int from = seq[i], to = seq[i + 1];
-                adj[from].push_back(to);
-                indegree[to]++;
+        for seq in &seqs {
+            for i in 0..seq.len().saturating_sub(1) {
+                let from = seq[i];
+                let to = seq[i + 1];
+                adj.get_mut(&from).unwrap().push(to);
+                *indegree.entry(to).or_insert(0) += 1;
             }
         }
 
         // Every value must lie in [1, n] and match org's universe.
-        if ((int)indegree.size() != n) return false;
-
-        queue<int> q;
-        for (auto& [v, deg] : indegree) {
-            if (deg == 0) q.push(v);
+        if indegree.len() != n {
+            return false;
         }
 
-        int idx = 0;
-        while (!q.empty()) {
-            if (q.size() > 1) return false;      // order not unique
-            int node = q.front(); q.pop();
-            if (idx >= n || org[idx] != node) return false; // mismatch
-            idx++;
-            for (int next : adj[node]) {
-                indegree[next]--;
-                if (indegree[next] == 0) q.push(next);
+        let mut q: VecDeque<i32> = VecDeque::new();
+        for (&v, &deg) in &indegree {
+            if deg == 0 {
+                q.push_back(v);
             }
         }
 
-        return idx == n;
+        let mut idx = 0;
+        while let Some(node) = q.pop_front() {
+            if q.len() > 0 {
+                return false; // order not unique
+            }
+            if idx >= n || org[idx] != node {
+                return false; // mismatch
+            }
+            idx += 1;
+            let neighbors: Vec<i32> = adj[&node].clone();
+            for next in neighbors {
+                let deg = indegree.get_mut(&next).unwrap();
+                *deg -= 1;
+                if *deg == 0 {
+                    q.push_back(next);
+                }
+            }
+        }
+
+        idx == n
     }
-};
+}
 ```
 
 **Complexity:** Time `O(V + E)` where `E` is the total length of all sequences, Space `O(V + E)`.
@@ -445,43 +503,51 @@ public:
 
 **Idea:** All courses with no remaining prerequisites can be taken **in the same semester (in parallel)**. So run Kahn's **by levels**: each BFS layer is one semester. The number of layers is the minimum number of semesters. If a cycle blocks some courses, return `-1`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-class Solution {
-public:
-    int minimumSemesters(int n, vector<vector<int>>& relations) {
-        vector<vector<int>> adj(n + 1); // 1-indexed
-        vector<int> indegree(n + 1, 0);
+struct Solution;
 
-        for (auto& r : relations) {
-            int prev = r[0], next = r[1]; // prev -> next
-            adj[prev].push_back(next);
-            indegree[next]++;
+impl Solution {
+    pub fn minimum_semesters(n: i32, relations: Vec<Vec<i32>>) -> i32 {
+        let n = n as usize;
+        let mut adj: Vec<Vec<usize>> = vec![vec![]; n + 1]; // 1-indexed
+        let mut indegree: Vec<usize> = vec![0; n + 1];
+
+        for r in &relations {
+            let prev = r[0] as usize;
+            let next = r[1] as usize; // prev -> next
+            adj[prev].push(next);
+            indegree[next] += 1;
         }
 
-        queue<int> q;
-        for (int i = 1; i <= n; i++) {
-            if (indegree[i] == 0) q.push(i);
+        let mut q: VecDeque<usize> = VecDeque::new();
+        for i in 1..=n {
+            if indegree[i] == 0 {
+                q.push_back(i);
+            }
         }
 
-        int semesters = 0, studied = 0;
-        while (!q.empty()) {
-            semesters++;
-            int size = q.size();
-            for (int s = 0; s < size; s++) {
-                int node = q.front(); q.pop();
-                studied++;
-                for (int next : adj[node]) {
-                    if (--indegree[next] == 0) q.push(next);
+        let mut semesters = 0i32;
+        let mut studied = 0;
+        while !q.is_empty() {
+            semesters += 1;
+            let size = q.len();
+            for _ in 0..size {
+                let node = q.pop_front().unwrap();
+                studied += 1;
+                for &next in &adj[node] {
+                    indegree[next] -= 1;
+                    if indegree[next] == 0 {
+                        q.push_back(next);
+                    }
                 }
             }
         }
 
-        return studied == n ? semesters : -1;
+        if studied == n { semesters } else { -1 }
     }
-};
+}
 ```
 
 **Complexity:** Time `O(V + E)`, Space `O(V + E)`.
@@ -492,45 +558,49 @@ public:
 
 **Idea:** A node is **safe** if every path from it leads to a terminal node (no cycle reachable). Reverse the graph and run Kahn's: terminal nodes (outdegree 0) become **indegree 0 in the reversed graph**. Peeling them off marks all nodes whose every outgoing edge leads only to safe nodes. Return safe nodes sorted.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-class Solution {
-public:
-    vector<int> eventualSafeNodes(vector<vector<int>>& graph) {
-        int n = graph.size();
-        vector<vector<int>> rev(n);
-        vector<int> outdegree(n, 0); // outdegree in original graph
+struct Solution;
 
-        for (int u = 0; u < n; u++) {
-            for (int v : graph[u]) {
-                rev[v].push_back(u);  // reversed edge v -> u
-                outdegree[u]++;
+impl Solution {
+    pub fn eventual_safe_nodes(graph: Vec<Vec<i32>>) -> Vec<i32> {
+        let n = graph.len();
+        let mut rev: Vec<Vec<usize>> = vec![vec![]; n];
+        let mut outdegree: Vec<usize> = vec![0; n]; // outdegree in original graph
+
+        for u in 0..n {
+            for &v in &graph[u] {
+                let v = v as usize;
+                rev[v].push(u);  // reversed edge v -> u
+                outdegree[u] += 1;
             }
         }
 
-        queue<int> q;
-        for (int i = 0; i < n; i++) {
-            if (outdegree[i] == 0) q.push(i); // terminal nodes
+        let mut q: VecDeque<usize> = VecDeque::new();
+        for i in 0..n {
+            if outdegree[i] == 0 {
+                q.push_back(i); // terminal nodes
+            }
         }
 
-        vector<bool> safe(n, false);
-        while (!q.empty()) {
-            int node = q.front(); q.pop();
+        let mut safe: Vec<bool> = vec![false; n];
+        while let Some(node) = q.pop_front() {
             safe[node] = true;
-            for (int prev : rev[node]) {
-                if (--outdegree[prev] == 0) q.push(prev);
+            for &prev in &rev[node] {
+                outdegree[prev] -= 1;
+                if outdegree[prev] == 0 {
+                    q.push_back(prev);
+                }
             }
         }
 
-        vector<int> result;
-        for (int i = 0; i < n; i++) {
-            if (safe[i]) result.push_back(i); // already in ascending order
-        }
-        return result;
+        (0..n)
+            .filter(|&i| safe[i])
+            .map(|i| i as i32)
+            .collect() // already in ascending order
     }
-};
+}
 ```
 
 **Alternative — DFS 3-color:** mark each node WHITE/GRAY/BLACK; a node is safe iff DFS from it never touches a GRAY node (no back edge / cycle). BLACK = safe.

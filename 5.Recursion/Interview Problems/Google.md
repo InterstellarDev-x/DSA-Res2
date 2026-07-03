@@ -23,37 +23,34 @@
 
 **Q1: Can you solve it with bitmasks? (N-Queens II for count)**
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // cols, diag1, diag2 are bitmasks of attacked positions
-int solve(int n, int row, int cols, int diag1, int diag2) {
-    if (row == n) return 1;
-    int count = 0;
+fn solve(n: i32, row: i32, cols: i32, diag1: i32, diag2: i32) -> i32 {
+    if row == n { return 1; }
+    let mut count = 0;
     // All positions NOT attacked by cols, diag1, or diag2 in this row
-    int available = ((1 << n) - 1) & ~(cols | diag1 | diag2);
-    while (available != 0) {
-        int bit = available & (-available);  // isolate lowest set bit
+    let mut available = ((1 << n) - 1) & !(cols | diag1 | diag2);
+    while available != 0 {
+        let bit = available & (-available);  // isolate lowest set bit
         available &= available - 1;           // clear lowest set bit
         // Shift diagonals: left-diagonal shifts left, right-diagonal shifts right
         count += solve(n, row + 1, cols | bit, (diag1 | bit) << 1, (diag2 | bit) >> 1);
     }
-    return count;
+    count
 }
 
-int totalNQueens(int n) {
-    return solve(n, 0, 0, 0, 0);
+fn total_n_queens(n: i32) -> i32 {
+    solve(n, 0, 0, 0, 0)
 }
 ```
 
 Time: O(n!) pruned, much faster in practice.
 
 **Q2: How would you reconstruct paths from the bitmask version?**
-Track which `bit` was chosen per row in a `vector<int> colsChosen` array, then build board from it.
+Track which `bit` was chosen per row in a `Vec<i32> cols_chosen` array, then build board from it.
 
-**Q3: What is the runtime of the std::unordered_set approach?**
-Each set contains/add is O(1) average. Overall O(n!) with pruning. The bitmask approach has lower constant factor due to no std::unordered_map overhead.
+**Q3: What is the runtime of the HashSet approach?**
+Each set contains/add is O(1) average. Overall O(n!) with pruning. The bitmask approach has lower constant factor due to no HashMap overhead.
 
 ---
 
@@ -63,17 +60,17 @@ Each set contains/add is O(1) average. Overall O(n!) with pruning. The bitmask a
 
 Before trying all 9 digits, compute the set of valid digits for each empty cell by intersecting row/col/box constraints. This dramatically reduces branching.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
 // Precompute valid digits for (r, c):
-unordered_set<int> valid = {1,2,3,4,5,6,7,8,9};
-for (int i = 0; i < 9; i++) {
-    if (board[r][i] != '.') valid.erase(board[r][i] - '0');
-    if (board[i][c] != '.') valid.erase(board[i][c] - '0');
-    int br = 3*(r/3)+i/3, bc = 3*(c/3)+i%3;
-    if (board[br][bc] != '.') valid.erase(board[br][bc] - '0');
+let mut valid: HashSet<i32> = (1..=9).collect();
+for i in 0..9 {
+    if board[r][i] != '.' { valid.remove(&((board[r][i] as i32) - ('0' as i32))); }
+    if board[i][c] != '.' { valid.remove(&((board[i][c] as i32) - ('0' as i32))); }
+    let br = 3 * (r / 3) + i / 3;
+    let bc = 3 * (c / 3) + i % 3;
+    if board[br][bc] != '.' { valid.remove(&((board[br][bc] as i32) - ('0' as i32))); }
 }
 ```
 

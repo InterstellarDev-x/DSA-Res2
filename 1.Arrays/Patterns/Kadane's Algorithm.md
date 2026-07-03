@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [C++ Templates](#c-templates)
+5. [Rust Templates](#rust-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -68,117 +68,108 @@ This is a **greedy-DP hybrid**: greedy in the extension decision, DP in state tr
 
 ---
 
-## C++ Templates
+## Rust Templates
 
 ### 1. Classic Kadane — Maximum Sum
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn max_sub_array(nums: &[i32]) -> i32 {
+    let mut max_so_far = nums[0];
+    let mut max_ending_here = nums[0];
 
-int maxSubArray(vector<int>& nums) {
-    int maxSoFar = nums[0];
-    int maxEndingHere = nums[0];
-
-    for (int i = 1; i < nums.size(); i++) {
-        maxEndingHere = max(nums[i], maxEndingHere + nums[i]);
-        maxSoFar = max(maxSoFar, maxEndingHere);
+    for i in 1..nums.len() {
+        max_ending_here = nums[i].max(max_ending_here + nums[i]);
+        max_so_far = max_so_far.max(max_ending_here);
     }
-    return maxSoFar;
+    max_so_far
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 2. Kadane with Subarray Indices
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn max_sub_array_with_indices(nums: &[i32]) -> (i32, usize, usize) {
+    let mut max_sum = nums[0];
+    let mut cur_sum = nums[0];
+    let mut start = 0usize;
+    let mut end = 0usize;
+    let mut temp_start = 0usize;
 
-vector<int> maxSubArrayWithIndices(vector<int>& nums) {
-    int maxSum = nums[0], curSum = nums[0];
-    int start = 0, end = 0, tempStart = 0;
-
-    for (int i = 1; i < nums.size(); i++) {
-        if (curSum + nums[i] < nums[i]) {
-            curSum = nums[i];
-            tempStart = i;
+    for i in 1..nums.len() {
+        if cur_sum + nums[i] < nums[i] {
+            cur_sum = nums[i];
+            temp_start = i;
         } else {
-            curSum += nums[i];
+            cur_sum += nums[i];
         }
-        if (curSum > maxSum) {
-            maxSum = curSum;
-            start = tempStart;
+        if cur_sum > max_sum {
+            max_sum = cur_sum;
+            start = temp_start;
             end = i;
         }
     }
-    return vector<int>{maxSum, start, end};
+    (max_sum, start, end)
 }
-// Returns [maxSum, startIndex, endIndex]
+// Returns (maxSum, startIndex, endIndex)
 ```
 
 ### 3. Maximum Product Subarray
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn max_product(nums: &[i32]) -> i32 {
+    let mut max_prod = nums[0];
+    let mut cur_max = nums[0];
+    let mut cur_min = nums[0]; // track both: negatives flip sign
 
-int maxProduct(vector<int>& nums) {
-    int maxProd = nums[0];
-    int curMax = nums[0], curMin = nums[0]; // track both: negatives flip sign
-
-    for (int i = 1; i < nums.size(); i++) {
-        int temp = curMax;
-        curMax = max(nums[i], max(curMax * nums[i], curMin * nums[i]));
-        curMin = min(nums[i], min(temp * nums[i], curMin * nums[i]));
-        maxProd = max(maxProd, curMax);
+    for i in 1..nums.len() {
+        let temp = cur_max;
+        cur_max = nums[i].max((cur_max * nums[i]).max(cur_min * nums[i]));
+        cur_min = nums[i].min((temp * nums[i]).min(cur_min * nums[i]));
+        max_prod = max_prod.max(cur_max);
     }
-    return maxProd;
+    max_prod
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 4. Maximum Sum Circular Subarray
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn max_subarray_sum_circular(nums: &[i32]) -> i32 {
+    let mut total_sum = 0;
+    let mut max_sum = nums[0];
+    let mut cur_max = 0;
+    let mut min_sum = nums[0];
+    let mut cur_min = 0;
 
-int maxSubarraySumCircular(vector<int>& nums) {
-    int totalSum = 0;
-    int maxSum = nums[0], curMax = 0;
-    int minSum = nums[0], curMin = 0;
+    for &num in nums {
+        cur_max = (cur_max + num).max(num);
+        max_sum = max_sum.max(cur_max);
 
-    for (auto& num : nums) {
-        curMax = max(curMax + num, num);
-        maxSum = max(maxSum, curMax);
+        cur_min = (cur_min + num).min(num);
+        min_sum = min_sum.min(cur_min);
 
-        curMin = min(curMin + num, num);
-        minSum = min(minSum, curMin);
-
-        totalSum += num;
+        total_sum += num;
     }
-    // If all negative, totalSum - minSum wraps entire array → invalid
-    return maxSum > 0 ? max(maxSum, totalSum - minSum) : maxSum;
+    // If all negative, total_sum - min_sum wraps entire array → invalid
+    if max_sum > 0 { max_sum.max(total_sum - min_sum) } else { max_sum }
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 5. Minimum Sum Subarray (Kadane Inverted)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn min_sub_array(nums: &[i32]) -> i32 {
+    let mut min_so_far = nums[0];
+    let mut min_ending_here = nums[0];
 
-int minSubArray(vector<int>& nums) {
-    int minSoFar = nums[0];
-    int minEndingHere = nums[0];
-
-    for (int i = 1; i < nums.size(); i++) {
-        minEndingHere = min(nums[i], minEndingHere + nums[i]);
-        minSoFar = min(minSoFar, minEndingHere);
+    for i in 1..nums.len() {
+        min_ending_here = nums[i].min(min_ending_here + nums[i]);
+        min_so_far = min_so_far.min(min_ending_here);
     }
-    return minSoFar;
+    min_so_far
 }
 ```
 

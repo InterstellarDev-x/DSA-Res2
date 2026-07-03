@@ -18,7 +18,7 @@ There are two classic greedy algorithms. Both are correct because of the **cut p
 | | Prim's | Kruskal's |
 |---|---|---|
 | **Strategy** | Grow a single tree outward from a starting vertex | Build a forest by adding globally cheapest edges |
-| **Data structure** | `std::priority_queue` (min-heap of candidate edges) | Sorted edge list + **Union-Find (DSU)** |
+| **Data structure** | `BinaryHeap` (min-heap of candidate edges) | Sorted edge list + **Union-Find (DSU)** |
 | **Cycle handling** | Track visited vertices; skip a popped edge if its endpoint is already in the tree | Skip an edge if both endpoints are already in the same DSU component |
 | **Best for** | **Dense** graphs (e.g. complete graphs); when edges are given implicitly | **Sparse** graphs; when edges are given as an explicit list |
 | **Time** | `O(E log V)` with a binary heap | `O(E log E)` dominated by the sort |
@@ -30,104 +30,108 @@ There are two classic greedy algorithms. Both are correct because of the **cut p
 
 ---
 
-## Prim's — C++ Template
+## Prim's — Rust Template
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
-class PrimMST {
-public:
-    // adj[u] = list of {v, weight}; vertices are 0..n-1
-    int prim(int n, vector<vector<int>> adj[]) {
-        vector<bool> inTree(n, false);
-        // min-heap ordered by edge weight: each entry is {weight, vertex}
-        priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> pq;
+struct PrimMST;
 
-        pq.push({0, 0}); // start from vertex 0 with cost 0
-        int totalWeight = 0;
-        int verticesUsed = 0;
+impl PrimMST {
+    // adj[u] = list of (v, weight); vertices are 0..n-1
+    fn prim(n: usize, adj: &[Vec<(usize, i32)>]) -> i32 {
+        let mut in_tree = vec![false; n];
+        // min-heap ordered by edge weight: each entry is (weight, vertex)
+        let mut pq: BinaryHeap<Reverse<(i32, usize)>> = BinaryHeap::new();
 
-        while (!pq.empty() && verticesUsed < n) {
-            auto [w, u] = pq.top(); pq.pop();
+        pq.push(Reverse((0, 0))); // start from vertex 0 with cost 0
+        let mut total_weight = 0i32;
+        let mut vertices_used = 0;
 
-            if (inTree[u]) continue;   // already connected — stale heap entry
-            inTree[u] = true;
-            totalWeight += w;
-            verticesUsed++;
+        while let Some(Reverse((w, u))) = pq.pop() {
+            if vertices_used >= n { break; }
+            if in_tree[u] { continue; } // already connected — stale heap entry
+            in_tree[u] = true;
+            total_weight += w;
+            vertices_used += 1;
 
-            for (auto& edge : adj[u]) {
-                int v = edge[0], weight = edge[1];
-                if (!inTree[v]) {
-                    pq.push({weight, v});
+            for &(v, weight) in &adj[u] {
+                if !in_tree[v] {
+                    pq.push(Reverse((weight, v)));
                 }
             }
         }
 
-        // If verticesUsed < n the graph was disconnected.
-        return verticesUsed == n ? totalWeight : -1;
+        // If vertices_used < n the graph was disconnected.
+        if vertices_used == n { total_weight } else { -1 }
     }
-};
+}
 ```
 
 ---
 
-## Kruskal's — C++ Template (with inline DSU)
+## Kruskal's — Rust Template (with inline DSU)
 
 The DSU below uses **path compression** in `find` and **union by rank** in `unite`. For a deeper treatment of the structure itself see [Union Find (DSU)](./Union%20Find%20(DSU).md).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Inline Disjoint Set Union — path compression + union by rank
 struct DSU {
-    vector<int> parent, rank_;
+    parent: Vec<usize>,
+    rank: Vec<usize>,
+}
 
-    DSU(int n) : parent(n), rank_(n, 0) {
-        iota(parent.begin(), parent.end(), 0);
+impl DSU {
+    fn new(n: usize) -> Self {
+        DSU {
+            parent: (0..n).collect(),
+            rank: vec![0; n],
+        }
     }
 
-    int find(int x) {
-        if (parent[x] != x) parent[x] = find(parent[x]); // path compression
-        return parent[x];
+    fn find(&mut self, x: usize) -> usize {
+        if self.parent[x] != x {
+            let px = self.parent[x];
+            self.parent[x] = self.find(px); // path compression
+        }
+        self.parent[x]
     }
 
     // returns true if the two were in different sets (a real union happened)
-    bool unite(int a, int b) {
-        int ra = find(a), rb = find(b);
-        if (ra == rb) return false;
-        if (rank_[ra] < rank_[rb]) swap(ra, rb);
-        parent[rb] = ra;
-        if (rank_[ra] == rank_[rb]) rank_[ra]++;
-        return true;
+    fn unite(&mut self, a: usize, b: usize) -> bool {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return false; }
+        let (ra, rb) = if self.rank[ra] < self.rank[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        if self.rank[ra] == self.rank[rb] { self.rank[ra] += 1; }
+        true
     }
-};
+}
 
-class KruskalMST {
-public:
-    // edges[i] = {u, v, weight}
-    int kruskal(int n, vector<vector<int>>& edges) {
-        sort(edges.begin(), edges.end(), [](const vector<int>& a, const vector<int>& b) {
-            return a[2] < b[2];
-        });
+struct KruskalMST;
 
-        DSU dsu(n);
-        int totalWeight = 0;
-        int edgesUsed = 0;
+impl KruskalMST {
+    // edges[i] = (u, v, weight)
+    fn kruskal(n: usize, edges: &mut Vec<(usize, usize, i32)>) -> i32 {
+        edges.sort_by_key(|&(_, _, w)| w);
 
-        for (auto& e : edges) {
-            int u = e[0], v = e[1], w = e[2];
-            if (dsu.unite(u, v)) {   // unite returns false if it would form a cycle
-                totalWeight += w;
-                edgesUsed++;
-                if (edgesUsed == n - 1) break; // tree complete
+        let mut dsu = DSU::new(n);
+        let mut total_weight = 0i32;
+        let mut edges_used = 0;
+
+        for &(u, v, w) in edges.iter() {
+            if dsu.unite(u, v) { // unite returns false if it would form a cycle
+                total_weight += w;
+                edges_used += 1;
+                if edges_used == n - 1 { break; } // tree complete
             }
         }
 
-        return edgesUsed == n - 1 ? totalWeight : -1; // -1 if disconnected
+        if edges_used == n - 1 { total_weight } else { -1 } // -1 if disconnected
     }
-};
+}
 ```
 
 ---
@@ -153,50 +157,51 @@ Note: if the goal were "minimize distance from a source to every node," that is 
 
 **Idea:** The points form a complete graph where the weight between two points is their Manhattan distance; this dense graph is a perfect fit for **Prim's** (no need to materialize all `O(n^2)` edges into a sorted list).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
-class Solution {
-public:
-    int minCostConnectPoints(vector<vector<int>>& points) {
-        int n = points.size();
-        if (n <= 1) return 0;
+struct Solution;
 
-        vector<bool> inTree(n, false);
-        // min-heap entries: {cost, pointIndex}
-        priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> pq;
+impl Solution {
+    pub fn min_cost_connect_points(points: Vec<Vec<i32>>) -> i32 {
+        let n = points.len();
+        if n <= 1 { return 0; }
 
-        pq.push({0, 0}); // start at point 0
-        int total = 0;
-        int used = 0;
+        let mut in_tree = vec![false; n];
+        // min-heap entries: (cost, point_index)
+        let mut pq: BinaryHeap<Reverse<(i32, usize)>> = BinaryHeap::new();
 
-        while (!pq.empty() && used < n) {
-            auto [cost, u] = pq.top(); pq.pop();
-            if (inTree[u]) continue;
+        pq.push(Reverse((0, 0))); // start at point 0
+        let mut total = 0i32;
+        let mut used = 0;
 
-            inTree[u] = true;
+        while let Some(Reverse((cost, u))) = pq.pop() {
+            if used >= n { break; }
+            if in_tree[u] { continue; }
+
+            in_tree[u] = true;
             total += cost;
-            used++;
+            used += 1;
 
             // push edges to every not-yet-connected point (implicit complete graph)
-            for (int v = 0; v < n; v++) {
-                if (!inTree[v]) {
-                    int dist = abs(points[u][0] - points[v][0])
-                             + abs(points[u][1] - points[v][1]);
-                    pq.push({dist, v});
+            for v in 0..n {
+                if !in_tree[v] {
+                    let dist = (points[u][0] - points[v][0]).abs()
+                             + (points[u][1] - points[v][1]).abs();
+                    pq.push(Reverse((dist, v)));
                 }
             }
         }
 
-        return total;
+        total
     }
-};
+}
 ```
 
 **Complexity:** Time `O(n^2 log n)` (each of `n` expansions pushes up to `n` heap entries). Space `O(n^2)` for the heap in the worst case.
 
-**Kruskal alternative:** Build all `n(n-1)/2` edges as `{i, j, manhattanDist}`, sort them, and run the Kruskal template above. This is `O(n^2 log n)` for the sort and works fine, but it allocates the full edge list, so Prim's is the cleaner primary choice for this dense graph.
+**Kruskal alternative:** Build all `n(n-1)/2` edges as `(i, j, manhattanDist)`, sort them, and run the Kruskal template above. This is `O(n^2 log n)` for the sort and works fine, but it allocates the full edge list, so Prim's is the cleaner primary choice for this dense graph.
 
 **Dry run (Kruskal) on `points = [[0,0],[2,2],[3,10],[5,2],[7,0]]`** (label points P0..P4):
 
@@ -233,56 +238,66 @@ We have accepted `V - 1 = 4` edges, so we stop. **MST cost = 20**, which matches
 
 **Idea:** Classic **Kruskal's** on the explicit connection list; after processing, return the total only if all `n` cities ended up in one component, else `-1`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct DSU {
+    parent: Vec<usize>,
+    rank: Vec<usize>,
+}
 
-class Solution {
-    struct DSU {
-        vector<int> parent, rank_;
-
-        DSU(int n) : parent(n), rank_(n, 0) {
-            iota(parent.begin(), parent.end(), 0);
+impl DSU {
+    fn new(n: usize) -> Self {
+        DSU {
+            parent: (0..n).collect(),
+            rank: vec![0; n],
         }
+    }
 
-        int find(int x) {
-            if (parent[x] != x) parent[x] = find(parent[x]);
-            return parent[x];
+    fn find(&mut self, x: usize) -> usize {
+        if self.parent[x] != x {
+            let px = self.parent[x];
+            self.parent[x] = self.find(px);
         }
+        self.parent[x]
+    }
 
-        bool unite(int a, int b) {
-            int ra = find(a), rb = find(b);
-            if (ra == rb) return false;
-            if (rank_[ra] < rank_[rb]) swap(ra, rb);
-            parent[rb] = ra;
-            if (rank_[ra] == rank_[rb]) rank_[ra]++;
-            return true;
-        }
-    };
+    fn unite(&mut self, a: usize, b: usize) -> bool {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return false; }
+        let (ra, rb) = if self.rank[ra] < self.rank[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        if self.rank[ra] == self.rank[rb] { self.rank[ra] += 1; }
+        true
+    }
+}
 
-public:
-    int minimumCost(int n, vector<vector<int>>& connections) {
+struct Solution;
+
+impl Solution {
+    pub fn minimum_cost(n: i32, connections: Vec<Vec<i32>>) -> i32 {
+        let n = n as usize;
         // cities are 1..n — DSU sized n+1, index 0 unused
-        sort(connections.begin(), connections.end(), [](const vector<int>& a, const vector<int>& b) {
-            return a[2] < b[2];
-        });
+        let mut connections = connections;
+        connections.sort_by_key(|c| c[2]);
 
-        DSU dsu(n + 1);
-        int total = 0;
-        int edgesUsed = 0;
+        let mut dsu = DSU::new(n + 1);
+        let mut total = 0i32;
+        let mut edges_used = 0;
 
-        for (auto& c : connections) {
-            int u = c[0], v = c[1], cost = c[2];
-            if (dsu.unite(u, v)) {
+        for c in &connections {
+            let u = c[0] as usize;
+            let v = c[1] as usize;
+            let cost = c[2];
+            if dsu.unite(u, v) {
                 total += cost;
-                edgesUsed++;
-                if (edgesUsed == n - 1) break;
+                edges_used += 1;
+                if edges_used == n - 1 { break; }
             }
         }
 
-        return edgesUsed == n - 1 ? total : -1;
+        if edges_used == n - 1 { total } else { -1 }
     }
-};
+}
 ```
 
 **Complexity:** Time `O(E log E)` for the sort (E = number of connections), with near-`O(1)` amortized DSU operations. Space `O(n)`.
@@ -293,65 +308,72 @@ public:
 
 **Idea:** Each house can either dig its own well (a cost) or connect to a neighbor via a pipe. Model the well option by adding a **virtual node 0** with an edge of weight `wells[i]` to each house `i`; then the answer is simply the **MST** over houses `1..n` plus node `0` (Kruskal's).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct DSU {
+    parent: Vec<usize>,
+    rank: Vec<usize>,
+}
 
-class Solution {
-    struct DSU {
-        vector<int> parent, rank_;
-
-        DSU(int n) : parent(n), rank_(n, 0) {
-            iota(parent.begin(), parent.end(), 0);
+impl DSU {
+    fn new(n: usize) -> Self {
+        DSU {
+            parent: (0..n).collect(),
+            rank: vec![0; n],
         }
+    }
 
-        int find(int x) {
-            if (parent[x] != x) parent[x] = find(parent[x]);
-            return parent[x];
+    fn find(&mut self, x: usize) -> usize {
+        if self.parent[x] != x {
+            let px = self.parent[x];
+            self.parent[x] = self.find(px);
         }
+        self.parent[x]
+    }
 
-        bool unite(int a, int b) {
-            int ra = find(a), rb = find(b);
-            if (ra == rb) return false;
-            if (rank_[ra] < rank_[rb]) swap(ra, rb);
-            parent[rb] = ra;
-            if (rank_[ra] == rank_[rb]) rank_[ra]++;
-            return true;
-        }
-    };
+    fn unite(&mut self, a: usize, b: usize) -> bool {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return false; }
+        let (ra, rb) = if self.rank[ra] < self.rank[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        if self.rank[ra] == self.rank[rb] { self.rank[ra] += 1; }
+        true
+    }
+}
 
-public:
-    int minCostToSupplyWater(int n, vector<int>& wells, vector<vector<int>>& pipes) {
+struct Solution;
+
+impl Solution {
+    pub fn min_cost_to_supply_water(n: i32, wells: Vec<i32>, pipes: Vec<Vec<i32>>) -> i32 {
+        let n = n as usize;
         // Build edge list. Houses are 1..n; node 0 is the virtual "water source".
-        vector<vector<int>> edges;
+        let mut edges: Vec<(usize, usize, i32)> = Vec::new();
 
         // well[i] becomes an edge from virtual node 0 to house (i+1)
-        for (int i = 0; i < n; i++) {
-            edges.push_back({0, i + 1, wells[i]});
+        for i in 0..n {
+            edges.push((0, i + 1, wells[i]));
         }
-        for (auto& p : pipes) {
-            edges.push_back({p[0], p[1], p[2]});
+        for p in &pipes {
+            edges.push((p[0] as usize, p[1] as usize, p[2]));
         }
 
-        sort(edges.begin(), edges.end(), [](const vector<int>& a, const vector<int>& b) {
-            return a[2] < b[2];
-        });
+        edges.sort_by_key(|&(_, _, w)| w);
 
-        DSU dsu(n + 1);      // indices 0..n
-        int total = 0;
-        int edgesUsed = 0;
+        let mut dsu = DSU::new(n + 1); // indices 0..n
+        let mut total = 0i32;
+        let mut edges_used = 0;
 
-        for (auto& e : edges) {
-            if (dsu.unite(e[0], e[1])) {
-                total += e[2];
-                edgesUsed++;
-                if (edgesUsed == n) break; // n+1 nodes => MST has n edges
+        for &(u, v, w) in &edges {
+            if dsu.unite(u, v) {
+                total += w;
+                edges_used += 1;
+                if edges_used == n { break; } // n+1 nodes => MST has n edges
             }
         }
 
-        return total;
+        total
     }
-};
+}
 ```
 
 **Why the virtual node works:** "Build a well at house `i`" is equivalent to "connect house `i` to a single shared source." Adding node `0` makes every house's well a real edge, so the cheapest way to supply water to every house is exactly the minimum spanning tree of the `n + 1` nodes.
@@ -364,99 +386,110 @@ public:
 
 **Idea:** Compute the **base MST weight** with Kruskal's. For each edge: it is **critical** if removing it (running Kruskal without it) raises the MST weight or disconnects the graph; it is **pseudo-critical** if forcing it in first and then completing the MST still yields the base weight (but it is not critical).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct DSU {
+    parent: Vec<usize>,
+    rank: Vec<usize>,
+}
 
-class Solution {
-    struct DSU {
-        vector<int> parent, rank_;
-
-        DSU(int n) : parent(n), rank_(n, 0) {
-            iota(parent.begin(), parent.end(), 0);
+impl DSU {
+    fn new(n: usize) -> Self {
+        DSU {
+            parent: (0..n).collect(),
+            rank: vec![0; n],
         }
+    }
 
-        int find(int x) {
-            if (parent[x] != x) parent[x] = find(parent[x]);
-            return parent[x];
+    fn find(&mut self, x: usize) -> usize {
+        if self.parent[x] != x {
+            let px = self.parent[x];
+            self.parent[x] = self.find(px);
         }
+        self.parent[x]
+    }
 
-        bool unite(int a, int b) {
-            int ra = find(a), rb = find(b);
-            if (ra == rb) return false;
-            if (rank_[ra] < rank_[rb]) swap(ra, rb);
-            parent[rb] = ra;
-            if (rank_[ra] == rank_[rb]) rank_[ra]++;
-            return true;
-        }
-    };
+    fn unite(&mut self, a: usize, b: usize) -> bool {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return false; }
+        let (ra, rb) = if self.rank[ra] < self.rank[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        if self.rank[ra] == self.rank[rb] { self.rank[ra] += 1; }
+        true
+    }
+}
 
+struct Solution;
+
+impl Solution {
     // Runs Kruskal on the pre-sorted edges.
-    // skip: index (in sorted array) to exclude, or -1.
-    // force: index (in sorted array) to add first, or -1.
-    // Returns total weight, or INT_MAX if the graph stays disconnected.
-    int buildMST(int n, vector<vector<int>>& sorted, int skip, int force) {
-        DSU dsu(n);
-        int weight = 0;
-        int count = 0;
+    // skip: index (in sorted array) to exclude, or None.
+    // force: index (in sorted array) to add first, or None.
+    // Returns total weight, or i32::MAX if the graph stays disconnected.
+    fn build_mst(
+        n: usize,
+        sorted: &[(usize, usize, i32, usize)],
+        skip: Option<usize>,
+        force: Option<usize>,
+    ) -> i32 {
+        let mut dsu = DSU::new(n);
+        let mut weight = 0i32;
+        let mut count = 0;
 
-        if (force != -1) {
-            dsu.unite(sorted[force][0], sorted[force][1]);
-            weight += sorted[force][2];
-            count++;
+        if let Some(f) = force {
+            dsu.unite(sorted[f].0, sorted[f].1);
+            weight += sorted[f].2;
+            count += 1;
         }
 
-        for (int i = 0; i < (int)sorted.size(); i++) {
-            if (i == skip) continue;
-            if (dsu.unite(sorted[i][0], sorted[i][1])) {
-                weight += sorted[i][2];
-                count++;
+        for i in 0..sorted.len() {
+            if Some(i) == skip { continue; }
+            if dsu.unite(sorted[i].0, sorted[i].1) {
+                weight += sorted[i].2;
+                count += 1;
             }
         }
 
-        return count == n - 1 ? weight : INT_MAX; // disconnected
+        if count == n - 1 { weight } else { i32::MAX } // disconnected
     }
 
-public:
-    vector<vector<int>> findCriticalAndPseudoCriticalEdges(int n, vector<vector<int>>& edges) {
-        int m = edges.size();
+    pub fn find_critical_and_pseudo_critical_edges(n: i32, edges: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        let n = n as usize;
+        let m = edges.len();
         // Track original indices since we will sort.
-        vector<vector<int>> indexed(m, vector<int>(4));
-        for (int i = 0; i < m; i++) {
-            indexed[i][0] = edges[i][0];
-            indexed[i][1] = edges[i][1];
-            indexed[i][2] = edges[i][2];
-            indexed[i][3] = i; // original index
-        }
-        sort(indexed.begin(), indexed.end(), [](const vector<int>& a, const vector<int>& b) {
-            return a[2] < b[2];
-        });
+        let mut indexed: Vec<(usize, usize, i32, usize)> = edges
+            .iter()
+            .enumerate()
+            .map(|(i, e)| (e[0] as usize, e[1] as usize, e[2], i))
+            .collect();
+        indexed.sort_by_key(|&(_, _, w, _)| w);
 
-        int baseWeight = buildMST(n, indexed, -1, -1);
+        let base_weight = Self::build_mst(n, &indexed, None, None);
 
-        vector<int> critical, pseudo;
+        let mut critical: Vec<i32> = Vec::new();
+        let mut pseudo: Vec<i32> = Vec::new();
 
-        for (int i = 0; i < m; i++) {
+        for i in 0..m {
             // 1) Exclude edge i: if MST weight grows or graph disconnects -> critical.
-            int without = buildMST(n, indexed, i, -1);
-            if (without > baseWeight) {
-                critical.push_back(indexed[i][3]);
+            let without = Self::build_mst(n, &indexed, Some(i), None);
+            if without > base_weight {
+                critical.push(indexed[i].3 as i32);
                 continue;
             }
             // 2) Force edge i in: if total still equals base -> pseudo-critical.
-            int with = buildMST(n, indexed, -1, i);
-            if (with == baseWeight) {
-                pseudo.push_back(indexed[i][3]);
+            let with_forced = Self::build_mst(n, &indexed, None, Some(i));
+            if with_forced == base_weight {
+                pseudo.push(indexed[i].3 as i32);
             }
         }
 
-        return {critical, pseudo};
+        vec![critical, pseudo]
     }
-};
+}
 ```
 
 **Reasoning recap:**
-- **Critical edge:** every MST must include it. Detected because excluding it forces a costlier alternative (weight increases) or makes the graph disconnected (`INT_MAX > baseWeight`).
+- **Critical edge:** every MST must include it. Detected because excluding it forces a costlier alternative (weight increases) or makes the graph disconnected (`i32::MAX > base_weight`).
 - **Pseudo-critical edge:** appears in *some* MST but not all. Detected because forcing it in still reaches the base weight, yet it was not flagged critical.
 - An edge is neither if forcing it in raises the total above the base weight.
 

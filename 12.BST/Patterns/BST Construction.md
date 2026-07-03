@@ -8,16 +8,19 @@ array* the balanced root is the **middle** element. From a *preorder traversal* 
 element is the root and an **upper bound** cleanly separates the two subtrees in a single O(n)
 pass.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+#[derive(Debug)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
 
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
-};
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 > **Recognition signals:** "build a height-balanced BST", "from a sorted array", "from preorder",
@@ -31,21 +34,18 @@ The array is already sorted (= an inorder sequence). Choosing the **middle** ele
 at every level guarantees a **height-balanced** tree: left half builds the left subtree, right half
 the right subtree.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-TreeNode* sortedArrayToBST(vector<int>& nums) {
-    return build(nums, 0, nums.size() - 1);
+```rust
+fn sorted_array_to_bst(nums: &[i32]) -> Option<Box<TreeNode>> {
+    build(nums, 0, nums.len() as i32 - 1)
 }
 
-TreeNode* build(vector<int>& nums, int lo, int hi) {
-    if (lo > hi) return nullptr;
-    int mid = lo + (hi - lo) / 2;            // middle ⇒ balanced; avoids overflow
-    TreeNode* root = new TreeNode(nums[mid]);
-    root->left  = build(nums, lo, mid - 1);
-    root->right = build(nums, mid + 1, hi);
-    return root;
+fn build(nums: &[i32], lo: i32, hi: i32) -> Option<Box<TreeNode>> {
+    if lo > hi { return None; }
+    let mid = lo + (hi - lo) / 2;            // middle => balanced; avoids overflow
+    let mut root = Box::new(TreeNode::new(nums[mid as usize]));
+    root.left  = build(nums, lo, mid - 1);
+    root.right = build(nums, mid + 1, hi);
+    Some(root)
 }
 ```
 
@@ -61,23 +61,20 @@ belongs to the left subtree; the first value larger starts the right subtree. Th
 solution uses a single shared index and an **upper bound** that says "consume values that still
 belong to the current subtree."
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int idx = 0;
-
-TreeNode* bstFromPreorder(vector<int>& preorder) {
-    idx = 0;
-    return build(preorder, INT_MAX);
+```rust
+fn bst_from_preorder(preorder: &[i32]) -> Option<Box<TreeNode>> {
+    let mut idx = 0;
+    build(preorder, &mut idx, i32::MAX)
 }
 
-TreeNode* build(vector<int>& pre, int bound) {
-    if (idx == (int)pre.size() || pre[idx] > bound) return nullptr;  // nothing more fits here
-    TreeNode* root = new TreeNode(pre[idx++]);
-    root->left  = build(pre, root->val);   // left subtree: values < root->val
-    root->right = build(pre, bound);      // right subtree: values < inherited bound
-    return root;
+fn build(pre: &[i32], idx: &mut usize, bound: i32) -> Option<Box<TreeNode>> {
+    if *idx == pre.len() || pre[*idx] > bound { return None; }  // nothing more fits here
+    let val = pre[*idx];
+    *idx += 1;
+    let mut root = Box::new(TreeNode::new(val));
+    root.left  = build(pre, idx, val);    // left subtree: values < val
+    root.right = build(pre, idx, bound);  // right subtree: values < inherited bound
+    Some(root)
 }
 ```
 
@@ -85,26 +82,21 @@ Each element is consumed exactly once → **O(n)**.
 
 A simpler-to-explain (but O(n²) worst case) recursion uses explicit lo/hi value bounds:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int p = 0;
-
-TreeNode* bstFromPreorderBounds(vector<int>& pre) {
-    p = 0;
-    return helper(pre, INT_MIN, INT_MAX);
+```rust
+fn bst_from_preorder_bounds(pre: &[i32]) -> Option<Box<TreeNode>> {
+    let mut p = 0;
+    helper(pre, &mut p, i32::MIN, i32::MAX)
 }
 
-TreeNode* helper(vector<int>& pre, int lower, int upper) {
-    if (p == (int)pre.size()) return nullptr;
-    int v = pre[p];
-    if (v < lower || v > upper) return nullptr;
-    p++;
-    TreeNode* node = new TreeNode(v);
-    node->left  = helper(pre, lower, v);
-    node->right = helper(pre, v, upper);
-    return node;
+fn helper(pre: &[i32], p: &mut usize, lower: i32, upper: i32) -> Option<Box<TreeNode>> {
+    if *p == pre.len() { return None; }
+    let v = pre[*p];
+    if v < lower || v > upper { return None; }
+    *p += 1;
+    let mut node = Box::new(TreeNode::new(v));
+    node.left  = helper(pre, p, lower, v);
+    node.right = helper(pre, p, v, upper);
+    Some(node)
 }
 ```
 
@@ -119,30 +111,28 @@ Two-step composition of the previous ideas:
 1. **Inorder traversal → sorted array** (a BST's inorder is sorted, so no actual sorting needed).
 2. **Sorted array → height-balanced BST** using the LC 108 mid-element technique.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-TreeNode* balanceBST(TreeNode* root) {
-    vector<int> sorted;
-    inorder(root, sorted);
-    return build(sorted, 0, sorted.size() - 1);
+```rust
+fn balance_bst(root: Option<Box<TreeNode>>) -> Option<Box<TreeNode>> {
+    let mut sorted = Vec::new();
+    inorder(&root, &mut sorted);
+    build(&sorted, 0, sorted.len() as i32 - 1)
 }
 
-void inorder(TreeNode* node, vector<int>& out) {
-    if (node == nullptr) return;
-    inorder(node->left, out);
-    out.push_back(node->val);
-    inorder(node->right, out);
+fn inorder(node: &Option<Box<TreeNode>>, out: &mut Vec<i32>) {
+    if let Some(n) = node {
+        inorder(&n.left, out);
+        out.push(n.val);
+        inorder(&n.right, out);
+    }
 }
 
-TreeNode* build(vector<int>& a, int lo, int hi) {
-    if (lo > hi) return nullptr;
-    int mid = lo + (hi - lo) / 2;
-    TreeNode* root = new TreeNode(a[mid]);
-    root->left  = build(a, lo, mid - 1);
-    root->right = build(a, mid + 1, hi);
-    return root;
+fn build(a: &[i32], lo: i32, hi: i32) -> Option<Box<TreeNode>> {
+    if lo > hi { return None; }
+    let mid = lo + (hi - lo) / 2;
+    let mut root = Box::new(TreeNode::new(a[mid as usize]));
+    root.left  = build(a, lo, mid - 1);
+    root.right = build(a, mid + 1, hi);
+    Some(root)
 }
 ```
 

@@ -78,7 +78,7 @@
 | **LeetCode** | [LC 56](https://leetcode.com/problems/merge-intervals/) |
 
 **Common follow-ups:**
-- "What if intervals come in a stream?" → Use std::map
+- "What if intervals come in a stream?" → Use BTreeMap
 - "What's the minimum number of rooms needed?" → Meeting Rooms II (LC 253)
 - "What if intervals can have weights?" → Weighted interval scheduling (DP)
 
@@ -99,26 +99,26 @@
 - "Explain why two pointers works vs stack approach"
 - "What if the array can be updated?" → Segment Tree
 
-**C++ solution (Two Pointers):**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int trap(vector<int>& height) {
-    int l = 0, r = (int)height.size() - 1;
-    int leftMax = 0, rightMax = 0, water = 0;
-    while (l < r) {
-        if (height[l] < height[r]) {
-            leftMax = max(leftMax, height[l]);
-            water += leftMax - height[l];
-            l++;
+**Rust solution (Two Pointers):**
+```rust
+fn trap(height: &[i32]) -> i32 {
+    let mut l = 0;
+    let mut r = height.len().saturating_sub(1);
+    let mut left_max = 0;
+    let mut right_max = 0;
+    let mut water = 0;
+    while l < r {
+        if height[l] < height[r] {
+            left_max = left_max.max(height[l]);
+            water += left_max - height[l];
+            l += 1;
         } else {
-            rightMax = max(rightMax, height[r]);
-            water += rightMax - height[r];
-            r--;
+            right_max = right_max.max(height[r]);
+            water += right_max - height[r];
+            r -= 1;
         }
     }
-    return water;
+    water
 }
 ```
 

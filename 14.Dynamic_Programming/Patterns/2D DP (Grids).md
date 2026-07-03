@@ -6,7 +6,7 @@ Grid DP is the natural next step after [1D DP (Fibonacci Style)](./1D%20DP%20(Fi
 
 The defining trait of this pattern is that the **state is a coordinate** (a `(row, col)` pair, sometimes augmented with a second coordinate or a small categorical variable). Because every cell only looks at the previous row (and possibly the current row to its left), almost every grid problem collapses from `O(m·n)` memory to `O(n)` using a **rolling row** — replacing the full `dp[m][n]` table with one or two 1D arrays. This space optimization is the recurring theme below, and you should reach for it instinctively once the tabulation is correct.
 
-This document covers problems **8–14** in the DP catalogue. Each problem is presented with its state definition, recurrence, base cases, complexity, and at least one dry-run for the representative cases. All code is full, compilable C++.
+This document covers problems **8–14** in the DP catalogue. Each problem is presented with its state definition, recurrence, base cases, complexity, and at least one dry-run for the representative cases. All code is full, compilable Rust.
 
 ---
 
@@ -26,76 +26,70 @@ Any path consists of exactly `(m-1)` down-moves and `(n-1)` right-moves, in some
 
 > **C(m + n − 2, m − 1)**
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct UniquePathsMath;
 
-class UniquePathsMath {
-public:
+impl UniquePathsMath {
     // Choose (m-1) down moves out of (m+n-2) total moves.
     // Compute C(m+n-2, m-1) iteratively to avoid overflow / factorials.
-    int uniquePaths(int m, int n) {
-        int total = m + n - 2;   // total moves
-        int k = m - 1;           // pick the smaller for fewer iterations
-        long long result = 1;
-        for (int i = 1; i <= k; i++) {
+    fn unique_paths(m: i32, n: i32) -> i32 {
+        let total = m + n - 2;   // total moves
+        let k = m - 1;           // pick the smaller for fewer iterations
+        let mut result: i64 = 1;
+        for i in 1..=k {
             // result *= (total - k + i) / i ; done in this order to stay integral
-            result = result * (total - k + i) / i;
+            result = result * (total - k + i) as i64 / i as i64;
         }
-        return (int) result;
+        result as i32
     }
-};
+}
 ```
 
 ### DP grid (`O(m·n)` time, `O(m·n)` space)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct UniquePathsGrid;
 
-class UniquePathsGrid {
-public:
-    int uniquePaths(int m, int n) {
-        vector<vector<int>> dp(m, vector<int>(n));
+impl UniquePathsGrid {
+    fn unique_paths(m: usize, n: usize) -> i32 {
+        let mut dp = vec![vec![0i32; n]; m];
 
         // Base cases: first column and first row each have exactly one path.
-        for (int i = 0; i < m; i++) dp[i][0] = 1;
-        for (int j = 0; j < n; j++) dp[0][j] = 1;
+        for i in 0..m { dp[i][0] = 1; }
+        for j in 0..n { dp[0][j] = 1; }
 
-        for (int i = 1; i < m; i++) {
-            for (int j = 1; j < n; j++) {
+        for i in 1..m {
+            for j in 1..n {
                 dp[i][j] = dp[i - 1][j] + dp[i][j - 1];
             }
         }
-        return dp[m - 1][n - 1];
+        dp[m - 1][n - 1]
     }
-};
+}
 ```
 
 ### Space optimization: rolling row (`O(n)` space)
 
 Row `i` only needs row `i-1`. Process left to right within a single array: at the moment we read `dp[j]` it still holds the value from the *previous* row (the cell above), and `dp[j-1]` already holds the *current* row (the cell to the left).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct UniquePathsRolling;
 
-class UniquePathsRolling {
-public:
-    int uniquePaths(int m, int n) {
-        vector<int> dp(n, 1);          // first row is all 1s
+impl UniquePathsRolling {
+    fn unique_paths(m: usize, n: usize) -> i32 {
+        let mut dp = vec![1i32; n];          // first row is all 1s
 
-        for (int i = 1; i < m; i++) {
+        for _i in 1..m {
             // dp[0] stays 1 (first column). Start from j = 1.
-            for (int j = 1; j < n; j++) {
+            for j in 1..n {
                 // dp[j]   == value from row i-1 (cell above)
                 // dp[j-1] == value already updated for row i (cell left)
                 dp[j] = dp[j] + dp[j - 1];
             }
         }
-        return dp[n - 1];
+        dp[n - 1]
     }
-};
+}
 ```
 
 | Approach            | Time       | Space      |
@@ -120,33 +114,31 @@ Same setup as Unique Paths, but some cells contain obstacles (`grid[i][j] == 1`)
 
 ### Rolling-row solution (`O(n)` space)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct UniquePathsII;
 
-class UniquePathsII {
-public:
-    int uniquePathsWithObstacles(vector<vector<int>>& obstacleGrid) {
-        int m = obstacleGrid.size();
-        int n = obstacleGrid[0].size();
-        vector<int> dp(n);
+impl UniquePathsII {
+    fn unique_paths_with_obstacles(obstacle_grid: &Vec<Vec<i32>>) -> i32 {
+        let m = obstacle_grid.len();
+        let n = obstacle_grid[0].len();
+        let mut dp = vec![0i32; n];
 
         // Start cell: 1 path if it is open, else 0 (and answer is 0).
-        dp[0] = (obstacleGrid[0][0] == 1) ? 0 : 1;
+        dp[0] = if obstacle_grid[0][0] == 1 { 0 } else { 1 };
 
-        for (int i = 0; i < m; i++) {
-            for (int j = 0; j < n; j++) {
-                if (obstacleGrid[i][j] == 1) {
+        for i in 0..m {
+            for j in 0..n {
+                if obstacle_grid[i][j] == 1 {
                     dp[j] = 0;                       // blocked cell, no paths
-                } else if (j > 0) {
+                } else if j > 0 {
                     dp[j] = dp[j] + dp[j - 1];       // above + left
                 }
                 // j == 0 && open: dp[0] keeps its carried-down value
             }
         }
-        return dp[n - 1];
+        dp[n - 1]
     }
-};
+}
 ```
 
 | Approach    | Time     | Space  |
@@ -167,110 +159,108 @@ Given an `m × n` grid of non-negative numbers, find a path from top-left to bot
 
 ### Step 1 — Recursion (top-down, exponential)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct MinPathSumRecursion;
 
-class MinPathSumRecursion {
-public:
-    int minPathSum(vector<vector<int>>& grid) {
-        return solve(grid, grid.size() - 1, grid[0].size() - 1);
+impl MinPathSumRecursion {
+    fn min_path_sum(grid: &Vec<Vec<i32>>) -> i32 {
+        Self::solve(grid, (grid.len() - 1) as i32, (grid[0].len() - 1) as i32)
     }
 
     // f(i, j) = min cost to reach (i, j) from (0, 0)
-    int solve(vector<vector<int>>& grid, int i, int j) {
-        if (i == 0 && j == 0) return grid[0][0];
-        if (i < 0 || j < 0) return INT_MAX; // out of bounds = invalid
+    fn solve(grid: &Vec<Vec<i32>>, i: i32, j: i32) -> i32 {
+        if i == 0 && j == 0 { return grid[0][0]; }
+        if i < 0 || j < 0 { return i32::MAX; } // out of bounds = invalid
 
-        int up = solve(grid, i - 1, j);
-        int left = solve(grid, i, j - 1);
-        return grid[i][j] + min(up, left);
+        let up = Self::solve(grid, i - 1, j);
+        let left = Self::solve(grid, i, j - 1);
+        // At most one of up/left is i32::MAX (both can't be invalid simultaneously)
+        grid[i as usize][j as usize] + up.min(left)
     }
-};
+}
 ```
 
-### Step 2 — Memoization (`vector<vector<int>> memo`, initialized to `-1`)
+### Step 2 — Memoization (`Vec<Vec<i32>>` memo, initialized to `-1`)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct MinPathSumMemo;
 
-class MinPathSumMemo {
-public:
-    int minPathSum(vector<vector<int>>& grid) {
-        int m = grid.size(), n = grid[0].size();
-        vector<vector<int>> memo(m, vector<int>(n, -1));
-        return solve(grid, m - 1, n - 1, memo);
+impl MinPathSumMemo {
+    fn min_path_sum(grid: &Vec<Vec<i32>>) -> i32 {
+        let m = grid.len();
+        let n = grid[0].len();
+        let mut memo = vec![vec![-1i32; n]; m];
+        Self::solve(grid, (m - 1) as i32, (n - 1) as i32, &mut memo)
     }
 
-    int solve(vector<vector<int>>& grid, int i, int j, vector<vector<int>>& memo) {
-        if (i == 0 && j == 0) return grid[0][0];
-        if (i < 0 || j < 0) return INT_MAX;
-        if (memo[i][j] != -1) return memo[i][j];
+    fn solve(grid: &Vec<Vec<i32>>, i: i32, j: i32, memo: &mut Vec<Vec<i32>>) -> i32 {
+        if i == 0 && j == 0 { return grid[0][0]; }
+        if i < 0 || j < 0 { return i32::MAX; }
+        if memo[i as usize][j as usize] != -1 { return memo[i as usize][j as usize]; }
 
-        int up = solve(grid, i - 1, j, memo);
-        int left = solve(grid, i, j - 1, memo);
-        return memo[i][j] = grid[i][j] + min(up, left);
+        let up = Self::solve(grid, i - 1, j, memo);
+        let left = Self::solve(grid, i, j - 1, memo);
+        let result = grid[i as usize][j as usize] + up.min(left);
+        memo[i as usize][j as usize] = result;
+        result
     }
-};
+}
 ```
 
 ### Step 3 — Tabulation (`O(m·n)` space)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct MinPathSumTab;
 
-class MinPathSumTab {
-public:
-    int minPathSum(vector<vector<int>>& grid) {
-        int m = grid.size(), n = grid[0].size();
-        vector<vector<int>> dp(m, vector<int>(n));
+impl MinPathSumTab {
+    fn min_path_sum(grid: &Vec<Vec<i32>>) -> i32 {
+        let m = grid.len();
+        let n = grid[0].len();
+        let mut dp = vec![vec![0i32; n]; m];
 
-        for (int i = 0; i < m; i++) {
-            for (int j = 0; j < n; j++) {
-                if (i == 0 && j == 0) {
+        for i in 0..m {
+            for j in 0..n {
+                if i == 0 && j == 0 {
                     dp[i][j] = grid[i][j];
                 } else {
-                    int up   = (i > 0) ? dp[i - 1][j] : INT_MAX;
-                    int left = (j > 0) ? dp[i][j - 1] : INT_MAX;
-                    dp[i][j] = grid[i][j] + min(up, left);
+                    let up   = if i > 0 { dp[i - 1][j] } else { i32::MAX };
+                    let left = if j > 0 { dp[i][j - 1] } else { i32::MAX };
+                    dp[i][j] = grid[i][j] + up.min(left);
                 }
             }
         }
-        return dp[m - 1][n - 1];
+        dp[m - 1][n - 1]
     }
-};
+}
 ```
 
 ### Step 4 — Rolling-row space optimization (`O(n)` space)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct MinPathSumRolling;
 
-class MinPathSumRolling {
-public:
-    int minPathSum(vector<vector<int>>& grid) {
-        int m = grid.size(), n = grid[0].size();
-        vector<int> prev(n);
+impl MinPathSumRolling {
+    fn min_path_sum(grid: &Vec<Vec<i32>>) -> i32 {
+        let m = grid.len();
+        let n = grid[0].len();
+        let mut prev = vec![0i32; n];
 
-        for (int i = 0; i < m; i++) {
-            vector<int> curr(n);
-            for (int j = 0; j < n; j++) {
-                if (i == 0 && j == 0) {
+        for i in 0..m {
+            let mut curr = vec![0i32; n];
+            for j in 0..n {
+                if i == 0 && j == 0 {
                     curr[j] = grid[i][j];
                 } else {
-                    int up   = (i > 0) ? prev[j]     : INT_MAX;
-                    int left = (j > 0) ? curr[j - 1] : INT_MAX;
-                    curr[j] = grid[i][j] + min(up, left);
+                    let up   = if i > 0 { prev[j] }     else { i32::MAX };
+                    let left = if j > 0 { curr[j - 1] } else { i32::MAX };
+                    curr[j] = grid[i][j] + up.min(left);
                 }
             }
             prev = curr;
         }
-        return prev[n - 1];
+        prev[n - 1]
     }
-};
+}
 ```
 
 ### Dry-run
@@ -320,29 +310,25 @@ Processing bottom-up lets us reuse a single 1D array (`O(n)`), and the answer is
 
 ### `O(n)` space, in-place over a 1D array
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct TriangleMinPath;
 
-class TriangleMinPath {
-public:
-    int minimumTotal(vector<vector<int>>& triangle) {
-        int n = triangle.size();
+impl TriangleMinPath {
+    fn minimum_total(triangle: &Vec<Vec<i32>>) -> i32 {
+        let n = triangle.len();
         // Initialize dp with the last row.
-        vector<int> dp(n);
-        auto& last = triangle[n - 1];
-        for (int j = 0; j < n; j++) dp[j] = last[j];
+        let mut dp = triangle[n - 1].clone();
 
         // Move upward, collapsing each row into dp.
-        for (int i = n - 2; i >= 0; i--) {
-            auto& row = triangle[i];
-            for (int j = 0; j <= i; j++) {
-                dp[j] = row[j] + min(dp[j], dp[j + 1]);
+        for i in (0..n - 1).rev() {
+            let row = &triangle[i];
+            for j in 0..=i {
+                dp[j] = row[j] + dp[j].min(dp[j + 1]);
             }
         }
-        return dp[0];
+        dp[0]
     }
-};
+}
 ```
 
 ### Dry-run
@@ -381,34 +367,29 @@ Given an `n × n` matrix, a falling path starts at any cell in row 0 and chooses
 
 ### Rolling-row solution (`O(n)` space)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct MinFallingPathSum;
 
-class MinFallingPathSum {
-public:
-    int minFallingPathSum(vector<vector<int>>& matrix) {
-        int n = matrix.size();
-        vector<int> prev(n);
-        for (int j = 0; j < n; j++) prev[j] = matrix[0][j]; // base: first row
+impl MinFallingPathSum {
+    fn min_falling_path_sum(matrix: &Vec<Vec<i32>>) -> i32 {
+        let n = matrix.len();
+        let mut prev: Vec<i32> = matrix[0].clone(); // base: first row
 
-        for (int i = 1; i < n; i++) {
-            vector<int> curr(n);
-            for (int j = 0; j < n; j++) {
-                int up        = prev[j];
-                int upLeft    = (j > 0)     ? prev[j - 1] : INT_MAX;
-                int upRight   = (j < n - 1) ? prev[j + 1] : INT_MAX;
-                int best = min(up, min(upLeft, upRight));
+        for i in 1..n {
+            let mut curr = vec![0i32; n];
+            for j in 0..n {
+                let up       = prev[j];
+                let up_left  = if j > 0     { prev[j - 1] } else { i32::MAX };
+                let up_right = if j < n - 1 { prev[j + 1] } else { i32::MAX };
+                let best = up.min(up_left).min(up_right);
                 curr[j] = matrix[i][j] + best;
             }
             prev = curr;
         }
 
-        int answer = INT_MAX;
-        for (int j = 0; j < n; j++) answer = min(answer, prev[j]);
-        return answer;
+        *prev.iter().min().unwrap()
     }
-};
+}
 ```
 
 | Approach    | Time     | Space  |
@@ -430,90 +411,85 @@ A ninja trains over `n` days. Each day offers three activities with point values
 
 **Base case.** Past the last day there are no more points: `f(n, last) = 0`.
 
-### Recursion + memoization (`vector<vector<int>> memo`, initialized to `-1`)
+### Recursion + memoization (`Vec<Vec<i32>>` memo, initialized to `-1`)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct NinjaTrainingMemo;
 
-class NinjaTrainingMemo {
-public:
-    int maximumPoints(vector<vector<int>>& points, int n) {
+impl NinjaTrainingMemo {
+    fn maximum_points(points: &Vec<Vec<i32>>, n: usize) -> i32 {
         // last in {0,1,2} = activity done previous day; 3 = none (day 0)
-        vector<vector<int>> memo(n, vector<int>(4, -1));
-        return solve(0, 3, points, n, memo);
+        let mut memo = vec![vec![-1i32; 4]; n];
+        Self::solve(0, 3, points, n, &mut memo)
     }
 
-    int solve(int day, int last, vector<vector<int>>& points, int n, vector<vector<int>>& memo) {
-        if (day == n) return 0;
-        if (memo[day][last] != -1) return memo[day][last];
+    fn solve(day: usize, last: usize, points: &Vec<Vec<i32>>, n: usize, memo: &mut Vec<Vec<i32>>) -> i32 {
+        if day == n { return 0; }
+        if memo[day][last] != -1 { return memo[day][last]; }
 
-        int best = 0;
-        for (int task = 0; task < 3; task++) {
-            if (task == last) continue;
-            int pointsToday = points[day][task] + solve(day + 1, task, points, n, memo);
-            best = max(best, pointsToday);
+        let mut best = 0;
+        for task in 0..3usize {
+            if task == last { continue; }
+            let points_today = points[day][task] + Self::solve(day + 1, task, points, n, memo);
+            best = best.max(points_today);
         }
-        return memo[day][last] = best;
+        memo[day][last] = best;
+        best
     }
-};
+}
 ```
 
 ### Tabulation (`O(n)` rows, `O(n·4)` space)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct NinjaTrainingTab;
 
-class NinjaTrainingTab {
-public:
-    int maximumPoints(vector<vector<int>>& points, int n) {
-        vector<vector<int>> dp(n + 1, vector<int>(4, 0));
+impl NinjaTrainingTab {
+    fn maximum_points(points: &Vec<Vec<i32>>, n: usize) -> i32 {
+        let mut dp = vec![vec![0i32; 4]; n + 1];
         // dp[n][*] = 0 (base case, already zero-initialized)
 
-        for (int day = n - 1; day >= 0; day--) {
-            for (int last = 0; last < 4; last++) {
-                int best = 0;
-                for (int task = 0; task < 3; task++) {
-                    if (task == last) continue;
-                    best = max(best, points[day][task] + dp[day + 1][task]);
+        for day in (0..n).rev() {
+            for last in 0..4usize {
+                let mut best = 0;
+                for task in 0..3usize {
+                    if task == last { continue; }
+                    best = best.max(points[day][task] + dp[day + 1][task]);
                 }
                 dp[day][last] = best;
             }
         }
-        return dp[0][3];
+        dp[0][3]
     }
-};
+}
 ```
 
 ### Space optimization to two rows (`O(1)` extra, just 4 ints)
 
 Since `dp[day]` depends only on `dp[day+1]`, we keep a single `next[4]` array (the "two rows" being `next` and the `curr` we build).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct NinjaTrainingSpaceOpt;
 
-class NinjaTrainingSpaceOpt {
-public:
-    int maximumPoints(vector<vector<int>>& points, int n) {
-        vector<int> next(4, 0); // dp for day+1, base = all zeros
+impl NinjaTrainingSpaceOpt {
+    fn maximum_points(points: &Vec<Vec<i32>>, n: usize) -> i32 {
+        let mut next = vec![0i32; 4]; // dp for day+1, base = all zeros
 
-        for (int day = n - 1; day >= 0; day--) {
-            vector<int> curr(4);
-            for (int last = 0; last < 4; last++) {
-                int best = 0;
-                for (int task = 0; task < 3; task++) {
-                    if (task == last) continue;
-                    best = max(best, points[day][task] + next[task]);
+        for day in (0..n).rev() {
+            let mut curr = vec![0i32; 4];
+            for last in 0..4usize {
+                let mut best = 0;
+                for task in 0..3usize {
+                    if task == last { continue; }
+                    best = best.max(points[day][task] + next[task]);
                 }
                 curr[last] = best;
             }
             next = curr;
         }
-        return next[3]; // started with last = 3 (no restriction)
+        next[3] // started with last = 3 (no restriction)
     }
-};
+}
 ```
 
 ### Dry-run
@@ -562,131 +538,137 @@ where `cherries(row, c1, c2) = grid[row][c1] + (c1 == c2 ? 0 : grid[row][c2])`.
 
 **Initial answer.** `f(0, 0, cols-1)`.
 
-### Memoization — 3D (`vector<vector<vector<int>>> memo`, init to a sentinel)
+### Memoization — 3D (`Vec<Vec<Vec<i32>>>` memo, init to a sentinel)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct CherryPickupIIMemo;
 
-class CherryPickupIIMemo {
-public:
-    int cherryPickup(vector<vector<int>>& grid) {
-        int rows = grid.size(), cols = grid[0].size();
-        vector<vector<vector<int>>> memo(rows, vector<vector<int>>(cols, vector<int>(cols, -1)));
-        return solve(0, 0, cols - 1, grid, rows, cols, memo);
+impl CherryPickupIIMemo {
+    fn cherry_pickup(grid: &Vec<Vec<i32>>) -> i32 {
+        let rows = grid.len();
+        let cols = grid[0].len();
+        let mut memo = vec![vec![vec![-1i32; cols]; cols]; rows];
+        Self::solve(0, 0, cols - 1, grid, rows, cols, &mut memo)
     }
 
-    int solve(int row, int c1, int c2, vector<vector<int>>& grid,
-              int rows, int cols, vector<vector<vector<int>>>& memo) {
-        // Out of bounds is invalid -> treat as impossible.
-        if (c1 < 0 || c1 >= cols || c2 < 0 || c2 >= cols) return INT_MIN;
-        if (memo[row][c1][c2] != -1) return memo[row][c1][c2];
+    fn solve(row: usize, c1: usize, c2: usize, grid: &Vec<Vec<i32>>,
+             rows: usize, cols: usize, memo: &mut Vec<Vec<Vec<i32>>>) -> i32 {
+        if memo[row][c1][c2] != -1 { return memo[row][c1][c2]; }
 
         // Cherries on the current row (count shared cell once).
-        int collected = grid[row][c1];
-        if (c1 != c2) collected += grid[row][c2];
+        let collected = grid[row][c1] + if c1 != c2 { grid[row][c2] } else { 0 };
 
-        if (row == rows - 1) return memo[row][c1][c2] = collected;
+        if row == rows - 1 {
+            memo[row][c1][c2] = collected;
+            return collected;
+        }
 
         // Explore all 9 (d1, d2) combinations for the next row.
-        int best = INT_MIN;
-        for (int d1 = -1; d1 <= 1; d1++) {
-            for (int d2 = -1; d2 <= 1; d2++) {
-                int nxt = solve(row + 1, c1 + d1, c2 + d2, grid, rows, cols, memo);
-                best = max(best, nxt);
+        let mut best = i32::MIN;
+        for d1 in -1i32..=1 {
+            for d2 in -1i32..=1 {
+                let n1 = c1 as i32 + d1;
+                let n2 = c2 as i32 + d2;
+                // Out of bounds is invalid -> skip.
+                if n1 < 0 || n1 >= cols as i32 || n2 < 0 || n2 >= cols as i32 { continue; }
+                let nxt = Self::solve(row + 1, n1 as usize, n2 as usize, grid, rows, cols, memo);
+                best = best.max(nxt);
             }
         }
-        return memo[row][c1][c2] = collected + best;
+        memo[row][c1][c2] = collected + best;
+        collected + best
     }
-};
+}
 ```
 
 ### Tabulation (full 3D table)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct CherryPickupIITab;
 
-class CherryPickupIITab {
-public:
-    int cherryPickup(vector<vector<int>>& grid) {
-        int rows = grid.size(), cols = grid[0].size();
-        vector<vector<vector<int>>> dp(rows, vector<vector<int>>(cols, vector<int>(cols)));
+impl CherryPickupIITab {
+    fn cherry_pickup(grid: &Vec<Vec<i32>>) -> i32 {
+        let rows = grid.len();
+        let cols = grid[0].len();
+        let mut dp = vec![vec![vec![0i32; cols]; cols]; rows];
 
         // Base row: last row.
-        for (int c1 = 0; c1 < cols; c1++) {
-            for (int c2 = 0; c2 < cols; c2++) {
-                dp[rows - 1][c1][c2] = cherries(grid, rows - 1, c1, c2);
+        for c1 in 0..cols {
+            for c2 in 0..cols {
+                dp[rows - 1][c1][c2] = Self::cherries(grid, rows - 1, c1, c2);
             }
         }
 
-        for (int row = rows - 2; row >= 0; row--) {
-            for (int c1 = 0; c1 < cols; c1++) {
-                for (int c2 = 0; c2 < cols; c2++) {
-                    int best = INT_MIN;
-                    for (int d1 = -1; d1 <= 1; d1++) {
-                        for (int d2 = -1; d2 <= 1; d2++) {
-                            int n1 = c1 + d1, n2 = c2 + d2;
-                            if (n1 < 0 || n1 >= cols || n2 < 0 || n2 >= cols) continue;
-                            best = max(best, dp[row + 1][n1][n2]);
+        for row in (0..rows - 1).rev() {
+            for c1 in 0..cols {
+                for c2 in 0..cols {
+                    let mut best = i32::MIN;
+                    for d1 in -1i32..=1 {
+                        for d2 in -1i32..=1 {
+                            let n1 = c1 as i32 + d1;
+                            let n2 = c2 as i32 + d2;
+                            if n1 < 0 || n1 >= cols as i32 || n2 < 0 || n2 >= cols as i32 { continue; }
+                            best = best.max(dp[row + 1][n1 as usize][n2 as usize]);
                         }
                     }
-                    dp[row][c1][c2] = cherries(grid, row, c1, c2) + best;
+                    dp[row][c1][c2] = Self::cherries(grid, row, c1, c2) + best;
                 }
             }
         }
-        return dp[0][0][cols - 1];
+        dp[0][0][cols - 1]
     }
 
-    int cherries(vector<vector<int>>& grid, int row, int c1, int c2) {
-        return (c1 == c2) ? grid[row][c1] : grid[row][c1] + grid[row][c2];
+    fn cherries(grid: &Vec<Vec<i32>>, row: usize, c1: usize, c2: usize) -> i32 {
+        if c1 == c2 { grid[row][c1] } else { grid[row][c1] + grid[row][c2] }
     }
-};
+}
 ```
 
 ### Space optimization to two 2D layers (`O(cols²)` space)
 
 `dp[row]` depends only on `dp[row+1]`, so we keep one `next` 2D layer (`cols × cols`) and build the current layer from it — the "two layers" of the optimization.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct CherryPickupIISpaceOpt;
 
-class CherryPickupIISpaceOpt {
-public:
-    int cherryPickup(vector<vector<int>>& grid) {
-        int rows = grid.size(), cols = grid[0].size();
-        vector<vector<int>> next(cols, vector<int>(cols));
+impl CherryPickupIISpaceOpt {
+    fn cherry_pickup(grid: &Vec<Vec<i32>>) -> i32 {
+        let rows = grid.len();
+        let cols = grid[0].len();
+        let mut next = vec![vec![0i32; cols]; cols];
 
         // Base: last row.
-        for (int c1 = 0; c1 < cols; c1++)
-            for (int c2 = 0; c2 < cols; c2++)
-                next[c1][c2] = cherries(grid, rows - 1, c1, c2);
+        for c1 in 0..cols {
+            for c2 in 0..cols {
+                next[c1][c2] = Self::cherries(grid, rows - 1, c1, c2);
+            }
+        }
 
-        for (int row = rows - 2; row >= 0; row--) {
-            vector<vector<int>> curr(cols, vector<int>(cols));
-            for (int c1 = 0; c1 < cols; c1++) {
-                for (int c2 = 0; c2 < cols; c2++) {
-                    int best = INT_MIN;
-                    for (int d1 = -1; d1 <= 1; d1++) {
-                        for (int d2 = -1; d2 <= 1; d2++) {
-                            int n1 = c1 + d1, n2 = c2 + d2;
-                            if (n1 < 0 || n1 >= cols || n2 < 0 || n2 >= cols) continue;
-                            best = max(best, next[n1][n2]);
+        for row in (0..rows - 1).rev() {
+            let mut curr = vec![vec![0i32; cols]; cols];
+            for c1 in 0..cols {
+                for c2 in 0..cols {
+                    let mut best = i32::MIN;
+                    for d1 in -1i32..=1 {
+                        for d2 in -1i32..=1 {
+                            let n1 = c1 as i32 + d1;
+                            let n2 = c2 as i32 + d2;
+                            if n1 < 0 || n1 >= cols as i32 || n2 < 0 || n2 >= cols as i32 { continue; }
+                            best = best.max(next[n1 as usize][n2 as usize]);
                         }
                     }
-                    curr[c1][c2] = cherries(grid, row, c1, c2) + best;
+                    curr[c1][c2] = Self::cherries(grid, row, c1, c2) + best;
                 }
             }
             next = curr;
         }
-        return next[0][cols - 1];
+        next[0][cols - 1]
     }
 
-    int cherries(vector<vector<int>>& grid, int row, int c1, int c2) {
-        return (c1 == c2) ? grid[row][c1] : grid[row][c1] + grid[row][c2];
+    fn cherries(grid: &Vec<Vec<i32>>, row: usize, c1: usize, c2: usize) -> i32 {
+        if c1 == c2 { grid[row][c1] } else { grid[row][c1] + grid[row][c2] }
     }
-};
+}
 ```
 
 | Approach            | Time              | Space        |
@@ -714,10 +696,10 @@ public:
 
 ## 9. Summary
 
-- **Core idea.** Grid DP indexes state by coordinates. The recurrence aggregates a `min`/`max`/`sum` over a fixed, small set of neighbour cells (above, left, the three diagonals below, or — for two-agent problems — a pair of columns).
+- **Core idea.** Grid DP indexes state by coordinates. The recurrence aggregates a `.min()`/`.max()`/`sum` over a fixed, small set of neighbour cells (above, left, the three diagonals below, or — for two-agent problems — a pair of columns).
 - **Direction of fill.** Path-count and min-path problems usually fill top-left → bottom-right; triangle, falling-path, ninja, and cherry-pickup are cleanest bottom-up. Pick whichever direction makes the base case a single boundary row.
 - **Always look for the rolling row.** Whenever `dp[i]` depends only on `dp[i-1]` (and possibly already-computed cells of row `i`), you can drop a whole dimension: `O(m·n) → O(n)`, or for Cherry Pickup II, `O(rows·cols²) → O(cols²)` using two 2D layers. This is the highest-value optimization in this pattern and interviewers expect it.
-- **C++ hygiene.** Declare tables as `vector<vector<int>> dp`; initialize memo tables with `-1` using nested vector constructors (or a 3D loop); use `min` / `max`; guard out-of-range neighbours with `INT_MAX` / `INT_MIN` sentinels rather than special-casing; prefer explicit comparison over subtraction for comparisons to avoid overflow.
+- **Rust hygiene.** Declare tables as `Vec<Vec<i32>>`; initialize memo tables with `-1` using nested `vec!` macros; use `.min()` / `.max()`; guard out-of-range neighbours with `i32::MAX` / `i32::MIN` sentinels rather than special-casing; prefer explicit comparison over subtraction for comparisons to avoid overflow.
 - **Multi-agent state.** Cherry Pickup II generalizes the pattern: the two robots descend row-synchronously, which collapses what could be two time axes into a single shared `row` index, keeping the state at three dimensions.
 
 See also: [1D DP (Fibonacci Style)](./1D%20DP%20(Fibonacci%20Style).md).

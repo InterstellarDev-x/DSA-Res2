@@ -10,7 +10,7 @@
 1. [Problem Statement](#problem-statement)
 2. [Interview Expectations](#interview-expectations)
 3. [Approaches](#approaches)
-4. [C++ Implementation](#cpp-implementation)
+4. [Rust Implementation](#rust-implementation)
 5. [Complexity Analysis](#complexity-analysis)
 6. [Edge Cases](#edge-cases)
 7. [Similar Problems](#similar-problems)
@@ -46,7 +46,7 @@ All operations should be efficient on a dynamic, online stream of integers.
 
 | Approach | Add | kth Smallest | Space | Notes |
 |----------|-----|-------------|-------|-------|
-| Sorted std::vector + binary search | O(n) | O(log n) | O(n) | Simple, slow add |
+| Sorted Vec + binary search | O(n) | O(log n) | O(n) | Simple, slow add |
 | Augmented BST | O(log n) | O(log n) | O(n) | See [BST Design](./BST%20Design.md) |
 | Binary Indexed Tree (BIT) | O(log M) | O(log² M) | O(M) | M = value range; fastest for dense ranges |
 | Segment Tree | O(log M) | O(log M) | O(M) | Better kth than BIT |
@@ -54,76 +54,92 @@ All operations should be efficient on a dynamic, online stream of integers.
 
 ---
 
-## C++ Implementation
+## Rust Implementation
 
 ### Approach 1: BIT (Fenwick Tree) — Best for value range [1, MAX]
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct OrderStatisticsBIT {
+    max: usize,
+    bit: Vec<i32>,
+}
 
-class OrderStatisticsBIT {
-    const int MAX = 100001;
-    vector<int> bit;
-
-public:
-    OrderStatisticsBIT() : bit(100003, 0) {}
+impl OrderStatisticsBIT {
+    fn new() -> Self {
+        let max = 100001usize;
+        OrderStatisticsBIT {
+            max,
+            bit: vec![0; 100003],
+        }
+    }
 
     // BIT point update: add 1 at position val
-    void add(int val) {
-        for (int i = val; i <= MAX; i += i & (-i)) bit[i]++;
+    fn add(&mut self, val: usize) {
+        let mut i = val;
+        while i <= self.max {
+            self.bit[i] += 1;
+            i += i & i.wrapping_neg();
+        }
     }
 
     // BIT prefix sum: count of elements in [1, val]
-    int rank(int val) {
-        int count = 0;
-        for (int i = val; i > 0; i -= i & (-i)) count += bit[i];
-        return count;
+    fn rank(&self, val: usize) -> i32 {
+        let mut count = 0;
+        let mut i = val;
+        while i > 0 {
+            count += self.bit[i];
+            i -= i & i.wrapping_neg();
+        }
+        count
     }
 
     // kth smallest via binary search on BIT
-    int kthSmallest(int k) {
-        int lo = 1, hi = MAX;
-        while (lo < hi) {
-            int mid = lo + (hi - lo) / 2;
-            if (rank(mid) < k) lo = mid + 1;
-            else hi = mid;
+    fn kth_smallest(&self, k: i32) -> usize {
+        let mut lo = 1usize;
+        let mut hi = self.max;
+        while lo < hi {
+            let mid = lo + (hi - lo) / 2;
+            if self.rank(mid) < k {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
         }
-        return lo;
+        lo
     }
     // Time: add O(log M), rank O(log M), kth O(log² M)
-};
+}
 ```
 
 ### Approach 2: Optimised BIT kth (O(log M) descent)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int kthSmallestFast(int k) {
-    int pos = 0;
-    for (int pw = (1 << (31 - __builtin_clz(MAX))); pw > 0; pw >>= 1) {
-        if (pos + pw <= MAX && bit[pos + pw] < k) {
+```rust
+fn kth_smallest_fast(bit: &[i32], max: usize, mut k: i32) -> usize {
+    let mut pos = 0usize;
+    // find highest power of 2 <= max (equivalent to 1 << (31 - leading_zeros(MAX)))
+    let mut pw = 1usize << (31 - (max as u32).leading_zeros() as usize);
+    while pw > 0 {
+        if pos + pw <= max && bit[pos + pw] < k {
             pos += pw;
             k -= bit[pos];
         }
+        pw >>= 1;
     }
-    return pos + 1;
+    pos + 1
 }
 // Time: O(log M) | descends the implicit BIT tree directly
 ```
 
 ### Approach 3: Augmented BST (dynamic range, any values)
 
-```cpp
+```rust
 // See BST Design.md — add size augmentation
-// add: O(log n) amortized (balanced); kthSmallest: O(log n)
+// add: O(log n) amortized (balanced); kth_smallest: O(log n)
 ```
 
 ### Approach 4: Coordinate Compression + BIT (for large/negative values)
 
-```cpp
+```rust
 // When values can be from -10^9 to 10^9:
 // 1. Collect all possible values offline
 // 2. Compress to [1, n]
@@ -168,8 +184,8 @@ int kthSmallestFast(int k) {
 
 1. **What if values can be negative?** → Shift all values by offset (e.g., +10^9) before using BIT
 2. **What if the value range is huge (10^9)?** → Use augmented BST (space proportional to n) or dynamic segment tree
-3. **How does C++'s `std::map` handle this?** → `distance(map.begin(), map.lower_bound(val))` for rank, but O(n) for kth unless augmented
-4. **Two-heap approach for median?** → Maintains max-heap (lower half) and min-heap (upper half); median in O(1); kth only in O(k log n)
+3. **How does Rust's `BTreeMap` handle this?** → `.range(..=val).count()` for rank, but O(n) for kth unless augmented
+4. **Two-heap approach for median?** → Maintains `BinaryHeap<i32>` (lower half, max-heap) and `BinaryHeap<Reverse<i32>>` (upper half, min-heap); median in O(1); kth only in O(k log n)
 
 ---
 

@@ -16,35 +16,38 @@ Every palindrome has a center. A string of length `n` has **2n − 1** centers: 
 
 ### Problem 5 — Longest Palindromic Substring (LC 5, Medium)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    string longestPalindrome(string s) {
-        if (s.empty()) return "";
-        int start = 0, end = 0;
-        for (int i = 0; i < (int)s.length(); i++) {
-            int odd  = expand(s, i, i);       // odd-length, center at i
-            int even = expand(s, i, i + 1);   // even-length, center between i, i+1
-            int len = max(odd, even);
-            if (len > end - start + 1) {
+impl Solution {
+    pub fn longest_palindrome(s: String) -> String {
+        let chars: Vec<char> = s.chars().collect();
+        if chars.is_empty() { return String::new(); }
+        let n = chars.len() as i32;
+        let mut start = 0i32;
+        let mut end = 0i32;
+        for i in 0..n {
+            let odd  = Self::expand(&chars, i, i);         // odd-length, center at i
+            let even = Self::expand(&chars, i, i + 1);     // even-length, center between i, i+1
+            let len = odd.max(even);
+            if len > end - start + 1 {
                 start = i - (len - 1) / 2;     // recover left boundary from length
                 end = i + len / 2;
             }
         }
-        return s.substr(start, end - start + 1);
+        chars[start as usize..=end as usize].iter().collect()
     }
 
     // Returns the length of the palindrome expanding from (left, right).
-    int expand(string& s, int left, int right) {
-        while (left >= 0 && right < (int)s.length() && s[left] == s[right]) {
-            left--; right++;
+    fn expand(s: &[char], mut left: i32, mut right: i32) -> i32 {
+        let n = s.len() as i32;
+        while left >= 0 && right < n && s[left as usize] == s[right as usize] {
+            left -= 1;
+            right += 1;
         }
-        return right - left - 1;   // chars between the over-stepped bounds
+        right - left - 1   // chars between the over-stepped bounds
     }
-};
+}
 ```
 
 **Complexity:** O(n²) time, O(1) space. The two `expand` calls (odd + even) per index are exactly the 2n−1 centers. The boundary recovery `start = i - (len-1)/2` works for both parities — memorize it.
@@ -55,29 +58,32 @@ public:
 
 Each successful single-character extension during expansion is one more palindrome, so count expansions instead of tracking the longest.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int countSubstrings(string s) {
-        int count = 0;
-        for (int i = 0; i < (int)s.length(); i++) {
-            count += countFrom(s, i, i);       // odd centers
-            count += countFrom(s, i, i + 1);   // even centers
+impl Solution {
+    pub fn count_substrings(s: String) -> i32 {
+        let chars: Vec<char> = s.chars().collect();
+        let n = chars.len() as i32;
+        let mut count = 0;
+        for i in 0..n {
+            count += Self::count_from(&chars, i, i);       // odd centers
+            count += Self::count_from(&chars, i, i + 1);   // even centers
         }
-        return count;
+        count
     }
 
-    int countFrom(string& s, int left, int right) {
-        int count = 0;
-        while (left >= 0 && right < (int)s.length() && s[left] == s[right]) {
-            count++; left--; right++;
+    fn count_from(s: &[char], mut left: i32, mut right: i32) -> i32 {
+        let n = s.len() as i32;
+        let mut count = 0;
+        while left >= 0 && right < n && s[left as usize] == s[right as usize] {
+            count += 1;
+            left -= 1;
+            right += 1;
         }
-        return count;
+        count
     }
-};
+}
 ```
 
 **Complexity:** O(n²) time, O(1) space.
@@ -92,37 +98,45 @@ Manacher removes the odd/even split by **transforming** the string: insert a sep
 
 We keep a `center C` and `right boundary R` of the rightmost palindrome found, plus an array `p[i]` = radius at `i`. The **mirror trick**: for `i < R`, its mirror is `mirror = 2*C - i`, and `p[i]` can be seeded from `p[mirror]`, capped by `R - i`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    string longestPalindrome(string s) {
-        if (s.empty()) return "";
+impl Solution {
+    pub fn longest_palindrome(s: String) -> String {
+        if s.is_empty() { return String::new(); }
+        let chars: Vec<char> = s.chars().collect();
         // Build transformed string: ^ # a # b # ... $
-        string t = "^";
-        for (char c : s) { t += '#'; t += c; }
-        t += "#$";
-        int n = t.length();
-        vector<int> p(n, 0);     // p[i] = palindrome radius centered at i
-        int C = 0, R = 0;         // current center and right boundary
-        for (int i = 1; i < n - 1; i++) {
-            int mirror = 2 * C - i;
-            if (i < R) p[i] = min(R - i, p[mirror]);   // mirror seed, capped
+        let mut t: Vec<char> = vec!['^'];
+        for c in &chars {
+            t.push('#');
+            t.push(*c);
+        }
+        t.push('#');
+        t.push('$');
+        let n = t.len();
+        let mut p = vec![0i32; n];     // p[i] = palindrome radius centered at i
+        let mut c = 0i32;
+        let mut r = 0i32;              // current center and right boundary
+        for i in 1..n - 1 {
+            let i = i as i32;
+            let mirror = 2 * c - i;
+            if i < r { p[i as usize] = (r - i).min(p[mirror as usize]); }   // mirror seed, capped
             // expand around i past the seeded radius
-            while (t[i + p[i] + 1] == t[i - p[i] - 1]) p[i]++;
-            if (i + p[i] > R) { C = i; R = i + p[i]; }       // slide the window
+            while t[(i + p[i as usize] + 1) as usize] == t[(i - p[i as usize] - 1) as usize] {
+                p[i as usize] += 1;
+            }
+            if i + p[i as usize] > r { c = i; r = i + p[i as usize]; }       // slide the window
         }
         // find max radius and map back to original indices
-        int maxLen = 0, centerIndex = 0;
-        for (int i = 1; i < n - 1; i++) {
-            if (p[i] > maxLen) { maxLen = p[i]; centerIndex = i; }
+        let mut max_len = 0i32;
+        let mut center_index = 0i32;
+        for i in 1..n - 1 {
+            if p[i] > max_len { max_len = p[i]; center_index = i as i32; }
         }
-        int start = (centerIndex - maxLen) / 2;   // convert transformed -> original
-        return s.substr(start, maxLen);
+        let start = ((center_index - max_len) / 2) as usize;   // convert transformed -> original
+        chars[start..start + max_len as usize].iter().collect()
     }
-};
+}
 ```
 
 **Complexity:** O(n) time, O(n) space. The sentinels `^`/`$` mean the inner `while` never reads out of bounds (they never match `#` or a real char). The mapping `start = (centerIndex - maxLen) / 2` undoes the `#`-insertion. **Interview note:** code this only if asked for linear time — it is fiddly and easy to get wrong under pressure; expand-around-center is the safe default.
@@ -139,37 +153,42 @@ public:
 
 The `'#'` separator (a char not in `s`) is essential: without it the border could spill from `s` into `reverse(s)` and overcount, producing a wrong (and possibly non-palindromic) answer.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    string shortestPalindrome(string s) {
-        if (s.empty()) return s;
-        string rev = s;
-        reverse(rev.begin(), rev.end());
-        string combined = s + "#" + rev;
-        vector<int> lps = buildLPS(combined);
-        int palPrefixLen = lps[combined.length() - 1];   // longest palindromic prefix
+impl Solution {
+    pub fn shortest_palindrome(s: String) -> String {
+        if s.is_empty() { return s; }
+        let rev: String = s.chars().rev().collect();
+        let combined = s.clone() + "#" + &rev;
+        let lps = Self::build_lps(&combined);
+        let pal_prefix_len = lps[combined.len() - 1];   // longest palindromic prefix
         // characters of s after the palindromic prefix, reversed, go in front
-        string suffix = s.substr(palPrefixLen);
-        reverse(suffix.begin(), suffix.end());
-        return suffix + s;
+        let suffix: String = s[pal_prefix_len..].chars().rev().collect();
+        suffix + &s
     }
 
-    vector<int> buildLPS(string& t) {
-        int n = t.length();
-        vector<int> lps(n, 0);
-        int len = 0, i = 1;
-        while (i < n) {
-            if (t[i] == t[len]) { lps[i++] = ++len; }
-            else if (len > 0) { len = lps[len - 1]; }
-            else { lps[i++] = 0; }
+    fn build_lps(t: &str) -> Vec<usize> {
+        let t: Vec<char> = t.chars().collect();
+        let n = t.len();
+        let mut lps = vec![0usize; n];
+        let mut len = 0usize;
+        let mut i = 1usize;
+        while i < n {
+            if t[i] == t[len] {
+                len += 1;
+                lps[i] = len;
+                i += 1;
+            } else if len > 0 {
+                len = lps[len - 1];
+            } else {
+                lps[i] = 0;
+                i += 1;
+            }
         }
-        return lps;
+        lps
     }
-};
+}
 ```
 
 **Complexity:** O(n) time, O(n) space. Example: `s = "aacecaaa"`, `rev = "aaacecaa"`, `combined = "aacecaaa#aaacecaa"`. The LPS ends at 7 (`"aacecaa"` is the longest palindromic prefix), leaving the trailing `"a"`; prepend `reverse("a") = "a"` → `"aaacecaaa"`.

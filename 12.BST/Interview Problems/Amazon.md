@@ -2,17 +2,23 @@
 
 # Amazon — BST Interview Deep Dives
 
-Amazon's BST bar focuses on **correctness under edge cases** and clean **O(h) reasoning**. Interviewers want to see you actually *Dive Deep* into the invariants (what makes a tree a BST, what the inorder sequence guarantees) and *Insist on the Highest Standards* by handling the nasty boundary cases — duplicate values, `INT_MIN`/`INT_MAX` at the leaves, skewed trees — without being prompted. Expect a follow-up on every problem; the first solution is rarely the last word.
+Amazon's BST bar focuses on **correctness under edge cases** and clean **O(h) reasoning**. Interviewers want to see you actually *Dive Deep* into the invariants (what makes a tree a BST, what the inorder sequence guarantees) and *Insist on the Highest Standards* by handling the nasty boundary cases — duplicate values, `i32::MIN`/`i32::MAX` at the leaves, skewed trees — without being prompted. Expect a follow-up on every problem; the first solution is rarely the last word.
 
 The node type used throughout:
 
-```cpp
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
-};
+```rust
+#[derive(Debug, Clone, PartialEq)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
+
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 ---
@@ -28,23 +34,25 @@ struct TreeNode {
 
 ### 1a. The (low, high) bounds approach — and the overflow trap
 
-The obvious signature is `bool valid(TreeNode* node, int low, int high)` seeded with `INT_MIN` / `INT_MAX`. **This is a trap.** If the tree legitimately contains a node with value `INT_MIN` as a left-most leaf, comparing `node->val > low` with `low == INT_MIN` fails for a valid node (since `INT_MIN > INT_MIN` is false). The same happens at the high end with `INT_MAX`. Using `int` sentinels means you cannot represent "no bound" distinct from a real extreme value.
+The obvious signature is `fn valid(node: &Option<Box<TreeNode>>, low: i32, high: i32)` seeded with `i32::MIN` / `i32::MAX`. **This is a trap.** If the tree legitimately contains a node with value `i32::MIN` as a left-most leaf, comparing `n.val > low` with `low == i32::MIN` fails for a valid node (since `i32::MIN > i32::MIN` is false). The same happens at the high end with `i32::MAX`. Using `i32` sentinels means you cannot represent "no bound" distinct from a real extreme value.
 
-**Fix:** use `long` bounds so the sentinels `LONG_MIN` / `LONG_MAX` sit strictly outside the `int` range and can never collide with a real node value.
+**Fix:** use `i64` bounds so the sentinels `i64::MIN` / `i64::MAX` sit strictly outside the `i32` range and can never collide with a real node value.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool valid(TreeNode* node, long low, long high) {
-    if (node == nullptr) return true;
-    if (node->val <= low || node->val >= high) return false;   // strict bounds
-    return valid(node->left, low, node->val)
-        && valid(node->right, node->val, high);
+```rust
+fn valid(node: &Option<Box<TreeNode>>, low: i64, high: i64) -> bool {
+    match node {
+        None => true,
+        Some(n) => {
+            if (n.val as i64) <= low || (n.val as i64) >= high {
+                return false; // strict bounds
+            }
+            valid(&n.left, low, n.val as i64) && valid(&n.right, n.val as i64, high)
+        }
+    }
 }
 
-bool isValidBST(TreeNode* root) {
-    return valid(root, LONG_MIN, LONG_MAX);
+fn is_valid_bst(root: &Option<Box<TreeNode>>) -> bool {
+    valid(root, i64::MIN, i64::MAX)
 }
 ```
 
@@ -52,36 +60,39 @@ The left subtree inherits the current node as its new *high*; the right subtree 
 
 ### 1b. The strictly-increasing inorder approach
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn is_valid_bst(root: &Option<Box<TreeNode>>) -> bool {
+    let mut stk: Vec<&TreeNode> = Vec::new();
+    let mut curr: Option<&TreeNode> = root.as_deref();
+    let mut prev: i64 = i64::MIN; // i64 avoids the MIN_VALUE leaf trap
 
-bool isValidBST(TreeNode* root) {
-    stack<TreeNode*> stk;
-    TreeNode* curr = root;
-    long prev = LONG_MIN;     // long avoids the MIN_VALUE leaf trap
-
-    while (curr != nullptr || !stk.empty()) {
-        while (curr != nullptr) {
-            stk.push(curr);
-            curr = curr->left;
+    loop {
+        while let Some(node) = curr {
+            stk.push(node);
+            curr = node.left.as_deref();
         }
-        curr = stk.top(); stk.pop();
-        if (curr->val <= prev) return false;   // must strictly increase
-        prev = curr->val;
-        curr = curr->right;
+        match stk.pop() {
+            None => break,
+            Some(node) => {
+                if node.val as i64 <= prev {
+                    return false; // must strictly increase
+                }
+                prev = node.val as i64;
+                curr = node.right.as_deref();
+            }
+        }
     }
-    return true;
+    true
 }
 ```
 
-Here too `prev` is a `long` so the very first node can be `INT_MIN` without a false negative.
+Here too `prev` is an `i64` so the very first node can be `i32::MIN` without a false negative.
 
 **When each is preferred.** The bounds approach is the cleaner mental model and is trivially adaptable when you also need to *locate* where a violation occurs. The inorder approach generalizes better — it is the same skeleton you reuse for Kth Smallest and Recover BST, and it makes the "BST ⇔ sorted inorder" invariant explicit, which interviewers like to hear stated out loud.
 
 **Complexity.** Both are O(n) time. Bounds recursion is O(h) stack; iterative inorder is O(h) explicit stack. See [BST Validation and Inorder](../Patterns/BST%20Validation%20and%20Inorder.md).
 
-**Interviewer follow-up.** *"What if duplicates are allowed and should sit in the right subtree?"* — relax the right-bound comparison to allow equality on one side consistently (e.g. `node->val < low` instead of `<=`), and decide which side duplicates go to up front. State the chosen convention explicitly.
+**Interviewer follow-up.** *"What if duplicates are allowed and should sit in the right subtree?"* — relax the right-bound comparison to allow equality on one side consistently (e.g. `n.val as i64 < low` instead of `<=`), and decide which side duplicates go to up front. State the chosen convention explicitly.
 
 ---
 
@@ -91,24 +102,28 @@ Here too `prev` is a `long` so the very first node can be `INT_MIN` without a fa
 
 **Approach discussion.** Inorder traversal visits nodes in ascending order, so the kth node popped is the answer. Iterative stack inorder lets us **stop early** the moment we have counted `k` nodes — no need to traverse the rest of the tree.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn kth_smallest(root: &Option<Box<TreeNode>>, mut k: i32) -> i32 {
+    let mut stk: Vec<&TreeNode> = Vec::new();
+    let mut curr: Option<&TreeNode> = root.as_deref();
 
-int kthSmallest(TreeNode* root, int k) {
-    stack<TreeNode*> stk;
-    TreeNode* curr = root;
-
-    while (curr != nullptr || !stk.empty()) {
-        while (curr != nullptr) {
-            stk.push(curr);
-            curr = curr->left;
+    loop {
+        while let Some(node) = curr {
+            stk.push(node);
+            curr = node.left.as_deref();
         }
-        curr = stk.top(); stk.pop();
-        if (--k == 0) return curr->val;   // early stop
-        curr = curr->right;
+        match stk.pop() {
+            None => break,
+            Some(node) => {
+                k -= 1;
+                if k == 0 {
+                    return node.val; // early stop
+                }
+                curr = node.right.as_deref();
+            }
+        }
     }
-    return -1;   // k out of range
+    -1 // k out of range
 }
 ```
 
@@ -117,58 +132,64 @@ int kthSmallest(TreeNode* root, int k) {
 **Interviewer follow-up.** *"What if the BST is modified often (frequent inserts/deletes) and kth queries are also frequent?"* Re-running an O(h + k) inorder per query is wasteful. **Augment each node with the size of its left subtree** (equivalently, total subtree size) so each query becomes a pure O(h) descent — no traversal of the whole prefix.
 
 Decision at each node, given target rank `k`:
-- Let `leftCount` = size of the left subtree.
-- If `k == leftCount + 1`, this node is the answer.
-- If `k <= leftCount`, recurse left with the same `k`.
-- Otherwise recurse right with `k - leftCount - 1`.
+- Let `left_count` = size of the left subtree.
+- If `k == left_count + 1`, this node is the answer.
+- If `k <= left_count`, recurse left with the same `k`.
+- Otherwise recurse right with `k - left_count - 1`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+#[derive(Debug, Clone)]
+pub struct CountedNode {
+    pub val: i32,
+    pub left_count: i32,         // number of nodes in the left subtree
+    pub left: Option<Box<CountedNode>>,
+    pub right: Option<Box<CountedNode>>,
+}
 
-struct CountedNode {
-    int val;
-    int leftCount;          // number of nodes in the left subtree
-    CountedNode* left;
-    CountedNode* right;
-    CountedNode(int val) : val(val), leftCount(0), left(nullptr), right(nullptr) {}
-};
+impl CountedNode {
+    pub fn new(val: i32) -> Self {
+        CountedNode { val, left_count: 0, left: None, right: None }
+    }
+}
 
-int kthSmallest(CountedNode* root, int k) {
-    CountedNode* curr = root;
-    while (curr != nullptr) {
-        int leftSize = curr->leftCount;
-        if (k == leftSize + 1) return curr->val;
-        if (k <= leftSize) {
-            curr = curr->left;
+fn kth_smallest_counted(root: &Option<Box<CountedNode>>, mut k: i32) -> i32 {
+    let mut curr: Option<&CountedNode> = root.as_deref();
+    while let Some(node) = curr {
+        let left_size = node.left_count;
+        if k == left_size + 1 {
+            return node.val;
+        }
+        if k <= left_size {
+            curr = node.left.as_deref();
         } else {
-            k -= leftSize + 1;
-            curr = curr->right;
+            k -= left_size + 1;
+            curr = node.right.as_deref();
         }
     }
-    return -1;
+    -1
 }
 ```
 
-**Maintaining the counts on insert/delete.** On the way *down* an insert, every time you step into a node's **left** child you increment that node's `leftCount` (a new node will land in its left subtree):
+**Maintaining the counts on insert/delete.** On the way *down* an insert, every time you step into a node's **left** child you increment that node's `left_count` (a new node will land in its left subtree):
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-CountedNode* insert(CountedNode* root, int val) {
-    if (root == nullptr) return new CountedNode(val);
-    if (val < root->val) {
-        root->leftCount++;            // a node is being added to the left subtree
-        root->left = insert(root->left, val);
-    } else {
-        root->right = insert(root->right, val);
+```rust
+fn insert(root: Option<Box<CountedNode>>, val: i32) -> Option<Box<CountedNode>> {
+    match root {
+        None => Some(Box::new(CountedNode::new(val))),
+        Some(mut node) => {
+            if val < node.val {
+                node.left_count += 1; // a node is being added to the left subtree
+                node.left = insert(node.left.take(), val);
+            } else {
+                node.right = insert(node.right.take(), val);
+            }
+            Some(node)
+        }
     }
-    return root;
 }
 ```
 
-On **delete**, mirror it: decrement `leftCount` on every node whose left subtree shrinks (i.e. when the target is found in the left subtree). Both operations stay O(h) because the count update is a single arithmetic op per level. This is the classic *order-statistic tree* augmentation; pair it with a self-balancing tree (AVL/Red-Black) to guarantee O(log n). See [BST Operations](../Patterns/BST%20Operations.md).
+On **delete**, mirror it: decrement `left_count` on every node whose left subtree shrinks (i.e. when the target is found in the left subtree). Both operations stay O(h) because the count update is a single arithmetic op per level. This is the classic *order-statistic tree* augmentation; pair it with a self-balancing tree (AVL/Red-Black) to guarantee O(log n). See [BST Operations](../Patterns/BST%20Operations.md).
 
 ---
 
@@ -178,22 +199,23 @@ On **delete**, mirror it: decrement `leftCount` on every node whose left subtree
 
 **Approach discussion.** In a *general* binary tree, LCA requires searching both subtrees and is O(n) (see [BST LCA and Ancestors](../Patterns/BST%20LCA%20and%20Ancestors.md)). In a **BST** we exploit ordering: the LCA is the first node where `p` and `q` fall on opposite sides (or one of them equals the node). Walk down once — when both values are smaller, go left; both larger, go right; otherwise we are at the split point. This is O(h) time and O(1) space, no recursion needed.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
-    TreeNode* curr = root;
-    while (curr != nullptr) {
-        if (p->val < curr->val && q->val < curr->val) {
-            curr = curr->left;
-        } else if (p->val > curr->val && q->val > curr->val) {
-            curr = curr->right;
+```rust
+fn lowest_common_ancestor<'a>(
+    root: &'a Option<Box<TreeNode>>,
+    p: &TreeNode,
+    q: &TreeNode,
+) -> Option<&'a TreeNode> {
+    let mut curr: Option<&TreeNode> = root.as_deref();
+    while let Some(node) = curr {
+        if p.val < node.val && q.val < node.val {
+            curr = node.left.as_deref();
+        } else if p.val > node.val && q.val > node.val {
+            curr = node.right.as_deref();
         } else {
-            return curr;     // split point: p and q diverge here, or one is curr
+            return Some(node); // split point: p and q diverge here, or one is curr
         }
     }
-    return nullptr;
+    None
 }
 ```
 
@@ -207,7 +229,7 @@ TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
 
 | Leadership Principle | How it shows up in a BST interview |
 | --- | --- |
-| **Dive Deep** | Stating the BST invariant precisely, recognizing the `INT_MIN` bounds trap, deriving the order-statistic augmentation rather than re-traversing. |
+| **Dive Deep** | Stating the BST invariant precisely, recognizing the `i32::MIN` bounds trap, deriving the order-statistic augmentation rather than re-traversing. |
 | **Customer Obsession** | Choosing the data-structure variant that matches the *real* query pattern (augmented counts when kth queries are hot) instead of the textbook default. |
 | **Insist on the Highest Standards** | Strict vs non-strict comparisons handled deliberately, duplicate-value policy declared, early-stop in Kth Smallest, no off-by-one in rank arithmetic. |
 | **Bias for Action** | Reaching the clean O(h) iterative LCA quickly, then iterating to the follow-up solution without stalling. |

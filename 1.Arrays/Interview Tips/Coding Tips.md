@@ -1,14 +1,14 @@
 # Coding Tips — Arrays
 
 > **Topic:** [Arrays](../README.md) · **Section:** Interview Tips
-> **Tags:** `interview-tips` `coding` `arrays` `cpp`
+> **Tags:** `interview-tips` `coding` `arrays` `rust`
 
 ---
 
 ## Table of Contents
 
 1. [Before You Code](#before-you-code)
-2. [C++-Specific Tips](#c-specific-tips)
+2. [Rust-Specific Tips](#rust-specific-tips)
 3. [Array Manipulation Tricks](#array-manipulation-tricks)
 4. [Complexity Shortcuts](#complexity-shortcuts)
 5. [Checklist Before Submitting](#checklist-before-submitting)
@@ -30,59 +30,47 @@
 
 ---
 
-## C++-Specific Tips
+## Rust-Specific Tips
 
 ### Sorting
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-sort(arr.begin(), arr.end());                                                              // O(n log n) introsort
-sort(intervals.begin(), intervals.end(), [](auto& a, auto& b){ return a[0] < b[0]; });   // sort by first element
-sort(arr.begin(), arr.end(), greater<int>());                                              // reverse sort — works on vector<int>
+```rust
+arr.sort();                                                                                // O(n log n) introsort
+intervals.sort_by(|a, b| a[0].cmp(&b[0]));                                               // sort by first element
+arr.sort_by(|a, b| b.cmp(a));                                                             // reverse sort — works on Vec<i32>
 ```
 
 ### Copy & Fill
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> copy(arr);                                                 // full copy
-vector<int> sub(arr.begin() + l, arr.begin() + r + 1);               // [l, r] inclusive
-fill(arr.begin(), arr.end(), 0);                                       // fill entire array
-fill(arr.begin() + l, arr.begin() + r + 1, -1);                       // fill [l, r]
+```rust
+let copy = arr.clone();                                                // full copy
+let sub = arr[l..=r].to_vec();                                        // [l, r] inclusive
+arr.fill(0);                                                           // fill entire array
+arr[l..=r].fill(-1);                                                   // fill [l, r]
 ```
 
 ### Two-Pointer Swap
 
-```cpp
-void swap_arr(vector<int>& arr, int i, int j) {
-    swap(arr[i], arr[j]);
+```rust
+fn swap_arr(arr: &mut Vec<i32>, i: usize, j: usize) {
+    arr.swap(i, j);
 }
 ```
 
 ### Common Initializations
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int maxVal = INT_MIN;  // not 0! (handles all-negative arrays)
-int minVal = INT_MAX;
-int sum = 0;           // use long long if values can overflow
+```rust
+let mut max_val = i32::MIN;  // not 0! (handles all-negative arrays)
+let mut min_val = i32::MAX;
+let mut sum: i32 = 0;        // use i64 if values can overflow
 ```
 
 ### 2D Array
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> matrix(m, vector<int>(n, 0));
-int rows = matrix.size();
-int cols = matrix[0].size();
+```rust
+let matrix: Vec<Vec<i32>> = vec![vec![0; n]; m];
+let rows = matrix.len();
+let cols = matrix[0].len();
 ```
 
 ---
@@ -101,21 +89,26 @@ int cols = matrix[0].size();
 
 ### Rotate Array by K (Three Reversal Trick)
 
-```cpp
+```rust
 // Rotate right by k: [1,2,3,4,5], k=2 → [4,5,1,2,3]
 k %= n;
-reverse(arr.begin(), arr.end());           // [5,4,3,2,1]
-reverse(arr.begin(), arr.begin() + k);     // [4,5,3,2,1]
-reverse(arr.begin() + k, arr.end());       // [4,5,1,2,3]
+arr.reverse();                             // [5,4,3,2,1]
+arr[..k].reverse();                        // [4,5,3,2,1]
+arr[k..].reverse();                        // [4,5,1,2,3]
 ```
 
 ### In-Place Matrix Transpose
 
-```cpp
+```rust
 // Transpose square matrix: arr[i][j] ↔ arr[j][i]
-for (int i = 0; i < n; i++)
-    for (int j = i + 1; j < n; j++)
-        swap(matrix[i][j], matrix[j][i]);
+for i in 0..n {
+    for j in (i + 1)..n {
+        let val_ij = matrix[i][j];
+        let val_ji = matrix[j][i];
+        matrix[i][j] = val_ji;
+        matrix[j][i] = val_ij;
+    }
+}
 // Then reverse each row for 90° clockwise rotation
 ```
 
@@ -142,7 +135,7 @@ for (int i = 0; i < n; i++)
 □ Single element array handled?
 □ All same elements handled?
 □ Negative values handled (if applicable)?
-□ Integer overflow possible? (use long long)
+□ Integer overflow possible? (use i64)
 □ Index out of bounds impossible?
 □ Time complexity stated?
 □ Space complexity stated?

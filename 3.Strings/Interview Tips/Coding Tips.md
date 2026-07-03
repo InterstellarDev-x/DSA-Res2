@@ -1,53 +1,47 @@
-# Coding Tips — Strings (C++)
+# Coding Tips — Strings (Rust)
 
 > **Topic:** [Strings](../README.md) · **Section:** Interview Tips
 
 ---
 
-## C++ String Essentials
+## Rust String Essentials
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-// std::string is mutable; += is O(n) amortized
-string result = "";
-for (auto& s : list) result += s; // OK — string is mutable in C++
+```rust
+// String is owned and mutable; push_str is O(n) amortized
+let mut result = String::new();
+for s in &list { result.push_str(s); } // String is mutable in Rust
 
-// For complex formatting, prefer ostringstream
-ostringstream sb;
-for (auto& s : list) sb << s;
-string result = sb.str();
+// For complex formatting, prefer a String buffer or collect
+let mut sb = String::new();
+for s in &list { sb.push_str(s); }
+let result = sb;
 ```
 
 ## Char Access Patterns
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-char c = s[i];                     // O(1)
-// iterate string directly with range-for: for (char c : s)
-int freq = c - 'a';                // 0-25 for lowercase letters
-int ascii = (int) c;               // full ASCII value
+```rust
+let c = s.as_bytes()[i] as char;       // O(1) via byte index
+// iterate string: for c in s.chars()
+let freq = c as usize - 'a' as usize;  // 0-25 for lowercase letters
+let ascii = c as u8;                   // full ASCII value
 
-isalpha(c)                         // true for a-z, A-Z
-isdigit(c)                         // true for 0-9
-isalnum(c)                         // used in palindrome problems
-tolower(c)                         // case-insensitive compare
-toupper(c)
+c.is_alphabetic()                      // true for a-z, A-Z
+c.is_ascii_digit()                     // true for 0-9
+c.is_alphanumeric()                    // used in palindrome problems
+c.to_ascii_lowercase()                 // case-insensitive compare
+c.to_ascii_uppercase()
 ```
 
 ## Common Frequency Array Patterns
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
 // Lowercase only
-vector<int> freq(26, 0);
-for (char c : s) freq[c - 'a']++;
+let mut freq = vec![0i32; 26];
+for c in s.chars() { freq[c as usize - 'a' as usize] += 1; }
 
 // All ASCII
-vector<int> freq(128, 0);
-for (char c : s) freq[c]++;
+let mut freq = vec![0i32; 128];
+for c in s.chars() { freq[c as usize] += 1; }
 
 // Check equal frequency
 freq1 == freq2;                    // O(26) — fast
@@ -55,45 +49,45 @@ freq1 == freq2;                    // O(26) — fast
 
 ## String Comparison & Operations
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-s == t                             // content equality
-// equalsIgnoreCase → convert both with tolower/toupper first
-s.compare(t)                       // lexicographic; returns 0 if equal
-s.find(sub) != string::npos        // O(n×m) — use KMP for O(n+m)
-s.rfind(prefix, 0) == 0            // startsWith equivalent
-s.find(c)                          // first occurrence, string::npos if not found
-s.substr(l, r - l)                 // [l, r) exclusive; O(r-l)
-// split on whitespace → use istringstream
-s.erase(0, s.find_first_not_of(" \t\n")); // trim leading
-s.erase(s.find_last_not_of(" \t\n") + 1); // trim trailing
-replace(s.begin(), s.end(), 'a', 'b'); // char replacement
-reverse(s.begin(), s.end());       // reverse in-place
+```rust
+s == t                                          // content equality
+// equalsIgnoreCase → convert both with to_ascii_lowercase() first
+s.cmp(t)                                        // lexicographic; returns Ordering::Equal if equal
+s.contains(sub)                                 // O(n×m) — use KMP for O(n+m)
+s.starts_with(prefix)                           // startsWith equivalent
+s.find(c)                                       // first occurrence, returns Option<usize>
+&s[l..r]                                        // [l, r) exclusive; O(r-l)
+// split on whitespace → s.split_whitespace()
+let s = s.trim_start().to_string();             // trim leading
+let s = s.trim_end().to_string();               // trim trailing
+let s: String = s.chars().map(|c| if c == 'a' { 'b' } else { c }).collect(); // char replacement
+let s: String = s.chars().rev().collect();      // reverse
 ```
 
 ## Interview Quick-Start Template
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 // 1. Always clarify charset first
 // 2. Choose data structure:
-//    - vector<int>(26, 0)   → lowercase only
-//    - vector<int>(128, 0)  → ASCII
-//    - unordered_map        → Unicode or unknown
+//    - vec![0i32; 26]       → lowercase only
+//    - vec![0i32; 128]      → ASCII
+//    - HashMap              → Unicode or unknown
 
 // 3. Sliding window skeleton
-int l = 0, maxLen = 0;
-unordered_map<char, int> window;
-for (int r = 0; r < (int)s.length(); r++) {
-    window[s[r]]++;
-    while (/* invalid */) {
-        window[s[l]]--;
-        if (window[s[l]] == 0) window.erase(s[l]);
-        l++;
+let mut l = 0usize;
+let mut max_len = 0usize;
+let s_bytes = s.as_bytes();
+let mut window: HashMap<u8, i32> = HashMap::new();
+for r in 0..s.len() {
+    *window.entry(s_bytes[r]).or_insert(0) += 1;
+    while /* invalid: fill in condition */ false {
+        let count = window.entry(s_bytes[l]).or_insert(0);
+        *count -= 1;
+        if *count == 0 { window.remove(&s_bytes[l]); }
+        l += 1;
     }
-    maxLen = max(maxLen, r - l + 1);
+    max_len = max_len.max(r - l + 1);
 }
 ```
 

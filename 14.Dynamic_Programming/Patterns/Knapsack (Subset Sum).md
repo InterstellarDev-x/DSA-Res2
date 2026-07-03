@@ -48,121 +48,115 @@ where `combine` is `OR` (feasibility), `+` (counting), `min`/`max` (optimization
 
 ### 2a. Pure recursion
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct SubsetSum;
 
-class SubsetSum {
-public:
-    bool isSubsetSum(vector<int>& arr, int target) {
-        return solve(arr.size() - 1, target, arr);
+impl SubsetSum {
+    fn is_subset_sum(arr: &[i32], target: i32) -> bool {
+        Self::solve(arr.len() as i32 - 1, target, arr)
     }
 
-private:
-    bool solve(int idx, int target, vector<int>& arr) {
-        if (target == 0) return true;          // empty subset works
-        if (idx == 0) return arr[0] == target; // only first element left
-        bool notTake = solve(idx - 1, target, arr);
-        bool take = false;
-        if (arr[idx] <= target) {
-            take = solve(idx - 1, target - arr[idx], arr);
+    fn solve(idx: i32, target: i32, arr: &[i32]) -> bool {
+        if target == 0 { return true; }          // empty subset works
+        if idx == 0 { return arr[0] == target; } // only first element left
+        let not_take = Self::solve(idx - 1, target, arr);
+        let mut take = false;
+        if arr[idx as usize] <= target {
+            take = Self::solve(idx - 1, target - arr[idx as usize], arr);
         }
-        return take || notTake;
+        take || not_take
     }
-};
+}
 ```
 
 Time `O(2^n)`, exponential — every element branches twice.
 
-### 2b. Memoization (`vector<vector<int>>` initialized to `-1`)
+### 2b. Memoization (`Vec<Vec<i32>>` initialized to `-1`)
 
-We cache booleans as `int`: `-1` = unvisited, `0` = false, `1` = true. (You could also use a separate `visited` array.)
+We cache booleans as `i32`: `-1` = unvisited, `0` = false, `1` = true. (You could also use a separate `visited` array.)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct SubsetSum;
 
-class SubsetSum {
-public:
-    bool isSubsetSum(vector<int>& arr, int target) {
-        int n = arr.size();
-        vector<vector<int>> dp(n, vector<int>(target + 1, -1));
-        return solve(n - 1, target, arr, dp);
+impl SubsetSum {
+    fn is_subset_sum(arr: &[i32], target: usize) -> bool {
+        let n = arr.len();
+        let mut dp = vec![vec![-1i32; target + 1]; n];
+        Self::solve(n as i32 - 1, target as i32, arr, &mut dp)
     }
 
-private:
-    bool solve(int idx, int target, vector<int>& arr, vector<vector<int>>& dp) {
-        if (target == 0) return true;
-        if (idx == 0) return arr[0] == target;
-        if (dp[idx][target] != -1) return dp[idx][target] == 1;
+    fn solve(idx: i32, target: i32, arr: &[i32], dp: &mut Vec<Vec<i32>>) -> bool {
+        if target == 0 { return true; }
+        if idx == 0 { return arr[0] == target; }
+        let i = idx as usize;
+        let t = target as usize;
+        if dp[i][t] != -1 { return dp[i][t] == 1; }
 
-        bool notTake = solve(idx - 1, target, arr, dp);
-        bool take = false;
-        if (arr[idx] <= target) {
-            take = solve(idx - 1, target - arr[idx], arr, dp);
+        let not_take = Self::solve(idx - 1, target, arr, dp);
+        let mut take = false;
+        if arr[i] <= target {
+            take = Self::solve(idx - 1, target - arr[i], arr, dp);
         }
-        bool result = take || notTake;
-        dp[idx][target] = result ? 1 : 0;
-        return result;
+        let result = take || not_take;
+        dp[i][t] = if result { 1 } else { 0 };
+        result
     }
-};
+}
 ```
 
 Time `O(n * target)`, Space `O(n * target)` + recursion stack `O(n)`.
 
 ### 2c. Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct SubsetSum;
 
-class SubsetSum {
-public:
-    bool isSubsetSum(vector<int>& arr, int target) {
-        int n = arr.size();
-        vector<vector<bool>> dp(n, vector<bool>(target + 1, false));
+impl SubsetSum {
+    fn is_subset_sum(arr: &[i32], target: usize) -> bool {
+        let n = arr.len();
+        let mut dp = vec![vec![false; target + 1]; n];
 
-        for (int i = 0; i < n; i++) dp[i][0] = true; // sum 0 always possible
-        if (arr[0] <= target) dp[0][arr[0]] = true;
+        for i in 0..n { dp[i][0] = true; } // sum 0 always possible
+        if arr[0] as usize <= target { dp[0][arr[0] as usize] = true; }
 
-        for (int i = 1; i < n; i++) {
-            for (int t = 1; t <= target; t++) {
-                bool notTake = dp[i - 1][t];
-                bool take = false;
-                if (arr[i] <= t) {
-                    take = dp[i - 1][t - arr[i]];
-                }
-                dp[i][t] = take || notTake;
+        for i in 1..n {
+            for t in 1..=target {
+                let not_take = dp[i - 1][t];
+                let take = if arr[i] as usize <= t {
+                    dp[i - 1][t - arr[i] as usize]
+                } else {
+                    false
+                };
+                dp[i][t] = take || not_take;
             }
         }
-        return dp[n - 1][target];
+        dp[n - 1][target]
     }
-};
+}
 ```
 
 ### 2d. Space optimization to 1D
 
 Each row depends only on the previous row, so we keep one array. Because this is **0/1** (each item once), we iterate capacity **downward** to avoid reusing `arr[i]` within the same pass.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct SubsetSum;
 
-class SubsetSum {
-public:
-    bool isSubsetSum(vector<int>& arr, int target) {
-        int n = arr.size();
-        vector<bool> dp(target + 1, false);
+impl SubsetSum {
+    fn is_subset_sum(arr: &[i32], target: usize) -> bool {
+        let n = arr.len();
+        let mut dp = vec![false; target + 1];
         dp[0] = true; // empty subset
 
-        for (int i = 0; i < n; i++) {
-            for (int t = target; t >= arr[i]; t--) { // DOWNWARD: 0/1 semantics
-                dp[t] = dp[t] || dp[t - arr[i]];
+        for i in 0..n {
+            let w = arr[i] as usize;
+            for t in (w..=target).rev() { // DOWNWARD: 0/1 semantics
+                dp[t] = dp[t] || dp[t - w];
             }
         }
-        return dp[target];
+        dp[target]
     }
-};
+}
 ```
 
 Time `O(n * target)`, Space `O(target)`.
@@ -197,29 +191,27 @@ Time `O(n * target)`, Space `O(target)`.
 
 **Key insight.** Two equal halves means each must equal `totalSum / 2`. If `totalSum` is **odd**, it is impossible immediately. Otherwise this is exactly *Subset Sum* with `target = totalSum / 2` — reuse the 1D routine verbatim.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct PartitionEqualSubsetSum;
 
-class PartitionEqualSubsetSum {
-public:
-    bool canPartition(vector<int>& nums) {
-        int total = 0;
-        for (auto& x : nums) total += x;
-        if ((total & 1) == 1) return false; // odd total can't split evenly
+impl PartitionEqualSubsetSum {
+    fn can_partition(nums: &[i32]) -> bool {
+        let total: i32 = nums.iter().sum();
+        if (total & 1) == 1 { return false; } // odd total can't split evenly
 
-        int target = total / 2;
-        vector<bool> dp(target + 1, false);
+        let target = (total / 2) as usize;
+        let mut dp = vec![false; target + 1];
         dp[0] = true;
 
-        for (auto& num : nums) {
-            for (int t = target; t >= num; t--) { // 0/1 → downward
-                dp[t] = dp[t] || dp[t - num];
+        for &num in nums {
+            let w = num as usize;
+            for t in (w..=target).rev() { // 0/1 → downward
+                dp[t] = dp[t] || dp[t - w];
             }
         }
-        return dp[target];
+        dp[target]
     }
-};
+}
 ```
 
 | Aspect | Complexity |
@@ -241,65 +233,63 @@ public:
 
 If `arr[i] == 0`, you may either include or exclude it without changing the sum, so each zero **doubles** the count. This must be reflected in the base cases. With the index-0 base case below, an element equal to `0` contributes both "take" and "skip" paths automatically because `dp[0][0]` should count *two* ways (take the zero, or skip it). The clean way to handle this:
 
-- `dp[0][0] = (arr[0] == 0) ? 2 : 1`
-- `if (arr[0] != 0 && arr[0] <= k) dp[0][arr[0]] = 1`
+- `dp[0][0] = if arr[0] == 0 { 2 } else { 1 }`
+- `if arr[0] != 0 && arr[0] as usize <= k { dp[0][arr[0] as usize] = 1; }`
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct CountSubsetsWithSumK;
 
-class CountSubsetsWithSumK {
-    static const int MOD = 1'000'000'007;
+impl CountSubsetsWithSumK {
+    const MOD: i64 = 1_000_000_007;
 
-public:
-    int perfectSum(vector<int>& arr, int k) {
-        int n = arr.size();
-        vector<vector<int>> dp(n, vector<int>(k + 1, 0));
+    fn perfect_sum(arr: &[i32], k: usize) -> i32 {
+        let n = arr.len();
+        let mut dp = vec![vec![0i64; k + 1]; n];
 
         // Base row handling zeros explicitly.
-        if (arr[0] == 0) {
+        if arr[0] == 0 {
             dp[0][0] = 2;            // skip the zero OR take the zero
         } else {
             dp[0][0] = 1;            // only the empty subset
-            if (arr[0] <= k) dp[0][arr[0]] = 1;
+            if arr[0] as usize <= k { dp[0][arr[0] as usize] = 1; }
         }
 
-        for (int i = 1; i < n; i++) {
-            for (int t = 0; t <= k; t++) {
-                int notTake = dp[i - 1][t];
-                int take = 0;
-                if (arr[i] <= t) {
-                    take = dp[i - 1][t - arr[i]];
-                }
-                dp[i][t] = (take + notTake) % MOD;
+        for i in 1..n {
+            for t in 0..=k {
+                let not_take = dp[i - 1][t];
+                let take = if arr[i] as usize <= t {
+                    dp[i - 1][t - arr[i] as usize]
+                } else {
+                    0
+                };
+                dp[i][t] = (take + not_take) % Self::MOD;
             }
         }
-        return dp[n - 1][k];
+        dp[n - 1][k] as i32
     }
-};
+}
 ```
 
 1D version (downward, 0/1). When zeros are *not* present the simpler `dp[0] = 1` base works; with zeros prefer the 2D base above, or pre-handle the count of zeros separately and multiply by `2^(#zeros)`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct CountSubsetsWithSumK;
 
-class CountSubsetsWithSumK {
-    static const int MOD = 1'000'000'007;
+impl CountSubsetsWithSumK {
+    const MOD: i64 = 1_000_000_007;
 
-public:
-    int perfectSum(vector<int>& arr, int k) {
-        vector<int> dp(k + 1, 0);
+    fn perfect_sum(arr: &[i32], k: usize) -> i32 {
+        let mut dp = vec![0i64; k + 1];
         dp[0] = 1; // assumes the explicit-zero handling above for arrays containing 0
-        for (auto& num : arr) {
-            for (int t = k; t >= num; t--) { // 0/1 → downward
-                dp[t] = (dp[t] + dp[t - num]) % MOD;
+        for &num in arr {
+            let w = num as usize;
+            for t in (w..=k).rev() { // 0/1 → downward
+                dp[t] = (dp[t] + dp[t - w]) % Self::MOD;
             }
         }
-        return dp[k];
+        dp[k] as i32
     }
-};
+}
 ```
 
 | Aspect | Complexity |
@@ -318,122 +308,117 @@ This is the canonical template. Internalize all four stages.
 
 - **State:** `f(i, cap)` = max value using items `0..i` with capacity `cap`.
 - **Recurrence:** `f(i, cap) = max( f(i-1, cap), value[i] + f(i-1, cap - weight[i]) )` (take only if `weight[i] <= cap`)
-- **Base case:** `f(0, cap) = (weight[0] <= cap) ? value[0] : 0`.
+- **Base case:** `f(0, cap) = if weight[0] <= cap { value[0] } else { 0 }`.
 
 ### 5a. Pure recursion
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Knapsack01;
 
-class Knapsack01 {
-public:
-    int knapsack(int W, vector<int>& weight, vector<int>& value) {
-        return solve(weight.size() - 1, W, weight, value);
+impl Knapsack01 {
+    fn knapsack(w: usize, weight: &[i32], value: &[i32]) -> i32 {
+        Self::solve(weight.len() as i32 - 1, w as i32, weight, value)
     }
 
-private:
-    int solve(int idx, int cap, vector<int>& weight, vector<int>& value) {
-        if (idx == 0) {
-            return weight[0] <= cap ? value[0] : 0;
+    fn solve(idx: i32, cap: i32, weight: &[i32], value: &[i32]) -> i32 {
+        if idx == 0 {
+            return if weight[0] <= cap { value[0] } else { 0 };
         }
-        int notTake = solve(idx - 1, cap, weight, value);
-        int take = INT_MIN;
-        if (weight[idx] <= cap) {
-            take = value[idx] + solve(idx - 1, cap - weight[idx], weight, value);
+        let i = idx as usize;
+        let not_take = Self::solve(idx - 1, cap, weight, value);
+        let mut take = i32::MIN;
+        if weight[i] <= cap {
+            take = value[i] + Self::solve(idx - 1, cap - weight[i], weight, value);
         }
-        return max(take, notTake);
+        take.max(not_take)
     }
-};
+}
 ```
 
-### 5b. Memoization (`vector<vector<int>>` initialized to `-1`)
+### 5b. Memoization (`Vec<Vec<i32>>` initialized to `-1`)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Knapsack01;
 
-class Knapsack01 {
-public:
-    int knapsack(int W, vector<int>& weight, vector<int>& value) {
-        int n = weight.size();
-        vector<vector<int>> dp(n, vector<int>(W + 1, -1));
-        return solve(n - 1, W, weight, value, dp);
+impl Knapsack01 {
+    fn knapsack(w: usize, weight: &[i32], value: &[i32]) -> i32 {
+        let n = weight.len();
+        let mut dp = vec![vec![-1i32; w + 1]; n];
+        Self::solve(n as i32 - 1, w as i32, weight, value, &mut dp)
     }
 
-private:
-    int solve(int idx, int cap, vector<int>& weight, vector<int>& value, vector<vector<int>>& dp) {
-        if (idx == 0) {
-            return weight[0] <= cap ? value[0] : 0;
+    fn solve(idx: i32, cap: i32, weight: &[i32], value: &[i32], dp: &mut Vec<Vec<i32>>) -> i32 {
+        if idx == 0 {
+            return if weight[0] <= cap { value[0] } else { 0 };
         }
-        if (dp[idx][cap] != -1) return dp[idx][cap];
+        let i = idx as usize;
+        let c = cap as usize;
+        if dp[i][c] != -1 { return dp[i][c]; }
 
-        int notTake = solve(idx - 1, cap, weight, value, dp);
-        int take = INT_MIN;
-        if (weight[idx] <= cap) {
-            take = value[idx] + solve(idx - 1, cap - weight[idx], weight, value, dp);
+        let not_take = Self::solve(idx - 1, cap, weight, value, dp);
+        let mut take = i32::MIN;
+        if weight[i] <= cap {
+            take = value[i] + Self::solve(idx - 1, cap - weight[i], weight, value, dp);
         }
-        return dp[idx][cap] = max(take, notTake);
+        dp[i][c] = take.max(not_take);
+        dp[i][c]
     }
-};
+}
 ```
 
 ### 5c. Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Knapsack01;
 
-class Knapsack01 {
-public:
-    int knapsack(int W, vector<int>& weight, vector<int>& value) {
-        int n = weight.size();
-        vector<vector<int>> dp(n, vector<int>(W + 1, 0));
+impl Knapsack01 {
+    fn knapsack(w: usize, weight: &[i32], value: &[i32]) -> i32 {
+        let n = weight.len();
+        let mut dp = vec![vec![0i32; w + 1]; n];
 
-        for (int cap = weight[0]; cap <= W; cap++) {
+        for cap in (weight[0] as usize)..=w {
             dp[0][cap] = value[0];
         }
 
-        for (int i = 1; i < n; i++) {
-            for (int cap = 0; cap <= W; cap++) {
-                int notTake = dp[i - 1][cap];
-                int take = INT_MIN;
-                if (weight[i] <= cap) {
-                    take = value[i] + dp[i - 1][cap - weight[i]];
-                }
-                dp[i][cap] = max(take, notTake);
+        for i in 1..n {
+            for cap in 0..=w {
+                let not_take = dp[i - 1][cap];
+                let take = if weight[i] as usize <= cap {
+                    value[i] + dp[i - 1][cap - weight[i] as usize]
+                } else {
+                    i32::MIN
+                };
+                dp[i][cap] = take.max(not_take);
             }
         }
-        return dp[n - 1][W];
+        dp[n - 1][w]
     }
-};
+}
 ```
 
 ### 5d. Space optimization to 1D — iterate capacity DOWNWARD
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Knapsack01;
 
-class Knapsack01 {
-public:
-    int knapsack(int W, vector<int>& weight, vector<int>& value) {
-        int n = weight.size();
-        vector<int> dp(W + 1, 0);
+impl Knapsack01 {
+    fn knapsack(w: usize, weight: &[i32], value: &[i32]) -> i32 {
+        let n = weight.len();
+        let mut dp = vec![0i32; w + 1];
 
-        for (int cap = weight[0]; cap <= W; cap++) {
+        for cap in (weight[0] as usize)..=w {
             dp[cap] = value[0];
         }
 
-        for (int i = 1; i < n; i++) {
-            for (int cap = W; cap >= weight[i]; cap--) { // DOWNWARD
-                int take = value[i] + dp[cap - weight[i]];
-                dp[cap] = max(dp[cap], take);
+        for i in 1..n {
+            for cap in (weight[i] as usize..=w).rev() { // DOWNWARD
+                let take = value[i] + dp[cap - weight[i] as usize];
+                dp[cap] = dp[cap].max(take);
             }
         }
-        return dp[W];
+        dp[w]
     }
-};
+}
 ```
 
 **Why downward?** In the 1D array, `dp[cap]` is being updated in place. The recurrence for 0/1 reads from the **previous row** at `dp[cap - weight[i]]`. If we iterate **upward**, by the time we reach `cap` the slot `dp[cap - weight[i]]` has *already been updated in this same pass* — meaning item `i` could be counted twice (that is the *unbounded* behavior). Iterating **downward** guarantees `dp[cap - weight[i]]` still holds the previous row's value, preserving the "each item once" semantics.
@@ -452,62 +437,62 @@ public:
 
 - **State:** `f(i, rem)` = min coins to form `rem` using coins `0..i`.
 - **Recurrence:** `f(i, rem) = min( f(i-1, rem), 1 + f(i, rem - coins[i]) )` — note **`f(i, ...)` on take, NOT `f(i-1, ...)`**, because the coin can be reused.
-- **Base case:** `f(0, rem) = (rem % coins[0] == 0) ? rem / coins[0] : INF`.
+- **Base case:** `f(0, rem) = if rem % coins[0] == 0 { rem / coins[0] } else { INF }`.
 
 ### 6a. Memoization
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct CoinChangeMin;
 
-class CoinChangeMin {
-    static const int INF = 1e9;
+impl CoinChangeMin {
+    const INF: i32 = 1_000_000_000;
 
-public:
-    int coinChange(vector<int>& coins, int amount) {
-        int n = coins.size();
-        vector<vector<int>> dp(n, vector<int>(amount + 1, -1));
-        int ans = solve(n - 1, amount, coins, dp);
-        return ans >= INF ? -1 : ans;
+    fn coin_change(coins: &[i32], amount: usize) -> i32 {
+        let n = coins.len();
+        let mut dp = vec![vec![-1i32; amount + 1]; n];
+        let ans = Self::solve(n as i32 - 1, amount as i32, coins, &mut dp);
+        if ans >= Self::INF { -1 } else { ans }
     }
 
-private:
-    int solve(int idx, int rem, vector<int>& coins, vector<vector<int>>& dp) {
-        if (idx == 0) {
-            return (rem % coins[0] == 0) ? rem / coins[0] : INF;
+    fn solve(idx: i32, rem: i32, coins: &[i32], dp: &mut Vec<Vec<i32>>) -> i32 {
+        if idx == 0 {
+            return if rem % coins[0] == 0 { rem / coins[0] } else { Self::INF };
         }
-        if (dp[idx][rem] != -1) return dp[idx][rem];
+        let i = idx as usize;
+        let r = rem as usize;
+        if dp[i][r] != -1 { return dp[i][r]; }
 
-        int notTake = solve(idx - 1, rem, coins, dp);
-        int take = INF;
-        if (coins[idx] <= rem) {
-            take = 1 + solve(idx, rem - coins[idx], coins, dp); // STAY on idx
-        }
-        return dp[idx][rem] = min(take, notTake);
+        let not_take = Self::solve(idx - 1, rem, coins, dp);
+        let take = if coins[i] <= rem {
+            1 + Self::solve(idx, rem - coins[i], coins, dp) // STAY on idx
+        } else {
+            Self::INF
+        };
+        dp[i][r] = take.min(not_take);
+        dp[i][r]
     }
-};
+}
 ```
 
 ### 6b. Tabulation, 1D — iterate capacity UPWARD
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct CoinChangeMin;
 
-class CoinChangeMin {
-public:
-    int coinChange(vector<int>& coins, int amount) {
-        vector<int> dp(amount + 1, amount + 1); // sentinel "infinity" (can't exceed amount coins)
+impl CoinChangeMin {
+    fn coin_change(coins: &[i32], amount: usize) -> i32 {
+        let mut dp = vec![amount as i32 + 1; amount + 1]; // sentinel "infinity" (can't exceed amount coins)
         dp[0] = 0;
 
-        for (auto& coin : coins) {
-            for (int rem = coin; rem <= amount; rem++) { // UPWARD: unbounded reuse
-                dp[rem] = min(dp[rem], 1 + dp[rem - coin]);
+        for &coin in coins {
+            let w = coin as usize;
+            for rem in w..=amount { // UPWARD: unbounded reuse
+                dp[rem] = dp[rem].min(1 + dp[rem - w]);
             }
         }
-        return dp[amount] > amount ? -1 : dp[amount];
+        if dp[amount] > amount as i32 { -1 } else { dp[amount] }
     }
-};
+}
 ```
 
 **Why upward?** Because the coin is **unbounded**, the take branch reads from the *current* row (`dp[rem - coin]` updated in this same pass). Iterating **upward** is exactly what makes `dp[rem - coin]` already reflect "this coin used one or more times," allowing multiple uses of the same coin. (This is the mirror image of the 0/1 downward rule from problem 18.)
@@ -527,61 +512,61 @@ public:
 
 - **State:** `f(i, rem)` = number of combinations using coins `0..i`.
 - **Recurrence:** `f(i, rem) = f(i-1, rem) + f(i, rem - coins[i])` (stay on `i` for take).
-- **Base case:** `f(0, rem) = (rem % coins[0] == 0) ? 1 : 0`.
+- **Base case:** `f(0, rem) = if rem % coins[0] == 0 { 1 } else { 0 }`.
 
 To count **combinations** (not permutations), the 1D form puts **coins on the outer loop** and **amount on the inner loop**. This ordering ensures each combination is counted once because coins are introduced in a fixed order.
 
 ### 7a. Memoization
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct CoinChangeII;
 
-class CoinChangeII {
-public:
-    int change(int amount, vector<int>& coins) {
-        int n = coins.size();
-        vector<vector<long long>> dp(n, vector<long long>(amount + 1, -1));
-        return (int) solve(n - 1, amount, coins, dp);
+impl CoinChangeII {
+    fn change(amount: usize, coins: &[i32]) -> i32 {
+        let n = coins.len();
+        let mut dp = vec![vec![-1i64; amount + 1]; n];
+        Self::solve(n as i32 - 1, amount as i32, coins, &mut dp) as i32
     }
 
-private:
-    long long solve(int idx, int rem, vector<int>& coins, vector<vector<long long>>& dp) {
-        if (idx == 0) {
-            return (rem % coins[0] == 0) ? 1 : 0;
+    fn solve(idx: i32, rem: i32, coins: &[i32], dp: &mut Vec<Vec<i64>>) -> i64 {
+        if idx == 0 {
+            return if rem % coins[0] == 0 { 1 } else { 0 };
         }
-        if (dp[idx][rem] != -1) return dp[idx][rem];
+        let i = idx as usize;
+        let r = rem as usize;
+        if dp[i][r] != -1 { return dp[i][r]; }
 
-        long long notTake = solve(idx - 1, rem, coins, dp);
-        long long take = 0;
-        if (coins[idx] <= rem) {
-            take = solve(idx, rem - coins[idx], coins, dp); // STAY on idx
-        }
-        return dp[idx][rem] = take + notTake;
+        let not_take = Self::solve(idx - 1, rem, coins, dp);
+        let take = if coins[i] <= rem {
+            Self::solve(idx, rem - coins[i], coins, dp) // STAY on idx
+        } else {
+            0
+        };
+        dp[i][r] = take + not_take;
+        dp[i][r]
     }
-};
+}
 ```
 
 ### 7b. Tabulation, 1D — outer loop coins, inner loop amount (UPWARD)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct CoinChangeII;
 
-class CoinChangeII {
-public:
-    int change(int amount, vector<int>& coins) {
-        vector<long long> dp(amount + 1, 0);
+impl CoinChangeII {
+    fn change(amount: usize, coins: &[i32]) -> i32 {
+        let mut dp = vec![0i64; amount + 1];
         dp[0] = 1; // one way to make 0: pick nothing
 
-        for (auto& coin : coins) {              // OUTER: coins
-            for (int rem = coin; rem <= amount; rem++) { // INNER: amount, upward
-                dp[rem] += dp[rem - coin];
+        for &coin in coins {              // OUTER: coins
+            let w = coin as usize;
+            for rem in w..=amount { // INNER: amount, upward
+                dp[rem] += dp[rem - w];
             }
         }
-        return (int) dp[amount];
+        dp[amount] as i32
     }
-};
+}
 ```
 
 If you swapped the loops (amount outer, coins inner) you would count **permutations** instead of combinations.
@@ -615,46 +600,42 @@ So the problem reduces to **Count Subsets with Sum = `(sum + target) / 2`** (pro
 - The derived subset target must be non-negative (it is, given the guards above, since `(sum + target) >= 0`).
 - Zeros are still handled by the count-subset base case (each zero doubles the count).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct TargetSum;
 
-class TargetSum {
-public:
-    int findTargetSumWays(vector<int>& nums, int target) {
-        int sum = 0;
-        for (auto& x : nums) sum += x;
+impl TargetSum {
+    fn find_target_sum_ways(nums: &[i32], target: i32) -> i32 {
+        let sum: i32 = nums.iter().sum();
 
         // S1 = (sum + target) / 2 must be a non-negative integer.
-        if (abs(target) > sum) return 0;
-        if (((sum + target) & 1) == 1) return 0;
-        int s1 = (sum + target) / 2;
+        if target.abs() > sum { return 0; }
+        if ((sum + target) & 1) == 1 { return 0; }
+        let s1 = ((sum + target) / 2) as usize;
 
-        return countSubsets(nums, s1);
+        Self::count_subsets(nums, s1)
     }
 
-private:
-    int countSubsets(vector<int>& arr, int k) {
-        int n = arr.size();
-        vector<vector<int>> dp(n, vector<int>(k + 1, 0));
+    fn count_subsets(arr: &[i32], k: usize) -> i32 {
+        let n = arr.len();
+        let mut dp = vec![vec![0i32; k + 1]; n];
 
-        if (arr[0] == 0) {
+        if arr[0] == 0 {
             dp[0][0] = 2;                 // take or skip the zero
         } else {
             dp[0][0] = 1;
-            if (arr[0] <= k) dp[0][arr[0]] = 1;
+            if arr[0] as usize <= k { dp[0][arr[0] as usize] = 1; }
         }
 
-        for (int i = 1; i < n; i++) {
-            for (int t = 0; t <= k; t++) {
-                int notTake = dp[i - 1][t];
-                int take = (arr[i] <= t) ? dp[i - 1][t - arr[i]] : 0;
-                dp[i][t] = take + notTake;
+        for i in 1..n {
+            for t in 0..=k {
+                let not_take = dp[i - 1][t];
+                let take = if arr[i] as usize <= t { dp[i - 1][t - arr[i] as usize] } else { 0 };
+                dp[i][t] = take + not_take;
             }
         }
-        return dp[n - 1][k];
+        dp[n - 1][k]
     }
-};
+}
 ```
 
 | Aspect | Complexity |
@@ -672,35 +653,34 @@ private:
 
 By symmetry it suffices to scan `s` from `0` to `total/2` (each reachable `s` and its complement give the same difference), and minimize `total - 2*s`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct MinSubsetSumDifference;
 
-class MinSubsetSumDifference {
-public:
-    int minDifference(vector<int>& arr) {
-        int total = 0;
-        for (auto& x : arr) total += x;
+impl MinSubsetSumDifference {
+    fn min_difference(arr: &[i32]) -> i32 {
+        let total: i32 = arr.iter().sum();
+        let total_usize = total as usize;
 
         // dp[s] = is sum s reachable by some subset?
-        vector<bool> dp(total + 1, false);
+        let mut dp = vec![false; total_usize + 1];
         dp[0] = true;
-        for (auto& num : arr) {
-            for (int s = total; s >= num; s--) { // 0/1 → downward
-                dp[s] = dp[s] || dp[s - num];
+        for &num in arr {
+            let w = num as usize;
+            for s in (w..=total_usize).rev() { // 0/1 → downward
+                dp[s] = dp[s] || dp[s - w];
             }
         }
 
-        int best = INT_MAX;
-        for (int s = 0; s <= total / 2; s++) {
-            if (dp[s]) {
-                int diff = total - 2 * s; // = |s - (total - s)|, s <= total/2
-                best = min(best, diff);
+        let mut best = i32::MAX;
+        for s in 0..=(total_usize / 2) {
+            if dp[s] {
+                let diff = total - 2 * s as i32; // = |s - (total - s)|, s <= total/2
+                best = best.min(diff);
             }
         }
-        return best;
+        best
     }
-};
+}
 ```
 
 A worked check on `arr = [1, 6, 11, 5]`, `total = 23`: reachable sums include `11` (= 6+5) and `12` (= 1+11). At `s = 11`, `diff = 23 - 22 = 1`. That is the minimum. ✔
@@ -769,6 +749,6 @@ Quick triage:
   - **Min Subset Diff** → reachable sums + sweep `min(total - 2s)`.
 - **Unbounded** problems (Coin Change 322 / II 518) keep the index on **take** and iterate the 1D capacity loop **upward**; Coin Change II additionally loops **coins outer** to count combinations.
 - The **loop-direction rule** (down for 0/1, up for unbounded) is the highest-yield thing to memorize — it is the difference between a correct and a subtly broken solution.
-- Use `min` / `max` for optimization, a comparison lambda rather than subtraction for custom comparators, and `long long` accumulators when counts can overflow `int` (Coin Change II).
+- Use `min` / `max` for optimization, a comparison lambda rather than subtraction for custom comparators, and `i64` accumulators when counts can overflow `i32` (Coin Change II).
 
 > **Last Updated:** 2026-06-26

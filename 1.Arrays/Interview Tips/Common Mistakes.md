@@ -8,7 +8,7 @@
 ## Table of Contents
 
 1. [Algorithm Mistakes](#algorithm-mistakes)
-2. [C++ Implementation Mistakes](#c-implementation-mistakes)
+2. [Rust Implementation Mistakes](#rust-implementation-mistakes)
 3. [Edge Case Blindspots](#edge-case-blindspots)
 4. [Communication Mistakes](#communication-mistakes)
 5. [Pattern-Specific Mistakes](#pattern-specific-mistakes)
@@ -20,25 +20,25 @@
 
 | Mistake | Example | Fix |
 |---------|---------|-----|
-| Initializing max/min to 0 | `int max = 0` fails for all-negative | Use `INT_MIN` or `nums[0]` |
-| Applying sliding window to arrays with negative values | Sum can grow and shrink unpredictably | Use [Prefix Sum + unordered_map](../Patterns/Prefix%20Sum.md) instead |
-| Sorting when problem requires O(n) | Adds unnecessary O(n log n) | Check if `unordered_set` / `unordered_map` can achieve O(n) |
-| Two pointer on unsorted array | Wrong pairs found | Sort first OR use `unordered_map` |
-| Not considering that sorting changes indices | Two Sum wants original indices | If indices matter, don't sort — use `unordered_map` |
+| Initializing max/min to 0 | `let mut max = 0_i32` fails for all-negative | Use `i32::MIN` or `nums[0]` |
+| Applying sliding window to arrays with negative values | Sum can grow and shrink unpredictably | Use [Prefix Sum + HashMap](../Patterns/Prefix%20Sum.md) instead |
+| Sorting when problem requires O(n) | Adds unnecessary O(n log n) | Check if `HashSet` / `HashMap` can achieve O(n) |
+| Two pointer on unsorted array | Wrong pairs found | Sort first OR use `HashMap` |
+| Not considering that sorting changes indices | Two Sum wants original indices | If indices matter, don't sort — use `HashMap` |
 | Missing the "verify" step in Moore's Voting | Returns wrong candidate | Always verify when majority not guaranteed |
 
 ---
 
-## C++ Implementation Mistakes
+## Rust Implementation Mistakes
 
 | Mistake | Bad Code | Fix |
 |---------|----------|-----|
-| Integer overflow | `int sum = a + b` where a, b ≈ 10^9 | Use `long long sum = (long long)a + b` |
+| Integer overflow | `let sum: i32 = a + b` where a, b ≈ 10^9 | Use `let sum: i64 = a as i64 + b as i64` |
 | Off-by-one in prefix sum | `prefix[i] = arr[0..i]` | Use 1-indexed: `prefix[0]=0, prefix[i]=prefix[i-1]+arr[i-1]` |
-| Modifying array during iteration | Remove while iterating `std::vector` | Use index-based loop or collect separately |
-| Comparing integers with wrong operator | `if (a == b)` where a, b are objects | In C++, `==` works directly for `int` |
-| Not initializing `long long` accumulator | `int sum` overflows | `long long sum = 0` |
-| `sort()` on `vector<int>` with comparator | Wrong comparator signature | Use lambda: `sort(v.begin(), v.end(), [](int a, int b){ return a > b; })` |
+| Modifying array during iteration | Remove while iterating `Vec` | Use index-based loop or collect separately |
+| Comparing integers with wrong operator | `if a == b` where a, b are objects | In Rust, `==` works for all `PartialEq` types |
+| Not initializing `i64` accumulator | `let sum: i32` overflows | `let mut sum: i64 = 0` |
+| `sort()` on `Vec<i32>` with comparator | Wrong comparator signature | Use closure: `v.sort_by(\|a, b\| b.cmp(a))` |
 
 ---
 
@@ -46,14 +46,14 @@
 
 | Edge Case | Why It Breaks | How to Test |
 |-----------|--------------|-------------|
-| Empty array `[]` | Out-of-bounds or wrong answer | Guard: `if (arr.empty()) return ...` |
+| Empty array `[]` | Out-of-bounds or wrong answer | Guard: `if arr.is_empty() { return ...; }` |
 | Single element `[x]` | Two-pointer loop never runs | Trace with n=1 |
 | All same elements `[2,2,2,2]` | Duplicate handling off | Verify cyclic sort, 3Sum de-dup logic |
 | All negative `[-3,-1,-2]` | Max initialized to 0 is wrong | Initialize to `nums[0]` |
 | Array of zeros `[0,0,0]` | Division by zero in product array | Handle zeros separately |
-| K = 0 (window size) | Division by zero or empty window | Guard: `if (k == 0) return` |
-| K > array length | Out of bounds | Guard: `if (k > n) k %= n` |
-| Integers at boundary | `INT_MIN - 1` overflow | Use `abs` carefully |
+| K = 0 (window size) | Division by zero or empty window | Guard: `if k == 0 { return }` |
+| K > array length | Out of bounds | Guard: `if k > n { k %= n }` |
+| Integers at boundary | `i32::MIN - 1` overflow | Use `.abs()` carefully |
 
 ---
 
@@ -73,49 +73,46 @@
 
 ### Sliding Window
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
 // WRONG: Forgetting to shrink window
-for (int r = 0; r < n; r++) {
+for r in 0..n {
     window += arr[r];
-    // forgot: while (window > k) window -= arr[l++];
-    max_len = max(max_len, r - l + 1);
+    // forgot: while window > k { window -= arr[l]; l += 1; }
+    max_len = max_len.max(r - l + 1);
 }
 
 // WRONG: Using 'if' instead of 'while' to shrink
-if (window > k) window -= arr[l++]; // misses multiple shrinks needed
+if window > k { window -= arr[l]; l += 1; } // misses multiple shrinks needed
 ```
 
 ### Prefix Sum
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 // WRONG: Missing seed
-unordered_map<int, int> freq;
-// forgot: freq[0] = 1; — misses subarrays starting at index 0
-int sum = 0;
-for (auto& num : nums) { sum += num; count += (freq.count(sum - k) ? freq[sum - k] : 0); freq[sum]++; }
+let mut freq: HashMap<i32, i32> = HashMap::new();
+// forgot: freq.insert(0, 1); — misses subarrays starting at index 0
+let mut sum = 0;
+for &num in &nums { sum += num; count += freq.get(&(sum - k)).copied().unwrap_or(0); *freq.entry(sum).or_insert(0) += 1; }
 ```
 
 ### Cyclic Sort
 
-```cpp
+```rust
 // WRONG: Advancing i after every swap
-while (i < n) {
-    int c = nums[i] - 1;
-    if (nums[i] != nums[c]) swap(nums[i], nums[c]);
-    i++; // BUG: should only advance when nums[i] == i+1
+while i < n {
+    let c = (nums[i] - 1) as usize;
+    if nums[i] != nums[c] { nums.swap(i, c); }
+    i += 1; // BUG: should only advance when nums[i] == i + 1
 }
 ```
 
 ### Dutch National Flag
 
-```cpp
+```rust
 // WRONG: Advancing mid when swapping with hi
 } else { // nums[mid] == 2
-    swap(nums[mid++], nums[hi--]); // BUG: don't advance mid here
+    nums.swap(mid, hi); mid += 1; hi -= 1; // BUG: don't advance mid here
 }
 ```
 

@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [C++ Templates](#cpp-templates)
+5. [Rust Templates](#rust-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -68,125 +68,113 @@ The sort step is the key enabler: once sorted, all overlapping intervals are con
 
 ---
 
-## C++ Templates
+## Rust Templates
 
 ### 1. Merge Overlapping Intervals
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn merge(intervals: &mut Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+    intervals.sort_by(|a, b| a[0].cmp(&b[0])); // sort by start
+    let mut merged: Vec<Vec<i32>> = Vec::new();
 
-vector<vector<int>> merge(vector<vector<int>>& intervals) {
-    sort(intervals.begin(), intervals.end(), [](const vector<int>& a, const vector<int>& b) {
-        return a[0] < b[0]; // sort by start
-    });
-    vector<vector<int>> merged;
-
-    for (auto& interval : intervals) {
-        if (merged.empty() || merged.back()[1] < interval[0]) {
-            merged.push_back(interval); // no overlap
+    for interval in intervals.iter() {
+        if merged.is_empty() || merged.last().unwrap()[1] < interval[0] {
+            merged.push(interval.clone()); // no overlap
         } else {
             // overlap: extend the end
-            merged.back()[1] = max(merged.back()[1], interval[1]);
+            let last = merged.last_mut().unwrap();
+            last[1] = last[1].max(interval[1]);
         }
     }
-    return merged;
+    merged
 }
 // Time: O(n log n) | Space: O(n)
 ```
 
 ### 2. Insert Interval
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn insert(intervals: &Vec<Vec<i32>>, mut new_interval: Vec<i32>) -> Vec<Vec<i32>> {
+    let mut result: Vec<Vec<i32>> = Vec::new();
+    let n = intervals.len();
+    let mut i = 0;
 
-vector<vector<int>> insert(vector<vector<int>>& intervals, vector<int> newInterval) {
-    vector<vector<int>> result;
-    int i = 0, n = intervals.size();
-
-    // Add all intervals ending before newInterval starts
-    while (i < n && intervals[i][1] < newInterval[0]) {
-        result.push_back(intervals[i++]);
+    // Add all intervals ending before new_interval starts
+    while i < n && intervals[i][1] < new_interval[0] {
+        result.push(intervals[i].clone());
+        i += 1;
     }
-    // Merge all overlapping intervals with newInterval
-    while (i < n && intervals[i][0] <= newInterval[1]) {
-        newInterval[0] = min(newInterval[0], intervals[i][0]);
-        newInterval[1] = max(newInterval[1], intervals[i][1]);
-        i++;
+    // Merge all overlapping intervals with new_interval
+    while i < n && intervals[i][0] <= new_interval[1] {
+        new_interval[0] = new_interval[0].min(intervals[i][0]);
+        new_interval[1] = new_interval[1].max(intervals[i][1]);
+        i += 1;
     }
-    result.push_back(newInterval);
+    result.push(new_interval);
     // Add remaining intervals
-    while (i < n) result.push_back(intervals[i++]);
+    while i < n {
+        result.push(intervals[i].clone());
+        i += 1;
+    }
 
-    return result;
+    result
 }
 // Time: O(n) | Space: O(n)
 ```
 
 ### 3. Meeting Rooms I — Can One Person Attend All?
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool canAttendMeetings(vector<vector<int>>& intervals) {
-    sort(intervals.begin(), intervals.end(), [](const vector<int>& a, const vector<int>& b) {
-        return a[0] < b[0];
-    });
-    for (int i = 1; i < (int)intervals.size(); i++) {
-        if (intervals[i][0] < intervals[i - 1][1]) return false; // overlap
+```rust
+fn can_attend_meetings(intervals: &mut Vec<Vec<i32>>) -> bool {
+    intervals.sort_by(|a, b| a[0].cmp(&b[0]));
+    for i in 1..intervals.len() {
+        if intervals[i][0] < intervals[i - 1][1] {
+            return false; // overlap
+        }
     }
-    return true;
+    true
 }
 // Time: O(n log n) | Space: O(1)
 ```
 
 ### 4. Meeting Rooms II — Minimum Rooms Required
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn min_meeting_rooms(intervals: &Vec<Vec<i32>>) -> i32 {
+    let mut starts: Vec<i32> = intervals.iter().map(|iv| iv[0]).collect();
+    let mut ends: Vec<i32> = intervals.iter().map(|iv| iv[1]).collect();
+    starts.sort();
+    ends.sort();
 
-int minMeetingRooms(vector<vector<int>>& intervals) {
-    vector<int> starts(intervals.size());
-    vector<int> ends(intervals.size());
-    for (int i = 0; i < (int)intervals.size(); i++) {
-        starts[i] = intervals[i][0];
-        ends[i]   = intervals[i][1];
+    let mut rooms = 0;
+    let mut end_ptr = 0;
+    for i in 0..starts.len() {
+        if starts[i] < ends[end_ptr] {
+            rooms += 1; // new room needed
+        } else {
+            end_ptr += 1; // room freed
+        }
     }
-    sort(starts.begin(), starts.end());
-    sort(ends.begin(), ends.end());
-
-    int rooms = 0, endPtr = 0;
-    for (int i = 0; i < (int)starts.size(); i++) {
-        if (starts[i] < ends[endPtr]) rooms++; // new room needed
-        else endPtr++;                          // room freed
-    }
-    return rooms;
+    rooms
 }
 // Time: O(n log n) | Space: O(n)
 ```
 
 ### 5. Non-overlapping Intervals — Minimum Removals (Activity Selection)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int eraseOverlapIntervals(vector<vector<int>>& intervals) {
-    sort(intervals.begin(), intervals.end(), [](const vector<int>& a, const vector<int>& b) {
-        return a[1] < b[1]; // sort by END
-    });
-    int count = 0, lastEnd = INT_MIN;
-    for (auto& iv : intervals) {
-        if (iv[0] >= lastEnd) {
-            lastEnd = iv[1]; // keep this interval
+```rust
+fn erase_overlap_intervals(intervals: &mut Vec<Vec<i32>>) -> i32 {
+    intervals.sort_by(|a, b| a[1].cmp(&b[1])); // sort by END
+    let mut count = 0;
+    let mut last_end = i32::MIN;
+    for iv in intervals.iter() {
+        if iv[0] >= last_end {
+            last_end = iv[1]; // keep this interval
         } else {
-            count++; // remove this interval
+            count += 1; // remove this interval
         }
     }
-    return count;
+    count
 }
 // Greedy: sort by end, greedily keep non-overlapping intervals
 // Time: O(n log n) | Space: O(1)
@@ -199,9 +187,9 @@ int eraseOverlapIntervals(vector<vector<int>>& intervals) {
 | Mistake | Fix |
 |---------|-----|
 | Sorting by end instead of start (for merge) | Sort by `start` for merge; sort by `end` for activity selection |
-| Overlap condition: `<` vs `<=` | `intervals[i][0] <= lastEnd` means touching intervals merge; adjust per problem |
+| Overlap condition: `<` vs `<=` | `intervals[i][0] <= last_end` means touching intervals merge; adjust per problem |
 | Mutating the original input array | Clone interval arrays when needed |
-| Not handling empty input | Guard `if (intervals.empty()) return ...` |
+| Not handling empty input | Guard `if intervals.is_empty() { return ... }` |
 | Meeting rooms: using a min-heap when two sorted arrays work | Two-pointer approach on sorted starts/ends is cleaner |
 
 ---
@@ -212,26 +200,28 @@ int eraseOverlapIntervals(vector<vector<int>>& intervals) {
 |-----------|----------|
 | Employee Free Time | Merge all intervals from all employees, find gaps |
 | Interval List Intersections | Two pointer on two sorted interval lists |
-| My Calendar I/II/III | std::map / Sweep line for dynamic insertions |
+| My Calendar I/II/III | BTreeMap / Sweep line for dynamic insertions |
 | Maximum CPU Load | Sweep line, track sum of loads |
 
 ### Interval Intersection
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> intervalIntersection(vector<vector<int>>& A, vector<vector<int>>& B) {
-    vector<vector<int>> result;
-    int i = 0, j = 0;
-    while (i < (int)A.size() && j < (int)B.size()) {
-        int lo = max(A[i][0], B[j][0]);
-        int hi = min(A[i][1], B[j][1]);
-        if (lo <= hi) result.push_back({lo, hi});
-        if (A[i][1] < B[j][1]) i++;
-        else j++;
+```rust
+fn interval_intersection(a: &Vec<Vec<i32>>, b: &Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+    let mut result: Vec<Vec<i32>> = Vec::new();
+    let (mut i, mut j) = (0, 0);
+    while i < a.len() && j < b.len() {
+        let lo = a[i][0].max(b[j][0]);
+        let hi = a[i][1].min(b[j][1]);
+        if lo <= hi {
+            result.push(vec![lo, hi]);
+        }
+        if a[i][1] < b[j][1] {
+            i += 1;
+        } else {
+            j += 1;
+        }
     }
-    return result;
+    result
 }
 ```
 

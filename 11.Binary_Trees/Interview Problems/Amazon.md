@@ -6,16 +6,19 @@ Amazon's bar-raiser interviews on binary trees reward candidates who can reason 
 
 Throughout, we use the standard node definition:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+#[derive(Debug, Clone, PartialEq)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
 
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
-};
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 ---
@@ -28,21 +31,21 @@ Given a binary tree and two nodes `p` and `q` that are guaranteed to exist in th
 Unlike the BST variant, there are **no ordering guarantees**, so we cannot use value comparisons to navigate. We must search the structure directly.
 
 ### Intuition — The Recursion Contract
-The elegance of this solution lives entirely in the **contract** of the recursive function. Define `lowestCommonAncestor(root, p, q)` to return:
+The elegance of this solution lives entirely in the **contract** of the recursive function. Define `lowest_common_ancestor(root, p, q)` to return:
 
-- `nullptr` if neither `p` nor `q` exists in the subtree rooted at `root`.
+- `None` if neither `p` nor `q` exists in the subtree rooted at `root`.
 - A non-null node otherwise, with this precise meaning:
   - If `root`'s subtree contains **both** `p` and `q`, it returns the **LCA**.
   - If it contains only one of them, it returns **that node** (acting as a "found" signal bubbling up).
 
 With this contract, the logic at each node becomes mechanical:
 
-1. **Base case:** if `root == nullptr`, return `nullptr` (empty subtree contains nothing).
+1. **Base case:** if `root` is `None`, return `None` (empty subtree contains nothing).
 2. **Short-circuit:** if `root == p || root == q`, return `root`. We stop descending — if the *other* target is somewhere below, this node is necessarily the ancestor, so reporting "found here" is sufficient and correct.
 3. **Recurse** into both children to get `left` and `right` results.
 4. **Combine:**
-   - If **both** `left != nullptr` and `right != nullptr`, then `p` and `q` were found in *different* subtrees, so the **current node is the LCA** — return `root`.
-   - Otherwise return whichever side is non-null (propagating the single "found" signal upward), or `nullptr` if neither found anything.
+   - If **both** `left` and `right` are `Some(...)`, then `p` and `q` were found in *different* subtrees, so the **current node is the LCA** — return `root`.
+   - Otherwise return whichever side is `Some(...)` (propagating the single "found" signal upward), or `None` if neither found anything.
 
 #### Why returning p/q early is correct
 This is the crux Amazon interviewers probe. Suppose `root == p`. We return `root` *without even looking* at whether `q` is below. Is that safe?
@@ -51,37 +54,40 @@ Yes — because of how the parent combines results. Two cases:
 - `q` lies in `p`'s subtree. Then the search for `q` from above will never produce a *second* non-null sibling result, because the entire branch containing `q` flows up through `p` (now reported as non-null). The first ancestor that sees non-null from **both** of its children is exactly the point where the path to `p` and the path to `q` diverge — which is the true LCA. When `q` is *inside* `p`'s subtree, that divergence is `p` itself, and `p` is correctly returned all the way up unopposed.
 - `q` lies outside `p`'s subtree. Then somewhere above, one child returns the `p`-signal and the other returns the `q`-signal; that node sees **both sides non-null** and is declared LCA. Correct.
 
-The key insight: **a node returns non-null iff its subtree contains at least one target. The first (lowest) node to receive non-null from BOTH sides is the LCA. A node equal to p or q short-circuits because it can never be "missed" — any deeper match still funnels through it.**
+The key insight: **a node returns `Some(...)` iff its subtree contains at least one target. The first (lowest) node to receive `Some(...)` from BOTH sides is the LCA. A node equal to p or q short-circuits because it can never be "missed" — any deeper match still funnels through it.**
 
-### Full C++ Solution
+### Full Rust Solution
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+// Assumes unique node values (per LeetCode constraints).
+// p_val and q_val are the values of nodes p and q.
+fn lowest_common_ancestor<'a>(
+    root: Option<&'a TreeNode>,
+    p_val: i32,
+    q_val: i32,
+) -> Option<&'a TreeNode> {
+    // Base case: empty subtree contains neither target.
+    let node = root?;
 
-class Solution {
-public:
-    TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
-        // Base case: empty subtree contains neither target.
-        if (root == nullptr) return nullptr;
-
-        // Short-circuit: if this node is one of the targets, report it.
-        // Any deeper match necessarily passes through here, so this is the
-        // ancestor candidate.
-        if (root == p || root == q) return root;
-
-        // Search both subtrees.
-        TreeNode* left = lowestCommonAncestor(root->left, p, q);
-        TreeNode* right = lowestCommonAncestor(root->right, p, q);
-
-        // Both sides found a target -> p and q diverge here -> LCA.
-        if (left != nullptr && right != nullptr) return root;
-
-        // Otherwise propagate the single non-null "found" signal upward
-        // (or nullptr if neither side found anything).
-        return left != nullptr ? left : right;
+    // Short-circuit: if this node is one of the targets, report it.
+    // Any deeper match necessarily passes through here, so this is the
+    // ancestor candidate.
+    if node.val == p_val || node.val == q_val {
+        return Some(node);
     }
-};
+
+    // Search both subtrees.
+    let left  = lowest_common_ancestor(node.left.as_deref(), p_val, q_val);
+    let right = lowest_common_ancestor(node.right.as_deref(), p_val, q_val);
+
+    // Both sides found a target -> p and q diverge here -> LCA.
+    match (left, right) {
+        (Some(_), Some(_)) => Some(node),
+        (Some(l), None)    => Some(l),
+        (None, Some(r))    => Some(r),
+        (None, None)       => None,
+    }
+}
 ```
 
 ### Complexity
@@ -107,60 +113,64 @@ Define a helper `gain(node)` that answers a deliberately restricted question:
 
 > *"What is the maximum sum of a downward path that starts at `node` and goes straight down through at most one child?"*
 
-This restriction matters: a value returned to the **parent** can only be extended in one direction (you can't enter `node` from the parent and then branch into *both* children — that would form a fork, not a single path the parent can append to). So the contribution a node offers upward is `node->val + max(leftGain, rightGain)`.
+This restriction matters: a value returned to the **parent** can only be extended in one direction (you can't enter `node` from the parent and then branch into *both* children — that would form a fork, not a single path the parent can append to). So the contribution a node offers upward is `node.val + left_gain.max(right_gain)`.
 
-#### Why `gain = max(0, gain)`
-For each child we compute its gain, then clamp it: `leftGain = max(0, gain(node->left))`. If a child's best downward path is negative, **including it can only hurt** — we are better off "cutting it off" and treating that direction as contributing 0. The clamp is a local greedy prune that is globally optimal because path sums are additive and a negative prefix never improves a sum.
+#### Why `gain = 0.max(gain)`
+For each child we compute its gain, then clamp it: `left_gain = 0.max(gain(node.left...))`. If a child's best downward path is negative, **including it can only hurt** — we are better off "cutting it off" and treating that direction as contributing 0. The clamp is a local greedy prune that is globally optimal because path sums are additive and a negative prefix never improves a sum.
 
 #### Why the answer uses both children but the return uses only one
 At each node we *also* consider a path that **bends** at `node` — entering from the left subtree, passing through `node`, and exiting into the right subtree:
 
 ```
-priceNewPath = node->val + leftGain + rightGain
+price_new_path = node.val + left_gain + right_gain
 ```
 
 This is a candidate for the **global maximum**, because such a bent path is a legitimate path (it just can't be extended further up — its endpoints are in the two subtrees). We update a global best with it.
 
-But we **return** `node->val + max(leftGain, rightGain)` to the parent, because the parent needs a path it can *attach* to. A path that already bent at `node` cannot continue upward without revisiting `node`. Hence:
+But we **return** `node.val + left_gain.max(right_gain)` to the parent, because the parent needs a path it can *attach* to. A path that already bent at `node` cannot continue upward without revisiting `node`. Hence:
 
-- **Considered locally (for the answer):** `node->val + leftGain + rightGain` (a fork — both children).
-- **Returned to parent (for extension):** `node->val + max(leftGain, rightGain)` (a straight line — one child).
+- **Considered locally (for the answer):** `node.val + left_gain + right_gain` (a fork — both children).
+- **Returned to parent (for extension):** `node.val + left_gain.max(right_gain)` (a straight line — one child).
 
 This dual role is the entire trick. Interviewers love asking *why* the returned value differs from the value compared against the global max.
 
-### Full C++ Solution
+### Full Rust Solution
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution {
+    max_sum: i32,
+}
 
-class Solution {
-    // Instance var as global recursion state (initialized to the smallest int
-    // so even an all-negative tree yields its largest single node).
-    int maxSum = INT_MIN;
+impl Solution {
+    fn new() -> Self {
+        // Initialized to i32::MIN so even an all-negative tree yields its largest single node.
+        Solution { max_sum: i32::MIN }
+    }
 
-public:
-    int maxPathSum(TreeNode* root) {
-        gain(root);
-        return maxSum;
+    fn max_path_sum(&mut self, root: Option<&TreeNode>) -> i32 {
+        self.gain(root);
+        self.max_sum
     }
 
     // Returns the max gain of a straight downward path starting at `node`.
-    int gain(TreeNode* node) {
-        if (node == nullptr) return 0;
+    fn gain(&mut self, node: Option<&TreeNode>) -> i32 {
+        let node = match node {
+            None => return 0,
+            Some(n) => n,
+        };
 
         // Prune negative contributions: a child that hurts is treated as 0.
-        int leftGain  = max(0, gain(node->left));
-        int rightGain = max(0, gain(node->right));
+        let left_gain  = 0.max(self.gain(node.left.as_deref()));
+        let right_gain = 0.max(self.gain(node.right.as_deref()));
 
         // Candidate path that BENDS at `node` (uses both children).
-        int priceNewPath = node->val + leftGain + rightGain;
-        maxSum = max(maxSum, priceNewPath);
+        let price_new_path = node.val + left_gain + right_gain;
+        self.max_sum = self.max_sum.max(price_new_path);
 
         // Return value the PARENT can extend: only one child allowed.
-        return node->val + max(leftGain, rightGain);
+        node.val + left_gain.max(right_gain)
     }
-};
+}
 ```
 
 ### Complexity
@@ -171,7 +181,7 @@ public:
 | Space | O(h) | Recursion depth equals tree height. |
 
 ### Edge cases to verbalize
-- Single node with negative value: answer is that value (handled because `maxSum` starts at `INT_MIN` and `priceNewPath = node->val + 0 + 0`).
+- Single node with negative value: answer is that value (handled because `max_sum` starts at `i32::MIN` and `price_new_path = node.val + 0 + 0`).
 - All-negative tree: the clamp ensures we never *add* a negative child, so the answer is the single least-negative node.
 
 ---
@@ -184,69 +194,75 @@ Design an algorithm to encode a binary tree to a string and decode that string b
 ### Intuition — Preorder DFS with Null Markers
 The reason a plain in-order or level-order *value-only* dump fails is that it loses structure: many distinct trees produce the same value sequence once nulls are dropped. The fix is to **record nulls explicitly**. A **preorder traversal (root, left, right) that emits a sentinel for every null pointer** uniquely determines the tree, because preorder fixes the root first and the null markers tell us exactly where each subtree ends.
 
-- **Serialize:** preorder DFS; append `node->val` (or a null marker like `"#"`) followed by a delimiter.
+- **Serialize:** preorder DFS; append `node.val` (or a null marker like `"#"`) followed by a delimiter.
 - **Deserialize:** consume tokens left-to-right with the same preorder logic. The first token is the root; recursively build the left subtree, then the right. A null marker terminates a branch.
 
 ### Codec API Design and Tradeoffs
-LeetCode supplies a `Codec` class with two methods. Design choices worth discussing:
+LeetCode supplies a `Codec` struct with two methods. Design choices worth discussing:
 
-- **Delimiter:** a comma is simple but assumes values don't contain commas. For arbitrary string payloads, length-prefixing is safer. For `int` values a comma/space is fine.
+- **Delimiter:** a comma is simple but assumes values don't contain commas. For arbitrary string payloads, length-prefixing is safer. For `i32` values a comma/space is fine.
 - **Null marker:** `"#"` (or `"null"`) — must be distinguishable from any legal value. With negative ints allowed, avoid using `"-1"` as the marker.
 - **Preorder vs. level-order (BFS):** Preorder recursion is the cleanest to write and reason about. Level-order produces output resembling LeetCode's display format but needs explicit queue management and careful null handling. Preorder is preferred for clarity in interviews.
-- **Stateful cursor:** during deserialization we walk the token list with a shared index/iterator. Using a `deque<string>` as a consumable cursor avoids passing an index by reference.
+- **Stateful cursor:** during deserialization we walk the token list with a shared index/iterator. Using a `VecDeque<String>` as a consumable cursor avoids passing an index by reference.
 
-### Full C++ Solution
+### Full Rust Solution
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-class Codec {
-    const string NULL_MARKER = "#";
-    const string SEP = ",";
+struct Codec;
 
-public:
-    // ---- Serialize: preorder DFS with null markers ----
-    string serialize(TreeNode* root) {
-        string sb;
-        buildString(root, sb);
-        return sb;
+impl Codec {
+    const NULL_MARKER: &'static str = "#";
+    const SEP: &'static str = ",";
+
+    fn new() -> Self {
+        Codec
     }
 
-    void buildString(TreeNode* node, string& sb) {
-        if (node == nullptr) {
-            sb += NULL_MARKER + SEP;
-            return;
+    // ---- Serialize: preorder DFS with null markers ----
+    fn serialize(&self, root: Option<&TreeNode>) -> String {
+        let mut sb = String::new();
+        Self::build_string(root, &mut sb);
+        sb
+    }
+
+    fn build_string(node: Option<&TreeNode>, sb: &mut String) {
+        match node {
+            None => {
+                sb.push_str(Self::NULL_MARKER);
+                sb.push_str(Self::SEP);
+            }
+            Some(n) => {
+                sb.push_str(&n.val.to_string());
+                sb.push_str(Self::SEP);                         // root
+                Self::build_string(n.left.as_deref(), sb);     // left
+                Self::build_string(n.right.as_deref(), sb);    // right
+            }
         }
-        sb += to_string(node->val) + SEP; // root
-        buildString(node->left, sb);      // left
-        buildString(node->right, sb);     // right
     }
 
     // ---- Deserialize: consume tokens in preorder ----
-    TreeNode* deserialize(string data) {
-        // A deque used as a consumable cursor over the tokens.
-        deque<string> tokens;
-        stringstream ss(data);
-        string token;
-        while (getline(ss, token, ',')) {
-            tokens.push_back(token);
-        }
-        return buildTree(tokens);
+    fn deserialize(&self, data: &str) -> Option<Box<TreeNode>> {
+        // A VecDeque used as a consumable cursor over the tokens.
+        let mut tokens: VecDeque<&str> = data.split(',')
+            .filter(|s| !s.is_empty())
+            .collect();
+        Self::build_tree(&mut tokens)
     }
 
-    TreeNode* buildTree(deque<string>& tokens) {
-        string token = tokens.front(); // advance the shared cursor
-        tokens.pop_front();
-        if (token == NULL_MARKER) {
-            return nullptr;
+    fn build_tree(tokens: &mut VecDeque<&str>) -> Option<Box<TreeNode>> {
+        let token = tokens.pop_front()?; // advance the shared cursor
+        if token == Self::NULL_MARKER {
+            return None;
         }
-        TreeNode* node = new TreeNode(stoi(token)); // root
-        node->left  = buildTree(tokens);             // left
-        node->right = buildTree(tokens);             // right
-        return node;
+        let val = token.parse::<i32>().unwrap();
+        let mut node = Box::new(TreeNode::new(val)); // root
+        node.left  = Self::build_tree(tokens);        // left
+        node.right = Self::build_tree(tokens);        // right
+        Some(node)
     }
-};
+}
 ```
 
 ### Complexity
@@ -270,7 +286,7 @@ Amazon interviews blend technical depth with behavioral signals. Here is how eac
 | LCA (LC 236) | **Dive Deep** | Articulating the precise recursion contract — *why* the early p/q return is correct — demonstrates going beyond a memorized template to true mechanism-level understanding. |
 | LCA (LC 236) | **Are Right, A Lot** | Reasoning through both "q inside p's subtree" and "q outside" cases shows rigorous case analysis rather than hand-waving. |
 | Max Path Sum (LC 124) | **Insist on the Highest Standards** | Cleanly separating the *considered* value (fork through both children) from the *returned* value (single child) reflects refusing to ship a subtly-wrong solution. |
-| Max Path Sum (LC 124) | **Invent and Simplify** | The `max(0, gain)` prune is a simple, elegant device that collapses many edge cases into one rule. |
+| Max Path Sum (LC 124) | **Invent and Simplify** | The `0.max(gain)` prune is a simple, elegant device that collapses many edge cases into one rule. |
 | Serialize/Deserialize (LC 297) | **Invent and Simplify** | Choosing preorder + null markers yields the simplest correct codec; discussing delimiter/marker tradeoffs shows pragmatic design. |
 | Serialize/Deserialize (LC 297) | **Customer Obsession** | Treating the codec as an API (clear contract, lossless round-trip, robust to negatives) mirrors building reliable interfaces for downstream consumers. |
 | All three | **Bias for Action** | Establishing the base case and contract first, then coding decisively, demonstrates structured speed under interview time pressure. |

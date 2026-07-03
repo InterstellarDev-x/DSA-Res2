@@ -17,30 +17,27 @@ If starting from station `s` leads to a deficit at station `t`, then no station 
 
 **Why:** If we fail at `t` starting from `s`, then the partial sums from `s+1`, `s+2`, ..., `t-1` are all less than the partial sum from `s` (because `gain[s] >= 0` is required to start). So they would also fail at `t`.
 
-### Full C++ Solution
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+### Full Rust Solution
+```rust
+fn can_complete_circuit(gas: &[i32], cost: &[i32]) -> i32 {
+    let mut total_gain = 0i32;      // Sum of all gains — determines feasibility
+    let mut current_gain = 0i32;    // Running gain from current candidate start
+    let mut start_station = 0usize; // Current candidate for starting station
 
-int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
-    int totalGain = 0;    // Sum of all gains — determines feasibility
-    int currentGain = 0;  // Running gain from current candidate start
-    int startStation = 0; // Current candidate for starting station
-
-    for (int i = 0; i < (int)gas.size(); i++) {
-        int gain = gas[i] - cost[i]; // Net gain at station i
-        totalGain += gain;
-        currentGain += gain;
+    for i in 0..gas.len() {
+        let gain = gas[i] - cost[i]; // Net gain at station i
+        total_gain += gain;
+        current_gain += gain;
 
         // If we can't reach station i+1 from our current start, reset
-        if (currentGain < 0) {
-            startStation = i + 1; // Try starting from next station
-            currentGain = 0;      // Reset running gain
+        if current_gain < 0 {
+            start_station = i + 1; // Try starting from next station
+            current_gain = 0;      // Reset running gain
         }
     }
 
     // If total gain is negative, no solution exists
-    return totalGain >= 0 ? startStation : -1;
+    if total_gain >= 0 { start_station as i32 } else { -1 }
 }
 ```
 
@@ -81,31 +78,28 @@ Think of the array as a BFS graph:
 - **Level 2:** All indices reachable from level 1 in one jump
 - ...
 
-`curEnd` = right boundary of current BFS level
+`cur_end` = right boundary of current BFS level
 `farthest` = farthest index any node in current level can reach (= right boundary of next level)
 `jumps` = current BFS depth
 
-When `i == curEnd`, we've exhausted the current level → increment jumps, expand to next level.
+When `i == cur_end`, we've exhausted the current level → increment jumps, expand to next level.
 
-### Full C++ Solution
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+### Full Rust Solution
+```rust
+fn jump(nums: &[i32]) -> i32 {
+    let mut jumps = 0i32;       // BFS depth (number of jumps)
+    let mut cur_end = 0usize;   // Right boundary of current BFS level
+    let mut farthest = 0usize;  // Farthest reach of any node in current level
 
-int jump(vector<int>& nums) {
-    int jumps = 0;    // BFS depth (number of jumps)
-    int curEnd = 0;   // Right boundary of current BFS level
-    int farthest = 0; // Farthest reach of any node in current level
-
-    // We stop at nums.size() - 2 because we don't need to jump FROM the last index
-    for (int i = 0; i < (int)nums.size() - 1; i++) {
-        farthest = max(farthest, i + nums[i]);
-        if (i == curEnd) {    // End of current BFS level
-            jumps++;           // Move to next level
-            curEnd = farthest; // Expand to next level boundary
+    // We stop at nums.len() - 2 because we don't need to jump FROM the last index
+    for i in 0..nums.len() - 1 {
+        farthest = farthest.max(i + nums[i] as usize);
+        if i == cur_end {    // End of current BFS level
+            jumps += 1;      // Move to next level
+            cur_end = farthest; // Expand to next level boundary
         }
     }
-    return jumps;
+    jumps
 }
 ```
 
@@ -117,12 +111,12 @@ Value:   2   3   1   1   4
 
 Level 0: [0]
   - From 0: can reach 1,2 (0+2=2)
-  - farthest = 2, curEnd = 0 → at i=0, jump! jumps=1, curEnd=2
+  - farthest = 2, cur_end = 0 → at i=0, jump! jumps=1, cur_end=2
 
 Level 1: [1, 2]
   - From 1: can reach 1..4 (1+3=4)
   - From 2: can reach 3 (2+1=3)
-  - farthest = 4, curEnd = 2 → at i=2, jump! jumps=2, curEnd=4
+  - farthest = 4, cur_end = 2 → at i=2, jump! jumps=2, cur_end=4
 
 Level 2: [3, 4] — index 4 is the destination ✓
 ```

@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [C++ Templates](#c-templates)
+5. [Rust Templates](#rust-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -67,144 +67,139 @@ Three template styles exist — each handles the invariant slightly differently:
 
 ---
 
-## C++ Templates
+## Rust Templates
 
 ### 1. Classic — Find Exact Target (Inclusive)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int binarySearch(vector<int>& nums, int target) {
-    int lo = 0, hi = nums.size() - 1;
-    while (lo <= hi) {
-        int mid = lo + (hi - lo) / 2; // avoids integer overflow vs (lo+hi)/2
-        if (nums[mid] == target) return mid;
-        else if (nums[mid] < target) lo = mid + 1;
-        else hi = mid - 1;
+```rust
+fn binary_search(nums: &[i32], target: i32) -> Option<usize> {
+    let mut lo = 0i32;
+    let mut hi = nums.len() as i32 - 1;
+    while lo <= hi {
+        let mid = lo + (hi - lo) / 2; // avoids integer overflow vs (lo+hi)/2
+        let m = mid as usize;
+        if nums[m] == target { return Some(m); }
+        else if nums[m] < target { lo = mid + 1; }
+        else { hi = mid - 1; }
     }
-    return -1; // not found
+    None // not found
 }
 // Time: O(log n) | Space: O(1)
 ```
 
 ### 2. Search in Rotated Sorted Array I (no duplicates)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int search(vector<int>& nums, int target) {
-    int lo = 0, hi = nums.size() - 1;
-    while (lo <= hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (nums[mid] == target) return mid;
+```rust
+fn search_rotated(nums: &[i32], target: i32) -> Option<usize> {
+    let mut lo = 0i32;
+    let mut hi = nums.len() as i32 - 1;
+    while lo <= hi {
+        let mid = lo + (hi - lo) / 2;
+        let m = mid as usize;
+        if nums[m] == target { return Some(m); }
 
         // Determine which half is sorted
-        if (nums[lo] <= nums[mid]) {           // left half is sorted
-            if (nums[lo] <= target && target < nums[mid])
-                hi = mid - 1;                  // target in left half
-            else
+        if nums[lo as usize] <= nums[m] {          // left half is sorted
+            if nums[lo as usize] <= target && target < nums[m] {
+                hi = mid - 1;                      // target in left half
+            } else {
                 lo = mid + 1;
-        } else {                               // right half is sorted
-            if (nums[mid] < target && target <= nums[hi])
-                lo = mid + 1;                  // target in right half
-            else
+            }
+        } else {                                   // right half is sorted
+            if nums[m] < target && target <= nums[hi as usize] {
+                lo = mid + 1;                      // target in right half
+            } else {
                 hi = mid - 1;
+            }
         }
     }
-    return -1;
+    None
 }
 // Time: O(log n) | Space: O(1)
 ```
 
 ### 3. Search in Rotated Sorted Array II (with duplicates)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool search(vector<int>& nums, int target) {
-    int lo = 0, hi = nums.size() - 1;
-    while (lo <= hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (nums[mid] == target) return true;
+```rust
+fn search_rotated_with_dups(nums: &[i32], target: i32) -> bool {
+    let mut lo = 0i32;
+    let mut hi = nums.len() as i32 - 1;
+    while lo <= hi {
+        let mid = lo + (hi - lo) / 2;
+        let m = mid as usize;
+        if nums[m] == target { return true; }
 
         // Handle duplicates: can't determine sorted half
-        if (nums[lo] == nums[mid] && nums[mid] == nums[hi]) {
-            lo++; hi--;                        // shrink both ends
+        if nums[lo as usize] == nums[m] && nums[m] == nums[hi as usize] {
+            lo += 1; hi -= 1;                      // shrink both ends
             continue;
         }
-        if (nums[lo] <= nums[mid]) {
-            if (nums[lo] <= target && target < nums[mid]) hi = mid - 1;
-            else lo = mid + 1;
+        if nums[lo as usize] <= nums[m] {
+            if nums[lo as usize] <= target && target < nums[m] { hi = mid - 1; }
+            else { lo = mid + 1; }
         } else {
-            if (nums[mid] < target && target <= nums[hi]) lo = mid + 1;
-            else hi = mid - 1;
+            if nums[m] < target && target <= nums[hi as usize] { lo = mid + 1; }
+            else { hi = mid - 1; }
         }
     }
-    return false;
+    false
 }
 // Time: O(log n) average, O(n) worst (all duplicates) | Space: O(1)
 ```
 
 ### 4. Find Minimum in Rotated Sorted Array
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int findMin(vector<int>& nums) {
-    int lo = 0, hi = nums.size() - 1;
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (nums[mid] > nums[hi])
+```rust
+fn find_min(nums: &[i32]) -> i32 {
+    let mut lo = 0i32;
+    let mut hi = nums.len() as i32 - 1;
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if nums[mid as usize] > nums[hi as usize] {
             lo = mid + 1;  // min is in right half
-        else
+        } else {
             hi = mid;      // mid could be the min; don't exclude it
+        }
     }
-    return nums[lo];
+    nums[lo as usize]
 }
 // Time: O(log n) | Space: O(1)
 ```
 
 ### 5. Single Element in Sorted Array
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // All elements appear twice except one; find the single element.
-int singleNonDuplicate(vector<int>& nums) {
-    int lo = 0, hi = nums.size() - 1;
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (mid % 2 == 1) mid--;               // ensure mid is even index
-        if (nums[mid] == nums[mid + 1])
-            lo = mid + 2;                      // single is to the right
-        else
-            hi = mid;                          // single is at mid or left
+fn single_non_duplicate(nums: &[i32]) -> i32 {
+    let mut lo = 0i32;
+    let mut hi = nums.len() as i32 - 1;
+    while lo < hi {
+        let mut mid = lo + (hi - lo) / 2;
+        if mid % 2 == 1 { mid -= 1; }             // ensure mid is even index
+        if nums[mid as usize] == nums[(mid + 1) as usize] {
+            lo = mid + 2;                          // single is to the right
+        } else {
+            hi = mid;                              // single is at mid or left
+        }
     }
-    return nums[lo];
+    nums[lo as usize]
 }
 // Time: O(log n) | Space: O(1)
 ```
 
 ### 6. Count Rotations (How Many Times Rotated)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int countRotations(vector<int>& nums) {
+```rust
+fn count_rotations(nums: &[i32]) -> usize {
     // Index of minimum = number of rotations
-    int lo = 0, hi = nums.size() - 1;
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (nums[mid] > nums[hi]) lo = mid + 1;
-        else hi = mid;
+    let mut lo = 0i32;
+    let mut hi = nums.len() as i32 - 1;
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if nums[mid as usize] > nums[hi as usize] { lo = mid + 1; }
+        else { hi = mid; }
     }
-    return lo;
+    lo as usize
 }
 ```
 
@@ -226,7 +221,7 @@ int countRotations(vector<int>& nums) {
 
 | Variation | Key Difference |
 |-----------|---------------|
-| Rotated with duplicates | Add `lo++; hi--` when `nums[lo]==nums[mid]==nums[hi]` |
+| Rotated with duplicates | Add `lo += 1; hi -= 1` when `nums[lo]==nums[mid]==nums[hi]` |
 | Find rotation count | Index of minimum = rotation count |
 | Single non-duplicate | Pair indexing trick (force even index mid) |
 | Find peak element | See [Peak Finding](./Peak%20Finding.md) |

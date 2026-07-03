@@ -22,33 +22,36 @@ The key shared idea: **mark visited in place** by setting `grid[r][c] = '0'`, wh
 
 ### BFS solution
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-int numIslands(vector<vector<char>>& grid) {
-    if (grid.empty() || grid[0].empty()) return 0;
-    int m = grid.size(), n = grid[0].size(), count = 0;
-    vector<vector<int>> dirs = {{1,0},{-1,0},{0,1},{0,-1}};
-    queue<pair<int,int>> q;
-    for (int i = 0; i < m; i++) {
-        for (int j = 0; j < n; j++) {
-            if (grid[i][j] != '1') continue;
-            count++;
-            grid[i][j] = '0';                 // mark at enqueue
-            q.push({i, j});
-            while (!q.empty()) {
-                auto [r0, c0] = q.front(); q.pop();
-                for (auto& d : dirs) {
-                    int r = r0 + d[0], c = c0 + d[1];
-                    if (r < 0 || r >= m || c < 0 || c >= n || grid[r][c] != '1') continue;
-                    grid[r][c] = '0';         // mark BEFORE enqueue → no duplicates
-                    q.push({r, c});
+fn num_islands(grid: &mut Vec<Vec<char>>) -> i32 {
+    if grid.is_empty() || grid[0].is_empty() { return 0; }
+    let m = grid.len();
+    let n = grid[0].len();
+    let mut count = 0;
+    let dirs: [(i32, i32); 4] = [(1,0),(-1,0),(0,1),(0,-1)];
+    let mut q: VecDeque<(usize, usize)> = VecDeque::new();
+    for i in 0..m {
+        for j in 0..n {
+            if grid[i][j] != '1' { continue; }
+            count += 1;
+            grid[i][j] = '0'; // mark at enqueue
+            q.push_back((i, j));
+            while let Some((r0, c0)) = q.pop_front() {
+                for &(dr, dc) in &dirs {
+                    let r = r0 as i32 + dr;
+                    let c = c0 as i32 + dc;
+                    if r < 0 || r >= m as i32 || c < 0 || c >= n as i32 { continue; }
+                    let (r, c) = (r as usize, c as usize);
+                    if grid[r][c] != '1' { continue; }
+                    grid[r][c] = '0'; // mark BEFORE enqueue → no duplicates
+                    q.push_back((r, c));
                 }
             }
         }
     }
-    return count;
+    count
 }
 ```
 
@@ -74,42 +77,48 @@ Each minute every rotten orange (`2`) rots 4-adjacent fresh (`1`). Minutes until
 
 This is **multi-source BFS**. All rotten oranges rot their neighbors *simultaneously* each minute. If you BFS from one source at a time, you'd compute the wrong (sequential) timing. Seeding the queue with **every** rotten cell at time 0 makes each BFS level == one minute, so they spread in lockstep.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-int orangesRotting(vector<vector<int>>& grid) {
-    int m = grid.size(), n = grid[0].size(), fresh = 0, minutes = 0;
-    queue<pair<int,int>> q;
-    for (int i = 0; i < m; i++)
-        for (int j = 0; j < n; j++) {
-            if (grid[i][j] == 2) q.push({i, j});
-            else if (grid[i][j] == 1) fresh++;
+fn oranges_rotting(grid: &mut Vec<Vec<i32>>) -> i32 {
+    let m = grid.len();
+    let n = grid[0].len();
+    let mut fresh = 0;
+    let mut minutes = 0;
+    let mut q: VecDeque<(usize, usize)> = VecDeque::new();
+    for i in 0..m {
+        for j in 0..n {
+            if grid[i][j] == 2 { q.push_back((i, j)); }
+            else if grid[i][j] == 1 { fresh += 1; }
         }
-    if (fresh == 0) return 0;                  // edge case: nothing to rot
-    vector<vector<int>> dirs = {{1,0},{-1,0},{0,1},{0,-1}};
-    while (!q.empty() && fresh > 0) {
-        minutes++;
-        int size = q.size();
-        for (int s = 0; s < size; s++) {       // process exactly one level
-            auto [r0, c0] = q.front(); q.pop();
-            for (auto& d : dirs) {
-                int r = r0 + d[0], c = c0 + d[1];
-                if (r < 0 || r >= m || c < 0 || c >= n || grid[r][c] != 1) continue;
+    }
+    if fresh == 0 { return 0; } // edge case: nothing to rot
+    let dirs: [(i32, i32); 4] = [(1,0),(-1,0),(0,1),(0,-1)];
+    while !q.is_empty() && fresh > 0 {
+        minutes += 1;
+        let size = q.len();
+        for _ in 0..size { // process exactly one level
+            let (r0, c0) = q.pop_front().unwrap();
+            for &(dr, dc) in &dirs {
+                let r = r0 as i32 + dr;
+                let c = c0 as i32 + dc;
+                if r < 0 || r >= m as i32 || c < 0 || c >= n as i32 { continue; }
+                let (r, c) = (r as usize, c as usize);
+                if grid[r][c] != 1 { continue; }
                 grid[r][c] = 2;
-                fresh--;
-                q.push({r, c});
+                fresh -= 1;
+                q.push_back((r, c));
             }
         }
     }
-    return fresh == 0 ? minutes : -1;
+    if fresh == 0 { minutes } else { -1 }
 }
 ```
 
 ### Edge cases
 - No fresh oranges at start → `0` (don't return 1).
 - A fresh orange with no path to any rotten → `-1` (tracked via `fresh` counter).
-- Processing one level at a time with `size = q.size()` is essential to count minutes.
+- Processing one level at a time with `size = q.len()` is essential to count minutes.
 
 ### Follow-ups
 - **01 Matrix / Walls and Gates** — identical multi-source seeding.
@@ -131,28 +140,31 @@ Return a valid course order, or `[]` if a cycle exists.
 
 Kahn's is usually cleaner for returning the order:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-vector<int> findOrder(int numCourses, vector<vector<int>>& prerequisites) {
-    vector<vector<int>> adj(numCourses);
-    vector<int> indegree(numCourses, 0);
-    for (auto& p : prerequisites) {        // edge prereq p[1] -> course p[0]
-        adj[p[1]].push_back(p[0]);
-        indegree[p[0]]++;
+fn find_order(num_courses: i32, prerequisites: Vec<Vec<i32>>) -> Vec<i32> {
+    let n = num_courses as usize;
+    let mut adj: Vec<Vec<usize>> = vec![vec![]; n];
+    let mut indegree = vec![0usize; n];
+    for p in &prerequisites { // edge prereq p[1] -> course p[0]
+        let (a, b) = (p[0] as usize, p[1] as usize);
+        adj[b].push(a);
+        indegree[a] += 1;
     }
-    queue<int> q;
-    for (int i = 0; i < numCourses; i++)
-        if (indegree[i] == 0) q.push(i);
-    vector<int> order;
-    while (!q.empty()) {
-        int node = q.front(); q.pop();
-        order.push_back(node);
-        for (int next : adj[node])
-            if (--indegree[next] == 0) q.push(next);
+    let mut q: VecDeque<usize> = VecDeque::new();
+    for i in 0..n {
+        if indegree[i] == 0 { q.push_back(i); }
     }
-    return (int)order.size() == numCourses ? order : vector<int>{};   // cycle ⇒ not all processed
+    let mut order: Vec<i32> = Vec::new();
+    while let Some(node) = q.pop_front() {
+        order.push(node as i32);
+        for &next in &adj[node] {
+            indegree[next] -= 1;
+            if indegree[next] == 0 { q.push_back(next); }
+        }
+    }
+    if order.len() == n { order } else { vec![] } // cycle ⇒ not all processed
 }
 ```
 
@@ -176,44 +188,44 @@ Shortest transformation length from `beginWord` to `endWord`.
 
 Naively, generating neighbors of a word means trying all 26 letters at each of L positions and checking membership — fine, but pairwise comparison across the list is O(N²·L). Instead **bucket by wildcard pattern**: `hot → *ot, h*t, ho*`. Words sharing a bucket differ by exactly one letter, giving O(N·L) adjacency.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, HashSet, VecDeque};
 
-int ladderLength(string beginWord, string endWord, vector<string>& wordList) {
-    unordered_set<string> dict(wordList.begin(), wordList.end());
-    if (!dict.count(endWord)) return 0;
-    unordered_map<string, vector<string>> buckets;
-    for (auto& w : dict)
-        for (int i = 0; i < (int)w.length(); i++) {
-            string pattern = w.substr(0, i) + "*" + w.substr(i + 1);
-            buckets[pattern].push_back(w);
+fn ladder_length(begin_word: String, end_word: String, word_list: Vec<String>) -> i32 {
+    let dict: HashSet<String> = word_list.into_iter().collect();
+    if !dict.contains(&end_word) { return 0; }
+    let mut buckets: HashMap<String, Vec<String>> = HashMap::new();
+    for w in &dict {
+        for i in 0..w.len() {
+            let pattern = format!("{}*{}", &w[..i], &w[i+1..]);
+            buckets.entry(pattern).or_default().push(w.clone());
         }
-    queue<string> q;
-    unordered_set<string> visited;
-    q.push(beginWord);
-    visited.insert(beginWord);
-    int steps = 1;
-    while (!q.empty()) {
-        int size = q.size();
-        for (int s = 0; s < size; s++) {
-            string word = q.front(); q.pop();
-            if (word == endWord) return steps;
-            for (int i = 0; i < (int)word.length(); i++) {
-                string pattern = word.substr(0, i) + "*" + word.substr(i + 1);
-                auto it = buckets.find(pattern);
-                if (it == buckets.end()) continue;
-                for (auto& next : it->second) {
-                    if (!visited.count(next)) {
-                        visited.insert(next);
-                        q.push(next);   // visited at enqueue
+    }
+    let mut q: VecDeque<String> = VecDeque::new();
+    let mut visited: HashSet<String> = HashSet::new();
+    q.push_back(begin_word.clone());
+    visited.insert(begin_word);
+    let mut steps = 1;
+    while !q.is_empty() {
+        let size = q.len();
+        for _ in 0..size {
+            let word = q.pop_front().unwrap();
+            if word == end_word { return steps; }
+            for i in 0..word.len() {
+                let pattern = format!("{}*{}", &word[..i], &word[i+1..]);
+                if let Some(neighbors) = buckets.get(&pattern) {
+                    for next in neighbors.clone() {
+                        if !visited.contains(&next) {
+                            visited.insert(next.clone());
+                            q.push_back(next); // visited at enqueue
+                        }
                     }
                 }
             }
         }
-        steps++;
+        steps += 1;
     }
-    return 0;
+    0
 }
 ```
 

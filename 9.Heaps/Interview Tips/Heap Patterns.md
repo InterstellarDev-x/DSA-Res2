@@ -83,13 +83,12 @@ Does the problem involve repeatedly finding min/max?
 **Key check:** If max frequency > `(n+1)/2`, it's impossible to arrange without adjacent duplicates.
 
 **Template:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, BinaryHeap};
 
-unordered_map<int, int> freq = buildFreqMap(input);
-priority_queue<vector<int>> maxHeap; // max-heap by default; store {freq, elem}
-for (auto& [key, val] : freq) maxHeap.push({val, encode(key)});
+let freq: HashMap<i32, i32> = build_freq_map(&input);
+let mut max_heap: BinaryHeap<(i32, i32)> = BinaryHeap::new(); // max-heap by default; store (freq, elem)
+for (&key, &val) in &freq { max_heap.push((val, encode(key))); }
 
 // Process in rounds: pick most frequent, place, decrement, put back if still needed
 // For cooldown: queue of (freq, available_at_time)
@@ -110,28 +109,31 @@ for (auto& [key, val] : freq) maxHeap.push({val, encode(key)});
 
 ---
 
-## C++ priority_queue Patterns for Custom Objects
+## Rust BinaryHeap Patterns for Custom Objects
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{BinaryHeap, HashMap};
+use std::cmp::Reverse;
 
-// Records/ints: simple comparator (min-heap by first element)
-auto cmp = [](const vector<int>& a, const vector<int>& b) { return a[0] > b[0]; };
-priority_queue<vector<int>, vector<vector<int>>, decltype(cmp)> pq(cmp);
+// Min-heap by first element using Reverse wrapper
+// Reverse inverts the comparison so BinaryHeap pops the smallest first
+let mut pq: BinaryHeap<Reverse<(i32, i32)>> = BinaryHeap::new();
+// Usage: pq.push(Reverse((val, extra_data)));
+//        let Reverse((val, extra)) = pq.pop().unwrap();
 
-// Multi-key sort: primary by val, secondary by index
-auto cmp2 = [](const vector<int>& a, const vector<int>& b) {
-    return a[0] != b[0] ? a[0] > b[0] : a[1] > b[1];
-};
-priority_queue<vector<int>, vector<vector<int>>, decltype(cmp2)> pq2(cmp2);
+// Multi-key sort: primary min by val, secondary min by index
+// Tuples compare lexicographically, so Reverse<(val, idx)> gives min on val first, then min on idx
+let mut pq2: BinaryHeap<Reverse<(i32, i32)>> = BinaryHeap::new();
+// Usage: pq2.push(Reverse((val, idx)));
 
 // String with frequency: lower freq → evict first; for equal freq, lex later → evict first
-auto cmp3 = [&](const string& a, const string& b) {
-    int fa = freq[a], fb = freq[b];
-    return fa != fb ? fa > fb : a < b;
-};
-priority_queue<string, vector<string>, decltype(cmp3)> pq3(cmp3);
+// Key: (Reverse(freq), string) — BinaryHeap pops max key:
+//   Reverse(freq) is largest when freq is smallest → lowest freq evicted first
+//   String comparison is lexicographic, largest string evicted first for equal freq
+let freq: HashMap<String, i32> = HashMap::new();
+let mut pq3: BinaryHeap<(Reverse<i32>, String)> = BinaryHeap::new();
+// Usage: pq3.push((Reverse(*freq.get(&s).unwrap_or(&0)), s));
+//        let (Reverse(f), s) = pq3.pop().unwrap();
 ```
 
 ---

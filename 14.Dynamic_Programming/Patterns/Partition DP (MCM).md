@@ -29,70 +29,71 @@ When the interval is empty or a single element (`i >= j`, or `i + 1 == j`, etc.)
 
 ### Memoized (top-down) skeleton
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct PartitionTemplate {
+    memo: Vec<Vec<i32>>,
+}
 
-class PartitionTemplate {
-    vector<vector<int>> memo;
-
-    int solve(vector<int>& arr) {
-        int n = arr.size();
-        memo.assign(n, vector<int>(n, -1));
-        return dp(arr, /*i=*/0, /*j=*/n - 1);
+impl PartitionTemplate {
+    fn solve(&mut self, arr: &[i32]) -> i32 {
+        let n = arr.len();
+        self.memo = vec![vec![-1; n]; n];
+        Self::dp(arr, 0, n - 1, &mut self.memo)
     }
 
-    int dp(vector<int>& arr, int i, int j) {
-        if (i >= j) {
+    fn dp(arr: &[i32], i: usize, j: usize, memo: &mut Vec<Vec<i32>>) -> i32 {
+        if i >= j {
             return 0;                       // empty / single-element interval
         }
-        if (memo[i][j] != -1) {
+        if memo[i][j] != -1 {
             return memo[i][j];
         }
-        int best = INT_MAX;       // use INT_MIN for maximization
-        for (int k = i; k < j; k++) {       // try every partition point
-            int cost = dp(arr, i, k) + dp(arr, k + 1, j) + mergeCost(arr, i, k, j);
-            best = min(best, cost);
+        let mut best = i32::MAX;       // use i32::MIN for maximization
+        for k in i..j {                // try every partition point
+            let cost = Self::dp(arr, i, k, memo)
+                     + Self::dp(arr, k + 1, j, memo)
+                     + Self::merge_cost(arr, i, k, j);
+            best = best.min(cost);
         }
-        return memo[i][j] = best;
+        memo[i][j] = best;
+        best
     }
 
-    int mergeCost(vector<int>& arr, int i, int k, int j) {
-        return 0;                           // problem-specific
+    fn merge_cost(_arr: &[i32], _i: usize, _k: usize, _j: usize) -> i32 {
+        0                               // problem-specific
     }
-};
+}
 ```
 
 ### Tabulated (bottom-up) skeleton
 
 Because `dp(i, j)` depends on **smaller intervals** (`[i, k]` and `[k+1, j]`, both shorter than `[i, j]`), we fill the table by **increasing interval length**. Equivalently, iterate `i` from high to low and `j` from low to high — this guarantees the sub-intervals are already computed.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct PartitionTemplateTab;
 
-class PartitionTemplateTab {
-    int solve(vector<int>& arr) {
-        int n = arr.size();
-        vector<vector<int>> dp(n, vector<int>(n, 0));  // dp[i][i] == 0 already (empty interval)
+impl PartitionTemplateTab {
+    fn solve(arr: &[i32]) -> i32 {
+        let n = arr.len();
+        let mut dp = vec![vec![0i32; n]; n];  // dp[i][i] == 0 already (empty interval)
 
-        for (int i = n - 1; i >= 0; i--) {      // decreasing i
-            for (int j = i + 1; j < n; j++) {   // increasing j  (j > i)
-                int best = INT_MAX;
-                for (int k = i; k < j; k++) {
-                    int cost = dp[i][k] + dp[k + 1][j] + mergeCost(arr, i, k, j);
-                    best = min(best, cost);
+        for i in (0..n).rev() {             // decreasing i
+            for j in (i + 1)..n {           // increasing j  (j > i)
+                let mut best = i32::MAX;
+                for k in i..j {
+                    let cost = dp[i][k] + dp[k + 1][j] + Self::merge_cost(arr, i, k, j);
+                    best = best.min(cost);
                 }
                 dp[i][j] = best;
             }
         }
-        return dp[0][n - 1];
+        dp[0][n - 1]
     }
 
-    int mergeCost(vector<int>& arr, int i, int k, int j) {
-        return 0;
+    fn merge_cost(_arr: &[i32], _i: usize, _k: usize, _j: usize) -> i32 {
+        0
     }
-};
+}
 ```
 
 > **Why decreasing `i`, increasing `j`?** `dp[i][k]` uses the same row `i` but a column `k < j` (already done in this row). `dp[k+1][j]` uses a *lower* row `k + 1 > i` (already done because we go from the bottom up). Filling by length `len = j - i` from `1` to `n - 1` is an equivalent, more explicit ordering.
@@ -114,64 +115,63 @@ Given dimensions `arr[]` where matrix `i` (1-indexed) has shape `arr[i-1] x arr[
 
 ### Recursion + Memoization
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct MatrixChainMemo {
+    memo: Vec<Vec<i32>>,
+}
 
-class MatrixChainMemo {
-    vector<vector<int>> memo;
-
-    int matrixMultiplication(vector<int>& arr) {
-        int n = arr.size();                 // n-1 matrices
-        memo.assign(n, vector<int>(n, -1));
-        return dp(arr, 1, n - 1);
+impl MatrixChainMemo {
+    fn matrix_multiplication(&mut self, arr: &[i32]) -> i32 {
+        let n = arr.len();                 // n-1 matrices
+        self.memo = vec![vec![-1; n]; n];
+        Self::dp(arr, 1, n - 1, &mut self.memo)
     }
 
-    int dp(vector<int>& arr, int i, int j) {
-        if (i >= j) {
+    fn dp(arr: &[i32], i: usize, j: usize, memo: &mut Vec<Vec<i32>>) -> i32 {
+        if i >= j {
             return 0;                       // single matrix (or empty)
         }
-        if (memo[i][j] != -1) {
+        if memo[i][j] != -1 {
             return memo[i][j];
         }
-        int best = INT_MAX;
-        for (int k = i; k < j; k++) {
-            int cost = dp(arr, i, k)
-                     + dp(arr, k + 1, j)
+        let mut best = i32::MAX;
+        for k in i..j {
+            let cost = Self::dp(arr, i, k, memo)
+                     + Self::dp(arr, k + 1, j, memo)
                      + arr[i - 1] * arr[k] * arr[j];
-            best = min(best, cost);
+            best = best.min(cost);
         }
-        return memo[i][j] = best;
+        memo[i][j] = best;
+        best
     }
-};
+}
 ```
 
 ### Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct MatrixChainTab;
 
-class MatrixChainTab {
-    int matrixMultiplication(vector<int>& arr) {
-        int n = arr.size();
-        vector<vector<int>> dp(n, vector<int>(n, 0));  // dp[i][i] = 0 by default
+impl MatrixChainTab {
+    fn matrix_multiplication(arr: &[i32]) -> i32 {
+        let n = arr.len();
+        let mut dp = vec![vec![0i32; n]; n];  // dp[i][i] = 0 by default
 
-        for (int i = n - 1; i >= 1; i--) {
-            for (int j = i + 1; j < n; j++) {
-                int best = INT_MAX;
-                for (int k = i; k < j; k++) {
-                    int cost = dp[i][k]
+        for i in (1..n).rev() {
+            for j in (i + 1)..n {
+                let mut best = i32::MAX;
+                for k in i..j {
+                    let cost = dp[i][k]
                              + dp[k + 1][j]
                              + arr[i - 1] * arr[k] * arr[j];
-                    best = min(best, cost);
+                    best = best.min(cost);
                 }
                 dp[i][j] = best;
             }
         }
-        return dp[1][n - 1];
+        dp[1][n - 1]
     }
-};
+}
 ```
 
 ### Dry run
@@ -216,78 +216,77 @@ A stick of length `n` must be cut at every position in `cuts[]`. The cost of one
 
 ### Memoization
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct CutStickMemo {
+    memo: Vec<Vec<i32>>,
+}
 
-class CutStickMemo {
-    vector<vector<int>> memo;
-
-    int minCost(int n, vector<int>& cuts) {
-        int c = cuts.size();
-        vector<int> arr(c + 2);
+impl CutStickMemo {
+    fn min_cost(&mut self, n: i32, cuts: &[i32]) -> i32 {
+        let c = cuts.len();
+        let mut arr = vec![0i32; c + 2];
         arr[0] = 0;
         arr[c + 1] = n;
-        for (int i = 0; i < c; i++) {
+        for i in 0..c {
             arr[i + 1] = cuts[i];
         }
-        sort(arr.begin(), arr.end());
+        arr.sort();
 
-        int m = arr.size();
-        memo.assign(m, vector<int>(m, -1));
-        return dp(arr, 0, m - 1);
+        let m = arr.len();
+        self.memo = vec![vec![-1; m]; m];
+        Self::dp(&arr, 0, m - 1, &mut self.memo)
     }
 
-    int dp(vector<int>& arr, int i, int j) {
-        if (j - i <= 1) {
+    fn dp(arr: &[i32], i: usize, j: usize, memo: &mut Vec<Vec<i32>>) -> i32 {
+        if j <= i + 1 {
             return 0;                       // no cut lies strictly inside
         }
-        if (memo[i][j] != -1) {
+        if memo[i][j] != -1 {
             return memo[i][j];
         }
-        int best = INT_MAX;
-        for (int k = i + 1; k < j; k++) {
-            int cost = dp(arr, i, k) + dp(arr, k, j) + (arr[j] - arr[i]);
-            best = min(best, cost);
+        let mut best = i32::MAX;
+        for k in (i + 1)..j {
+            let cost = Self::dp(arr, i, k, memo) + Self::dp(arr, k, j, memo) + (arr[j] - arr[i]);
+            best = best.min(cost);
         }
-        return memo[i][j] = best;
+        memo[i][j] = best;
+        best
     }
-};
+}
 ```
 
 ### Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct CutStickTab;
 
-class CutStickTab {
-    int minCost(int n, vector<int>& cuts) {
-        int c = cuts.size();
-        vector<int> arr(c + 2);
+impl CutStickTab {
+    fn min_cost(n: i32, cuts: &[i32]) -> i32 {
+        let c = cuts.len();
+        let mut arr = vec![0i32; c + 2];
         arr[0] = 0;
         arr[c + 1] = n;
-        for (int i = 0; i < c; i++) {
+        for i in 0..c {
             arr[i + 1] = cuts[i];
         }
-        sort(arr.begin(), arr.end());
+        arr.sort();
 
-        int m = arr.size();
-        vector<vector<int>> dp(m, vector<int>(m, 0));
+        let m = arr.len();
+        let mut dp = vec![vec![0i32; m]; m];
 
-        for (int i = m - 1; i >= 0; i--) {
-            for (int j = i + 2; j < m; j++) {   // need at least one cut between
-                int best = INT_MAX;
-                for (int k = i + 1; k < j; k++) {
-                    int cost = dp[i][k] + dp[k][j] + (arr[j] - arr[i]);
-                    best = min(best, cost);
+        for i in (0..m).rev() {
+            for j in (i + 2)..m {              // need at least one cut between
+                let mut best = i32::MAX;
+                for k in (i + 1)..j {
+                    let cost = dp[i][k] + dp[k][j] + (arr[j] - arr[i]);
+                    best = best.min(cost);
                 }
                 dp[i][j] = best;
             }
         }
-        return dp[0][m - 1];
+        dp[0][m - 1]
     }
-};
+}
 ```
 
 ### Complexity
@@ -315,80 +314,79 @@ We pad `nums` with `1` on both ends so boundary multiplications are well-defined
 
 ### Memoization
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct BurstBalloonsMemo {
+    memo: Vec<Vec<i32>>,
+}
 
-class BurstBalloonsMemo {
-    vector<vector<int>> memo;
-
-    int maxCoins(vector<int>& nums) {
-        int n = nums.size();
-        vector<int> padded(n + 2);
+impl BurstBalloonsMemo {
+    fn max_coins(&mut self, nums: &[i32]) -> i32 {
+        let n = nums.len();
+        let mut padded = vec![0i32; n + 2];
         padded[0] = 1;
         padded[n + 1] = 1;
-        for (int i = 0; i < n; i++) {
+        for i in 0..n {
             padded[i + 1] = nums[i];
         }
 
-        int m = padded.size();
-        memo.assign(m, vector<int>(m, -1));
-        return dp(padded, 0, m - 1);
+        let m = padded.len();
+        self.memo = vec![vec![-1; m]; m];
+        Self::dp(&padded, 0, m - 1, &mut self.memo)
     }
 
-    int dp(vector<int>& padded, int i, int j) {
-        if (j - i <= 1) {
+    fn dp(padded: &[i32], i: usize, j: usize, memo: &mut Vec<Vec<i32>>) -> i32 {
+        if j <= i + 1 {
             return 0;                       // no balloon between i and j
         }
-        if (memo[i][j] != -1) {
+        if memo[i][j] != -1 {
             return memo[i][j];
         }
-        int best = INT_MIN;
-        for (int k = i + 1; k < j; k++) {   // k = last balloon to burst in (i, j)
-            int coins = dp(padded, i, k)
-                      + dp(padded, k, j)
+        let mut best = i32::MIN;
+        for k in (i + 1)..j {              // k = last balloon to burst in (i, j)
+            let coins = Self::dp(padded, i, k, memo)
+                      + Self::dp(padded, k, j, memo)
                       + padded[i] * padded[k] * padded[j];
-            best = max(best, coins);
+            best = best.max(coins);
         }
-        return memo[i][j] = best;
+        memo[i][j] = best;
+        best
     }
-};
+}
 ```
 
 ### Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct BurstBalloonsTab;
 
-class BurstBalloonsTab {
-    int maxCoins(vector<int>& nums) {
-        int n = nums.size();
-        vector<int> padded(n + 2);
+impl BurstBalloonsTab {
+    fn max_coins(nums: &[i32]) -> i32 {
+        let n = nums.len();
+        let mut padded = vec![0i32; n + 2];
         padded[0] = 1;
         padded[n + 1] = 1;
-        for (int i = 0; i < n; i++) {
+        for i in 0..n {
             padded[i + 1] = nums[i];
         }
 
-        int m = padded.size();
-        vector<vector<int>> dp(m, vector<int>(m, 0));
+        let m = padded.len();
+        let mut dp = vec![vec![0i32; m]; m];
 
-        for (int i = m - 1; i >= 0; i--) {
-            for (int j = i + 2; j < m; j++) {
-                int best = INT_MIN;
-                for (int k = i + 1; k < j; k++) {
-                    int coins = dp[i][k]
+        for i in (0..m).rev() {
+            for j in (i + 2)..m {
+                let mut best = i32::MIN;
+                for k in (i + 1)..j {
+                    let coins = dp[i][k]
                               + dp[k][j]
                               + padded[i] * padded[k] * padded[j];
-                    best = max(best, coins);
+                    best = best.max(coins);
                 }
                 dp[i][j] = best;
             }
         }
-        return dp[0][m - 1];
+        dp[0][m - 1]
     }
-};
+}
 ```
 
 ### Complexity
@@ -417,64 +415,66 @@ Given a boolean expression string with operands `T`/`F` and operators `&`, `|`, 
 
 ### Memoization (encoded state)
 
-We encode `(i, j, isTrue)` into one integer key and memoize in a `std::unordered_map`. Counts are kept modulo `1000` to match the GFG variant.
+We encode `(i, j, isTrue)` into one integer key and memoize in a `HashMap`. Counts are kept modulo `1000` to match the GFG variant.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-class BooleanEvalMemo {
-    static const int MOD = 1000;
-    unordered_map<string, int> memo;
+struct BooleanEvalMemo {
+    memo: HashMap<String, i32>,
+}
 
-    int countWays(string s) {
-        memo.clear();
-        return solve(s, 0, s.length() - 1, true);
+impl BooleanEvalMemo {
+    const MOD: i32 = 1000;
+
+    fn count_ways(&mut self, s: &str) -> i32 {
+        self.memo.clear();
+        let n = s.len();
+        Self::solve_dp(s, 0, n - 1, true, &mut self.memo)
     }
 
-    // returns number of ways s[i..j] evaluates to isTrue
-    int solve(string& s, int i, int j, bool isTrue) {
-        if (i > j) {
+    // returns number of ways s[i..j] evaluates to is_true
+    fn solve_dp(s: &str, i: usize, j: usize, is_true: bool, memo: &mut HashMap<String, i32>) -> i32 {
+        if i > j {
             return 0;
         }
-        if (i == j) {
-            char c = s[i];
-            if (isTrue) {
-                return c == 'T' ? 1 : 0;
-            } else {
-                return c == 'F' ? 1 : 0;
-            }
+        if i == j {
+            let c = s.as_bytes()[i] as char;
+            return if is_true { if c == 'T' { 1 } else { 0 } }
+                   else       { if c == 'F' { 1 } else { 0 } };
         }
-        string key = to_string(i) + "_" + to_string(j) + "_" + (isTrue ? "1" : "0");   // encoded state
-        if (memo.count(key)) {
-            return memo[key];
+        let key = format!("{}_{}_{}", i, j, if is_true { 1 } else { 0 });  // encoded state
+        if let Some(&val) = memo.get(&key) {
+            return val;
         }
 
-        int ways = 0;
-        for (int k = i + 1; k < j; k += 2) {                 // operators at odd offsets
-            char op = s[k];
-            int lt = solve(s, i, k - 1, true);
-            int lf = solve(s, i, k - 1, false);
-            int rt = solve(s, k + 1, j, true);
-            int rf = solve(s, k + 1, j, false);
+        let mut ways = 0i32;
+        let mut k = i + 1;
+        while k < j {                                    // operators at odd offsets
+            let op = s.as_bytes()[k] as char;
+            let lt = Self::solve_dp(s, i, k - 1, true, memo);
+            let lf = Self::solve_dp(s, i, k - 1, false, memo);
+            let rt = Self::solve_dp(s, k + 1, j, true, memo);
+            let rf = Self::solve_dp(s, k + 1, j, false, memo);
 
-            if (op == '&') {
-                ways += isTrue ? lt * rt
-                               : lt * rf + lf * rt + lf * rf;
-            } else if (op == '|') {
-                ways += isTrue ? lt * rt + lt * rf + lf * rt
-                               : lf * rf;
+            if op == '&' {
+                ways += if is_true { lt * rt }
+                        else       { lt * rf + lf * rt + lf * rf };
+            } else if op == '|' {
+                ways += if is_true { lt * rt + lt * rf + lf * rt }
+                        else       { lf * rf };
             } else { // '^'
-                ways += isTrue ? lt * rf + lf * rt
-                               : lt * rt + lf * rf;
+                ways += if is_true { lt * rf + lf * rt }
+                        else       { lt * rt + lf * rf };
             }
-            ways %= MOD;
+            ways %= Self::MOD;
+            k += 2;
         }
 
-        memo[key] = ways;
-        return ways;
+        memo.insert(key, ways);
+        ways
     }
-};
+}
 ```
 
 > **Note on the merge cost:** unlike pure MCM, here the "cost" combines *both* truth counts of the children, which is why we recurse for `true` and `false` separately. This is still a partition DP — `k` is the operator we evaluate **last**.
@@ -503,88 +503,90 @@ Partition string `s` so every substring is a palindrome; return the **minimum nu
 
 ### Precompute isPalindrome table
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct PalindromePartitionII;
 
-class PalindromePartitionII {
-
-    vector<vector<bool>> buildIsPalindrome(string& s) {
-        int n = s.length();
-        vector<vector<bool>> isPal(n, vector<bool>(n, false));
-        for (int i = n - 1; i >= 0; i--) {
-            for (int j = i; j < n; j++) {
-                if (s[i] == s[j] && (j - i < 2 || isPal[i + 1][j - 1])) {
-                    isPal[i][j] = true;
+impl PalindromePartitionII {
+    fn build_is_palindrome(s: &[u8]) -> Vec<Vec<bool>> {
+        let n = s.len();
+        let mut is_pal = vec![vec![false; n]; n];
+        for i in (0..n).rev() {
+            for j in i..n {
+                if s[i] == s[j] && (j - i < 2 || is_pal[i + 1][j - 1]) {
+                    is_pal[i][j] = true;
                 }
             }
         }
-        return isPal;
+        is_pal
     }
 
     // Tabulated front-partition DP
-    int minCut(string s) {
-        int n = s.length();
-        auto isPal = buildIsPalindrome(s);
+    fn min_cut(s: &str) -> i32 {
+        let n = s.len();
+        let bytes = s.as_bytes();
+        let is_pal = Self::build_is_palindrome(bytes);
 
-        vector<int> dp(n + 1);
+        let mut dp = vec![0i32; n + 1];
         dp[n] = -1;                         // sentinel so last palindrome costs 0 cuts
 
-        for (int i = n - 1; i >= 0; i--) {
-            int best = INT_MAX;
-            for (int k = i; k < n; k++) {   // s[i..k] is the first piece
-                if (isPal[i][k]) {
-                    best = min(best, 1 + dp[k + 1]);
+        for i in (0..n).rev() {
+            let mut best = i32::MAX;
+            for k in i..n {                  // s[i..k] is the first piece
+                if is_pal[i][k] {
+                    best = best.min(1 + dp[k + 1]);
                 }
             }
             dp[i] = best;
         }
-        return dp[0];
+        dp[0]
     }
-};
+}
 ```
 
 ### Memoized variant
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct PalindromePartitionIIMemo {
+    is_pal: Vec<Vec<bool>>,
+    memo: Vec<i32>,
+}
 
-class PalindromePartitionIIMemo {
-    vector<vector<bool>> isPal;
-    vector<int> memo;
-
-    int minCut(string s) {
-        int n = s.length();
-        isPal.assign(n, vector<bool>(n, false));
-        for (int i = n - 1; i >= 0; i--) {
-            for (int j = i; j < n; j++) {
-                if (s[i] == s[j] && (j - i < 2 || isPal[i + 1][j - 1])) {
-                    isPal[i][j] = true;
+impl PalindromePartitionIIMemo {
+    fn min_cut(&mut self, s: &str) -> i32 {
+        let n = s.len();
+        let bytes = s.as_bytes();
+        self.is_pal = vec![vec![false; n]; n];
+        for i in (0..n).rev() {
+            for j in i..n {
+                if bytes[i] == bytes[j] && (j - i < 2 || self.is_pal[i + 1][j - 1]) {
+                    self.is_pal[i][j] = true;
                 }
             }
         }
-        memo.assign(n, -1);
-        return dp(s, 0);
+        self.memo = vec![-1; n];
+        let is_pal = &self.is_pal;
+        let memo = &mut self.memo;
+        Self::dp(bytes, 0, is_pal, memo)
     }
 
-    int dp(string& s, int i) {
-        int n = s.length();
-        if (i == n) {
+    fn dp(s: &[u8], i: usize, is_pal: &Vec<Vec<bool>>, memo: &mut Vec<i32>) -> i32 {
+        let n = s.len();
+        if i == n {
             return -1;                      // sentinel
         }
-        if (memo[i] != -1) {
+        if memo[i] != -1 {
             return memo[i];
         }
-        int best = INT_MAX;
-        for (int k = i; k < n; k++) {
-            if (isPal[i][k]) {
-                best = min(best, 1 + dp(s, k + 1));
+        let mut best = i32::MAX;
+        for k in i..n {
+            if is_pal[i][k] {
+                best = best.min(1 + Self::dp(s, k + 1, is_pal, memo));
             }
         }
-        return memo[i] = best;
+        memo[i] = best;
+        best
     }
-};
+}
 ```
 
 ### Complexity
@@ -612,63 +614,62 @@ Partition `arr[]` into contiguous subarrays of length **at most `k`**. After par
 
 ### Tabulation (front partition)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct PartitionForMaxSum;
 
-class PartitionForMaxSum {
-    int maxSumAfterPartitioning(vector<int>& arr, int k) {
-        int n = arr.size();
-        vector<int> dp(n + 1, 0);          // dp[n] = 0 by default
+impl PartitionForMaxSum {
+    fn max_sum_after_partitioning(arr: &[i32], k: usize) -> i32 {
+        let n = arr.len();
+        let mut dp = vec![0i32; n + 1];          // dp[n] = 0 by default
 
-        for (int i = n - 1; i >= 0; i--) {
-            int curMax = INT_MIN;
-            int best = INT_MIN;
-            for (int len = 1; len <= k && i + len <= n; len++) {
-                curMax = max(curMax, arr[i + len - 1]);
-                int candidate = curMax * len + dp[i + len];
-                best = max(best, candidate);
+        for i in (0..n).rev() {
+            let mut cur_max = i32::MIN;
+            let mut best = i32::MIN;
+            for len in 1..=(k.min(n - i)) {
+                cur_max = cur_max.max(arr[i + len - 1]);
+                let candidate = cur_max * len as i32 + dp[i + len];
+                best = best.max(candidate);
             }
             dp[i] = best;
         }
-        return dp[0];
+        dp[0]
     }
-};
+}
 ```
 
 ### Memoized variant
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct PartitionForMaxSumMemo {
+    memo: Vec<i32>,
+}
 
-class PartitionForMaxSumMemo {
-    vector<int> memo;
-
-    int maxSumAfterPartitioning(vector<int>& arr, int k) {
-        int n = arr.size();
-        memo.assign(n, -1);
-        return dp(arr, k, 0);
+impl PartitionForMaxSumMemo {
+    fn max_sum_after_partitioning(&mut self, arr: &[i32], k: usize) -> i32 {
+        let n = arr.len();
+        self.memo = vec![-1; n];
+        Self::dp(arr, k, 0, &mut self.memo)
     }
 
-    int dp(vector<int>& arr, int k, int i) {
-        int n = arr.size();
-        if (i == n) {
+    fn dp(arr: &[i32], k: usize, i: usize, memo: &mut Vec<i32>) -> i32 {
+        let n = arr.len();
+        if i == n {
             return 0;
         }
-        if (memo[i] != -1) {
+        if memo[i] != -1 {
             return memo[i];
         }
-        int curMax = INT_MIN;
-        int best = INT_MIN;
-        for (int len = 1; len <= k && i + len <= n; len++) {
-            curMax = max(curMax, arr[i + len - 1]);
-            int candidate = curMax * len + dp(arr, k, i + len);
-            best = max(best, candidate);
+        let mut cur_max = i32::MIN;
+        let mut best = i32::MIN;
+        for len in 1..=(k.min(n - i)) {
+            cur_max = cur_max.max(arr[i + len - 1]);
+            let candidate = cur_max * len as i32 + Self::dp(arr, k, i + len, memo);
+            best = best.max(candidate);
         }
-        return memo[i] = best;
+        memo[i] = best;
+        best
     }
-};
+}
 ```
 
 ### Complexity
@@ -716,6 +717,6 @@ class PartitionForMaxSumMemo {
 - For Burst Balloons and Cut a Stick, reasoning about the **last** operation (rather than the first) keeps the boundary cost fixed and well-defined — padding with sentinels makes the boundaries always valid.
 - Boolean Evaluation generalizes the merge step: you must carry **both** truth counts because the cost of one child's truth depends on the other child's falsity.
 - **Front-partition** problems (46–47) collapse to a 1-D `dp[i]` because only the *first* piece's boundary matters; they are cheaper (`O(n^2)` or `O(n*k)`) and overlap with the [DP on Strings](./DP%20on%20Strings.md) pattern.
-- Always use `vector<vector<int>> dp`/`vector<int> dp`, `.assign(n, -1)` for memo sentinels, and `min`/`max` for the merge.
+- Always use `Vec<Vec<i32>>`/`Vec<i32>` for the DP table, `vec![-1; n]` for memo sentinels, and `.min()`/`.max()` for the merge.
 
 > **Last Updated:** 2026-06-26

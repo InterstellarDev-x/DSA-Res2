@@ -18,41 +18,61 @@ Order information lives only in **adjacent pairs**. For consecutive words `w1`, 
 
 If `w1` is a **prefix-superset** of `w2` — i.e. `w2` is a proper prefix of `w1` like `["abc", "ab"]` — a longer word sorts before its own prefix, which is impossible. This must return `""`. It's the single most-missed case in this problem.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, HashSet, VecDeque};
 
-string alienOrder(vector<string>& words) {
-    unordered_map<char, unordered_set<char>> adj;
-    unordered_map<char, int> indegree;
-    for (auto& w : words)
-        for (char c : w) {
-            if (!adj.count(c)) adj[c] = {};
-            if (!indegree.count(c)) indegree[c] = 0;  // every char is a node
+fn alien_order(words: &[String]) -> String {
+    let mut adj: HashMap<char, HashSet<char>> = HashMap::new();
+    let mut indegree: HashMap<char, i32> = HashMap::new();
+    for w in words {
+        for c in w.chars() {
+            adj.entry(c).or_insert_with(HashSet::new);
+            indegree.entry(c).or_insert(0); // every char is a node
         }
-    for (int i = 0; i + 1 < (int)words.size(); i++) {
-        auto& a = words[i]; auto& b = words[i + 1];
-        int len = min(a.length(), b.length());
-        int j = 0;
-        while (j < (int)len && a[j] == b[j]) j++;
-        if (j == (int)len) {
-            if (a.length() > b.length()) return "";   // prefix conflict
+    }
+    for i in 0..words.len().saturating_sub(1) {
+        let a = &words[i];
+        let b = &words[i + 1];
+        let len = a.len().min(b.len());
+        let a_bytes = a.as_bytes();
+        let b_bytes = b.as_bytes();
+        let mut j = 0;
+        while j < len && a_bytes[j] == b_bytes[j] {
+            j += 1;
+        }
+        if j == len {
+            if a.len() > b.len() {
+                return String::new(); // prefix conflict
+            }
         } else {
-            char from = a[j], to = b[j];
-            if (adj[from].insert(to).second) indegree[to]++;
+            let from = a_bytes[j] as char;
+            let to = b_bytes[j] as char;
+            if adj.entry(from).or_insert_with(HashSet::new).insert(to) {
+                *indegree.entry(to).or_insert(0) += 1;
+            }
         }
     }
-    queue<char> q;
-    for (auto& [c, deg] : indegree)
-        if (deg == 0) q.push(c);
-    string sb;
-    while (!q.empty()) {
-        char c = q.front(); q.pop();
-        sb += c;
-        for (char next : adj[c])
-            if (--indegree[next] == 0) q.push(next);
+    let mut q: VecDeque<char> = VecDeque::new();
+    for (&c, &deg) in &indegree {
+        if deg == 0 {
+            q.push_back(c);
+        }
     }
-    return sb.size() == indegree.size() ? sb : "";  // cycle ⇒ ""
+    let mut sb = String::new();
+    while let Some(c) = q.pop_front() {
+        sb.push(c);
+        if let Some(neighbors) = adj.get(&c) {
+            let neighbors: Vec<char> = neighbors.iter().cloned().collect();
+            for next in neighbors {
+                let deg = indegree.get_mut(&next).unwrap();
+                *deg -= 1;
+                if *deg == 0 {
+                    q.push_back(next);
+                }
+            }
+        }
+    }
+    if sb.len() == indegree.len() { sb } else { String::new() } // cycle ⇒ ""
 }
 ```
 
@@ -74,37 +94,48 @@ Find every edge whose removal disconnects the graph (a **bridge**).
 
 Run a single DFS assigning each node a **discovery time** `disc[u]` (the timer when first visited). `low[u]` is the smallest discovery time reachable from `u`'s subtree using tree edges plus **at most one back edge**. An edge `(u, v)` (v a child of u) is a bridge **iff** `low[v] > disc[u]` — meaning v's subtree has no back edge climbing to u or above, so cutting `(u,v)` isolates it.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int timer_ = 0;
-
-void dfs(int u, int parent, vector<vector<int>>& adj,
-         vector<int>& disc, vector<int>& low, vector<vector<int>>& bridges) {
-    disc[u] = low[u] = timer_++;
-    for (int v : adj[u]) {
-        if (v == parent) continue;            // skip the edge we came in on
-        if (disc[v] == -1) {
-            dfs(v, u, adj, disc, low, bridges);
-            low[u] = min(low[u], low[v]);
-            if (low[v] > disc[u]) bridges.push_back({u, v});   // bridge test
+```rust
+fn dfs(
+    u: usize,
+    parent: i32,
+    adj: &Vec<Vec<usize>>,
+    disc: &mut Vec<i32>,
+    low: &mut Vec<i32>,
+    timer: &mut i32,
+    bridges: &mut Vec<Vec<i32>>,
+) {
+    disc[u] = *timer;
+    low[u] = *timer;
+    *timer += 1;
+    for &v in &adj[u] {
+        if v as i32 == parent {
+            continue; // skip the edge we came in on
+        }
+        if disc[v] == -1 {
+            dfs(v, u as i32, adj, disc, low, timer, bridges);
+            low[u] = low[u].min(low[v]);
+            if low[v] > disc[u] {
+                bridges.push(vec![u as i32, v as i32]); // bridge test
+            }
         } else {
-            low[u] = min(low[u], disc[v]);  // back edge
+            low[u] = low[u].min(disc[v]); // back edge
         }
     }
 }
 
-vector<vector<int>> criticalConnections(int n, vector<vector<int>>& connections) {
-    vector<vector<int>> adj(n);
-    for (auto& e : connections) {
-        adj[e[0]].push_back(e[1]);
-        adj[e[1]].push_back(e[0]);
+fn critical_connections(n: i32, connections: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+    let n = n as usize;
+    let mut adj: Vec<Vec<usize>> = vec![vec![]; n];
+    for e in &connections {
+        adj[e[0] as usize].push(e[1] as usize);
+        adj[e[1] as usize].push(e[0] as usize);
     }
-    vector<int> disc(n, -1), low(n, 0);
-    vector<vector<int>> bridges;
-    dfs(0, -1, adj, disc, low, bridges);
-    return bridges;
+    let mut disc = vec![-1i32; n];
+    let mut low = vec![0i32; n];
+    let mut bridges: Vec<Vec<i32>> = Vec::new();
+    let mut timer = 0i32;
+    dfs(0, -1, &adj, &mut disc, &mut low, &mut timer, &mut bridges);
+    bridges
 }
 ```
 
@@ -127,30 +158,34 @@ This is an MST on a **complete graph** (every pair is an edge → E = O(V²)).
 
 → For a complete graph, **Prim wins**. Kruskal shines on **sparse** graphs given as an edge list.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int minCostConnectPoints(vector<vector<int>>& points) {
-    int n = points.size();
-    vector<bool> inMST(n, false);
-    vector<int> minDist(n, INT_MAX);
-    minDist[0] = 0;
-    int total = 0;
-    for (int iter = 0; iter < n; iter++) {
-        int u = -1;
-        for (int v = 0; v < n; v++)                 // pick cheapest outside vertex
-            if (!inMST[v] && (u == -1 || minDist[v] < minDist[u])) u = v;
-        inMST[u] = true;
-        total += minDist[u];
-        for (int v = 0; v < n; v++) {               // relax neighbors
-            if (inMST[v]) continue;
-            int d = abs(points[u][0] - points[v][0])
-                  + abs(points[u][1] - points[v][1]);
-            if (d < minDist[v]) minDist[v] = d;
+```rust
+fn min_cost_connect_points(points: Vec<Vec<i32>>) -> i32 {
+    let n = points.len();
+    let mut in_mst = vec![false; n];
+    let mut min_dist = vec![i32::MAX; n];
+    min_dist[0] = 0;
+    let mut total = 0;
+    for _ in 0..n {
+        // pick cheapest outside vertex
+        let u = (0..n)
+            .filter(|&v| !in_mst[v])
+            .min_by_key(|&v| min_dist[v])
+            .unwrap();
+        in_mst[u] = true;
+        total += min_dist[u];
+        for v in 0..n {
+            // relax neighbors
+            if in_mst[v] {
+                continue;
+            }
+            let d = (points[u][0] - points[v][0]).abs()
+                  + (points[u][1] - points[v][1]).abs();
+            if d < min_dist[v] {
+                min_dist[v] = d;
+            }
         }
     }
-    return total;
+    total
 }
 ```
 
@@ -166,54 +201,71 @@ Return **all** shortest transformation sequences.
 
 A single BFS finds the shortest length but not the paths. The clean approach: **BFS to build a parent (predecessor) map level by level**, ensuring we only keep predecessors from the *previous* layer (so all recorded paths are shortest), then **DFS-backtrack** from `endWord` to `beginWord` to reconstruct every path.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, HashSet, VecDeque};
 
-void backtrack(const string& word, const string& begin,
-               unordered_map<string, vector<string>>& parents,
-               deque<string>& path, vector<vector<string>>& res) {
-    path.push_front(word);
-    if (word == begin) {
-        res.push_back(vector<string>(path.begin(), path.end()));
-    } else if (parents.count(word)) {
-        for (auto& p : parents[word]) backtrack(p, begin, parents, path, res);
+fn backtrack(
+    word: &str,
+    begin: &str,
+    parents: &HashMap<String, Vec<String>>,
+    path: &mut VecDeque<String>,
+    res: &mut Vec<Vec<String>>,
+) {
+    path.push_front(word.to_string());
+    if word == begin {
+        res.push(path.iter().cloned().collect());
+    } else if let Some(preds) = parents.get(word) {
+        let preds = preds.clone();
+        for p in &preds {
+            backtrack(p, begin, parents, path, res);
+        }
     }
     path.pop_front();
 }
 
-vector<vector<string>> findLadders(string beginWord, string endWord, vector<string>& wordList) {
-    unordered_set<string> dict(wordList.begin(), wordList.end());
-    vector<vector<string>> res;
-    if (!dict.count(endWord)) return res;
-    unordered_map<string, vector<string>> parents;
-    unordered_set<string> level;
-    level.insert(beginWord);
-    bool found = false;
-    while (!level.empty() && !found) {
-        for (auto& w : level) dict.erase(w);         // remove this layer from dict
-        unordered_set<string> next;
-        for (auto& word : level) {
-            string arr = word;
-            for (int i = 0; i < (int)arr.size(); i++) {
-                char old = arr[i];
-                for (char c = 'a'; c <= 'z'; c++) {
+fn find_ladders(begin_word: String, end_word: String, word_list: Vec<String>) -> Vec<Vec<String>> {
+    let mut dict: HashSet<String> = word_list.into_iter().collect();
+    let mut res: Vec<Vec<String>> = Vec::new();
+    if !dict.contains(&end_word) {
+        return res;
+    }
+    let mut parents: HashMap<String, Vec<String>> = HashMap::new();
+    let mut level: HashSet<String> = HashSet::new();
+    level.insert(begin_word.clone());
+    let mut found = false;
+    while !level.is_empty() && !found {
+        for w in &level {
+            dict.remove(w); // remove this layer from dict
+        }
+        let mut next: HashSet<String> = HashSet::new();
+        for word in &level {
+            let mut arr: Vec<u8> = word.as_bytes().to_vec();
+            for i in 0..arr.len() {
+                let old = arr[i];
+                for c in b'a'..=b'z' {
                     arr[i] = c;
-                    if (!dict.count(arr)) continue;
-                    if (arr == endWord) found = true;
-                    next.insert(arr);
-                    parents[arr].push_back(word);
+                    let candidate = String::from_utf8(arr.clone()).unwrap();
+                    if dict.contains(&candidate) {
+                        if candidate == end_word {
+                            found = true;
+                        }
+                        next.insert(candidate.clone());
+                        parents
+                            .entry(candidate)
+                            .or_insert_with(Vec::new)
+                            .push(word.clone());
+                    }
                 }
-                arr[i] = old;
+                arr[i] = old; // restore after all substitutions at position i
             }
         }
         level = next;
     }
-    if (found) {
-        deque<string> path;
-        backtrack(endWord, beginWord, parents, path, res);
+    if found {
+        let mut path: VecDeque<String> = VecDeque::new();
+        backtrack(&end_word, &begin_word, &parents, &mut path, &mut res);
     }
-    return res;
+    res
 }
 ```
 

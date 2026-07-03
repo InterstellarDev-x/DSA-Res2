@@ -12,65 +12,76 @@ Amazon's string bar is about **clean, correct, well-explained** solutions that m
 
 ### Naive scan
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int strStrNaive(string haystack, string needle) {
-        int n = haystack.length(), m = needle.length();
-        if (m == 0) return 0;
-        for (int i = 0; i + m <= n; i++) {
-            int j = 0;
-            while (j < m && haystack[i + j] == needle[j]) j++;
-            if (j == m) return i;
+impl Solution {
+    fn str_str_naive(haystack: String, needle: String) -> i32 {
+        let n = haystack.len();
+        let m = needle.len();
+        if m == 0 { return 0; }
+        let h: Vec<u8> = haystack.bytes().collect();
+        let nd: Vec<u8> = needle.bytes().collect();
+        for i in 0..n {
+            if i + m > n { break; }
+            let mut j = 0;
+            while j < m && h[i + j] == nd[j] { j += 1; }
+            if j == m { return i as i32; }
         }
-        return -1;
+        -1
     }
-};
+}
 ```
 
 O(nm) worst case — consider `haystack = "aaaa...a"`, `needle = "aaa...b"`: each of the `n` start positions re-scans almost all of `needle`. For most real inputs it is fine, but Amazon will probe the worst case.
 
 ### KMP — O(n+m)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int strStr(string haystack, string needle) {
-        if (needle.empty()) return 0;
-        vector<int> lps = buildLPS(needle);
-        int i = 0, j = 0, n = haystack.length(), m = needle.length();
-        while (i < n) {
-            if (haystack[i] == needle[j]) {
-                i++; j++;
-                if (j == m) return i - j;
-            } else if (j > 0) {
-                j = lps[j - 1];   // reuse the matched border; i does NOT move back
+impl Solution {
+    fn str_str(haystack: String, needle: String) -> i32 {
+        if needle.is_empty() { return 0; }
+        let lps = Self::build_lps(&needle);
+        let h: Vec<u8> = haystack.bytes().collect();
+        let nd: Vec<u8> = needle.bytes().collect();
+        let (n, m) = (h.len(), nd.len());
+        let (mut i, mut j) = (0usize, 0usize);
+        while i < n {
+            if h[i] == nd[j] {
+                i += 1;
+                j += 1;
+                if j == m { return (i - j) as i32; }
+            } else if j > 0 {
+                j = lps[j - 1]; // reuse the matched border; i does NOT move back
             } else {
-                i++;
+                i += 1;
             }
         }
-        return -1;
+        -1
     }
 
-private:
-    vector<int> buildLPS(string s) {
-        int n = s.length();
-        vector<int> lps(n);
-        int len = 0, i = 1;
-        while (i < n) {
-            if (s[i] == s[len]) { lps[i++] = ++len; }
-            else if (len > 0) { len = lps[len - 1]; }
-            else { lps[i++] = 0; }
+    fn build_lps(s: &str) -> Vec<usize> {
+        let s: Vec<u8> = s.bytes().collect();
+        let n = s.len();
+        let mut lps = vec![0usize; n];
+        let (mut len, mut i) = (0usize, 1usize);
+        while i < n {
+            if s[i] == s[len] {
+                len += 1;
+                lps[i] = len;
+                i += 1;
+            } else if len > 0 {
+                len = lps[len - 1];
+            } else {
+                lps[i] = 0;
+                i += 1;
+            }
         }
-        return lps;
+        lps
     }
-};
+}
 ```
 
 **When does KMP matter?** Only when (a) library calls are forbidden, (b) the interviewer asks for guaranteed worst-case linear, or (c) you will search the *same* needle in many haystacks (precompute `lps` once). Otherwise `s.find(needle)` is the honest answer — say so, then offer KMP. See the full LPS derivation in [String Matching (KMP)](../Patterns/String%20Matching%20(KMP).md).
@@ -83,36 +94,35 @@ private:
 
 Expand-around-center is the **interview-preferred** solution: it is short, obviously correct, and O(1) space. Every palindrome has a center — a single character (odd length) or a gap between two characters (even length) — giving `2n-1` centers. Expand outward from each.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    string longestPalindrome(string s) {
-        if (s.empty()) return "";
-        int start = 0, end = 0;
-        for (int i = 0; i < (int)s.length(); i++) {
-            int odd = expand(s, i, i);       // odd-length center at i
-            int even = expand(s, i, i + 1);  // even-length center between i and i+1
-            int len = max(odd, even);
-            if (len > end - start + 1) {
+impl Solution {
+    fn longest_palindrome(s: String) -> String {
+        if s.is_empty() { return String::new(); }
+        let bytes: Vec<u8> = s.bytes().collect();
+        let (mut start, mut end) = (0usize, 0usize);
+        for i in 0..bytes.len() {
+            let odd = Self::expand(&bytes, i as i64, i as i64);       // odd-length center at i
+            let even = Self::expand(&bytes, i as i64, i as i64 + 1);  // even-length center between i and i+1
+            let len = odd.max(even);
+            if len > end - start + 1 {
                 start = i - (len - 1) / 2;
                 end = i + len / 2;
             }
         }
-        return s.substr(start, end - start + 1);
+        s[start..=end].to_string()
     }
 
-private:
     // Returns the length of the palindrome that expands from (l, r).
-    int expand(string& s, int l, int r) {
-        while (l >= 0 && r < (int)s.length() && s[l] == s[r]) {
-            l--; r++;
+    fn expand(s: &[u8], mut l: i64, mut r: i64) -> usize {
+        while l >= 0 && r < s.len() as i64 && s[l as usize] == s[r as usize] {
+            l -= 1;
+            r += 1;
         }
-        return r - l - 1; // characters strictly between the failed bounds
+        (r - l - 1) as usize // characters strictly between the failed bounds
     }
-};
+}
 ```
 
 **Complexity:** O(n²) time, O(1) space.
@@ -132,37 +142,38 @@ Bring up **Manacher's algorithm** only when the interviewer explicitly asks for 
 
 > Return the start indices of every substring of `s` that is an anagram of `p`.
 
-This is a **fixed-size sliding window** of length `p.length()` over a 26-letter frequency array. Maintain a running count of how many letters currently have the correct frequency, so each shift is O(1).
+This is a **fixed-size sliding window** of length `p.len()` over a 26-letter frequency array. Maintain a running count of how many letters currently have the correct frequency, so each shift is O(1).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    vector<int> findAnagrams(string s, string p) {
-        vector<int> res;
-        int n = s.length(), m = p.length();
-        if (n < m) return res;
+impl Solution {
+    fn find_anagrams(s: String, p: String) -> Vec<i32> {
+        let mut res = Vec::new();
+        let s: Vec<u8> = s.bytes().collect();
+        let p: Vec<u8> = p.bytes().collect();
+        let (n, m) = (s.len(), p.len());
+        if n < m { return res; }
 
-        vector<int> need(26), win(26);
-        for (int i = 0; i < m; i++) {
-            need[p[i] - 'a']++;
-            win[s[i] - 'a']++;
+        let mut need = vec![0i32; 26];
+        let mut win = vec![0i32; 26];
+        for i in 0..m {
+            need[(p[i] - b'a') as usize] += 1;
+            win[(s[i] - b'a') as usize] += 1;
         }
-        if (need == win) res.push_back(0);
+        if need == win { res.push(0); }
 
-        for (int i = m; i < n; i++) {
-            win[s[i] - 'a']++;         // add the entering char
-            win[s[i - m] - 'a']--;     // remove the leaving char
-            if (need == win) res.push_back(i - m + 1);
+        for i in m..n {
+            win[(s[i] - b'a') as usize] += 1;         // add the entering char
+            win[(s[i - m] - b'a') as usize] -= 1;     // remove the leaving char
+            if need == win { res.push((i - m + 1) as i32); }
         }
-        return res;
+        res
     }
-};
+}
 ```
 
-**Complexity:** O(n · 26) = O(n) time, O(26) = O(1) space. The vector `==` comparison over 26 entries is constant; for a stricter O(1)-per-step, track a `matches` counter that increments/decrements as individual letter counts hit/leave equality. Window basis: [Fixed Size Window](../../8.Sliding_Window/Patterns/Fixed%20Size%20Window.md).
+**Complexity:** O(n · 26) = O(n) time, O(26) = O(1) space. The `Vec` `==` comparison over 26 entries is constant; for a stricter O(1)-per-step, track a `matches` counter that increments/decrements as individual letter counts hit/leave equality. Window basis: [Fixed Size Window](../../8.Sliding_Window/Patterns/Fixed%20Size%20Window.md).
 
 ### Edge cases
 - `p` longer than `s` → empty list (the `n < m` guard).

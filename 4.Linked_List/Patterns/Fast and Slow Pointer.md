@@ -9,7 +9,7 @@
 
 Two pointers start at `head`. Slow moves 1 step; fast moves 2 steps.
 
-- **No cycle:** Fast hits `nullptr`. Slow is at middle.
+- **No cycle:** Fast hits `None`. Slow is at middle.
 - **Cycle present:** They meet inside the cycle.
 
 ```
@@ -21,27 +21,36 @@ fast: head → 2 → 4 → 6  (6 steps, wraps if cycle)
 
 ## Template 1 — Find Middle
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+#[derive(Debug)]
+pub struct ListNode {
+    pub val: i32,
+    pub next: Option<Box<ListNode>>,
+}
 
-struct ListNode { int val; ListNode* next; ListNode(int x): val(x), next(nullptr){} };
-
-ListNode* middleNode(ListNode* head) {
-    ListNode* slow = head, *fast = head;
-    while (fast != nullptr && fast->next != nullptr) {
-        slow = slow->next;
-        fast = fast->next->next;
+impl ListNode {
+    pub fn new(val: i32) -> Self {
+        ListNode { val, next: None }
     }
-    return slow; // for even length, returns SECOND middle
+}
+
+fn middle_node(head: &Option<Box<ListNode>>) -> &ListNode {
+    let mut slow: &Option<Box<ListNode>> = head;
+    let mut fast: &Option<Box<ListNode>> = head;
+    while fast.is_some() && fast.as_ref().unwrap().next.is_some() {
+        slow = &slow.as_ref().unwrap().next;
+        fast = &fast.as_ref().unwrap().next.as_ref().unwrap().next;
+    }
+    slow.as_ref().unwrap() // for even length, returns SECOND middle
 }
 ```
 
 **Variant — first middle (for palindrome check):**
-```cpp
+```rust
 // Advance fast one step before the loop to bias toward first middle
-ListNode* slow = head, *fast = head->next;
-while (fast != nullptr && fast->next != nullptr) { ... }
+// let mut slow: &Option<Box<ListNode>> = head;
+// let mut fast: &Option<Box<ListNode>> = &head.as_ref().unwrap().next;
+// while fast.is_some() && fast.as_ref().unwrap().next.is_some() { ... }
 // slow is now the last node of first half — split here
 ```
 
@@ -49,18 +58,25 @@ while (fast != nullptr && fast->next != nullptr) { ... }
 
 ## Template 2 — Detect Cycle (LC 141)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+> Note: Safe Rust cannot represent cyclic structures with `Box<T>` (single-ownership prevents cycles). For cycle detection we use an index-based adjacency array: `nodes[i]` is the next-node index, with `usize::MAX` marking end of list.
 
-bool hasCycle(ListNode* head) {
-    ListNode* slow = head, *fast = head;
-    while (fast != nullptr && fast->next != nullptr) {
-        slow = slow->next;
-        fast = fast->next->next;
-        if (slow == fast) return true;
+```rust
+// nodes[i] = next node index; usize::MAX means no next (end of list)
+fn has_cycle(nodes: &[usize], head: usize) -> bool {
+    if nodes.is_empty() {
+        return false;
     }
-    return false;
+    let end = usize::MAX;
+    let mut slow = head;
+    let mut fast = head;
+    while nodes[fast] != end && nodes[nodes[fast]] != end {
+        slow = nodes[slow];
+        fast = nodes[nodes[fast]];
+        if slow == fast {
+            return true;
+        }
+    }
+    false
 }
 ```
 
@@ -70,27 +86,33 @@ bool hasCycle(ListNode* head) {
 
 ## Template 3 — Cycle Entry Point (LC 142)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-ListNode* detectCycle(ListNode* head) {
-    ListNode* slow = head, *fast = head;
-    // Phase 1: find meeting point
-    while (fast != nullptr && fast->next != nullptr) {
-        slow = slow->next;
-        fast = fast->next->next;
-        if (slow == fast) break;
+```rust
+// nodes[i] = next node index; usize::MAX means no next (end of list)
+fn detect_cycle(nodes: &[usize], head: usize) -> Option<usize> {
+    if nodes.is_empty() {
+        return None;
     }
-    if (fast == nullptr || fast->next == nullptr) return nullptr; // no cycle
-
+    let end = usize::MAX;
+    let mut slow = head;
+    let mut fast = head;
+    // Phase 1: find meeting point
+    loop {
+        if nodes[fast] == end || nodes[nodes[fast]] == end {
+            return None; // no cycle
+        }
+        slow = nodes[slow];
+        fast = nodes[nodes[fast]];
+        if slow == fast {
+            break;
+        }
+    }
     // Phase 2: find entry — reset one pointer to head
     slow = head;
-    while (slow != fast) {
-        slow = slow->next;
-        fast = fast->next; // both move at 1x now
+    while slow != fast {
+        slow = nodes[slow];
+        fast = nodes[fast]; // both move at 1x now
     }
-    return slow; // entry node
+    Some(slow) // entry node index
 }
 ```
 
@@ -104,27 +126,25 @@ ListNode* detectCycle(ListNode* head) {
 
 ## Template 4 — Happy Number (LC 202)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int sumOfSquares(int n) {
-    int sum = 0;
-    while (n > 0) {
-        int d = n % 10;
+```rust
+fn sum_of_squares(mut n: i32) -> i32 {
+    let mut sum = 0;
+    while n > 0 {
+        let d = n % 10;
         sum += d * d;
         n /= 10;
     }
-    return sum;
+    sum
 }
 
-bool isHappy(int n) {
-    int slow = n, fast = sumOfSquares(n);
-    while (fast != 1 && slow != fast) {
-        slow = sumOfSquares(slow);
-        fast = sumOfSquares(sumOfSquares(fast));
+fn is_happy(n: i32) -> bool {
+    let mut slow = n;
+    let mut fast = sum_of_squares(n);
+    while fast != 1 && slow != fast {
+        slow = sum_of_squares(slow);
+        fast = sum_of_squares(sum_of_squares(fast));
     }
-    return fast == 1;
+    fast == 1
 }
 ```
 
@@ -134,38 +154,64 @@ bool isHappy(int n) {
 
 Uses fast/slow to split, then reverse second half, then merge:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+#[derive(Debug)]
+pub struct ListNode {
+    pub val: i32,
+    pub next: Option<Box<ListNode>>,
+}
 
-void reorderList(ListNode* head) {
-    if (head == nullptr || head->next == nullptr) return;
+impl ListNode {
+    pub fn new(val: i32) -> Self {
+        ListNode { val, next: None }
+    }
+}
 
-    // Step 1: find mid
-    ListNode* slow = head, *fast = head;
-    while (fast->next != nullptr && fast->next->next != nullptr) {
-        slow = slow->next;
-        fast = fast->next->next;
+fn reorder_list(head: &mut Option<Box<ListNode>>) {
+    if head.is_none() || head.as_ref().unwrap().next.is_none() {
+        return;
     }
 
-    // Step 2: reverse second half
-    ListNode* prev = nullptr, *curr = slow->next;
-    slow->next = nullptr; // cut
-    while (curr != nullptr) {
-        ListNode* nxt = curr->next;
-        curr->next = prev;
-        prev = curr;
-        curr = nxt;
+    // Step 1: find split point using fast/slow step count
+    let mut steps = 0usize;
+    {
+        let mut slow: &Option<Box<ListNode>> = head;
+        let mut fast: &Option<Box<ListNode>> = head;
+        while fast.is_some() && fast.as_ref().unwrap().next.is_some() {
+            steps += 1;
+            slow = &slow.as_ref().unwrap().next;
+            fast = &fast.as_ref().unwrap().next.as_ref().unwrap().next;
+        }
+        let _ = slow; // mid is reached after `steps` advances
     }
 
-    // Step 3: merge alternating
-    ListNode* l1 = head, *l2 = prev;
-    while (l2 != nullptr) {
-        ListNode* tmp1 = l1->next, *tmp2 = l2->next;
-        l1->next = l2;
-        l2->next = tmp1;
-        l1 = tmp1;
-        l2 = tmp2;
+    // Step 2: advance to split point and cut
+    let mut cur = head.as_mut();
+    for _ in 0..steps {
+        cur = cur.unwrap().next.as_mut();
+    }
+    let mut second = cur.unwrap().next.take(); // cut list here
+
+    // Step 3: reverse second half
+    let mut prev: Option<Box<ListNode>> = None;
+    while let Some(mut node) = second {
+        second = node.next.take();
+        node.next = prev;
+        prev = Some(node);
+    }
+    let mut l2 = prev;
+
+    // Step 4: merge alternating — splice each l2 node after each l1 node
+    let mut cursor: &mut Option<Box<ListNode>> = head;
+    while let Some(mut s) = l2 {
+        l2 = s.next.take();
+        // Insert s after cursor's current node
+        let rest = cursor.as_mut().unwrap().next.take();
+        s.next = rest;
+        cursor.as_mut().unwrap().next = Some(s);
+        // Advance cursor two steps: past current node, past inserted s
+        cursor = &mut cursor.as_mut().unwrap().next; // -> s
+        cursor = &mut cursor.as_mut().unwrap().next; // -> original next
     }
 }
 ```
@@ -176,10 +222,10 @@ void reorderList(ListNode* head) {
 
 | Mistake | Fix |
 |---------|-----|
-| `while (fast != nullptr)` only — misses single-node lists | Always check `fast != nullptr && fast->next != nullptr` |
+| `while fast.is_some()` only — misses single-node lists | Always check `fast.is_some() && fast.as_ref().unwrap().next.is_some()` |
 | Not breaking after meeting in cycle detection | Break when `slow == fast`, then run phase 2 |
 | Resetting only `slow` in phase 2 — fast stays at meeting | Reset `slow = head`; fast stays at meeting point, both move 1x |
-| Even-length middle bias: first vs second | Use `fast = head->next` init for "first" middle |
+| Even-length middle bias: first vs second | Use `fast = &head.as_ref().unwrap().next` init for "first" middle |
 
 ---
 

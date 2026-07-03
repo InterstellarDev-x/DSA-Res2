@@ -9,55 +9,55 @@
 
 Given a string of digits, insert `+`, `-`, `*` operators to reach a target. Return all valid expressions.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<string> addOperators(string num, int target) {
-    vector<string> result;
-    string expr;
-    backtrack(num, target, 0, 0, 0, expr, result);
-    return result;
+```rust
+fn add_operators(num: &str, target: i64) -> Vec<String> {
+    let mut result = Vec::new();
+    let mut expr = String::new();
+    let num_bytes = num.as_bytes();
+    backtrack(num_bytes, target, 0, 0, 0, &mut expr, &mut result);
+    result
 }
 
 // pos: current position in num
 // eval: current evaluated value of expression so far
 // mult: value of the "last term" — needed to undo multiplication on next '*'
-void backtrack(string& num, int target, int pos, long long eval, long long mult,
-               string& expr, vector<string>& res) {
-    if (pos == (int)num.length()) {
-        if (eval == target) res.push_back(expr);
+fn backtrack(num: &[u8], target: i64, pos: usize, eval: i64, mult: i64,
+             expr: &mut String, res: &mut Vec<String>) {
+    if pos == num.len() {
+        if eval == target {
+            res.push(expr.clone());
+        }
         return;
     }
 
-    int len = expr.length();
-    long long cur = 0;
+    let len = expr.len();
+    let mut cur: i64 = 0;
 
-    for (int i = pos; i < (int)num.length(); i++) {
+    for i in pos..num.len() {
         // Skip leading zeros (but allow single "0")
-        if (i != pos && num[pos] == '0') break;
-        cur = cur * 10 + (num[i] - '0');
+        if i != pos && num[pos] == b'0' { break; }
+        cur = cur * 10 + (num[i] - b'0') as i64;
 
-        if (pos == 0) {
+        if pos == 0 {
             // First number: no operator before it
-            expr += to_string(cur);
+            expr.push_str(&cur.to_string());
             backtrack(num, target, i + 1, cur, cur, expr, res);
-            expr.resize(len);
+            expr.truncate(len);
         } else {
             // '+' operator
-            expr += "+" + to_string(cur);
+            expr.push_str(&format!("+{}", cur));
             backtrack(num, target, i + 1, eval + cur, cur, expr, res);
-            expr.resize(len);
+            expr.truncate(len);
 
             // '-' operator
-            expr += "-" + to_string(cur);
+            expr.push_str(&format!("-{}", cur));
             backtrack(num, target, i + 1, eval - cur, -cur, expr, res);
-            expr.resize(len);
+            expr.truncate(len);
 
             // '*' operator — must undo previous term's contribution and re-apply with multiplication
-            expr += "*" + to_string(cur);
+            expr.push_str(&format!("*{}", cur));
             backtrack(num, target, i + 1, eval - mult + mult * cur, mult * cur, expr, res);
-            expr.resize(len);
+            expr.truncate(len);
         }
     }
 }
@@ -76,47 +76,45 @@ Example: `2 + 3 * 5` — when we reach `*5`, `eval = 5`, `mult = 3`.
 
 Every operator can be a "split point" — recurse on left and right subexpressions.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> diffWaysToCompute(string expression) {
-    vector<int> result;
-    for (int i = 0; i < (int)expression.length(); i++) {
-        char c = expression[i];
-        if (c == '+' || c == '-' || c == '*') {
+```rust
+fn diff_ways_to_compute(expression: &str) -> Vec<i32> {
+    let mut result = Vec::new();
+    for (i, c) in expression.char_indices() {
+        if c == '+' || c == '-' || c == '*' {
             // Divide: left of operator, right of operator
-            vector<int> left  = diffWaysToCompute(expression.substr(0, i));
-            vector<int> right = diffWaysToCompute(expression.substr(i + 1));
+            let left  = diff_ways_to_compute(&expression[..i]);
+            let right = diff_ways_to_compute(&expression[i + 1..]);
             // Conquer: combine all pairs
-            for (auto l : left) {
-                for (auto r : right) {
-                    if      (c == '+') result.push_back(l + r);
-                    else if (c == '-') result.push_back(l - r);
-                    else               result.push_back(l * r);
+            for &l in &left {
+                for &r in &right {
+                    if      c == '+' { result.push(l + r); }
+                    else if c == '-' { result.push(l - r); }
+                    else             { result.push(l * r); }
                 }
             }
         }
     }
     // Base case: no operator found → pure number
-    if (result.empty()) result.push_back(stoi(expression));
-    return result;
+    if result.is_empty() {
+        result.push(expression.parse::<i32>().unwrap());
+    }
+    result
 }
 ```
 
 **Memoized version:** Cache by `expression` substring to avoid recomputation.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-unordered_map<string, vector<int>> memo;
-
-vector<int> diffWaysToCompute(string expression) {
-    if (memo.count(expression)) return memo[expression];
+fn diff_ways_to_compute_memo(expression: &str, memo: &mut HashMap<String, Vec<i32>>) -> Vec<i32> {
+    if let Some(cached) = memo.get(expression) {
+        return cached.clone();
+    }
     // ... same logic ...
-    memo[expression] = result;
-    return result;
+    let result: Vec<i32> = Vec::new();
+    memo.insert(expression.to_string(), result.clone());
+    result
 }
 ```
 

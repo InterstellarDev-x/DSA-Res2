@@ -10,8 +10,8 @@
 **Heap + Frequency** problems involve scheduling or arranging elements where frequency determines feasibility. A max-heap (by frequency) always picks the most common element first, ensuring we don't get "stuck" with too many of one type.
 
 **Common structure:**
-1. Build a frequency map: `unordered_map<T, int> freq`
-2. Load into max-heap by frequency: `std::priority_queue<pair<int,int>> maxHeap` with `(freq, element)`
+1. Build a frequency map: `HashMap<T, i32>`
+2. Load into max-heap by frequency: `BinaryHeap<(i32, i32)>` with `(freq, element)`
 3. Greedily pick the most frequent; cool down (put back after a delay)
 
 ---
@@ -20,75 +20,86 @@
 
 Rearrange so no two adjacent characters are equal. Return `""` if impossible.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
 
-string reorganizeString(string s) {
-    int freq[26] = {};
-    for (char c : s) freq[c - 'a']++;
-
-    // Max-heap by frequency
-    priority_queue<pair<int,int>> maxHeap;
-    for (int i = 0; i < 26; i++) {
-        if (freq[i] > 0) maxHeap.push({freq[i], i});
+fn reorganize_string(s: String) -> String {
+    let mut freq = [0i32; 26];
+    for c in s.chars() {
+        freq[(c as u8 - b'a') as usize] += 1;
     }
 
-    string sb;
-    while (maxHeap.size() >= 2) {
-        auto [f1, c1] = maxHeap.top(); maxHeap.pop();   // most frequent
-        auto [f2, c2] = maxHeap.top(); maxHeap.pop();   // second most frequent
-        sb += (char)('a' + c1);
-        sb += (char)('a' + c2);
-        if (f1 - 1 > 0) maxHeap.push({f1 - 1, c1});
-        if (f2 - 1 > 0) maxHeap.push({f2 - 1, c2});
+    // Max-heap by frequency: (freq, char_index)
+    let mut max_heap = BinaryHeap::new();
+    for i in 0..26 {
+        if freq[i] > 0 {
+            max_heap.push((freq[i], i as i32));
+        }
     }
 
-    if (!maxHeap.empty()) {
-        auto [f, c] = maxHeap.top(); maxHeap.pop();
-        if (f > 1) return "";   // more than 1 left → impossible
-        sb += (char)('a' + c);
+    let mut sb = String::new();
+    while max_heap.len() >= 2 {
+        let (f1, c1) = max_heap.pop().unwrap(); // most frequent
+        let (f2, c2) = max_heap.pop().unwrap(); // second most frequent
+        sb.push((b'a' + c1 as u8) as char);
+        sb.push((b'a' + c2 as u8) as char);
+        if f1 - 1 > 0 { max_heap.push((f1 - 1, c1)); }
+        if f2 - 1 > 0 { max_heap.push((f2 - 1, c2)); }
     }
 
-    return sb;
+    if let Some((f, c)) = max_heap.pop() {
+        if f > 1 { return String::new(); } // more than 1 left → impossible
+        sb.push((b'a' + c as u8) as char);
+    }
+
+    sb
 }
 ```
 
 **Impossibility condition:** If any character has frequency > `(n+1)/2`, it's impossible — we can't interleave it with enough other characters.
 
-```cpp
+```rust
 // Early exit check
-int maxFreq = 0;
-for (int f : freq) maxFreq = max(maxFreq, f);
-if (maxFreq > (s.length() + 1) / 2) return "";
+let max_freq = freq.iter().copied().max().unwrap_or(0);
+if max_freq > (s.len() as i32 + 1) / 2 { return String::new(); }
 ```
 
 **Alternative interleaving approach — O(n):**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-string reorganizeString(string s) {
-    int freq[26] = {};
-    for (char c : s) freq[c - 'a']++;
-    int maxFreq = 0, maxChar = 0;
-    for (int i = 0; i < 26; i++) {
-        if (freq[i] > maxFreq) { maxFreq = freq[i]; maxChar = i; }
+```rust
+fn reorganize_string(s: String) -> String {
+    let mut freq = [0i32; 26];
+    for c in s.chars() {
+        freq[(c as u8 - b'a') as usize] += 1;
     }
-    if (maxFreq > ((int)s.length() + 1) / 2) return "";
-
-    string result(s.length(), ' ');
-    int idx = 0;
-    // Place most frequent character at all even positions first
-    while (freq[maxChar] > 0) { result[idx] = (char)('a' + maxChar); idx += 2; freq[maxChar]--; }
-    // Fill remaining positions with all other characters
-    for (int i = 0; i < 26; i++) {
-        while (freq[i] > 0) {
-            if (idx >= (int)s.length()) idx = 1;  // switch to odd positions
-            result[idx] = (char)('a' + i); idx += 2; freq[i]--;
+    let mut max_freq = 0i32;
+    let mut max_char = 0usize;
+    for i in 0..26 {
+        if freq[i] > max_freq {
+            max_freq = freq[i];
+            max_char = i;
         }
     }
-    return result;
+    if max_freq > (s.len() as i32 + 1) / 2 { return String::new(); }
+
+    let n = s.len();
+    let mut result = vec![b' '; n];
+    let mut idx = 0usize;
+    // Place most frequent character at all even positions first
+    while freq[max_char] > 0 {
+        result[idx] = b'a' + max_char as u8;
+        idx += 2;
+        freq[max_char] -= 1;
+    }
+    // Fill remaining positions with all other characters
+    for i in 0..26 {
+        while freq[i] > 0 {
+            if idx >= n { idx = 1; } // switch to odd positions
+            result[idx] = b'a' + i as u8;
+            idx += 2;
+            freq[i] -= 1;
+        }
+    }
+    String::from_utf8(result).unwrap()
 }
 ```
 
@@ -100,24 +111,22 @@ Schedule CPU tasks with a cooldown of `n` intervals between same tasks. Find min
 
 **Formula approach — O(26 log 26) = O(1):**
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn least_interval(tasks: &[char], n: i32) -> i32 {
+    let mut freq = [0i32; 26];
+    for &t in tasks {
+        freq[(t as u8 - b'A') as usize] += 1;
+    }
+    freq.sort();
 
-int leastInterval(vector<char>& tasks, int n) {
-    int freq[26] = {};
-    for (char t : tasks) freq[t - 'A']++;
-    sort(freq, freq + 26);
-
-    int maxFreq = freq[25];
+    let max_freq = freq[25];
     // Number of tasks with the maximum frequency
-    int maxCount = 0;
-    for (int f : freq) if (f == maxFreq) maxCount++;
+    let max_count = freq.iter().filter(|&&f| f == max_freq).count() as i32;
 
     // Minimum time: either the "frame" calculation or task count (if tasks fill all slots)
     // Frame: (maxFreq - 1) slots × (n + 1) size + maxCount tasks at the end
-    int result = (maxFreq - 1) * (n + 1) + maxCount;
-    return max(result, (int)tasks.size());
+    let result = (max_freq - 1) * (n + 1) + max_count;
+    result.max(tasks.len() as i32)
 }
 ```
 
@@ -133,35 +142,40 @@ If more tasks: A B C | A B C | A B = 9 tasks.length=9 > frame=7 → answer = 9
 
 **Heap approach — simulates actual scheduling (more flexible for follow-ups):**
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{BinaryHeap, VecDeque};
 
-int leastInterval(vector<char>& tasks, int n) {
-    int freq[26] = {};
-    for (char t : tasks) freq[t - 'A']++;
+fn least_interval(tasks: &[char], n: i32) -> i32 {
+    let mut freq = [0i32; 26];
+    for &t in tasks {
+        freq[(t as u8 - b'A') as usize] += 1;
+    }
 
     // Max-heap by frequency
-    priority_queue<int> maxHeap;
-    for (int f : freq) if (f > 0) maxHeap.push(f);
+    let mut max_heap = BinaryHeap::new();
+    for &f in &freq {
+        if f > 0 { max_heap.push(f); }
+    }
 
     // Queue of (remaining_freq, available_at_time)
-    queue<pair<int,int>> cooldown;
-    int time = 0;
+    let mut cooldown: VecDeque<(i32, i32)> = VecDeque::new();
+    let mut time = 0i32;
 
-    while (!maxHeap.empty() || !cooldown.empty()) {
-        time++;
-        if (!maxHeap.empty()) {
-            int f = maxHeap.top() - 1; maxHeap.pop();
-            if (f > 0) cooldown.push({f, time + n});
+    while !max_heap.is_empty() || !cooldown.is_empty() {
+        time += 1;
+        if let Some(f) = max_heap.pop() {
+            let f = f - 1;
+            if f > 0 { cooldown.push_back((f, time + n)); }
         }
         // Release tasks whose cooldown has expired
-        if (!cooldown.empty() && cooldown.front().second == time) {
-            maxHeap.push(cooldown.front().first);
-            cooldown.pop();
+        if let Some(&(freq_val, avail)) = cooldown.front() {
+            if avail == time {
+                max_heap.push(freq_val);
+                cooldown.pop_front();
+            }
         }
     }
-    return time;
+    time
 }
 ```
 

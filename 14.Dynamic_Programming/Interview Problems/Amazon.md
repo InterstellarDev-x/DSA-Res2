@@ -2,7 +2,7 @@
 
 # Amazon — DP Interview Deep Dives
 
-This file walks the four DP problems Amazon interviewers return to most, with the full reasoning an interviewer wants to hear: state definition, recurrence derivation, base cases, complete C++, complexity, and the follow-ups. Each one maps to a leadership-principle behavior at the end.
+This file walks the four DP problems Amazon interviewers return to most, with the full reasoning an interviewer wants to hear: state definition, recurrence derivation, base cases, complete Rust, complexity, and the follow-ups. Each one maps to a leadership-principle behavior at the end.
 
 See also: [OA-Qns → Amazon](../OA-Qns/Amazon.md) · [Interview Problems → Google](./Google.md) · [Interview Problems → Microsoft](./Microsoft.md) · [Topic README](../README.md)
 
@@ -19,25 +19,24 @@ See also: [OA-Qns → Amazon](../OA-Qns/Amazon.md) · [Interview Problems → Go
 - **Base case:** `dp[0] = 0` (zero coins make amount 0).
 - **Sentinel:** initialize the rest to `amount + 1` (an impossible-to-reach "infinity" that never overflows when you add 1).
 
-### Why `amount + 1` and not `INT_MAX`
+### Why `amount + 1` and not `i32::MAX`
 
-If you seed with `INT_MAX` and then compute `dp[a-c] + 1`, the `+1` overflows to `INT_MIN` and corrupts the `min`. `amount + 1` is strictly greater than any real answer (you can never need more than `amount` coins of value ≥ 1), so it acts as a safe infinity.
+If you seed with `i32::MAX` and then compute `dp[a-c] + 1`, the `+1` overflows and corrupts the `min`. `amount + 1` is strictly greater than any real answer (you can never need more than `amount` coins of value ≥ 1), so it acts as a safe infinity.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int coinChange(vector<int>& coins, int amount) {
-    vector<int> dp(amount + 1, amount + 1);  // safe "infinity"
+```rust
+fn coin_change(coins: &[i32], amount: i32) -> i32 {
+    let amount = amount as usize;
+    let mut dp = vec![amount + 1; amount + 1];  // safe "infinity"
     dp[0] = 0;
-    for (int a = 1; a <= amount; a++) {
-        for (auto& c : coins) {
-            if (c <= a) {
-                dp[a] = min(dp[a], dp[a - c] + 1);
+    for a in 1..=amount {
+        for &c in coins {
+            let c = c as usize;
+            if c <= a {
+                dp[a] = dp[a].min(dp[a - c] + 1);
             }
         }
     }
-    return dp[amount] > amount ? -1 : dp[amount];
+    if dp[amount] > amount { -1 } else { dp[amount] as i32 }
 }
 ```
 
@@ -47,19 +46,18 @@ Time `O(amount · coins)`, space `O(amount)`.
 
 To **count** combinations (not permutations), put coins on the **outer** loop and amount on the **inner** loop. This guarantees each coin is "introduced" once, so `{1,2}` and `{2,1}` are not counted twice.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int change(int amount, vector<int>& coins) {
-    vector<int> dp(amount + 1, 0);
+```rust
+fn change(amount: i32, coins: &[i32]) -> i32 {
+    let amount = amount as usize;
+    let mut dp = vec![0i32; amount + 1];
     dp[0] = 1;                      // one way to make 0: take nothing
-    for (auto& c : coins) {         // coin OUTER → combinations, not permutations
-        for (int a = c; a <= amount; a++) {
+    for &c in coins {               // coin OUTER → combinations, not permutations
+        let c = c as usize;
+        for a in c..=amount {
             dp[a] += dp[a - c];
         }
     }
-    return dp[amount];
+    dp[amount]
 }
 ```
 
@@ -88,26 +86,25 @@ If you swap the loops (amount outer, coin inner) you count *permutations* — a 
 - **Base case:** `dp[0] = true` (the empty prefix is trivially segmentable).
 - **Answer:** `dp[n]`.
 
-Put the dictionary in an `std::unordered_set` for O(1) lookups; substring lookups dominate cost.
+Put the dictionary in a `HashSet` for O(1) lookups; substring lookups dominate cost.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-bool wordBreak(string s, vector<string>& wordDict) {
-    unordered_set<string> dict(wordDict.begin(), wordDict.end());
-    int n = s.length();
-    vector<bool> dp(n + 1, false);
+fn word_break(s: String, word_dict: Vec<String>) -> bool {
+    let dict: HashSet<String> = word_dict.into_iter().collect();
+    let n = s.len();
+    let mut dp = vec![false; n + 1];
     dp[0] = true;
-    for (int i = 1; i <= n; i++) {
-        for (int j = 0; j < i; j++) {
-            if (dp[j] && dict.count(s.substr(j, i - j))) {
+    for i in 1..=n {
+        for j in 0..i {
+            if dp[j] && dict.contains(&s[j..i]) {
                 dp[i] = true;
                 break;          // one valid split is enough
             }
         }
     }
-    return dp[n];
+    dp[n]
 }
 ```
 
@@ -115,29 +112,30 @@ Time `O(n² · L)` where `L` is average word length (substring + hash), space `O
 
 ### The memoized-recursion view (what interviewers often ask you to start with)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-bool solve(const string& s, int start, unordered_set<string>& dict, vector<int>& memo) {
-    if (start == (int)s.length()) return true;
-    if (memo[start] != -1) return memo[start];
-    for (int end = start + 1; end <= (int)s.length(); end++) {
-        if (dict.count(s.substr(start, end - start)) && solve(s, end, dict, memo)) {
-            return memo[start] = 1;
+fn solve(s: &str, start: usize, dict: &HashSet<String>, memo: &mut Vec<i32>) -> bool {
+    if start == s.len() { return true; }
+    if memo[start] != -1 { return memo[start] == 1; }
+    for end in (start + 1)..=s.len() {
+        if dict.contains(&s[start..end]) && solve(s, end, dict, memo) {
+            memo[start] = 1;
+            return true;
         }
     }
-    return memo[start] = 0;
+    memo[start] = 0;
+    false
 }
 
-bool wordBreak(string s, vector<string>& wordDict) {
-    unordered_set<string> dict(wordDict.begin(), wordDict.end());
-    vector<int> memo(s.length() + 1, -1);  // -1 = not computed, 0 = false, 1 = true
-    return solve(s, 0, dict, memo);
+fn word_break(s: String, word_dict: Vec<String>) -> bool {
+    let dict: HashSet<String> = word_dict.into_iter().collect();
+    let mut memo = vec![-1i32; s.len() + 1];  // -1 = not computed, 0 = false, 1 = true
+    solve(&s, 0, &dict, &mut memo)
 }
 ```
 
-Memoizing on the **suffix start index** turns the exponential branching into `O(n²·L)`. The `vector<int>` with `-1` as sentinel lets `−1` mean "not computed", avoiding the "0 is a valid answer" collision discussed in [Common Mistakes](../Interview%20Tips/Common%20Mistakes.md).
+Memoizing on the **suffix start index** turns the exponential branching into `O(n²·L)`. The `Vec<i32>` with `-1` as sentinel lets `-1` mean "not computed", avoiding the "0 is a valid answer" collision discussed in [Common Mistakes](../Interview%20Tips/Common%20Mistakes.md).
 
 ### Edge cases
 - Empty `s` → `true`.
@@ -162,18 +160,15 @@ Memoizing on the **suffix start index** turns the exponential branching into `O(
 
 Reduce to two rolling variables:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int rob(vector<int>& nums) {
-    int prev2 = 0, prev1 = 0;       // dp[i-2], dp[i-1]
-    for (auto& x : nums) {
-        int cur = max(prev1, prev2 + x);
+```rust
+fn rob(nums: &[i32]) -> i32 {
+    let (mut prev2, mut prev1) = (0, 0);       // dp[i-2], dp[i-1]
+    for &x in nums {
+        let cur = prev1.max(prev2 + x);
         prev2 = prev1;
         prev1 = cur;
     }
-    return prev1;
+    prev1
 }
 ```
 
@@ -183,26 +178,22 @@ Time `O(n)`, space `O(1)`.
 
 Now house `0` and house `n-1` are adjacent. The trick: you can't rob both ends, so the optimal solution either **excludes the first house** or **excludes the last house**. Run the linear robber on each window and take the max.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int robLinear(vector<int>& nums, int lo, int hi) {
-    int prev2 = 0, prev1 = 0;
-    for (int i = lo; i <= hi; i++) {
-        int cur = max(prev1, prev2 + nums[i]);
+```rust
+fn rob_linear(nums: &[i32], lo: usize, hi: usize) -> i32 {
+    let (mut prev2, mut prev1) = (0, 0);
+    for i in lo..=hi {
+        let cur = prev1.max(prev2 + nums[i]);
         prev2 = prev1;
         prev1 = cur;
     }
-    return prev1;
+    prev1
 }
 
-int rob(vector<int>& nums) {
-    int n = nums.size();
-    if (n == 1) return nums[0];
-    return max(
-        robLinear(nums, 0, n - 2),   // exclude last
-        robLinear(nums, 1, n - 1));  // exclude first
+fn rob(nums: &[i32]) -> i32 {
+    let n = nums.len();
+    if n == 1 { return nums[0]; }
+    rob_linear(nums, 0, n - 2).max(   // exclude last
+        rob_linear(nums, 1, n - 1))   // exclude first
 }
 ```
 
@@ -222,31 +213,30 @@ The `n == 1` guard matters: with one house, both windows would be empty and retu
 
 Every palindrome has a center: either a single character (odd length) or a gap between two characters (even length). There are `2n - 1` centers; expand each outward.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int expand(const string& s, int l, int r) {
-    while (l >= 0 && r < (int)s.length() && s[l] == s[r]) {
-        l--;
-        r++;
+```rust
+fn expand(s: &[u8], l: i32, r: i32) -> i32 {
+    let (mut l, mut r) = (l, r);
+    while l >= 0 && r < s.len() as i32 && s[l as usize] == s[r as usize] {
+        l -= 1;
+        r += 1;
     }
-    return r - l - 1;                      // length once the loop overshoots
+    r - l - 1                           // length once the loop overshoots
 }
 
-string longestPalindrome(string s) {
-    if (s.empty()) return "";
-    int start = 0, end = 0;
-    for (int i = 0; i < (int)s.length(); i++) {
-        int len1 = expand(s, i, i);       // odd-length center
-        int len2 = expand(s, i, i + 1);   // even-length center
-        int len = max(len1, len2);
-        if (len > end - start + 1) {
+fn longest_palindrome(s: String) -> String {
+    if s.is_empty() { return String::new(); }
+    let bytes = s.as_bytes();
+    let (mut start, mut end) = (0i32, 0i32);
+    for i in 0..s.len() as i32 {
+        let len1 = expand(bytes, i, i);       // odd-length center
+        let len2 = expand(bytes, i, i + 1);   // even-length center
+        let len = len1.max(len2);
+        if len > end - start + 1 {
             start = i - (len - 1) / 2;
             end = i + len / 2;
         }
     }
-    return s.substr(start, end - start + 1);
+    s[start as usize..=end as usize].to_string()
 }
 ```
 
@@ -258,26 +248,24 @@ Time `O(n²)`, space `O(1)`.
 - **Recurrence:** `dp[i][j] = (s[i]==s[j]) && (j - i < 2 || dp[i+1][j-1])`.
 - **Order:** because `dp[i][j]` depends on `dp[i+1][j-1]`, iterate by **increasing substring length** (or `i` descending, `j` ascending).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-string longestPalindrome(string s) {
-    int n = s.length();
-    vector<vector<bool>> dp(n, vector<bool>(n, false));
-    int start = 0, maxLen = 1;
-    for (int i = n - 1; i >= 0; i--) {            // i descending
-        for (int j = i; j < n; j++) {             // j ascending
-            if (s[i] == s[j] && (j - i < 2 || dp[i + 1][j - 1])) {
+```rust
+fn longest_palindrome(s: String) -> String {
+    let n = s.len();
+    let bytes = s.as_bytes();
+    let mut dp = vec![vec![false; n]; n];
+    let (mut start, mut max_len) = (0usize, 1usize);
+    for i in (0..n).rev() {                    // i descending
+        for j in i..n {                        // j ascending
+            if bytes[i] == bytes[j] && (j - i < 2 || dp[i + 1][j - 1]) {
                 dp[i][j] = true;
-                if (j - i + 1 > maxLen) {
-                    maxLen = j - i + 1;
+                if j - i + 1 > max_len {
+                    max_len = j - i + 1;
                     start = i;
                 }
             }
         }
     }
-    return s.substr(start, maxLen);
+    s[start..start + max_len].to_string()
 }
 ```
 

@@ -29,16 +29,23 @@ This means: starting from the **meeting point** and **head** simultaneously, bot
 
 ## Template 1 — Detect Cycle (LC 141)
 
-```cpp
-bool hasCycle(ListNode* head) {
-    ListNode* slow = head;
-    ListNode* fast = head;
-    while (fast != nullptr && fast->next != nullptr) {
-        slow = slow->next;
-        fast = fast->next->next;
-        if (slow == fast) return true;
+```rust
+// Index-based linked list: next[i] is the index of the next node; usize::MAX represents null
+fn has_cycle(next: &[usize]) -> bool {
+    if next.is_empty() {
+        return false;
     }
-    return false;
+    let null = usize::MAX;
+    let mut slow = 0usize;
+    let mut fast = 0usize;
+    while fast != null && next[fast] != null {
+        slow = next[slow];
+        fast = next[next[fast]];
+        if slow == fast {
+            return true;
+        }
+    }
+    false
 }
 ```
 
@@ -46,28 +53,35 @@ bool hasCycle(ListNode* head) {
 
 ## Template 2 — Find Cycle Entry (LC 142)
 
-```cpp
-ListNode* detectCycle(ListNode* head) {
-    ListNode* slow = head;
-    ListNode* fast = head;
+```rust
+// Index-based linked list: next[i] is the index of the next node; usize::MAX represents null
+fn detect_cycle(next: &[usize]) -> Option<usize> {
+    if next.is_empty() {
+        return None;
+    }
+    let null = usize::MAX;
+    let mut slow = 0usize;
+    let mut fast = 0usize;
 
     // Phase 1: find meeting point inside cycle
-    while (fast != nullptr && fast->next != nullptr) {
-        slow = slow->next;
-        fast = fast->next->next;
-        if (slow == fast) break;
+    loop {
+        if fast == null || next[fast] == null {
+            return None; // No cycle
+        }
+        slow = next[slow];
+        fast = next[next[fast]];
+        if slow == fast {
+            break;
+        }
     }
-
-    // No cycle
-    if (fast == nullptr || fast->next == nullptr) return nullptr;
 
     // Phase 2: slow resets to head, fast stays at meeting; both move 1x
-    slow = head;
-    while (slow != fast) {
-        slow = slow->next;
-        fast = fast->next;
+    slow = 0;
+    while slow != fast {
+        slow = next[slow];
+        fast = next[fast];
     }
-    return slow;
+    Some(slow)
 }
 ```
 
@@ -77,22 +91,23 @@ ListNode* detectCycle(ListNode* head) {
 
 The key insight: treat array values as "next pointers". Index `i` points to `nums[i]`. A duplicate value means **two indices point to the same next** — creating a cycle.
 
-```cpp
-int findDuplicate(vector<int>& nums) {
+```rust
+fn find_duplicate(nums: &[i32]) -> i32 {
     // Phase 1: find meeting point
-    int slow = nums[0], fast = nums[nums[0]];
-    while (slow != fast) {
-        slow = nums[slow];
-        fast = nums[nums[fast]];
+    let mut slow = nums[0] as usize;
+    let mut fast = nums[nums[0] as usize] as usize;
+    while slow != fast {
+        slow = nums[slow] as usize;
+        fast = nums[nums[fast] as usize] as usize;
     }
 
     // Phase 2: find entry (the duplicate)
     slow = 0; // reset to "head" (index 0)
-    while (slow != fast) {
-        slow = nums[slow];
-        fast = nums[fast];
+    while slow != fast {
+        slow = nums[slow] as usize;
+        fast = nums[fast] as usize;
     }
-    return slow;
+    slow as i32
 }
 ```
 
@@ -104,32 +119,40 @@ int findDuplicate(vector<int>& nums) {
 
 After detecting a meeting point, count steps before they meet again:
 
-```cpp
-int cycleLength(ListNode* head) {
-    ListNode* slow = head;
-    ListNode* fast = head;
-    while (fast != nullptr && fast->next != nullptr) {
-        slow = slow->next;
-        fast = fast->next->next;
-        if (slow == fast) {
+```rust
+// Index-based linked list: next[i] is the index of the next node; usize::MAX represents null
+fn cycle_length(next: &[usize]) -> usize {
+    if next.is_empty() {
+        return 0;
+    }
+    let null = usize::MAX;
+    let mut slow = 0usize;
+    let mut fast = 0usize;
+    while fast != null && next[fast] != null {
+        slow = next[slow];
+        fast = next[next[fast]];
+        if slow == fast {
             // Count cycle length from meeting point
-            int length = 1;
-            ListNode* curr = slow->next;
-            while (curr != slow) { curr = curr->next; length++; }
+            let mut length = 1;
+            let mut curr = next[slow];
+            while curr != slow {
+                curr = next[curr];
+                length += 1;
+            }
             return length;
         }
     }
-    return 0; // no cycle
+    0 // no cycle
 }
 ```
 
 ---
 
-## Comparison: Floyd's vs unordered_set
+## Comparison: Floyd's vs HashSet
 
 | Approach | Time | Space | When to Use |
 |----------|------|-------|-------------|
-| `unordered_set` `visited` | O(n) | O(n) | Clarity in non-constrained problems |
+| `HashSet` `visited` | O(n) | O(n) | Clarity in non-constrained problems |
 | Floyd's | O(n) | O(1) | Memory-constrained or interview requirement |
 | Floyd's + entry | O(n) | O(1) | When cycle start needed |
 

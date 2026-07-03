@@ -65,26 +65,27 @@ Since greedy never runs out of choices before OPT does, `k >= m`. Because OPT is
 
 **Why it works:** Giving a large cookie to a mildly greedy child wastes a resource that could have satisfied a more demanding child later — wait, actually the opposite: giving a large cookie to an easy child wastes it. We want the smallest cookie that is still sufficient for the least-greedy child, which is exactly what this algorithm does.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int findContentChildren(vector<int>& g, vector<int>& s) {
-    sort(g.begin(), g.end());
-    sort(s.begin(), s.end());
-    int child = 0, cookie = 0;
-    while (child < (int)g.size() && cookie < (int)s.size()) {
-        if (s[cookie] >= g[child]) child++;
-        cookie++;
+```rust
+fn find_content_children(g: &mut Vec<i32>, s: &mut Vec<i32>) -> i32 {
+    g.sort();
+    s.sort();
+    let (mut child, mut cookie) = (0usize, 0usize);
+    while child < g.len() && cookie < s.len() {
+        if s[cookie] >= g[child] {
+            child += 1;
+        }
+        cookie += 1;
     }
-    return child;
+    child as i32
 }
 
-int main() {
-    vector<int> g1 = {1, 2, 3}, s1 = {1, 1};
-    cout << findContentChildren(g1, s1) << "\n"; // 1
-    vector<int> g2 = {1, 2}, s2 = {1, 2, 3};
-    cout << findContentChildren(g2, s2) << "\n"; // 2
+fn main() {
+    let mut g1 = vec![1, 2, 3];
+    let mut s1 = vec![1, 1];
+    println!("{}", find_content_children(&mut g1, &mut s1)); // 1
+    let mut g2 = vec![1, 2];
+    let mut s2 = vec![1, 2, 3];
+    println!("{}", find_content_children(&mut g2, &mut s2)); // 2
 }
 ```
 
@@ -116,29 +117,28 @@ Result: child = 1
 
 This single pass simultaneously checks existence and identifies the unique valid start.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
-    int totalGain = 0, currentGain = 0, startStation = 0;
-    for (int i = 0; i < (int)gas.size(); i++) {
-        int gain = gas[i] - cost[i];
-        totalGain += gain;
-        currentGain += gain;
-        if (currentGain < 0) {
-            startStation = i + 1;
-            currentGain = 0;
+```rust
+fn can_complete_circuit(gas: &Vec<i32>, cost: &Vec<i32>) -> i32 {
+    let (mut total_gain, mut current_gain, mut start_station) = (0i32, 0i32, 0usize);
+    for i in 0..gas.len() {
+        let gain = gas[i] - cost[i];
+        total_gain += gain;
+        current_gain += gain;
+        if current_gain < 0 {
+            start_station = i + 1;
+            current_gain = 0;
         }
     }
-    return totalGain >= 0 ? startStation : -1;
+    if total_gain >= 0 { start_station as i32 } else { -1 }
 }
 
-int main() {
-    vector<int> gas1 = {1, 2, 3, 4, 5}, cost1 = {3, 4, 5, 1, 2};
-    cout << canCompleteCircuit(gas1, cost1) << "\n"; // 3
-    vector<int> gas2 = {2, 3, 4}, cost2 = {3, 4, 3};
-    cout << canCompleteCircuit(gas2, cost2) << "\n"; // -1
+fn main() {
+    let gas1 = vec![1, 2, 3, 4, 5];
+    let cost1 = vec![3, 4, 5, 1, 2];
+    println!("{}", can_complete_circuit(&gas1, &cost1)); // 3
+    let gas2 = vec![2, 3, 4];
+    let cost2 = vec![3, 4, 3];
+    println!("{}", can_complete_circuit(&gas2, &cost2)); // -1
 }
 ```
 
@@ -169,29 +169,24 @@ totalGain=0 >= 0  return startStation = 3
 
 **Key Insight:** Minimizing removals is equivalent to maximizing the number of intervals we **keep**. By the Activity Selection theorem, we maximize kept intervals by sorting by end time and greedily selecting each compatible interval (one whose start is >= current end). The answer is `total - kept`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int eraseOverlapIntervals(vector<vector<int>>& intervals) {
-    sort(intervals.begin(), intervals.end(), [](const vector<int>& a, const vector<int>& b) {
-        return a[1] < b[1];
-    });
-    int count = 0, end = INT_MIN;
-    for (auto& interval : intervals) {
-        if (interval[0] >= end) {
+```rust
+fn erase_overlap_intervals(intervals: &mut Vec<Vec<i32>>) -> i32 {
+    intervals.sort_by(|a, b| a[1].cmp(&b[1]));
+    let (mut count, mut end) = (0i32, i32::MIN);
+    for interval in intervals.iter() {
+        if interval[0] >= end {
             end = interval[1];
-            count++;
+            count += 1;
         }
     }
-    return (int)intervals.size() - count;
+    intervals.len() as i32 - count
 }
 
-int main() {
-    vector<vector<int>> iv1 = {{1,2},{2,3},{3,4},{1,3}};
-    cout << eraseOverlapIntervals(iv1) << "\n"; // 1
-    vector<vector<int>> iv2 = {{1,2},{1,2},{1,2}};
-    cout << eraseOverlapIntervals(iv2) << "\n"; // 2
+fn main() {
+    let mut iv1 = vec![vec![1,2], vec![2,3], vec![3,4], vec![1,3]];
+    println!("{}", erase_overlap_intervals(&mut iv1)); // 1
+    let mut iv2 = vec![vec![1,2], vec![1,2], vec![1,2]];
+    println!("{}", erase_overlap_intervals(&mut iv2)); // 2
 }
 ```
 
@@ -221,30 +216,32 @@ kept=3, total=4  remove = 4 - 3 = 1
 
 **Key Insight:** For each character, record its **last occurrence** index. As we scan left-to-right, maintain a window `[start, end]`. Extend `end` to `max(end, last[s[i]])` at each character. When `i == end`, the window is "closed" — every character in `[start, end]` has its last occurrence within this window, so it is a valid partition.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> partitionLabels(string s) {
-    int last[26] = {};
-    for (int i = 0; i < (int)s.size(); i++) last[s[i] - 'a'] = i;
-    vector<int> result;
-    int start = 0, end = 0;
-    for (int i = 0; i < (int)s.size(); i++) {
-        end = max(end, last[s[i] - 'a']);
-        if (i == end) {
-            result.push_back(end - start + 1);
+```rust
+fn partition_labels(s: &str) -> Vec<i32> {
+    let chars: Vec<char> = s.chars().collect();
+    let mut last = [0usize; 26];
+    for (i, &c) in chars.iter().enumerate() {
+        last[c as usize - 'a' as usize] = i;
+    }
+    let mut result = Vec::new();
+    let (mut start, mut end) = (0usize, 0usize);
+    for (i, &c) in chars.iter().enumerate() {
+        end = end.max(last[c as usize - 'a' as usize]);
+        if i == end {
+            result.push((end - start + 1) as i32);
             start = i + 1;
         }
     }
-    return result;
+    result
 }
 
-int main() {
-    auto r1 = partitionLabels("ababcbacadefegdehijhklij");
-    for (auto x : r1) cout << x << " "; cout << "\n"; // 9 7 8
-    auto r2 = partitionLabels("eccbbbbdec");
-    for (auto x : r2) cout << x << " "; cout << "\n"; // 10
+fn main() {
+    let r1 = partition_labels("ababcbacadefegdehijhklij");
+    for x in &r1 { print!("{} ", x); }
+    println!(); // 9 7 8
+    let r2 = partition_labels("eccbbbbdec");
+    for x in &r2 { print!("{} ", x); }
+    println!(); // 10
 }
 ```
 
@@ -330,42 +327,46 @@ Final result: [9, 7, 8]
 2. **Overlap zone:** Merge all intervals that overlap with `newInterval` by expanding its bounds.
 3. **After overlap:** Add all remaining intervals as-is.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn insert(intervals: &Vec<Vec<i32>>, mut new_interval: Vec<i32>) -> Vec<Vec<i32>> {
+    let mut result = Vec::new();
+    let n = intervals.len();
+    let mut i = 0;
 
-vector<vector<int>> insert(vector<vector<int>>& intervals, vector<int> newInterval) {
-    vector<vector<int>> result;
-    int i = 0, n = (int)intervals.size();
-
-    // Phase 1: intervals ending before newInterval starts
-    while (i < n && intervals[i][1] < newInterval[0]) result.push_back(intervals[i++]);
-
-    // Phase 2: overlapping intervals — merge into newInterval
-    while (i < n && intervals[i][0] <= newInterval[1]) {
-        newInterval[0] = min(newInterval[0], intervals[i][0]);
-        newInterval[1] = max(newInterval[1], intervals[i][1]);
-        i++;
+    // Phase 1: intervals ending before new_interval starts
+    while i < n && intervals[i][1] < new_interval[0] {
+        result.push(intervals[i].clone());
+        i += 1;
     }
-    result.push_back(newInterval);
 
-    // Phase 3: intervals starting after newInterval ends
-    while (i < n) result.push_back(intervals[i++]);
+    // Phase 2: overlapping intervals — merge into new_interval
+    while i < n && intervals[i][0] <= new_interval[1] {
+        new_interval[0] = new_interval[0].min(intervals[i][0]);
+        new_interval[1] = new_interval[1].max(intervals[i][1]);
+        i += 1;
+    }
+    result.push(new_interval);
 
-    return result;
+    // Phase 3: intervals starting after new_interval ends
+    while i < n {
+        result.push(intervals[i].clone());
+        i += 1;
+    }
+
+    result
 }
 
-int main() {
-    vector<vector<int>> iv1 = {{1,3},{6,9}};
-    auto res1 = insert(iv1, {2,5});
-    for (auto& r : res1) cout << "[" << r[0] << "," << r[1] << "]\n";
+fn main() {
+    let iv1 = vec![vec![1,3], vec![6,9]];
+    let res1 = insert(&iv1, vec![2,5]);
+    for r in &res1 { println!("[{},{}]", r[0], r[1]); }
     // [1,5]  [6,9]
 
-    cout << "---\n";
+    println!("---");
 
-    vector<vector<int>> iv2 = {{1,2},{3,5},{6,7},{8,10},{12,16}};
-    auto res2 = insert(iv2, {4,8});
-    for (auto& r : res2) cout << "[" << r[0] << "," << r[1] << "]\n";
+    let iv2 = vec![vec![1,2], vec![3,5], vec![6,7], vec![8,10], vec![12,16]];
+    let res2 = insert(&iv2, vec![4,8]);
+    for r in &res2 { println!("[{},{}]", r[0], r[1]); }
     // [1,2]  [3,10]  [12,16]
 }
 ```
@@ -402,30 +403,25 @@ Result: [[1,2],[3,10],[12,16]]
 
 Note: Unlike Non-overlapping Intervals, touching endpoints ARE hit by the same arrow. Hence the condition for a new arrow is `balloon[0] > arrowPos` (strictly greater), not `>=`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int findMinArrowShots(vector<vector<int>>& points) {
-    sort(points.begin(), points.end(), [](const vector<int>& a, const vector<int>& b) {
-        return a[1] < b[1];
-    });
-    int arrows = 1;
-    int arrowPos = points[0][1];
-    for (auto& balloon : points) {
-        if (balloon[0] > arrowPos) {
-            arrows++;
-            arrowPos = balloon[1];
+```rust
+fn find_min_arrow_shots(points: &mut Vec<Vec<i32>>) -> i32 {
+    points.sort_by(|a, b| a[1].cmp(&b[1]));
+    let mut arrows = 1;
+    let mut arrow_pos = points[0][1];
+    for balloon in points.iter() {
+        if balloon[0] > arrow_pos {
+            arrows += 1;
+            arrow_pos = balloon[1];
         }
     }
-    return arrows;
+    arrows
 }
 
-int main() {
-    vector<vector<int>> p1 = {{10,16},{2,8},{1,6},{7,12}};
-    cout << findMinArrowShots(p1) << "\n"; // 2
-    vector<vector<int>> p2 = {{1,2},{3,4},{5,6},{7,8}};
-    cout << findMinArrowShots(p2) << "\n"; // 4
+fn main() {
+    let mut p1 = vec![vec![10,16], vec![2,8], vec![1,6], vec![7,12]];
+    println!("{}", find_min_arrow_shots(&mut p1)); // 2
+    let mut p2 = vec![vec![1,2], vec![3,4], vec![5,6], vec![7,8]];
+    println!("{}", find_min_arrow_shots(&mut p2)); // 4
 }
 ```
 

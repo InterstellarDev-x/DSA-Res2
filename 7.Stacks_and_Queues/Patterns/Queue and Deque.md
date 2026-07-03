@@ -8,24 +8,22 @@
 ## Core Concepts
 
 ### Queue — FIFO
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-// std::queue is the standard Queue implementation in C++
-queue<int> q;
-q.push(x);      // enqueue
-q.front();      // view front without removing
-q.pop();        // dequeue (returns void — read front() first)
-q.empty();
-q.size();
+```rust
+use std::collections::VecDeque;
+// VecDeque is the standard Queue implementation in Rust
+let mut q: VecDeque<i32> = VecDeque::new();
+q.push_back(x);      // enqueue
+q.front();           // view front without removing (returns Option<&i32>)
+q.pop_front();       // dequeue returns Option<i32> — unwrap or match
+q.is_empty();
+q.len();
 ```
 
 ### Deque — Double-Ended Queue
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 // Both stack and queue operations available
-deque<int> dq;
+let mut dq: VecDeque<i32> = VecDeque::new();
 // Front operations
 dq.push_front(x);   dq.pop_front();   dq.front();
 // Back operations
@@ -34,7 +32,7 @@ dq.push_back(x);    dq.pop_back();    dq.back();
 dq.push_front(x);   dq.pop_front();   dq.front();
 ```
 
-**Key distinction:** Use `deque<T>` (not `stack<T>`) when you need both-end access. `deque` is O(1) amortized for all operations. `list<T>` is O(1) but has more overhead per node.
+**Key distinction:** Use `VecDeque<T>` (not `Vec<T>`) when you need both-end access. `VecDeque` is O(1) amortized for all operations. `LinkedList<T>` is O(1) but has more overhead per node.
 
 ---
 
@@ -42,53 +40,55 @@ dq.push_front(x);   dq.pop_front();   dq.front();
 
 **Constraint:** Use only push, pop, peek, empty operations of standard stack.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-class MyQueue {
-    stack<int> inStack;   // for push
-    stack<int> outStack;  // for pop/peek
+```rust
+struct MyQueue {
+    in_stack: Vec<i32>,   // for push
+    out_stack: Vec<i32>,  // for pop/peek
+}
 
-public:
-    void push(int x) {
-        inStack.push(x);
+impl MyQueue {
+    fn new() -> Self {
+        MyQueue {
+            in_stack: Vec::new(),
+            out_stack: Vec::new(),
+        }
     }
 
-    int pop() {
-        move();
-        int val = outStack.top();
-        outStack.pop();
-        return val;
+    fn push(&mut self, x: i32) {
+        self.in_stack.push(x);
     }
 
-    int peek() {
-        move();
-        return outStack.top();
+    fn pop(&mut self) -> i32 {
+        self.transfer();
+        self.out_stack.pop().unwrap()
     }
 
-    bool empty() {
-        return inStack.empty() && outStack.empty();
+    fn peek(&mut self) -> i32 {
+        self.transfer();
+        *self.out_stack.last().unwrap()
     }
 
-private:
-    void move() {
-        if (outStack.empty()) {
-            while (!inStack.empty()) {
-                outStack.push(inStack.top());
-                inStack.pop();
+    fn empty(&self) -> bool {
+        self.in_stack.is_empty() && self.out_stack.is_empty()
+    }
+
+    fn transfer(&mut self) {
+        if self.out_stack.is_empty() {
+            while let Some(val) = self.in_stack.pop() {
+                self.out_stack.push(val);
             }
         }
     }
-};
+}
 ```
 
 **Amortized O(1) — the key insight:**
-Each element crosses from inStack → outStack exactly **once** total. Even though a single `pop()` might cost O(n) if a transfer occurs, across N operations the total work is O(N). This is amortized O(1) per operation.
+Each element crosses from in_stack → out_stack exactly **once** total. Even though a single `pop()` might cost O(n) if a transfer occurs, across N operations the total work is O(N). This is amortized O(1) per operation.
 
 **Trace:** push(1), push(2), push(3)
-- inStack: [3,2,1] (3 on top)
-- First pop() triggers move: outStack: [1,2,3] (1 on top) → returns 1
-- Second pop(): outStack has [2,3] → returns 2 (no transfer needed)
+- in_stack: [3,2,1] (3 on top)
+- First pop() triggers transfer: out_stack: [1,2,3] (1 on top) → returns 1
+- Second pop(): out_stack has [2,3] → returns 2 (no transfer needed)
 
 ---
 
@@ -98,30 +98,40 @@ Each element crosses from inStack → outStack exactly **once** total. Even thou
 
 **Invariant:** Queue always stores elements with the most recently pushed at front.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-class MyStack {
-    queue<int> q;
+```rust
+use std::collections::VecDeque;
 
-public:
-    void push(int x) {
-        q.push(x);
+struct MyStack {
+    q: VecDeque<i32>,
+}
+
+impl MyStack {
+    fn new() -> Self {
+        MyStack { q: VecDeque::new() }
+    }
+
+    fn push(&mut self, x: i32) {
+        self.q.push_back(x);
         // Rotate: move all elements before x to the back
-        for (int i = 0; i < (int)q.size() - 1; i++) {
-            q.push(q.front());
-            q.pop();
+        let len = self.q.len();
+        for _ in 0..len - 1 {
+            let front = self.q.pop_front().unwrap();
+            self.q.push_back(front);
         }
     }
 
-    int pop() {
-        int val = q.front();
-        q.pop();
-        return val;
+    fn pop(&mut self) -> i32 {
+        self.q.pop_front().unwrap()
     }
-    int top()  { return q.front(); }
-    bool empty() { return q.empty(); }
-};
+
+    fn top(&self) -> i32 {
+        *self.q.front().unwrap()
+    }
+
+    fn empty(&self) -> bool {
+        self.q.is_empty()
+    }
+}
 ```
 
 **Why rotate on push?** After adding `x` at the tail, we rotate all previous elements behind it, making `x` the new front. Front always = top of stack.
@@ -138,32 +148,32 @@ public:
 **Naive:** O(nk) — recompute max for each window.
 **Optimal:** Monotonic Deque — O(n).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-vector<int> maxSlidingWindow(vector<int>& nums, int k) {
-    int n = nums.size();
-    vector<int> result(n - k + 1);
-    // Deque stores INDICES; front = index of current window max
-    deque<int> dq;
+```rust
+use std::collections::VecDeque;
 
-    for (int i = 0; i < n; i++) {
+fn max_sliding_window(nums: &[i32], k: usize) -> Vec<i32> {
+    let n = nums.len();
+    let mut result = vec![0; n - k + 1];
+    // Deque stores INDICES; front = index of current window max
+    let mut dq: VecDeque<usize> = VecDeque::new();
+
+    for i in 0..n {
         // 1. Remove indices outside current window
-        while (!dq.empty() && dq.front() <= i - k) {
+        while !dq.is_empty() && *dq.front().unwrap() + k <= i {
             dq.pop_front();
         }
         // 2. Maintain decreasing order: remove smaller elements from back
-        while (!dq.empty() && nums[dq.back()] <= nums[i]) {
+        while !dq.is_empty() && nums[*dq.back().unwrap()] <= nums[i] {
             dq.pop_back();
         }
         dq.push_back(i);
 
         // 3. Window is full starting from i == k-1
-        if (i >= k - 1) {
-            result[i - k + 1] = nums[dq.front()];
+        if i >= k - 1 {
+            result[i - k + 1] = nums[*dq.front().unwrap()];
         }
     }
-    return result;
+    result
 }
 ```
 
@@ -191,21 +201,26 @@ i=7: nums[7]=7 > nums[6]=6 → remove. deque=[7]. result[5]=nums[7]=7
 
 **Design:** `RecentCounter` — `ping(t)` adds call at time `t`, returns number of calls in `[t-3000, t]`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-class RecentCounter {
-    queue<int> q;
+```rust
+use std::collections::VecDeque;
 
-public:
-    int ping(int t) {
-        q.push(t);
-        while (q.front() < t - 3000) {
-            q.pop();
-        }
-        return q.size();
+struct RecentCounter {
+    q: VecDeque<i32>,
+}
+
+impl RecentCounter {
+    fn new() -> Self {
+        RecentCounter { q: VecDeque::new() }
     }
-};
+
+    fn ping(&mut self, t: i32) -> i32 {
+        self.q.push_back(t);
+        while *self.q.front().unwrap() < t - 3000 {
+            self.q.pop_front();
+        }
+        self.q.len() as i32
+    }
+}
 ```
 
 **Why works:** `t` is strictly increasing (guaranteed). Queue maintains a sliding window of calls within the last 3000 ms. Each call is added at most once and removed at most once — O(1) amortized per `ping`.
@@ -222,16 +237,16 @@ A **monotonic deque** maintains a deque where values are always in a consistent 
 | Increasing deque | Front = min | Sliding window minimum |
 
 **Template:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-for (int i = 0; i < n; i++) {
+```rust
+use std::collections::VecDeque;
+
+for i in 0..n {
     // Expire out-of-window indices
-    while (!dq.empty() && dq.front() < i - k + 1) dq.pop_front();
+    while !dq.is_empty() && *dq.front().unwrap() + k <= i { dq.pop_front(); }
     // Maintain monotonicity (decreasing for max)
-    while (!dq.empty() && nums[dq.back()] <= nums[i]) dq.pop_back();
+    while !dq.is_empty() && nums[*dq.back().unwrap()] <= nums[i] { dq.pop_back(); }
     dq.push_back(i);
-    if (i >= k - 1) result[i - k + 1] = nums[dq.front()];
+    if i >= k - 1 { result[i - k + 1] = nums[*dq.front().unwrap()]; }
 }
 ```
 
@@ -241,11 +256,11 @@ for (int i = 0; i < n; i++) {
 
 | Need | Use |
 |------|-----|
-| Pure FIFO | `queue<T>` |
-| LIFO (stack) | `stack<T>` or `deque<T>` with `push_front`/`pop_front` |
-| Both ends (sliding window) | `deque<T>` with `push_front`/`push_back`, `pop_front`/`pop_back` |
-| Priority FIFO | `priority_queue<T>` |
-| Thread-safe queue | No direct STL equivalent — use mutex + `queue<T>` or a concurrent library |
+| Pure FIFO | `VecDeque<T>` with `push_back`/`pop_front` |
+| LIFO (stack) | `Vec<T>` with `push`/`pop` or `VecDeque<T>` with `push_front`/`pop_front` |
+| Both ends (sliding window) | `VecDeque<T>` with `push_front`/`push_back`, `pop_front`/`pop_back` |
+| Priority FIFO | `BinaryHeap<T>` |
+| Thread-safe queue | No direct std equivalent — use `Mutex<VecDeque<T>>` or a concurrent crate |
 
 ---
 

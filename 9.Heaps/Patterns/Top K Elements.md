@@ -29,16 +29,16 @@ Min-heap of size 3:
 ```
 
 **Template:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-priority_queue<int, vector<int>, greater<int>> minHeap;  // min-heap of size k
-for (int num : nums) {
-    minHeap.push(num);
-    if (minHeap.size() > k) minHeap.pop();   // remove smallest; keep k largest
+let mut min_heap: BinaryHeap<Reverse<i32>> = BinaryHeap::new(); // min-heap of size k
+for &num in &nums {
+    min_heap.push(Reverse(num));
+    if min_heap.len() > k { min_heap.pop(); }  // remove smallest; keep k largest
 }
-return minHeap.top();  // root = kth largest
+min_heap.peek().map(|&Reverse(x)| x).unwrap() // root = kth largest
 ```
 
 ---
@@ -47,24 +47,33 @@ return minHeap.top();  // root = kth largest
 
 Design class: `KthLargest(k, nums)` + `add(val)` returns current kth largest.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-class KthLargest {
-    priority_queue<int, vector<int>, greater<int>> minHeap;
-    int k;
-public:
-    KthLargest(int k, vector<int>& nums) : k(k) {
-        for (int n : nums) add(n);
+struct KthLargest {
+    min_heap: BinaryHeap<Reverse<i32>>,
+    k: usize,
+}
+
+impl KthLargest {
+    fn new(k: i32, nums: Vec<i32>) -> Self {
+        let mut kth = KthLargest {
+            min_heap: BinaryHeap::new(),
+            k: k as usize,
+        };
+        for n in nums { kth.add(n); }
+        kth
     }
 
-    int add(int val) {
-        minHeap.push(val);
-        if (minHeap.size() > k) minHeap.pop();
-        return minHeap.top();
+    fn add(&mut self, val: i32) -> i32 {
+        self.min_heap.push(Reverse(val));
+        if self.min_heap.len() > self.k {
+            self.min_heap.pop();
+        }
+        self.min_heap.peek().map(|&Reverse(x)| x).unwrap()
     }
-};
+}
 ```
 
 **Complexity:** O(log k) per `add` — heap stays size ≤ k.
@@ -75,46 +84,52 @@ public:
 
 **Approach 1: Min-heap of size k — O(n log k) time, O(k) space**
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-int findKthLargest(vector<int>& nums, int k) {
-    priority_queue<int, vector<int>, greater<int>> minHeap;
-    for (int n : nums) {
-        minHeap.push(n);
-        if (minHeap.size() > k) minHeap.pop();
+fn find_kth_largest(nums: Vec<i32>, k: usize) -> i32 {
+    let mut min_heap: BinaryHeap<Reverse<i32>> = BinaryHeap::new();
+    for n in nums {
+        min_heap.push(Reverse(n));
+        if min_heap.len() > k { min_heap.pop(); }
     }
-    return minHeap.top();
+    min_heap.peek().map(|&Reverse(x)| x).unwrap()
 }
 ```
 
 **Approach 2: Quickselect — O(n) average, O(n²) worst, O(1) space**
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int partitionArr(vector<int>& nums, int left, int right) {
-    int pivot = nums[right], i = left;
-    for (int j = left; j < right; j++) {
-        if (nums[j] <= pivot) swap(nums[i++], nums[j]);
+```rust
+fn partition_arr(nums: &mut Vec<i32>, left: usize, right: usize) -> usize {
+    let pivot = nums[right];
+    let mut i = left;
+    for j in left..right {
+        if nums[j] <= pivot {
+            nums.swap(i, j);
+            i += 1;
+        }
     }
-    swap(nums[i], nums[right]);
-    return i;
+    nums.swap(i, right);
+    i
 }
 
-int quickselect(vector<int>& nums, int left, int right, int kSmallest) {
-    if (left == right) return nums[left];
+fn quickselect(nums: &mut Vec<i32>, left: usize, right: usize, k_smallest: usize) -> i32 {
+    if left == right { return nums[left]; }
 
-    int pivotIdx = partitionArr(nums, left, right);
-    if (pivotIdx == kSmallest) return nums[pivotIdx];
-    else if (pivotIdx < kSmallest) return quickselect(nums, pivotIdx + 1, right, kSmallest);
-    else return quickselect(nums, left, pivotIdx - 1, kSmallest);
+    let pivot_idx = partition_arr(nums, left, right);
+    if pivot_idx == k_smallest {
+        nums[pivot_idx]
+    } else if pivot_idx < k_smallest {
+        quickselect(nums, pivot_idx + 1, right, k_smallest)
+    } else {
+        quickselect(nums, left, pivot_idx - 1, k_smallest)
+    }
 }
 
-int findKthLargest(vector<int>& nums, int k) {
-    return quickselect(nums, 0, nums.size() - 1, nums.size() - k);
+fn find_kth_largest(mut nums: Vec<i32>, k: usize) -> i32 {
+    let n = nums.len();
+    quickselect(&mut nums, 0, n - 1, n - k)
     // kth largest = (n-k)th smallest (0-indexed)
 }
 ```
@@ -129,42 +144,36 @@ int findKthLargest(vector<int>& nums, int k) {
 
 Distance² = x² + y² (no need to take square root — avoids floating point).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
 
-vector<vector<int>> kClosest(vector<vector<int>>& points, int k) {
+fn k_closest(points: Vec<Vec<i32>>, k: usize) -> Vec<Vec<i32>> {
     // Max-heap of size k — keep k smallest distances; root = kth closest
-    auto cmp = [](const vector<int>& a, const vector<int>& b) {
-        return a[0]*a[0] + a[1]*a[1] < b[0]*b[0] + b[1]*b[1];
-    };
-    priority_queue<vector<int>, vector<vector<int>>, decltype(cmp)> maxHeap(cmp);
+    // Store (dist_squared, point) — BinaryHeap is max-heap, so farthest is at root
+    let mut max_heap: BinaryHeap<(i32, Vec<i32>)> = BinaryHeap::new();
 
-    for (auto& p : points) {
-        maxHeap.push(p);
-        if (maxHeap.size() > k) maxHeap.pop();   // remove farthest
+    for p in &points {
+        let dist = p[0] * p[0] + p[1] * p[1];
+        max_heap.push((dist, p.clone()));
+        if max_heap.len() > k { max_heap.pop(); }  // remove farthest
     }
 
-    vector<vector<int>> result(k);
-    for (int i = k - 1; i >= 0; i--) {
-        result[i] = maxHeap.top();
-        maxHeap.pop();
-    }
-    return result;
+    max_heap.into_iter().map(|(_, p)| p).collect()
 }
 ```
 
 **Why max-heap for k smallest?** To keep the k closest, maintain a max-heap — the root is always the farthest among the k closest. When a new point is closer than the root, we replace the root (pop max, push new). This keeps only the k closest.
 
 **Simpler alternative — sort:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-sort(points.begin(), points.end(), [](const vector<int>& a, const vector<int>& b) {
-    return a[0]*a[0] + a[1]*a[1] < b[0]*b[0] + b[1]*b[1];
-});
-return vector<vector<int>>(points.begin(), points.begin() + k);  // O(n log n) time, O(1) space
+```rust
+fn k_closest_sort(mut points: Vec<Vec<i32>>, k: usize) -> Vec<Vec<i32>> {
+    points.sort_by(|a, b| {
+        let da = a[0] * a[0] + a[1] * a[1];
+        let db = b[0] * b[0] + b[1] * b[1];
+        da.cmp(&db)
+    });
+    points[..k].to_vec()  // O(n log n) time, O(1) space
+}
 ```
 
 Use heap for streaming/online variant; sort for offline.
@@ -173,58 +182,56 @@ Use heap for streaming/online variant; sort for offline.
 
 ## Problem 4: Top K Frequent Elements — LC 347
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{BinaryHeap, HashMap};
+use std::cmp::Reverse;
 
-vector<int> topKFrequent(vector<int>& nums, int k) {
-    unordered_map<int, int> freq;
-    for (int n : nums) freq[n]++;
+fn top_k_frequent(nums: Vec<i32>, k: usize) -> Vec<i32> {
+    let mut freq: HashMap<i32, i32> = HashMap::new();
+    for &n in &nums { *freq.entry(n).or_insert(0) += 1; }
 
     // Min-heap by frequency: keep k most frequent
-    auto cmp = [](const pair<int,int>& a, const pair<int,int>& b) {
-        return a.second > b.second;
-    };
-    priority_queue<pair<int,int>, vector<pair<int,int>>, decltype(cmp)> minHeap(cmp);
+    // Store Reverse((freq, key)) so smallest freq is popped first
+    let mut min_heap: BinaryHeap<Reverse<(i32, i32)>> = BinaryHeap::new();
 
-    for (auto& [key, val] : freq) {
-        minHeap.push({key, val});
-        if (minHeap.size() > k) minHeap.pop();   // remove least frequent
+    for (&key, &val) in &freq {
+        min_heap.push(Reverse((val, key)));
+        if min_heap.len() > k { min_heap.pop(); }  // remove least frequent
     }
 
-    vector<int> result(k);
-    for (int i = k - 1; i >= 0; i--) {
-        result[i] = minHeap.top().first;
-        minHeap.pop();
+    let mut result: Vec<i32> = Vec::new();
+    while let Some(Reverse((_, key))) = min_heap.pop() {
+        result.push(key);
     }
-    return result;
+    result.reverse();
+    result
 }
 ```
 
 **O(n log k) time, O(n) space** (for freq map + heap of size k)
 
 **Alternative — Bucket Sort — O(n) time:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-vector<int> topKFrequent(vector<int>& nums, int k) {
-    unordered_map<int, int> freq;
-    for (int n : nums) freq[n]++;
+fn top_k_frequent(nums: Vec<i32>, k: usize) -> Vec<i32> {
+    let mut freq: HashMap<i32, usize> = HashMap::new();
+    for &n in &nums { *freq.entry(n).or_insert(0) += 1; }
 
     // Buckets: bucket[i] = list of elements with frequency i
-    vector<vector<int>> buckets(nums.size() + 1);
-    for (auto& [key, f] : freq) {
-        buckets[f].push_back(key);
+    let mut buckets: Vec<Vec<i32>> = vec![vec![]; nums.len() + 1];
+    for (&key, &f) in &freq {
+        buckets[f].push(key);
     }
 
-    vector<int> result;
-    for (int f = (int)buckets.size() - 1; f >= 0 && (int)result.size() < k; f--) {
-        for (int n : buckets[f]) {
-            if ((int)result.size() < k) result.push_back(n);
+    let mut result: Vec<i32> = Vec::new();
+    for f in (0..buckets.len()).rev() {
+        if result.len() >= k { break; }
+        for &n in &buckets[f] {
+            if result.len() < k { result.push(n); }
         }
     }
-    return result;
+    result
 }
 ```
 
@@ -234,34 +241,29 @@ vector<int> topKFrequent(vector<int>& nums, int k) {
 
 Same as Top K Frequent Elements but with lexicographic tie-breaking.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{BinaryHeap, HashMap};
 
-vector<string> topKFrequent(vector<string>& words, int k) {
-    unordered_map<string, int> freq;
-    for (auto& w : words) freq[w]++;
+fn top_k_frequent(words: Vec<String>, k: usize) -> Vec<String> {
+    let mut freq: HashMap<String, i32> = HashMap::new();
+    for w in &words { *freq.entry(w.clone()).or_insert(0) += 1; }
 
-    // Min-heap: least frequent at top (to be evicted); lexicographically LATER breaks ties
-    auto cmp = [&](const string& a, const string& b) {
-        int fa = freq[a], fb = freq[b];
-        if (fa != fb) return fa > fb;         // lower freq → evict first
-        return a < b;                         // lexicographically later → evict first
-    };
-    priority_queue<string, vector<string>, decltype(cmp)> minHeap(cmp);
+    // Max-heap storing (-freq, word):
+    // max element = highest -freq (lowest freq), for ties: lexicographically latest word (to evict)
+    let mut heap: BinaryHeap<(i32, String)> = BinaryHeap::new();
 
-    for (auto& [w, _] : freq) {
-        minHeap.push(w);
-        if (minHeap.size() > k) minHeap.pop();
+    for (w, &f) in &freq {
+        heap.push((-f, w.clone()));
+        if heap.len() > k { heap.pop(); }  // evict worst (lowest freq, or latest word for ties)
     }
 
-    vector<string> result;
-    while (!minHeap.empty()) {
-        result.push_back(minHeap.top());
-        minHeap.pop();
+    // Pop gives worst-to-evict order; reverse to get best first
+    let mut result: Vec<String> = Vec::new();
+    while let Some((_, w)) = heap.pop() {
+        result.push(w);
     }
-    reverse(result.begin(), result.end());  // reverse order
-    return result;
+    result.reverse();  // reverse order
+    result
 }
 ```
 

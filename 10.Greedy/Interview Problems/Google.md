@@ -40,29 +40,28 @@ i=23: → i == end! Partition [16,23] → size = 8
 
 **Result: [9, 7, 8]** ✓
 
-### Full C++ Solution
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> partitionLabels(string s) {
+### Full Rust Solution
+```rust
+fn partition_labels(s: &str) -> Vec<i32> {
     // Phase 1: Build last-occurrence map
-    int last[26] = {};
-    for (int i = 0; i < (int)s.length(); i++) {
-        last[s[i] - 'a'] = i;
+    let mut last = [0usize; 26];
+    let bytes = s.as_bytes();
+    for i in 0..s.len() {
+        last[(bytes[i] - b'a') as usize] = i;
     }
 
     // Phase 2: Greedy window stretching
-    vector<int> result;
-    int start = 0, end = 0;
-    for (int i = 0; i < (int)s.length(); i++) {
-        end = max(end, last[s[i] - 'a']); // stretch window
-        if (i == end) { // window complete
-            result.push_back(end - start + 1);
+    let mut result = Vec::new();
+    let mut start = 0;
+    let mut end = 0;
+    for i in 0..s.len() {
+        end = end.max(last[(bytes[i] - b'a') as usize]); // stretch window
+        if i == end { // window complete
+            result.push((end - start + 1) as i32);
             start = i + 1;
         }
     }
-    return result;
+    result
 }
 ```
 
@@ -81,31 +80,33 @@ Given an array of meeting time intervals `[start, end]`, find the minimum number
 ### Why Min-Heap?
 We need to know: "Is there a room that becomes free by the time this meeting starts?"
 - A **min-heap of end times** lets us check the earliest-ending room in O(1).
-- If `heap.top() <= newStart`: that room is free — reuse it (pop old end, push new end).
+- If `min_heap.peek() <= new_start`: that room is free — reuse it (pop old end, push new end).
 - Else: all rooms are busy — need a new room (just push new end).
 - **Heap size at the end = number of rooms.**
 
-### Full C++ Solution
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+### Full Rust Solution
+```rust
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
-int minMeetingRooms(vector<vector<int>>& intervals) {
+fn min_meeting_rooms(intervals: &mut Vec<Vec<i32>>) -> i32 {
     // Sort by start time to process meetings chronologically
-    sort(intervals.begin(), intervals.end(), [](auto& a, auto& b){ return a[0] < b[0]; });
+    intervals.sort_by(|a, b| a[0].cmp(&b[0]));
 
-    // Min-heap of end times — top() gives earliest-ending meeting
-    priority_queue<int, vector<int>, greater<int>> minHeap;
+    // Min-heap of end times — peek() gives earliest-ending meeting
+    let mut min_heap: BinaryHeap<Reverse<i32>> = BinaryHeap::new();
 
-    for (auto& interval : intervals) {
+    for interval in intervals.iter() {
         // If the earliest-ending room is free before this meeting starts, reuse it
-        if (!minHeap.empty() && minHeap.top() <= interval[0]) {
-            minHeap.pop(); // Free up the room
+        if let Some(&Reverse(top)) = min_heap.peek() {
+            if top <= interval[0] {
+                min_heap.pop(); // Free up the room
+            }
         }
-        minHeap.push(interval[1]); // Assign this meeting a room (new or reused)
+        min_heap.push(Reverse(interval[1])); // Assign this meeting a room (new or reused)
     }
 
-    return (int)minHeap.size(); // Active rooms = total rooms needed
+    min_heap.len() as i32 // Active rooms = total rooms needed
 }
 ```
 
@@ -115,7 +116,7 @@ int minMeetingRooms(vector<vector<int>>& intervals) {
 |-----------|-----------|------|-------|
 | `push(end)` | n times | O(log n) | O(n log n) |
 | `pop()` | ≤ n times | O(log n) | O(n log n) |
-| `top()` | n times | O(1) | O(n) |
+| `peek()` | n times | O(1) | O(n) |
 | `sort` | once | O(n log n) | O(n log n) |
 | **Total** | | | **O(n log n)** |
 

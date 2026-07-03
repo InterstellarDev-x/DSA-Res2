@@ -6,13 +6,19 @@ Google interviews push on **optimal space** and **deep, layered follow-ups**, es
 
 The node type used throughout:
 
-```cpp
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
-};
+```rust
+#[derive(Debug)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
+
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 ---
@@ -26,34 +32,39 @@ struct TreeNode {
 - **Non-adjacent swap** → two descents. The first offending node is `prev` at the *first* descent; the second offending node is `curr` at the *second* descent.
 - **Adjacent swap** → one descent. Both offending nodes come from that single descent: `first = prev`, `second = curr`.
 
-Track three pointers during inorder: `first`, `second`, and a rolling `prev`. At each descent, if `first` is still null set `first = prev`; always set `second = curr`. After the walk, swap the two values.
+Track three pointers during inorder: `first`, `second`, and a rolling `prev`. At each descent, if `first` is still `None` set `first = prev`; always set `second = curr`. After the walk, swap the two values.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn recover_tree(root: &mut Option<Box<TreeNode>>) {
+    let mut stk: Vec<*mut TreeNode> = Vec::new();
+    let mut curr: *mut TreeNode = root
+        .as_deref_mut()
+        .map_or(std::ptr::null_mut(), |n| n as *mut TreeNode);
+    let mut prev: *mut TreeNode = std::ptr::null_mut();
+    let mut first: *mut TreeNode = std::ptr::null_mut();
+    let mut second: *mut TreeNode = std::ptr::null_mut();
 
-void recoverTree(TreeNode* root) {
-    stack<TreeNode*> stk;
-    TreeNode* curr = root;
-    TreeNode* prev = nullptr;
-    TreeNode* first = nullptr;
-    TreeNode* second = nullptr;
-
-    while (curr != nullptr || !stk.empty()) {
-        while (curr != nullptr) {
-            stk.push(curr);
-            curr = curr->left;
+    // SAFETY: We hold exclusive access to the tree via the &mut root parameter.
+    // Raw pointers are derived from Box-managed nodes and never outlive the tree.
+    unsafe {
+        while !curr.is_null() || !stk.is_empty() {
+            while !curr.is_null() {
+                stk.push(curr);
+                curr = (*curr).left.as_deref_mut()
+                    .map_or(std::ptr::null_mut(), |n| n as *mut TreeNode);
+            }
+            curr = stk.pop().unwrap();
+            if !prev.is_null() && (*prev).val > (*curr).val {   // a descent
+                if first.is_null() { first = prev; }            // set once
+                second = curr;                                  // always update
+            }
+            prev = curr;
+            curr = (*curr).right.as_deref_mut()
+                .map_or(std::ptr::null_mut(), |n| n as *mut TreeNode);
         }
-        curr = stk.top(); stk.pop();
-        if (prev != nullptr && prev->val > curr->val) {   // a descent
-            if (first == nullptr) first = prev;          // set once
-            second = curr;                            // always update
+        if !first.is_null() && !second.is_null() {
+            std::mem::swap(&mut (*first).val, &mut (*second).val);
         }
-        prev = curr;
-        curr = curr->right;
-    }
-    if (first != nullptr && second != nullptr) {
-        int t = first->val; first->val = second->val; second->val = t;
     }
 }
 ```
@@ -64,48 +75,70 @@ This is O(n) time, O(h) space for the stack. See [BST Validation and Inorder](..
 
 **The L5 follow-up:** *"Can you do it in constant space?"* Morris inorder threads the tree: before descending left, it links the **rightmost node of the left subtree** (the inorder predecessor) back to the current node. That temporary thread replaces the stack; we tear it down when we return through it, leaving the tree unchanged.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+// Morris traversal requires temporarily creating back-pointer "threads" in the tree,
+// which requires unsafe code in Rust. We use raw *mut TreeNode pointers derived from
+// the Box-managed nodes. Box::from_raw / Box::into_raw are used in pairs to store
+// threads in Option<Box<TreeNode>> fields without triggering memory deallocation.
+fn recover_tree_morris(root: &mut Option<Box<TreeNode>>) {
+    let mut curr: *mut TreeNode = root
+        .as_deref_mut()
+        .map_or(std::ptr::null_mut(), |n| n as *mut TreeNode);
+    let mut prev: *mut TreeNode = std::ptr::null_mut();  // prev = last visited in inorder
+    let mut first: *mut TreeNode = std::ptr::null_mut();
+    let mut second: *mut TreeNode = std::ptr::null_mut();
 
-void recoverTree(TreeNode* root) {
-    TreeNode* curr = root;
-    TreeNode* prev = nullptr;          // prev = last visited in inorder
-    TreeNode* first = nullptr;
-    TreeNode* second = nullptr;
-
-    while (curr != nullptr) {
-        if (curr->left == nullptr) {
-            // visit curr
-            if (prev != nullptr && prev->val > curr->val) {
-                if (first == nullptr) first = prev;
-                second = curr;
-            }
-            prev = curr;
-            curr = curr->right;
-        } else {
-            // find inorder predecessor: rightmost node of left subtree
-            TreeNode* pred = curr->left;
-            while (pred->right != nullptr && pred->right != curr) {
-                pred = pred->right;
-            }
-            if (pred->right == nullptr) {
-                pred->right = curr;      // create thread, then go left
-                curr = curr->left;
-            } else {
-                pred->right = nullptr;      // thread already there: tear it down
+    // SAFETY: We hold exclusive access via &mut root. All raw pointers are derived
+    // from the same Box tree. Box::from_raw / Box::into_raw are used in pairs to
+    // temporarily thread pointers; no double-free occurs because we reclaim with
+    // Box::into_raw before the original owner could drop.
+    unsafe {
+        while !curr.is_null() {
+            if (*curr).left.is_none() {
                 // visit curr
-                if (prev != nullptr && prev->val > curr->val) {
-                    if (first == nullptr) first = prev;
+                if !prev.is_null() && (*prev).val > (*curr).val {
+                    if first.is_null() { first = prev; }
                     second = curr;
                 }
                 prev = curr;
-                curr = curr->right;
+                curr = (*curr).right.as_deref_mut()
+                    .map_or(std::ptr::null_mut(), |n| n as *mut TreeNode);
+            } else {
+                // find inorder predecessor: rightmost node of left subtree
+                let mut pred: *mut TreeNode = (*curr).left.as_deref_mut()
+                    .map_or(std::ptr::null_mut(), |n| n as *mut TreeNode);
+                loop {
+                    let r = (*pred).right.as_deref_mut()
+                        .map_or(std::ptr::null_mut(), |n| n as *mut TreeNode);
+                    if r.is_null() || r == curr { break; }
+                    pred = r;
+                }
+                let thread_exists = (*pred).right.as_deref()
+                    .map(|n| n as *const TreeNode == curr as *const TreeNode)
+                    .unwrap_or(false);
+                if !thread_exists {
+                    (*pred).right = Some(Box::from_raw(curr));  // create thread, then go left
+                    curr = (*curr).left.as_deref_mut()
+                        .map_or(std::ptr::null_mut(), |n| n as *mut TreeNode);
+                } else {
+                    // thread already there: tear it down
+                    if let Some(b) = (*pred).right.take() {
+                        let _ = Box::into_raw(b);               // reclaim raw ptr, no free
+                    }
+                    // visit curr
+                    if !prev.is_null() && (*prev).val > (*curr).val {
+                        if first.is_null() { first = prev; }
+                        second = curr;
+                    }
+                    prev = curr;
+                    curr = (*curr).right.as_deref_mut()
+                        .map_or(std::ptr::null_mut(), |n| n as *mut TreeNode);
+                }
             }
         }
-    }
-    if (first != nullptr && second != nullptr) {
-        int t = first->val; first->val = second->val; second->val = t;
+        if !first.is_null() && !second.is_null() {
+            std::mem::swap(&mut (*first).val, &mut (*second).val);
+        }
     }
 }
 ```
@@ -118,42 +151,44 @@ void recoverTree(TreeNode* root) {
 
 **Prompt / framing.** Return the kth smallest, but assume kth queries are *frequent* and the tree may also change. The plain O(h + k) inorder is fine once; under repeated queries it is wasteful. The L4/L5 expectation is to **design for repeated queries** by augmenting each node with the size of its subtree (or just its left subtree).
 
-Store `count` = total number of nodes in the subtree rooted at this node. The left subtree's size is then `size(node->left)`, and rank decisions are pure arithmetic.
+Store `count` = total number of nodes in the subtree rooted at this node. The left subtree's size is then `size(node.left.as_deref())`, and rank decisions are pure arithmetic.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+#[derive(Debug)]
+pub struct CountedNode {
+    pub val: i32,
+    pub count: i32,                // size of the subtree rooted here (incl. this node)
+    pub left: Option<Box<CountedNode>>,
+    pub right: Option<Box<CountedNode>>,
+}
 
-struct CountedNode {
-    int val;
-    int count;                 // size of the subtree rooted here (incl. this node)
-    CountedNode* left;
-    CountedNode* right;
-    CountedNode(int val) : val(val), count(1), left(nullptr), right(nullptr) {}
-};
+impl CountedNode {
+    pub fn new(val: i32) -> Self {
+        CountedNode { val, count: 1, left: None, right: None }
+    }
+}
 
-int size(CountedNode* n) { return n == nullptr ? 0 : n->count; }
+fn size(n: Option<&CountedNode>) -> i32 {
+    n.map_or(0, |node| node.count)
+}
 ```
 
 ### kthSmallest using counts — O(h)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int kthSmallest(CountedNode* root, int k) {
-    CountedNode* curr = root;
-    while (curr != nullptr) {
-        int leftSize = size(curr->left);
-        if (k == leftSize + 1) return curr->val;     // this node has rank leftSize+1
-        if (k <= leftSize) {
-            curr = curr->left;                       // answer is in the left subtree
+```rust
+fn kth_smallest(root: Option<&CountedNode>, mut k: i32) -> i32 {
+    let mut curr = root;
+    while let Some(node) = curr {
+        let left_size = node.left.as_deref().map_or(0, |n| n.count);
+        if k == left_size + 1 { return node.val; }     // this node has rank leftSize+1
+        if k <= left_size {
+            curr = node.left.as_deref();               // answer is in the left subtree
         } else {
-            k -= leftSize + 1;                      // skip left subtree + this node
-            curr = curr->right;
+            k -= left_size + 1;                        // skip left subtree + this node
+            curr = node.right.as_deref();
         }
     }
-    return -1;     // k out of range
+    -1     // k out of range
 }
 ```
 
@@ -161,31 +196,33 @@ int kthSmallest(CountedNode* root, int k) {
 
 Every node on the insertion path gains one descendant, so increment `count` as you unwind (or on the way down). Doing it on the recursive return keeps it clean:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-CountedNode* insert(CountedNode* root, int val) {
-    if (root == nullptr) return new CountedNode(val);
-    if (val < root->val) {
-        root->left = insert(root->left, val);
-    } else {
-        root->right = insert(root->right, val);
+```rust
+fn insert(root: Option<Box<CountedNode>>, val: i32) -> Option<Box<CountedNode>> {
+    match root {
+        None => Some(Box::new(CountedNode::new(val))),
+        Some(mut node) => {
+            if val < node.val {
+                node.left = insert(node.left.take(), val);
+            } else {
+                node.right = insert(node.right.take(), val);
+            }
+            node.count = 1 + node.left.as_deref().map_or(0, |n| n.count)
+                           + node.right.as_deref().map_or(0, |n| n.count);  // recompute from children
+            Some(node)
+        }
     }
-    root->count = 1 + size(root->left) + size(root->right);   // recompute from children
-    return root;
 }
 ```
 
 Recomputing `count` from the children's sizes is the most robust pattern — it stays correct even if you later add rotations for balancing. Each query and each update is O(h); with a balanced tree that is O(log n). See [BST Operations](../Patterns/BST%20Operations.md).
 
-**Tradeoff to articulate.** Augmentation adds one `int` per node and a small constant of bookkeeping on every mutation. You only take that on if reads dominate or both reads and writes are frequent. If kth is queried once on a static tree, the plain inorder wins on simplicity.
+**Tradeoff to articulate.** Augmentation adds one `i32` per node and a small constant of bookkeeping on every mutation. You only take that on if reads dominate or both reads and writes are frequent. If kth is queried once on a static tree, the plain inorder wins on simplicity.
 
 ---
 
 ## 3. Inorder Successor in a BST (LC 285)
 
-**Prompt.** Given a BST root and a node `p`, return the node with the smallest value greater than `p->val`, or nullptr if none.
+**Prompt.** Given a BST root and a node `p`, return the node with the smallest value greater than `p.val`, or `None` if none.
 
 **Approach discussion.** Two cases, both resolved in a single O(h) descent:
 
@@ -194,28 +231,25 @@ Recomputing `count` from the children's sizes is the most robust pattern — it 
 
 The elegant single-descent version handles both without needing parent pointers: walk down from the root toward `p`, and every time we move *left* we record the current node as the best successor candidate so far.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-TreeNode* inorderSuccessor(TreeNode* root, TreeNode* p) {
-    TreeNode* succ = nullptr;
-    TreeNode* curr = root;
-    while (curr != nullptr) {
-        if (p->val < curr->val) {
-            succ = curr;            // candidate: we turned left here
-            curr = curr->left;
+```rust
+fn inorder_successor<'a>(root: Option<&'a TreeNode>, p: &TreeNode) -> Option<&'a TreeNode> {
+    let mut succ: Option<&TreeNode> = None;
+    let mut curr = root;
+    while let Some(node) = curr {
+        if p.val < node.val {
+            succ = Some(node);              // candidate: we turned left here
+            curr = node.left.as_deref();
         } else {
-            curr = curr->right;      // p->val >= curr->val: successor is further right
+            curr = node.right.as_deref();   // p.val >= node.val: successor is further right
         }
     }
-    return succ;
+    succ
 }
 ```
 
 When `p` has a right subtree, the descent naturally moves right at `p` and the last left-turn captured is the correct ancestor (or the leftmost-of-right is reached); when it has none, the last recorded left-turn ancestor is returned. This unifies both cases in O(h) time, O(1) space.
 
-**Parent-pointer variant (LC 510), briefly.** If each node carries a `parent` pointer and you are *given the node itself* (not the root): if it has a right child, return the leftmost descendant of that right child; otherwise climb parents until you come up from a *left* child, and return that parent (or nullptr at the root). Same O(h), still O(1) extra space.
+**Parent-pointer variant (LC 510), briefly.** If each node carries a `parent` pointer and you are *given the node itself* (not the root): if it has a right child, return the leftmost descendant of that right child; otherwise climb parents until you come up from a *left* child, and return that parent (or `None` at the root). Same O(h), still O(1) extra space.
 
 ---
 
@@ -227,6 +261,6 @@ What separates a strong senior candidate from a mid-level one on these problems:
 - **Reasons about augmentation tradeoffs.** Senior candidates do not just bolt on `count` — they explain the per-mutation cost, the read/write ratio that justifies it, and that recomputing from children sizes survives future rebalancing. They connect it to order-statistic trees.
 - **States invariants cleanly.** "Inorder of a BST is strictly increasing" is named explicitly and used to justify both Validate, Recover, and Kth Smallest. The number of descents (one vs two) in Recover is reasoned about, not guessed.
 - **Unifies cases.** The single-descent successor that handles both the right-subtree and no-right-subtree cases — rather than two branches stitched together — is a strong L5 signal of comfort with the structure.
-- **Clean boundary handling.** `long` bounds, strict comparisons, null roots, and k out of range are addressed before being asked.
+- **Clean boundary handling.** `i64` bounds, strict comparisons, null roots, and k out of range are addressed before being asked.
 
 > **Last Updated:** 2026-06-26

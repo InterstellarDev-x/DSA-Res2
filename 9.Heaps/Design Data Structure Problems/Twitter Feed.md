@@ -17,62 +17,73 @@ Design a simplified version of Twitter with:
 
 ## Solution: K-Way Merge via Min-Heap
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, HashSet, BinaryHeap};
 
-class Twitter {
-    int timestamp = 0;
-    unordered_map<int, vector<vector<int>>> tweets;  // userId → [(time, tweetId)]
-    unordered_map<int, unordered_set<int>> follows;  // userId → set<followeeId>
+struct Twitter {
+    timestamp: i32,
+    tweets: HashMap<i32, Vec<(i32, i32)>>,  // userId → Vec<(time, tweetId)>
+    follows: HashMap<i32, HashSet<i32>>,     // userId → set of followeeId
+}
 
-public:
-    void postTweet(int userId, int tweetId) {
-        tweets[userId].push_back({timestamp++, tweetId});
+impl Twitter {
+    fn new() -> Self {
+        Twitter {
+            timestamp: 0,
+            tweets: HashMap::new(),
+            follows: HashMap::new(),
+        }
     }
 
-    vector<int> getNewsFeed(int userId) {
+    fn post_tweet(&mut self, user_id: i32, tweet_id: i32) {
+        self.tweets.entry(user_id).or_default().push((self.timestamp, tweet_id));
+        self.timestamp += 1;
+    }
+
+    fn get_news_feed(&self, user_id: i32) -> Vec<i32> {
         // Max-heap: (timestamp, tweetId, userId, tweetIndex)
         // We want 10 most recent → keep max at top
-        auto cmp = [](const vector<int>& a, const vector<int>& b) {
-            return a[0] < b[0]; // max by timestamp
-        };
-        priority_queue<vector<int>, vector<vector<int>>, decltype(cmp)> heap(cmp);
+        let mut heap: BinaryHeap<(i32, i32, i32, usize)> = BinaryHeap::new();
 
-        // Add user's own latest tweet
-        unordered_set<int> users;
-        if (follows.count(userId)) users = follows[userId];
-        users.insert(userId);  // include self
+        let mut users: HashSet<i32> = HashSet::new();
+        if let Some(following) = self.follows.get(&user_id) {
+            users.extend(following);
+        }
+        users.insert(user_id);  // include self
 
-        for (int uid : users) {
-            if (tweets.count(uid) && !tweets[uid].empty()) {
-                int lastIdx = (int)tweets[uid].size() - 1;
-                auto& latest = tweets[uid][lastIdx];
-                heap.push({latest[0], latest[1], uid, lastIdx});
+        for &uid in &users {
+            if let Some(user_tweets) = self.tweets.get(&uid) {
+                if !user_tweets.is_empty() {
+                    let last_idx = user_tweets.len() - 1;
+                    let (time, tid) = user_tweets[last_idx];
+                    heap.push((time, tid, uid, last_idx));
+                }
             }
         }
 
-        vector<int> feed;
-        while (!heap.empty() && feed.size() < 10) {
-            auto curr = heap.top(); heap.pop();
-            feed.push_back(curr[1]);  // tweetId
-            int idx = curr[3] - 1;
-            if (idx >= 0) {
-                auto& prev = tweets[curr[2]][idx];
-                heap.push({prev[0], prev[1], curr[2], idx});
+        let mut feed = Vec::new();
+        while !heap.is_empty() && feed.len() < 10 {
+            let (_, tweet_id, uid, idx) = heap.pop().unwrap();
+            feed.push(tweet_id);
+            if idx > 0 {
+                let prev_idx = idx - 1;
+                let (time, tid) = self.tweets[&uid][prev_idx];
+                heap.push((time, tid, uid, prev_idx));
             }
         }
-        return feed;
+        feed
     }
 
-    void follow(int followerId, int followeeId) {
-        follows[followerId].insert(followeeId);
+    fn follow(&mut self, follower_id: i32, followee_id: i32) {
+        self.follows.entry(follower_id).or_default().insert(followee_id);
     }
 
-    void unfollow(int followerId, int followeeId) {
-        if (follows.count(followerId)) follows[followerId].erase(followeeId);
+    fn unfollow(&mut self, follower_id: i32, followee_id: i32) {
+        if let Some(following) = self.follows.get_mut(&follower_id) {
+            following.remove(&followee_id);
+        }
     }
-};
+}
 ```
 
 **K-Way Merge application:** Each user's tweet list is sorted by time (insertion order). We merge across all followees + self to get the top 10, using a max-heap on timestamp.
@@ -80,14 +91,14 @@ public:
 **Complexity:**
 - `postTweet`: O(1)
 - `getNewsFeed`: O(F log F + 10 log F) where F = number of followees. Initial heap = O(F log F). Each of 10 iterations = O(log F).
-- `follow`/`unfollow`: O(1) average with `std::unordered_set`
+- `follow`/`unfollow`: O(1) average with `HashSet`
 
 ---
 
 ## Design Decisions
 
 **Why timestamp (not tweet ID) for ordering?**
-Tweet IDs are not guaranteed to be monotonically increasing. A global `timestamp++` provides a reliable ordering.
+Tweet IDs are not guaranteed to be monotonically increasing. A global `timestamp += 1` provides a reliable ordering.
 
 **Why store `(time, tweetId, userId, index)` in heap?**
 - `time`: for comparison (max-heap)

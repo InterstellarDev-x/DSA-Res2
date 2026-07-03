@@ -10,7 +10,7 @@
 | Property | Stack | Queue |
 |----------|-------|-------|
 | Ordering | LIFO (Last-In-First-Out) | FIFO (First-In-First-Out) |
-| C++ class | `stack<T>` with `push/pop/top` | `queue<T>` with `push/front/pop` |
+| Rust type | `Vec<T>` with `push/pop/last` | `VecDeque<T>` with `push_back/front/pop_front` |
 | Conceptual model | Undo/history, DFS, nesting | Scheduling, BFS, buffering |
 | Real-world analogy | Browser back button, call stack | Printer queue, task scheduler |
 
@@ -121,43 +121,43 @@ A Deque (double-ended queue) is the **superset** — it can act as both stack an
 | "Balanced/valid parentheses" | Stack |
 | "Shortest path", "minimum steps" | Queue (BFS) |
 | "All paths", "combinations" | Stack (DFS / Backtracking) |
-| "Most frequent, then most recent" | unordered_map + unordered_map of Stacks |
+| "Most frequent, then most recent" | HashMap + HashMap of Vecs (stacks) |
 | "Min/max accessible in O(1)" | Stack + Auxiliary Stack |
 | "Encode/decode nested structure" | Two Stacks (count + content) |
 | "Expression with precedence" | Stack of terms/operands |
 
 ---
 
-## C++ API Quick Reference
+## Rust API Quick Reference
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{VecDeque, BinaryHeap};
+use std::cmp::Reverse;
 
-// Stack
-stack<T> stk;
+// Stack (use Vec<T>)
+let mut stk: Vec<T> = Vec::new();
 stk.push(x);            // O(1) amortized
-stk.pop();              // O(1)
-stk.top();              // O(1)
-stk.empty();            // O(1)
+stk.pop();              // O(1) — returns Option<T>
+stk.last();             // O(1) — view top without removing, returns Option<&T>
+stk.is_empty();         // O(1)
 
-// Queue
-queue<T> q;
-q.push(x);              // O(1) amortized
-q.front(); q.pop();     // O(1) — front() to access, pop() to remove
-q.front();              // O(1) — view front without removing
+// Queue (use VecDeque<T>)
+let mut q: VecDeque<T> = VecDeque::new();
+q.push_back(x);         // O(1) amortized
+q.front(); q.pop_front(); // O(1) — front() to view, pop_front() to remove
+q.front();              // O(1) — view front without removing, returns Option<&T>
 
-// Deque (explicit both-end access)
-deque<T> dq;
+// Deque (explicit both-end access, also VecDeque<T>)
+let mut dq: VecDeque<T> = VecDeque::new();
 dq.push_front(x);  dq.push_back(x);
 dq.pop_front();    dq.pop_back();
 dq.front();        dq.back();
 
-// Priority Queue (heap — not FIFO but common in "queue" context)
-priority_queue<T, vector<T>, greater<T>> pq; // min-heap
-pq.push(x);
-pq.pop();    // removes smallest (min-heap)
-pq.top();    // views smallest
+// Priority Queue / BinaryHeap (heap — not FIFO but common in "queue" context)
+let mut pq: BinaryHeap<Reverse<T>> = BinaryHeap::new(); // min-heap
+pq.push(Reverse(x));
+pq.pop();    // removes smallest (min-heap), returns Option<Reverse<T>>
+pq.peek();   // views smallest, returns Option<&Reverse<T>>
 ```
 
 ---

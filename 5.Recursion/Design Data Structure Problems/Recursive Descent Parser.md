@@ -27,71 +27,83 @@ Each grammar rule becomes a method. Operator precedence falls naturally from met
 
 ## Full Implementation — Expression with all operators + parentheses
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution {
+    s: Vec<char>,
+    pos: usize,
+}
 
-class Solution {
-    string s;
-    int pos;
+impl Solution {
+    fn new(s: &str) -> Self {
+        Solution {
+            s: s.chars().collect(),
+            pos: 0,
+        }
+    }
 
     // expr → term (('+' | '-') term)*
-    int parseExpr() {
-        int result = parseTerm();
-        while (pos < (int)s.length() && (s[pos] == '+' || s[pos] == '-')) {
-            char op = s[pos++];
-            int term = parseTerm();
-            result = (op == '+') ? result + term : result - term;
+    fn parse_expr(&mut self) -> i32 {
+        let mut result = self.parse_term();
+        while self.pos < self.s.len() && (self.s[self.pos] == '+' || self.s[self.pos] == '-') {
+            let op = self.s[self.pos];
+            self.pos += 1;
+            let term = self.parse_term();
+            result = if op == '+' { result + term } else { result - term };
         }
-        return result;
+        result
     }
 
     // term → factor (('*' | '/') factor)*
-    int parseTerm() {
-        int result = parseFactor();
-        while (pos < (int)s.length() && (s[pos] == '*' || s[pos] == '/')) {
-            char op = s[pos++];
-            int factor = parseFactor();
-            result = (op == '*') ? result * factor : result / factor;
+    fn parse_term(&mut self) -> i32 {
+        let mut result = self.parse_factor();
+        while self.pos < self.s.len() && (self.s[self.pos] == '*' || self.s[self.pos] == '/') {
+            let op = self.s[self.pos];
+            self.pos += 1;
+            let factor = self.parse_factor();
+            result = if op == '*' { result * factor } else { result / factor };
         }
-        return result;
+        result
     }
 
     // factor → number | '(' expr ')'
-    int parseFactor() {
-        skipSpaces();
-        if (pos < (int)s.length() && s[pos] == '(') {
-            pos++; // consume '('
-            int val = parseExpr();
-            pos++; // consume ')'
+    fn parse_factor(&mut self) -> i32 {
+        self.skip_spaces();
+        if self.pos < self.s.len() && self.s[self.pos] == '(' {
+            self.pos += 1; // consume '('
+            let val = self.parse_expr();
+            self.pos += 1; // consume ')'
             return val;
         }
-        return parseNumber();
+        self.parse_number()
     }
 
-    int parseNumber() {
-        skipSpaces();
-        int sign = 1;
-        if (pos < (int)s.length() && s[pos] == '-') { sign = -1; pos++; }
-        int num = 0;
-        while (pos < (int)s.length() && isdigit(s[pos])) {
-            num = num * 10 + (s[pos++] - '0');
+    fn parse_number(&mut self) -> i32 {
+        self.skip_spaces();
+        let mut sign = 1;
+        if self.pos < self.s.len() && self.s[self.pos] == '-' {
+            sign = -1;
+            self.pos += 1;
         }
-        skipSpaces();
-        return sign * num;
+        let mut num = 0;
+        while self.pos < self.s.len() && self.s[self.pos].is_ascii_digit() {
+            num = num * 10 + (self.s[self.pos] as i32 - '0' as i32);
+            self.pos += 1;
+        }
+        self.skip_spaces();
+        sign * num
     }
 
-    void skipSpaces() {
-        while (pos < (int)s.length() && s[pos] == ' ') pos++;
+    fn skip_spaces(&mut self) {
+        while self.pos < self.s.len() && self.s[self.pos] == ' ' {
+            self.pos += 1;
+        }
     }
 
-public:
-    int calculate(string s) {
-        this->s = s;
-        this->pos = 0;
-        return parseExpr();
+    pub fn calculate(s: String) -> i32 {
+        let mut parser = Solution::new(&s);
+        parser.parse_expr()
     }
-};
+}
 ```
 
 ---
@@ -100,35 +112,34 @@ public:
 
 Simpler: only addition/subtraction, no precedence levels. Use a stack to handle parentheses.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn calculate(s: String) -> i32 {
+    let mut stk: Vec<i32> = Vec::new();
+    let mut result = 0;
+    let mut num = 0;
+    let mut sign = 1;
 
-int calculate(string s) {
-    stack<int> stk;
-    int result = 0, num = 0, sign = 1;
-
-    for (char c : s) {
-        if (isdigit(c)) {
-            num = num * 10 + (c - '0');
-        } else if (c == '+') {
+    for c in s.chars() {
+        if c.is_ascii_digit() {
+            num = num * 10 + (c as i32 - '0' as i32);
+        } else if c == '+' {
             result += sign * num; num = 0; sign = 1;
-        } else if (c == '-') {
+        } else if c == '-' {
             result += sign * num; num = 0; sign = -1;
-        } else if (c == '(') {
+        } else if c == '(' {
             // Save current result and sign; start fresh
             stk.push(result);
             stk.push(sign);
             result = 0; sign = 1;
-        } else if (c == ')') {
+        } else if c == ')' {
             result += sign * num; num = 0;
-            int topSign = stk.top(); stk.pop();
-            result *= topSign;   // multiply by sign before '('
-            int prevResult = stk.top(); stk.pop();
-            result += prevResult;   // add result before '('
+            let top_sign = stk.pop().unwrap();
+            result *= top_sign;   // multiply by sign before '('
+            let prev_result = stk.pop().unwrap();
+            result += prev_result;   // add result before '('
         }
     }
-    return result + sign * num;
+    result + sign * num
 }
 ```
 
@@ -138,26 +149,27 @@ int calculate(string s) {
 
 Use a stack: push positive/negative for `+`/`-`, and apply `*`/`/` immediately.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn calculate(s: String) -> i32 {
+    let mut stk: Vec<i32> = Vec::new();
+    let mut num = 0i32;
+    let mut op = '+';
+    let chars: Vec<char> = s.chars().collect();
+    let n = chars.len();
 
-int calculate(string s) {
-    stack<int> stk;
-    int num = 0;
-    char op = '+';
-
-    for (int i = 0; i < (int)s.length(); i++) {
-        char c = s[i];
-        if (isdigit(c)) num = num * 10 + (c - '0');
-        if ((!isdigit(c) && c != ' ') || i == (int)s.length() - 1) {
-            if (op == '+') stk.push(num);
-            else if (op == '-') stk.push(-num);
-            else if (op == '*') {
-                int top = stk.top(); stk.pop();
+    for i in 0..n {
+        let c = chars[i];
+        if c.is_ascii_digit() {
+            num = num * 10 + (c as i32 - '0' as i32);
+        }
+        if (!c.is_ascii_digit() && c != ' ') || i == n - 1 {
+            if op == '+' { stk.push(num); }
+            else if op == '-' { stk.push(-num); }
+            else if op == '*' {
+                let top = stk.pop().unwrap();
                 stk.push(top * num);
-            } else if (op == '/') {
-                int top = stk.top(); stk.pop();
+            } else if op == '/' {
+                let top = stk.pop().unwrap();
                 stk.push(top / num);
             }
             op = c;
@@ -165,9 +177,9 @@ int calculate(string s) {
         }
     }
 
-    int result = 0;
-    while (!stk.empty()) { result += stk.top(); stk.pop(); }
-    return result;
+    let mut result = 0;
+    while let Some(top) = stk.pop() { result += top; }
+    result
 }
 ```
 

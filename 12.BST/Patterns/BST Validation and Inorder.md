@@ -8,16 +8,19 @@ detect/repair swapped nodes, accumulate suffix sums (greater tree), and answer r
 two workhorse tools are (a) the **(low, high) bounds** that an ancestor imposes on a subtree, and
 (b) an explicit **stack-driven inorder** that can stop early.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+#[derive(Debug)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
 
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
-};
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 > **Recognition signals:** "is this a valid BST", "k-th smallest/largest", "two nodes swapped /
@@ -31,45 +34,48 @@ The classic trap: it is **not enough** to check `left < node < right` against th
 *Every* node must lie within the bounds set by **all** its ancestors. Pass an open interval
 `(low, high)` downward and tighten it as you descend.
 
-Use `long` for the bounds so a node with value `INT_MIN` or `INT_MAX` does not
+Use `i64` for the bounds so a node with value `i32::MIN` or `i32::MAX` does not
 produce a false negative at the boundary.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool valid(TreeNode* node, long low, long high) {
-    if (node == nullptr) return true;
-    if (node->val <= low || node->val >= high) return false;     // strict: no duplicates allowed
-    return valid(node->left,  low, node->val)
-        && valid(node->right, node->val, high);
+```rust
+fn valid(node: &Option<Box<TreeNode>>, low: i64, high: i64) -> bool {
+    match node {
+        None => true,
+        Some(n) => {
+            if (n.val as i64) <= low || (n.val as i64) >= high {
+                return false;  // strict: no duplicates allowed
+            }
+            valid(&n.left, low, n.val as i64) && valid(&n.right, n.val as i64, high)
+        }
+    }
 }
 
-bool isValidBST(TreeNode* root) {
-    return valid(root, LONG_MIN, LONG_MAX);
+fn is_valid_bst(root: &Option<Box<TreeNode>>) -> bool {
+    valid(root, i64::MIN, i64::MAX)
 }
 ```
 
-**Alternative — strictly-increasing inorder.** Equivalent and avoids the `long` choice by storing
+**Alternative — strictly-increasing inorder.** Equivalent and avoids the `i64` choice by storing
 the previous node reference:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-TreeNode* prev = nullptr;
-
-bool inorder(TreeNode* node) {
-    if (node == nullptr) return true;
-    if (!inorder(node->left)) return false;
-    if (prev != nullptr && node->val <= prev->val) return false;    // must be strictly increasing
-    prev = node;
-    return inorder(node->right);
+```rust
+fn inorder(node: &Option<Box<TreeNode>>, prev: &mut Option<i32>) -> bool {
+    match node {
+        None => true,
+        Some(n) => {
+            if !inorder(&n.left, prev) { return false; }
+            if let Some(p) = *prev {
+                if n.val <= p { return false; }  // must be strictly increasing
+            }
+            *prev = Some(n.val);
+            inorder(&n.right, prev)
+        }
+    }
 }
 
-bool isValidBSTInorder(TreeNode* root) {
-    prev = nullptr;
-    return inorder(root);
+fn is_valid_bst_inorder(root: &Option<Box<TreeNode>>) -> bool {
+    let mut prev = None;
+    inorder(root, &mut prev)
 }
 ```
 
@@ -83,23 +89,22 @@ Inorder visits keys in ascending order, so the k-th visited node is the answer. 
 stack** version is preferred: it stops as soon as the count reaches `k` (early exit) instead of
 traversing the whole tree.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int kthSmallest(TreeNode* root, int k) {
-    stack<TreeNode*> st;
-    TreeNode* cur = root;
-    while (cur != nullptr || !st.empty()) {
-        while (cur != nullptr) {            // dive to the leftmost
-            st.push(cur);
-            cur = cur->left;
+```rust
+fn kth_smallest(root: &Option<Box<TreeNode>>, k: i32) -> i32 {
+    let mut st: Vec<&TreeNode> = Vec::new();
+    let mut cur: Option<&TreeNode> = root.as_deref();
+    let mut k = k;
+    while cur.is_some() || !st.is_empty() {
+        while let Some(node) = cur {  // dive to the leftmost
+            st.push(node);
+            cur = node.left.as_deref();
         }
-        cur = st.top(); st.pop();           // visit in sorted order
-        if (--k == 0) return cur->val;      // k-th smallest reached → stop
-        cur = cur->right;
+        let node = st.pop().unwrap();  // visit in sorted order
+        k -= 1;
+        if k == 0 { return node.val; }  // k-th smallest reached → stop
+        cur = node.right.as_deref();
     }
-    return -1;   // k out of range
+    -1  // k out of range
 }
 ```
 
@@ -114,48 +119,50 @@ int kthSmallest(TreeNode* root, int k) {
 
 Two clean approaches.
 
-**(a) `std::unordered_set` during any traversal** — O(n) time, O(n) space, does not exploit ordering:
+**(a) `HashSet` during any traversal** — O(n) time, O(n) space, does not exploit ordering:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-bool dfs(TreeNode* node, int k, unordered_set<int>& seen) {
-    if (node == nullptr) return false;
-    if (seen.count(k - node->val)) return true;
-    seen.insert(node->val);
-    return dfs(node->left, k, seen) || dfs(node->right, k, seen);
+fn dfs(node: &Option<Box<TreeNode>>, k: i32, seen: &mut HashSet<i32>) -> bool {
+    match node {
+        None => false,
+        Some(n) => {
+            if seen.contains(&(k - n.val)) { return true; }
+            seen.insert(n.val);
+            dfs(&n.left, k, seen) || dfs(&n.right, k, seen)
+        }
+    }
 }
 
-bool findTarget(TreeNode* root, int k) {
-    unordered_set<int> seen;
-    return dfs(root, k, seen);
+fn find_target(root: &Option<Box<TreeNode>>, k: i32) -> bool {
+    let mut seen = HashSet::new();
+    dfs(root, k, &mut seen)
 }
 ```
 
 **(b) Inorder to sorted list + two pointers** — exploits sortedness; O(n) time, O(n) for the list:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void inorder(TreeNode* n, vector<int>& out) {
-    if (n == nullptr) return;
-    inorder(n->left, out);
-    out.push_back(n->val);
-    inorder(n->right, out);
+```rust
+fn inorder_collect(n: &Option<Box<TreeNode>>, out: &mut Vec<i32>) {
+    if let Some(node) = n {
+        inorder_collect(&node.left, out);
+        out.push(node.val);
+        inorder_collect(&node.right, out);
+    }
 }
 
-bool findTargetTwoPtr(TreeNode* root, int k) {
-    vector<int> sorted;
-    inorder(root, sorted);
-    int lo = 0, hi = (int)sorted.size() - 1;
-    while (lo < hi) {
-        int sum = sorted[lo] + sorted[hi];
-        if (sum == k) return true;
-        if (sum < k) lo++; else hi--;
+fn find_target_two_ptr(root: &Option<Box<TreeNode>>, k: i32) -> bool {
+    let mut sorted = Vec::new();
+    inorder_collect(root, &mut sorted);
+    let mut lo = 0usize;
+    let mut hi = sorted.len().saturating_sub(1);
+    while lo < hi {
+        let sum = sorted[lo] + sorted[hi];
+        if sum == k { return true; }
+        if sum < k { lo += 1; } else { hi -= 1; }
     }
-    return false;
+    false
 }
 ```
 
@@ -175,29 +182,41 @@ If the two swapped nodes are **adjacent** in inorder there is only **one** desce
 Tracking `first` only on the first descent and `second` on every descent handles both cases. Swap
 the two values at the end.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-TreeNode* first_node;
-TreeNode* second_node;
-TreeNode* prev_node;
-
-void inorder(TreeNode* node) {
-    if (node == nullptr) return;
-    inorder(node->left);
-    if (prev_node != nullptr && prev_node->val > node->val) {   // a descent (violation)
-        if (first_node == nullptr) first_node = prev_node;      // first violation: take the larger (prev)
-        second_node = node;                                     // always update: take the smaller (cur)
+```rust
+fn inorder_find_swapped(
+    node: &Option<Box<TreeNode>>,
+    prev_val: &mut i64,
+    first_val: &mut Option<i32>,
+    second_val: &mut Option<i32>,
+) {
+    if let Some(n) = node {
+        inorder_find_swapped(&n.left, prev_val, first_val, second_val);
+        if *prev_val != i64::MIN && *prev_val > n.val as i64 {  // a descent (violation)
+            if first_val.is_none() { *first_val = Some(*prev_val as i32); }  // first violation: take the larger (prev)
+            *second_val = Some(n.val);                                        // always update: take the smaller (cur)
+        }
+        *prev_val = n.val as i64;
+        inorder_find_swapped(&n.right, prev_val, first_val, second_val);
     }
-    prev_node = node;
-    inorder(node->right);
 }
 
-void recoverTree(TreeNode* root) {
-    first_node = second_node = prev_node = nullptr;
-    inorder(root);
-    swap(first_node->val, second_node->val);  // swap values back
+fn inorder_fix_swapped(node: &mut Option<Box<TreeNode>>, first_val: i32, second_val: i32) {
+    if let Some(n) = node.as_mut() {
+        if n.val == first_val { n.val = second_val; }
+        else if n.val == second_val { n.val = first_val; }
+        inorder_fix_swapped(&mut n.left, first_val, second_val);
+        inorder_fix_swapped(&mut n.right, first_val, second_val);
+    }
+}
+
+fn recover_tree(root: &mut Option<Box<TreeNode>>) {
+    let mut prev_val = i64::MIN;
+    let mut first_val = None;
+    let mut second_val = None;
+    inorder_find_swapped(root, &mut prev_val, &mut first_val, &mut second_val);
+    if let (Some(fv), Some(sv)) = (first_val, second_val) {
+        inorder_fix_swapped(root, fv, sv);  // swap values back
+    }
 }
 ```
 
@@ -211,24 +230,19 @@ void recoverTree(TreeNode* root) {
 Each node's new value = its old value + sum of all keys **greater** than it. Process keys in
 **descending** order via a **reverse inorder** (right → node → left) and carry a running sum.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int runningSum = 0;
-
-void reverseInorder(TreeNode* node) {
-    if (node == nullptr) return;
-    reverseInorder(node->right);          // larger keys first
-    runningSum += node->val;
-    node->val = runningSum;               // node + everything greater
-    reverseInorder(node->left);
+```rust
+fn reverse_inorder(node: &mut Option<Box<TreeNode>>, running_sum: &mut i32) {
+    if let Some(n) = node.as_mut() {
+        reverse_inorder(&mut n.right, running_sum);  // larger keys first
+        *running_sum += n.val;
+        n.val = *running_sum;                         // node + everything greater
+        reverse_inorder(&mut n.left, running_sum);
+    }
 }
 
-TreeNode* convertBST(TreeNode* root) {
-    runningSum = 0;
-    reverseInorder(root);
-    return root;
+fn convert_bst(root: &mut Option<Box<TreeNode>>) {
+    let mut running_sum = 0;
+    reverse_inorder(root, &mut running_sum);
 }
 ```
 
@@ -241,17 +255,18 @@ TreeNode* convertBST(TreeNode* root) {
 Sum keys in `[low, high]`. Use the BST property to **prune**: if `node->val < low` the entire left
 subtree is out of range (skip it); if `node->val > high` the entire right subtree is out of range.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int rangeSumBST(TreeNode* root, int low, int high) {
-    if (root == nullptr) return 0;
-    if (root->val < low)  return rangeSumBST(root->right, low, high);  // prune left
-    if (root->val > high) return rangeSumBST(root->left,  low, high);  // prune right
-    return root->val
-         + rangeSumBST(root->left,  low, high)
-         + rangeSumBST(root->right, low, high);
+```rust
+fn range_sum_bst(root: &Option<Box<TreeNode>>, low: i32, high: i32) -> i32 {
+    match root {
+        None => 0,
+        Some(n) => {
+            if n.val < low  { return range_sum_bst(&n.right, low, high); }  // prune left
+            if n.val > high { return range_sum_bst(&n.left,  low, high); }  // prune right
+            n.val
+                + range_sum_bst(&n.left,  low, high)
+                + range_sum_bst(&n.right, low, high)
+        }
+    }
 }
 ```
 
@@ -279,9 +294,9 @@ End: `first = 5`, `second = 2`. Swap their values → inorder becomes `1 2 3 4 5
 
 | Problem | Technique | Time | Space |
 |---|---|---|---|
-| Validate BST (98) | (low, high) bounds with `long`, or strict inorder | O(n) | O(h) |
+| Validate BST (98) | (low, high) bounds with `i64`, or strict inorder | O(n) | O(h) |
 | Kth Smallest (230) | iterative inorder, early stop | O(h + k) | O(h) |
-| Two Sum IV (653) | `std::unordered_set`, or inorder + two pointers | O(n) | O(n) |
+| Two Sum IV (653) | `HashSet`, or inorder + two pointers | O(n) | O(n) |
 | Recover BST (99) | inorder finds 2 swapped nodes | O(n) | O(h) / O(1) Morris |
 | Greater Tree (538) | reverse inorder + running sum | O(n) | O(h) |
 | Range Sum (938) | prune by BST property | O(n) | O(h) |

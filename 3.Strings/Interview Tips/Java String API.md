@@ -1,4 +1,4 @@
-# C++ String API Reference
+# Rust String API Reference
 
 > **Topic:** [Strings](../README.md) · **Section:** Interview Tips
 
@@ -8,60 +8,60 @@
 
 | Method | Returns | Time | Notes |
 |--------|---------|------|-------|
-| `s[i]` | `char` | O(1) | Direct index access |
-| `s.length()` or `s.size()` | `size_t` | O(1) | |
-| `s.substr(l, r-l)` | `string` | O(r-l) | Second arg is length, not end index |
-| `s.find(c)` | `size_t` | O(n) | First occurrence; `string::npos` if absent |
-| `s.find(sub) != string::npos` | `bool` | O(n×m) | Use KMP for O(n+m) |
+| `s.chars().nth(i)` or `s.as_bytes()[i] as char` | `char` | O(n) / O(1) | Direct char access; use bytes for ASCII-only strings |
+| `s.len()` | `usize` | O(1) | |
+| `&s[l..l+len]` or `s[l..l+len].to_string()` | `&str` / `String` | O(len) | Second arg is length, not end index; byte indices |
+| `s.find(c)` | `Option<usize>` | O(n) | First occurrence; `None` if absent |
+| `s.find(sub).is_some()` | `bool` | O(n×m) | Use KMP for O(n+m) |
 | `s == t` | `bool` | O(n) | Content equality |
-| use `transform` + compare | `bool` | O(n) | Case-insensitive compare |
-| `s.compare(t)` | `int` | O(n) | Lexicographic; 0 = equal |
-| `s.rfind(p, 0) == 0` | `bool` | O(p.len) | Check prefix |
-| `s.size() >= p.size() && s.compare(s.size()-p.size(), p.size(), p) == 0` | `bool` | O(p.len) | Check suffix |
-| iterate string directly | — | O(n) | Range-for or index; no separate copy needed |
-| manual trim with `find_first_not_of` / `find_last_not_of` | `string` | O(n) | Leading/trailing whitespace |
-| manual trim (Unicode-aware) | `string` | O(n) | Use `isspace` per character |
-| `stringstream` or manual split | `vector<string>` | O(n) | Split on delimiter |
-| `s.replace(pos, len, newstr)` | `string&` | O(n) | Modifies in-place |
-| `transform(s.begin(),s.end(),s.begin(),::tolower)` | — | O(n) | Lowercase in-place |
-| `transform(s.begin(),s.end(),s.begin(),::toupper)` | — | O(n) | Uppercase in-place |
-| `to_string(n)` | `string` | O(digits) | Int → string |
-| `stoi(s)` | `int` | O(n) | string → int |
-| manual join with ostringstream | `string` | O(total) | Join with delimiter |
+| `s.to_lowercase() == t.to_lowercase()` | `bool` | O(n) | Case-insensitive compare |
+| `s.cmp(t)` | `Ordering` | O(n) | Lexicographic; `Ordering::Equal` = equal |
+| `s.starts_with(p)` | `bool` | O(p.len) | Check prefix |
+| `s.ends_with(p)` | `bool` | O(p.len) | Check suffix |
+| `for c in s.chars()` | — | O(n) | Iterate chars; no separate copy needed |
+| `s.trim()` | `&str` | O(n) | Leading/trailing whitespace |
+| `s.trim()` | `&str` | O(n) | Unicode-aware by default |
+| `s.split(delimiter).collect::<Vec<_>>()` | `Vec<&str>` | O(n) | Split on delimiter |
+| string slicing + reconstruction | `String` | O(n) | No direct in-place replacement by pos/len |
+| `s.to_lowercase()` or `s.make_ascii_lowercase()` | `String` / — | O(n) | Lowercase (new String or in-place for ASCII) |
+| `s.to_uppercase()` or `s.make_ascii_uppercase()` | `String` / — | O(n) | Uppercase (new String or in-place for ASCII) |
+| `n.to_string()` | `String` | O(digits) | Int → String |
+| `s.parse::<i32>().unwrap()` | `i32` | O(n) | String → int |
+| `parts.join(delimiter)` | `String` | O(total) | Join with delimiter |
 
-## `string` (C++ equivalent of StringBuilder)
+## `String` (Rust equivalent of StringBuilder)
 
 | Method | Notes |
 |--------|-------|
-| `s += x` or `s.append(x)` | O(1) amortized |
-| `s.insert(i, str)` | O(n) |
-| `s.erase(i, 1)` | O(n) |
-| `reverse(s.begin(), s.end())` | O(n) |
-| `s` (already a string) | O(1) — no conversion needed |
-| `s.clear()` or `s = ""` | Clear without new allocation |
-| `s[i]` | O(1) |
-| `s.length()` | O(1) |
+| `s.push_str(x)` or `s += x` | O(1) amortized |
+| `s.insert_str(i, str)` | O(n) |
+| `s.remove(i)` or `s.drain(i..i+1)` | O(n) |
+| `s = s.chars().rev().collect::<String>()` | O(n) |
+| `s.clone()` or `s.to_string()` | O(1) — no conversion needed |
+| `s.clear()` | Clear without new allocation |
+| `s.chars().nth(i)` or `s.as_bytes()[i] as char` | O(n) / O(1) |
+| `s.len()` | O(1) |
 
 ## Character Utility Methods
 
-```cpp
-isalpha(c)           // a-z, A-Z
-isdigit(c)           // 0-9
-isalnum(c)           // alphanumeric
-isspace(c)           // space, tab, newline
-isupper(c)
-islower(c)
-toupper(c)
-tolower(c)
+```rust
+c.is_alphabetic()    // a-z, A-Z
+c.is_ascii_digit()   // 0-9
+c.is_alphanumeric()  // alphanumeric
+c.is_whitespace()    // space, tab, newline
+c.is_uppercase()
+c.is_lowercase()
+c.to_ascii_uppercase()
+c.to_ascii_lowercase()
 ```
 
 ## Char Arithmetic
 
-```cpp
-c - 'a'              // 0-25 for lowercase
-c - 'A'              // 0-25 for uppercase
-c - '0'              // 0-9 for digit characters
-(char)('a' + k)      // k-th lowercase letter
+```rust
+c as u8 - b'a'       // 0-25 for lowercase
+c as u8 - b'A'       // 0-25 for uppercase
+c as u8 - b'0'       // 0-9 for digit characters
+(b'a' + k) as char   // k-th lowercase letter
 ```
 
 ---

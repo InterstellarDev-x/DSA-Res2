@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [C++ Templates](#c-templates)
+5. [Rust Templates](#rust-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -67,24 +67,28 @@ The Dutch National Flag algorithm (Dijkstra, 1976) sorts an array of three disti
 
 ---
 
-## C++ Templates
+## Rust Templates
 
 ### 1. Classic Dutch National Flag (Sort Colors)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn sort_colors(nums: &mut Vec<i32>) {
+    let n = nums.len();
+    if n == 0 { return; }
+    let mut lo: i32 = 0;
+    let mut mid: i32 = 0;
+    let mut hi: i32 = (n as i32) - 1;
 
-void sortColors(vector<int>& nums) {
-    int lo = 0, mid = 0, hi = (int)nums.size() - 1;
-
-    while (mid <= hi) {
-        if (nums[mid] == 0) {
-            swap(nums[lo++], nums[mid++]); // 0: goes to front, both advance
-        } else if (nums[mid] == 1) {
-            mid++;                         // 1: already in place
-        } else {                           // nums[mid] == 2
-            swap(nums[mid], nums[hi--]);   // 2: goes to back, DON'T advance mid
+    while mid <= hi {
+        if nums[mid as usize] == 0 {
+            nums.swap(lo as usize, mid as usize);
+            lo += 1;
+            mid += 1; // 0: goes to front, both advance
+        } else if nums[mid as usize] == 1 {
+            mid += 1;  // 1: already in place
+        } else {       // nums[mid] == 2
+            nums.swap(mid as usize, hi as usize);
+            hi -= 1;   // 2: goes to back, DON'T advance mid
         }
     }
 }
@@ -96,16 +100,18 @@ void sortColors(vector<int>& nums) {
 
 ### 2. Segregate Negatives and Positives (2-way)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void segregate(vector<int>& arr) {
-    int lo = 0, hi = (int)arr.size() - 1;
-    while (lo < hi) {
-        while (lo < hi && arr[lo] < 0) lo++;
-        while (lo < hi && arr[hi] >= 0) hi--;
-        if (lo < hi) swap(arr[lo], arr[hi]);
+```rust
+fn segregate(arr: &mut Vec<i32>) {
+    let n = arr.len();
+    if n == 0 { return; }
+    let mut lo: i32 = 0;
+    let mut hi: i32 = (n as i32) - 1;
+    while lo < hi {
+        while lo < hi && arr[lo as usize] < 0 { lo += 1; }
+        while lo < hi && arr[hi as usize] >= 0 { hi -= 1; }
+        if lo < hi {
+            arr.swap(lo as usize, hi as usize);
+        }
     }
 }
 // Time: O(n) | Space: O(1)
@@ -113,39 +119,49 @@ void segregate(vector<int>& arr) {
 
 ### 3. Three-way Partition around Pivot (QuickSort)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+// Partition arr[l..=r] around pivot value
+fn three_way_partition(arr: &mut Vec<i32>, l: usize, r: usize, pivot: i32) -> (usize, usize) {
+    let mut lo = l;
+    let mut mid = l;
+    let mut hi: i32 = r as i32;
 
-// Partition arr[l..r] around pivot value
-pair<int,int> threeWayPartition(vector<int>& arr, int l, int r, int pivot) {
-    int lo = l, mid = l, hi = r;
-    while (mid <= hi) {
-        if (arr[mid] < pivot)       swap(arr[lo++], arr[mid++]);
-        else if (arr[mid] == pivot) mid++;
-        else                        swap(arr[mid], arr[hi--]);
+    while (mid as i32) <= hi {
+        if arr[mid] < pivot {
+            arr.swap(lo, mid);
+            lo += 1;
+            mid += 1;
+        } else if arr[mid] == pivot {
+            mid += 1;
+        } else {
+            arr.swap(mid, hi as usize);
+            hi -= 1;
+        }
     }
-    return {lo, hi}; // [lo, hi] is the range of pivot elements
+    (lo, hi as usize) // [lo, hi] is the range of pivot elements
 }
 ```
 
 ### 4. Rearrange Positives and Negatives (Preserve Relative Order)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // This needs O(n) extra space to preserve relative order
-void rearrange(vector<int>& arr) {
-    int n = arr.size();
-    vector<int> result(n);
-    int pos = 0, neg = n / 2;
+fn rearrange(arr: &mut Vec<i32>) {
+    let n = arr.len();
+    let mut result = vec![0; n];
+    let mut pos = 0;
+    let mut neg = n / 2;
     // Assumes equal counts of positives and negatives
-    for (auto& x : arr) {
-        if (x >= 0) result[pos++] = x;
-        else result[neg++] = x;
+    for &x in arr.iter() {
+        if x >= 0 {
+            result[pos] = x;
+            pos += 1;
+        } else {
+            result[neg] = x;
+            neg += 1;
+        }
     }
-    arr = result;
+    *arr = result;
 }
 ```
 

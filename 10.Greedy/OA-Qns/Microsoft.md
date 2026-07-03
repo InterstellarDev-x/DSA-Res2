@@ -19,27 +19,27 @@
 
 **Microsoft-specific follow-up questions:**
 1. "How would you solve it with DP?" → `dp[i] = any j < i where dp[j] && j + nums[j] >= i` → O(n²)
-2. "Why is greedy better?" → O(n) vs O(n²); greedy invariant: `maxReach` strictly non-decreasing
+2. "Why is greedy better?" → O(n) vs O(n²); greedy invariant: `max_reach` strictly non-decreasing
 3. "What if nums[i] is the exact number of steps (not maximum)?" → BFS required, greedy fails
 
 **Code they want to see:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool canJump(vector<int>& nums) {
-    int maxReach = 0;
-    for (int i = 0; i < (int)nums.size(); i++) {
-        if (i > maxReach) return false;
-        maxReach = max(maxReach, i + nums[i]);
+```rust
+fn can_jump(nums: &[i32]) -> bool {
+    let mut max_reach: usize = 0;
+    for i in 0..nums.len() {
+        // Invariant: max_reach is the furthest index reachable so far
+        if i > max_reach {
+            return false;
+        }
+        max_reach = max_reach.max(i + nums[i] as usize);
     }
-    return true;
+    true
 }
 ```
 
 **Microsoft style preference:**
 - No early return inside loop unless clearly necessary
-- Single variable (`maxReach`) over two-variable approaches
+- Single variable (`max_reach`) over two-variable approaches
 - Comments explaining the invariant
 
 ---
@@ -56,25 +56,30 @@ bool canJump(vector<int>& nums) {
 3. "What if intervals can have the same start?" → Algorithm handles it; explain why
 
 **Code they want to see:**
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> insert(vector<vector<int>>& intervals, vector<int>& newInterval) {
-    vector<vector<int>> result;
-    int i = 0, n = intervals.size();
-    // Phase 1: Add all intervals ending before newInterval starts
-    while (i < n && intervals[i][1] < newInterval[0]) result.push_back(intervals[i++]);
-    // Phase 2: Merge all overlapping intervals
-    while (i < n && intervals[i][0] <= newInterval[1]) {
-        newInterval[0] = min(newInterval[0], intervals[i][0]);
-        newInterval[1] = max(newInterval[1], intervals[i][1]);
-        i++;
+```rust
+fn insert(intervals: &[Vec<i32>], new_interval: Vec<i32>) -> Vec<Vec<i32>> {
+    let mut result: Vec<Vec<i32>> = Vec::new();
+    let mut i = 0;
+    let n = intervals.len();
+    let mut new_interval = new_interval;
+    // Phase 1: Add all intervals ending before new_interval starts
+    while i < n && intervals[i][1] < new_interval[0] {
+        result.push(intervals[i].clone());
+        i += 1;
     }
-    result.push_back(newInterval);
+    // Phase 2: Merge all overlapping intervals
+    while i < n && intervals[i][0] <= new_interval[1] {
+        new_interval[0] = new_interval[0].min(intervals[i][0]);
+        new_interval[1] = new_interval[1].max(intervals[i][1]);
+        i += 1;
+    }
+    result.push(new_interval);
     // Phase 3: Add remaining intervals
-    while (i < n) result.push_back(intervals[i++]);
-    return result;
+    while i < n {
+        result.push(intervals[i].clone());
+        i += 1;
+    }
+    result
 }
 ```
 

@@ -23,26 +23,25 @@ Difference: exactly k subarrays have exactly k of P
 
 ## `atMost(k)` Counting Template
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // How many subarrays have AT MOST k of some property?
-int atMost(vector<int>& nums, int k) {
-    int left = 0, count = 0, result = 0;
+fn at_most(nums: &[i32], k: i32) -> i32 {
+    let mut left = 0;
+    let mut count = 0;
+    let mut result = 0;
 
-    for (int right = 0; right < (int)nums.size(); right++) {
+    for right in 0..nums.len() {
         count += contribution(nums[right]);     // add right element
 
-        while (count > k) {                     // too many → shrink
+        while count > k {                       // too many → shrink
             count -= contribution(nums[left]);
-            left++;
+            left += 1;
         }
 
         // All subarrays ending at 'right' and starting in [left..right] are valid
-        result += right - left + 1;
+        result += (right - left + 1) as i32;
     }
-    return result;
+    result
 }
 ```
 
@@ -54,31 +53,31 @@ int atMost(vector<int>& nums, int k) {
 
 Count subarrays with sum = goal (array of 0s and 1s).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int numSubarraysWithSum(vector<int>& nums, int goal) {
-    return atMost(nums, goal) - atMost(nums, goal - 1);
+```rust
+fn num_subarrays_with_sum(nums: &[i32], goal: i32) -> i32 {
+    at_most(nums, goal) - at_most(nums, goal - 1)
 }
 
-int atMost(vector<int>& nums, int goal) {
-    if (goal < 0) return 0;    // edge case: goal-1 when goal=0
-    int left = 0, sum = 0, result = 0;
-    for (int right = 0; right < (int)nums.size(); right++) {
+fn at_most(nums: &[i32], goal: i32) -> i32 {
+    if goal < 0 { return 0; }    // edge case: goal-1 when goal=0
+    let mut left = 0;
+    let mut sum = 0;
+    let mut result = 0;
+    for right in 0..nums.len() {
         sum += nums[right];
-        while (sum > goal) {
-            sum -= nums[left++];
+        while sum > goal {
+            sum -= nums[left];
+            left += 1;
         }
-        result += right - left + 1;
+        result += (right - left + 1) as i32;
     }
-    return result;
+    result
 }
 ```
 
-**Why `if (goal < 0) return 0`?** When `goal = 0`, we call `atMost(nums, -1)`. A sum can never be ≤ -1 (array has non-negative values), so 0 is correct.
+**Why `if goal < 0 { return 0; }`?** When `goal = 0`, we call `at_most(nums, -1)`. A sum can never be ≤ -1 (array has non-negative values), so 0 is correct.
 
-**Alternative — Prefix Sum + std::unordered_map:** `prefix[i] - prefix[j] = goal` → `count[prefix[j]] = count[prefix[i] - goal]`. Both O(n) but the sliding window is O(1) space.
+**Alternative — Prefix Sum + HashMap:** `prefix[i] - prefix[j] = goal` → `count[prefix[j]] = count[prefix[i] - goal]`. Both O(n) but the sliding window is O(1) space.
 
 ---
 
@@ -86,29 +85,28 @@ int atMost(vector<int>& nums, int goal) {
 
 Count subarrays with exactly k odd numbers.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int numberOfSubarrays(vector<int>& nums, int k) {
-    return atMost(nums, k) - atMost(nums, k - 1);
+```rust
+fn number_of_subarrays(nums: &[i32], k: i32) -> i32 {
+    at_most(nums, k) - at_most(nums, k - 1)
 }
 
-int atMost(vector<int>& nums, int k) {
-    int left = 0, odds = 0, result = 0;
-    for (int right = 0; right < (int)nums.size(); right++) {
-        if (nums[right] % 2 == 1) odds++;
-        while (odds > k) {
-            if (nums[left] % 2 == 1) odds--;
-            left++;
+fn at_most(nums: &[i32], k: i32) -> i32 {
+    let mut left = 0;
+    let mut odds = 0;
+    let mut result = 0;
+    for right in 0..nums.len() {
+        if nums[right] % 2 == 1 { odds += 1; }
+        while odds > k {
+            if nums[left] % 2 == 1 { odds -= 1; }
+            left += 1;
         }
-        result += right - left + 1;
+        result += (right - left + 1) as i32;
     }
-    return result;
+    result
 }
 ```
 
-**Reduction insight:** `nums[i] % 2` transforms the problem to Binary Subarrays With Sum — both count binary values summing to k. The `atMost` template works identically.
+**Reduction insight:** `nums[i] % 2` transforms the problem to Binary Subarrays With Sum — both count binary values summing to k. The `at_most` template works identically.
 
 ---
 
@@ -116,29 +114,29 @@ int atMost(vector<int>& nums, int k) {
 
 Count subarrays where product is **strictly less than** k.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn num_subarray_product_less_than_k(nums: &[i32], k: i32) -> i32 {
+    if k <= 1 { return 0; }    // product ≥ 1 for positive arrays; nothing < 1 possible
+    let mut left = 0;
+    let mut product = 1;
+    let mut result = 0;
 
-int numSubarrayProductLessThanK(vector<int>& nums, int k) {
-    if (k <= 1) return 0;    // product ≥ 1 for positive arrays; nothing < 1 possible
-    int left = 0, product = 1, result = 0;
-
-    for (int right = 0; right < (int)nums.size(); right++) {
+    for right in 0..nums.len() {
         product *= nums[right];
 
-        while (product >= k) {     // product too large → shrink
-            product /= nums[left++];
+        while product >= k {     // product too large → shrink
+            product /= nums[left];
+            left += 1;
         }
 
         // All subarrays ending at 'right' starting in [left..right] have product < k
-        result += right - left + 1;
+        result += (right - left + 1) as i32;
     }
-    return result;
+    result
 }
 ```
 
-**This is directly `atMost` with `< k`** — no subtraction needed because the condition is already "less than k" (a valid window condition). The `right - left + 1` counting is the same.
+**This is directly `at_most` with `< k`** — no subtraction needed because the condition is already "less than k" (a valid window condition). The `right - left + 1` counting is the same.
 
 **Edge case:** `k <= 1` — since all `nums[i] >= 1`, any single element has product ≥ 1, which is not less than 1. Return 0.
 
@@ -159,37 +157,37 @@ Some problems already have "less than k" or "at most k" in the constraint:
 
 | Problem | Condition | Method |
 |---------|-----------|--------|
-| Subarray Product < K | product < k | Direct `atMost` counting |
-| Binary Subarrays Sum = k | sum == k | `atMost(k) - atMost(k-1)` |
-| Nice Subarrays exactly k | odds == k | `atMost(k) - atMost(k-1)` |
-| Subarrays with at most k distinct | distinct ≤ k | Direct `atMost` counting |
+| Subarray Product < K | product < k | Direct `at_most` counting |
+| Binary Subarrays Sum = k | sum == k | `at_most(k) - at_most(k-1)` |
+| Nice Subarrays exactly k | odds == k | `at_most(k) - at_most(k-1)` |
+| Subarrays with at most k distinct | distinct ≤ k | Direct `at_most` counting |
 
 ---
 
 ## Prefix Sum Alternative for Exact-Count Problems
 
-For binary arrays (0s and 1s), prefix sum + std::unordered_map is equivalent and handles the "exactly k" case directly:
+For binary arrays (0s and 1s), prefix sum + HashMap is equivalent and handles the "exactly k" case directly:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
 // Binary Subarrays With Sum — prefix sum approach
-int numSubarraysWithSum(vector<int>& nums, int goal) {
-    unordered_map<int, int> prefixCount;
-    prefixCount[0] = 1;   // empty prefix
-    int sum = 0, result = 0;
-    for (auto& num : nums) {
+fn num_subarrays_with_sum(nums: &[i32], goal: i32) -> i32 {
+    let mut prefix_count: HashMap<i32, i32> = HashMap::new();
+    prefix_count.insert(0, 1);   // empty prefix
+    let mut sum = 0;
+    let mut result = 0;
+    for &num in nums {
         sum += num;
-        result += (prefixCount.count(sum - goal) ? prefixCount[sum - goal] : 0);
-        prefixCount[sum]++;
+        result += prefix_count.get(&(sum - goal)).copied().unwrap_or(0);
+        *prefix_count.entry(sum).or_insert(0) += 1;
     }
-    return result;
+    result
 }
 ```
 
 **Trade-off:**
-- `atMost` trick: O(n) time, O(1) space — but only works for problems reducible to sliding window
+- `at_most` trick: O(n) time, O(1) space — but only works for problems reducible to sliding window
 - Prefix sum: O(n) time, O(n) space — more universal (works for negative numbers, complex conditions)
 
 ---

@@ -7,73 +7,73 @@
 
 ## 1. Fast/Slow Pointer — Wrong Loop Termination
 
-```cpp
+```rust
 // BUG: only checks fast
-while (fast != nullptr) {
-    slow = slow->next;
-    fast = fast->next->next; // crash if fast->next is nullptr
+while fast.is_some() {
+    slow = slow.as_ref().unwrap().next.as_deref();
+    fast = fast.as_ref().unwrap().next.as_ref().unwrap().next.as_deref(); // panic if fast.next is None
 }
 
 // FIX
-while (fast != nullptr && fast->next != nullptr) { ... }
+while fast.is_some() && fast.as_ref().unwrap().next.is_some() { /* ... */ }
 ```
 
 ---
 
 ## 2. Reverse — Forgetting to Save Next
 
-```cpp
-// BUG: curr->next is lost
-curr->next = prev;
-prev = curr;
-curr = curr->next; // curr->next is now prev, not the original next!
+```rust
+// BUG: node.next is lost after relinking (Rust borrow checker helps catch this)
+node.next = prev;
+prev = Some(node);
+// curr is now pointing at prev, not the original next!
 
-// FIX: save before relinking
-ListNode* nxt = curr->next;
-curr->next = prev;
-prev = curr;
-curr = nxt;
+// FIX: save before relinking using .take()
+let nxt = node.next.take(); // save next as Option<Box<ListNode>>
+node.next = prev;           // relink
+prev = Some(node);          // advance prev
+curr = nxt;                 // advance curr to saved next
 ```
 
 ---
 
 ## 3. K-Group Reverse — Wrong groupPrev Advancement
 
-```cpp
-// BUG: advancing groupPrev to kth (new head of group) instead of old head (new tail)
-groupPrev = kth; // wrong — skips to new head
+```rust
+// BUG: advancing group_prev to kth (new head of group) instead of old head (new tail)
+group_prev = kth; // wrong — skips to new head
 
-// FIX: tmp = groupPrev->next (old first = new tail of reversed group)
-ListNode* tmp = groupPrev->next;
-groupPrev->next = kth; // kth is new head
-groupPrev = tmp;       // advance to new tail
+// FIX: tmp = group_prev.next (old first = new tail of reversed group)
+let tmp = group_prev.as_mut().unwrap().next.take();
+group_prev.as_mut().unwrap().next = kth; // kth is new head
+group_prev = tmp;                        // advance to new tail
 ```
 
 ---
 
 ## 4. Partition List — Not Null-Terminating Greater List
 
-```cpp
-// BUG: greater->next may still point into the original list → cycle
-less->next = greaterHead->next;
-return lessHead->next;
+```rust
+// BUG: greater.next may still point into the original list → cycle
+less.next = greater_head.as_mut().unwrap().next.take();
+// ... return less_head.next
 
-// FIX: terminate before connecting
-greater->next = nullptr; // MUST do this first
-less->next = greaterHead->next;
-return lessHead->next;
+// FIX: terminate before connecting (.take() sets to None automatically)
+greater.next = None;                                     // MUST do this first
+less.next = greater_head.as_mut().unwrap().next.take();
+// ... return less_head.next
 ```
 
 ---
 
 ## 5. Remove Nth from End — Off-by-One on Gap
 
-```cpp
+```rust
 // BUG: advance fast n times → slow lands ON the target, not before it
-for (int i = 0; i < n; i++) fast = fast->next;
+for _ in 0..n { fast = fast.as_ref().unwrap().next.as_deref(); }
 
 // FIX: advance n+1 times → slow lands one before target
-for (int i = 0; i <= n; i++) fast = fast->next;
+for _ in 0..=n { fast = fast.as_ref().unwrap().next.as_deref(); }
 // Also: use dummy head so removing the first node works uniformly
 ```
 
@@ -81,32 +81,32 @@ for (int i = 0; i <= n; i++) fast = fast->next;
 
 ## 6. LRU Cache — Not Storing Key in Node
 
-```cpp
-// BUG: can't evict LRU from unordered_map without knowing its key
-Node* lru = tail->prev;
-map.erase(???); // don't know the key!
+```rust
+// BUG: can't evict LRU from HashMap without knowing its key
+let lru = tail_prev_idx; // don't know the key!
+map.remove(&???);        // unknown key
 
 // FIX: store key in Node
-struct Node { int key, val; ... };
-map.erase(lru->key); // works
+struct Node { key: i32, val: i32, /* prev/next indices */ }
+map.remove(&nodes[lru].key); // works
 ```
 
 ---
 
 ## 7. Floyd's Phase 2 — Moving Fast at 2x
 
-```cpp
+```rust
 // BUG: in phase 2, fast still moves 2x
 slow = head;
-while (slow != fast) {
-    slow = slow->next;
-    fast = fast->next->next; // wrong — phase 2 needs 1x speed
+while !std::ptr::eq(slow, fast) {
+    slow = (*slow).next;
+    fast = (*(*fast).next).next; // wrong — phase 2 needs 1x speed
 }
 
 // FIX: both move 1x in phase 2
-while (slow != fast) {
-    slow = slow->next;
-    fast = fast->next;
+while !std::ptr::eq(slow, fast) {
+    slow = (*slow).next;
+    fast = (*fast).next;
 }
 ```
 
@@ -114,30 +114,30 @@ while (slow != fast) {
 
 ## 8. Intersecting Lists — Wrong Head Assignment on Restart
 
-```cpp
-// BUG: a restarts to headA, b restarts to headB (no progress)
-a = (a != nullptr) ? a->next : headA;
-b = (b != nullptr) ? b->next : headB;
+```rust
+// BUG: a restarts to head_a, b restarts to head_b (no progress)
+a = if a.is_some() { a.as_ref().unwrap().next.as_deref() } else { head_a };
+b = if b.is_some() { b.as_ref().unwrap().next.as_deref() } else { head_b };
 
 // FIX: each restarts to the OTHER list's head
-a = (a != nullptr) ? a->next : headB;
-b = (b != nullptr) ? b->next : headA;
+a = if a.is_some() { a.as_ref().unwrap().next.as_deref() } else { head_b };
+b = if b.is_some() { b.as_ref().unwrap().next.as_deref() } else { head_a };
 ```
 
 ---
 
 ## 9. Cycle Detection — Checking Before Advancing
 
-```cpp
+```rust
 // BUG: slow == fast is true at start (both at head) → false positive no-cycle
-if (slow == fast) return true; // before any movement!
-while (fast != nullptr && fast->next != nullptr) { ... }
+if std::ptr::eq(slow, fast) { return true; } // before any movement!
+while fast.is_some() && fast.as_ref().unwrap().next.is_some() { /* ... */ }
 
 // FIX: check AFTER advancing
-while (fast != nullptr && fast->next != nullptr) {
-    slow = slow->next;
-    fast = fast->next->next;
-    if (slow == fast) return true; // check after movement
+while fast.is_some() && fast.as_ref().unwrap().next.is_some() {
+    slow = slow.as_ref().unwrap().next.as_deref();
+    fast = fast.as_ref().unwrap().next.as_ref().unwrap().next.as_deref();
+    if std::ptr::eq(slow, fast) { return true; } // check after movement
 }
 ```
 
@@ -147,19 +147,29 @@ while (fast != nullptr && fast->next != nullptr) {
 
 Recursive reverse / recursive DFS on large inputs (n = 10^5) will cause a stack overflow.
 
-```cpp
+```rust
 // RISKY for large input
-ListNode* reverseList(ListNode* head) {
-    if (head == nullptr || head->next == nullptr) return head;
-    ListNode* rest = reverseList(head->next); // O(n) stack depth
-    ...
+fn reverse_list(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+    match head {
+        None => None,
+        Some(ref node) if node.next.is_none() => head,
+        Some(mut node) => {
+            let rest = reverse_list(node.next.take()); // O(n) stack depth
+            // ...
+            rest
+        }
+    }
 }
 
 // SAFE
-ListNode* reverseList(ListNode* head) {
-    ListNode* prev = nullptr, *curr = head; // iterative O(1) space
-    while (curr != nullptr) { ... }
-    return prev;
+fn reverse_list(mut head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+    let mut prev: Option<Box<ListNode>> = None; // iterative O(1) space
+    while let Some(mut node) = head {
+        head = node.next.take();
+        node.next = prev;
+        prev = Some(node);
+    }
+    prev
 }
 ```
 
@@ -169,13 +179,17 @@ Default system stack size is typically 1–8 MB. A list of length 10^5 with deep
 
 ## 11. Heap Comparator Integer Overflow
 
-```cpp
-// BUG: a->val - b->val overflows for large negative/positive pairs
-auto bad_cmp = [](Node* a, Node* b) { return a->val - b->val; };
+```rust
+// BUG: a.val - b.val overflows for large negative/positive pairs
+// In Rust, integer overflow panics in debug mode — avoid subtraction-based comparisons
 
-// FIX: use a proper boolean comparator (min-heap by val)
-auto cmp = [](Node* a, Node* b) { return a->val > b->val; };
-priority_queue<Node*, vector<Node*>, decltype(cmp)> pq(cmp);
+// FIX: use proper ordering with BinaryHeap<Reverse<...>> for min-heap by val
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
+
+// Min-heap by val: wrap value in Reverse so smallest val has highest priority
+let mut pq: BinaryHeap<(Reverse<i32>, i32)> = BinaryHeap::new();
+// pq.push((Reverse(node.val), node.key));
 ```
 
 ---
@@ -183,9 +197,9 @@ priority_queue<Node*, vector<Node*>, decltype(cmp)> pq(cmp);
 ## Quick Checklist Before Submitting
 
 - [ ] Dummy head used where head might change?
-- [ ] `fast != nullptr && fast->next != nullptr` (both conditions)?
-- [ ] `nxt` saved before `curr->next = prev`?
-- [ ] Greater list null-terminated in partition?
+- [ ] `fast.is_some() && fast.as_ref().unwrap().next.is_some()` (both conditions)?
+- [ ] `nxt` saved before `node.next = prev` (use `.take()`)?
+- [ ] Greater list `None`-terminated in partition?
 - [ ] Phase 2 of Floyd's uses 1x speed?
 - [ ] Key stored in LRU/LFU node?
 

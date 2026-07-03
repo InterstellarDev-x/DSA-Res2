@@ -12,21 +12,20 @@ If you internalize the recipes here, you can solve *any* of the 55 problems in t
 
 A subproblem is uniquely identified by its **state** (the arguments that actually vary across recursive calls). Memoization stores the answer for each state the first time it is computed and returns the stored value on every subsequent visit.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
 // Skeleton of every top-down DP.
-int solve(State s) {
-    if (isBaseCase(s)) return baseValue(s);   // 1. base case
-    if (memo.count(s)) return memo[s];        // 2. cache hit -> return
-    int ans = combine(                         // 3. recurrence / transition
-        solve(next1(s)),
-        solve(next2(s)),
-        ...
+fn solve(s: State, memo: &mut HashMap<State, i32>) -> i32 {
+    if is_base_case(s) { return base_value(s); }          // 1. base case
+    if let Some(&cached) = memo.get(&s) { return cached; } // 2. cache hit -> return
+    let ans = combine(                                      // 3. recurrence / transition
+        solve(next1(s), memo),
+        solve(next2(s), memo),
+        // ...
     );
-    memo[s] = ans;                            // 4. cache the result
-    return ans;
+    memo.insert(s, ans);                                   // 4. cache the result
+    ans
 }
 ```
 
@@ -50,118 +49,110 @@ When the state is a small tuple of bounded integers (`index`, `capacity`, `i`, `
 Pick a sentinel that **cannot be a real answer**:
 
 - Use `-1` when all valid answers are `>= 0` (counts, lengths, non-negative costs).
-- Use `INT_MIN` / `INT_MAX` when `-1` is a legal answer (e.g., profits or costs that can be negative).
-- For boolean DP, use a `vector<vector<int>>` holding `{-1 = unknown, 0 = false, 1 = true}`.
+- Use `i32::MIN` / `i32::MAX` when `-1` is a legal answer (e.g., profits or costs that can be negative).
+- For boolean DP, use a `Vec<Vec<i32>>` holding `{-1 = unknown, 0 = false, 1 = true}`.
 
 ### 1D, 2D, 3D initialization
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // 1D: states indexed by a single integer in [0, n].
-vector<int> memo1(n + 1, -1);
+let memo1: Vec<i32> = vec![-1; n + 1];
 
 // 2D: states (i, j).
-vector<vector<int>> memo2(n + 1, vector<int>(m + 1, -1));
+let memo2: Vec<Vec<i32>> = vec![vec![-1; m + 1]; n + 1];
 
 // 3D: states (i, j, k) — e.g., stock with transaction cap, Cherry Pickup II.
-vector<vector<vector<int>>> memo3(n, vector<vector<int>>(m, vector<int>(k, -1)));
+let memo3: Vec<Vec<Vec<i32>>> = vec![vec![vec![-1; k]; m]; n];
 ```
 
-> **Pitfall:** Initializing a 2D structure row-by-row is not needed in C++ since the constructor fills all values. Use the constructor with an initial value as shown above.
+> **Pitfall:** Initializing a 2D structure row-by-row is not needed in Rust since the `vec!` macro fills all values. Use the macro with an initial value as shown above.
 
-### Boolean DP with a `vector<vector<int>>` (-1 sentinel)
+### Boolean DP with a `Vec<Vec<i32>>` (-1 sentinel)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+let mut memo: Vec<Vec<i32>> = vec![vec![-1; target + 1]; n + 1];  // -1 = "not computed"
 
-vector<vector<int>> memo(n + 1, vector<int>(target + 1, -1));  // -1 = "not computed"
+fn subset_sum(idx: usize, target: usize, nums: &[i32], memo: &mut Vec<Vec<i32>>) -> bool {
+    if target == 0 { return true; }
+    if idx == 0 { return nums[0] == target as i32; }
+    if memo[idx][target] != -1 { return memo[idx][target] == 1; }
 
-bool subsetSum(int idx, int target, vector<int>& nums) {
-    if (target == 0) return true;
-    if (idx == 0)    return nums[0] == target;
-    if (memo[idx][target] != -1) return memo[idx][target];
+    let not_take = subset_sum(idx - 1, target, nums, memo);
+    let mut take = false;
+    if nums[idx] as usize <= target {
+        take = subset_sum(idx - 1, target - nums[idx] as usize, nums, memo);
+    }
 
-    bool notTake = subsetSum(idx - 1, target, nums);
-    bool take = false;
-    if (nums[idx] <= target) take = subsetSum(idx - 1, target - nums[idx], nums);
-
-    return memo[idx][target] = (take || notTake);
+    memo[idx][target] = if take || not_take { 1 } else { 0 };
+    take || not_take
 }
 ```
 
 ---
 
-## 3. unordered_map-Based Memo (sparse or non-integer states)
+## 3. HashMap-Based Memo (sparse or non-integer states)
 
-Use an `unordered_map` when the state space is **huge but sparsely visited**, **not naturally rectangular**, or **keyed by something other than small ints** (strings, sets, doubles).
+Use a `HashMap` when the state space is **huge but sparsely visited**, **not naturally rectangular**, or **keyed by something other than small ints** (strings, sets, doubles).
 
 ### When to prefer a map over an array
 
 | Situation | Use |
 |-----------|-----|
-| Dense, small, integer-bounded state | `vector<vector<int>>` array |
-| State range is large but only a few states are actually reached | `unordered_map` |
-| State key is a `string`, object, or bitmask that doesn't index cleanly | `unordered_map` |
-| Memory of the full rectangular table would not fit | `unordered_map` |
+| Dense, small, integer-bounded state | `Vec<Vec<i32>>` array |
+| State range is large but only a few states are actually reached | `HashMap` |
+| State key is a `String`, object, or bitmask that doesn't index cleanly | `HashMap` |
+| Memory of the full rectangular table would not fit | `HashMap` |
 
-### Pattern A — encode the state to a single `long long` key
+### Pattern A — encode the state to a single `i64` key
 
-When you have 2–3 bounded integer dimensions, pack them into one `long long`. This avoids object allocation per key and is faster than a string key.
+When you have 2–3 bounded integer dimensions, pack them into one `i64`. This avoids object allocation per key and is faster than a string key.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-// Encode (i, j) where 0 <= j < BASE into a single long long.
-const long long BASE = 100000LL;
+// Encode (i, j) where 0 <= j < BASE into a single i64.
+const BASE: i64 = 100000;
 
-long long encode(int i, int j) {
-    return (long long) i * BASE + j;
+fn encode(i: i32, j: i32) -> i64 {
+    i as i64 * BASE + j as i64
 }
 
-unordered_map<long long, int> memo;
+fn solve(i: i32, j: i32, memo: &mut HashMap<i64, i32>) -> i32 {
+    if /* base case */ false { return 0; /* base value */ }
+    let key = encode(i, j);
+    if let Some(&cached) = memo.get(&key) { return cached; }
 
-int solve(int i, int j) {
-    if (/* base case */ ) return /* base value */;
-    long long key = encode(i, j);
-    auto it = memo.find(key);
-    if (it != memo.end()) return it->second;
-
-    int ans = /* recurrence using solve(...) */ 0;
-    memo[key] = ans;
-    return ans;
+    let ans = 0; /* recurrence using solve(...) */
+    memo.insert(key, ans);
+    ans
 }
 ```
 
-### Pattern B — `unordered_map<string, int>` for irregular keys
+### Pattern B — `HashMap<String, i32>` for irregular keys
 
 Readable and flexible (e.g., Boolean Evaluation keys an operator range plus a target flag). Slightly slower due to string building and hashing.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-unordered_map<string, int> memo;
+fn count_ways(i: usize, j: usize, is_true: bool, exp: &str, memo: &mut HashMap<String, i32>) -> i32 {
+    if i > j { return 0; }
+    if i == j { /* single operand */ return 0; /* ... */ }
+    let key = format!("{}|{}|{}", i, j, is_true as i32);
+    if let Some(&cached) = memo.get(&key) { return cached; }
 
-int countWays(int i, int j, bool isTrue, string& exp) {
-    if (i > j) return 0;
-    if (i == j) { /* single operand */ return /* ... */ 0; }
-    string key = to_string(i) + "|" + to_string(j) + "|" + to_string(isTrue);
-    if (memo.count(key)) return memo[key];
-
-    int ways = 0;
-    for (int k = i + 1; k <= j - 1; k += 2) {
+    let mut ways = 0;
+    let mut k = i + 1;
+    while k <= j - 1 {
         // partition on operator at k, combine left/right true/false counts...
+        k += 2;
     }
-    memo[key] = ways;
-    return ways;
+    memo.insert(key, ways);
+    ways
 }
 ```
 
-> **Tip:** `count` + `[]` is two lookups. For hot paths, use `find()` and compare against `end()` to perform a single lookup and retrieve the value via the iterator.
+> **Tip:** `contains_key` + `[]` is two lookups. For hot paths, use `get()` and compare against `None` to perform a single lookup and retrieve the value via the returned `Option`.
 
 ---
 
@@ -169,45 +160,44 @@ int countWays(int i, int j, bool isTrue, string& exp) {
 
 Most interviewers accept either, but tabulation removes recursion-stack risk and is often easier to space-optimize. Convert mechanically:
 
-1. **Identify the state and its ranges.** Whatever the memo is indexed by becomes the DP table dimensions: `vector<vector<int>> dp(N+1, vector<int>(M+1))`.
-2. **Translate base cases into table initialization.** Every `if (baseCase) return v;` becomes a pre-filled cell or row/column.
+1. **Identify the state and its ranges.** Whatever the memo is indexed by becomes the DP table dimensions: `vec![vec![0i32; M+1]; N+1]`.
+2. **Translate base cases into table initialization.** Every `if base_case { return v; }` becomes a pre-filled cell or row/column.
 3. **Determine iteration order.** A state must be computed *after* all states it depends on. If `solve(i)` calls `solve(i-1)`, iterate `i` from low to high. If it calls `solve(i+1)` (suffix DP), iterate `i` from high to low. For interval DP `dp(i,j)` that depends on smaller ranges, iterate by **increasing length** (or `i` descending, `j` ascending).
 4. **Replace each recursive call with a table read.** `solve(i-1)` → `dp[i-1]`. The body of the recurrence is otherwise identical.
 5. **Read the answer from the cell corresponding to the original top-level call.**
 
 ### Worked example — Fibonacci as a template
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Top-down (memoized)
-int fibMemo(int n, vector<int>& memo) {
-    if (n <= 1) return n;                 // base case
-    if (memo[n] != -1) return memo[n];
-    return memo[n] = fibMemo(n - 1, memo) + fibMemo(n - 2, memo);
+fn fib_memo(n: usize, memo: &mut Vec<i32>) -> i32 {
+    if n <= 1 { return n as i32; }             // base case
+    if memo[n] != -1 { return memo[n]; }
+    memo[n] = fib_memo(n - 1, memo) + fib_memo(n - 2, memo);
+    memo[n]
 }
 
 // Bottom-up (tabulated) — same recurrence, explicit order
-int fibTab(int n) {
-    if (n <= 1) return n;
-    vector<int> dp(n + 1);
-    dp[0] = 0; dp[1] = 1;                  // base cases -> initialization
-    for (int i = 2; i <= n; i++)           // order: low -> high (depends on i-1, i-2)
-        dp[i] = dp[i - 1] + dp[i - 2];     // call -> table read
-    return dp[n];                          // answer location
+fn fib_tab(n: usize) -> i32 {
+    if n <= 1 { return n as i32; }
+    let mut dp = vec![0i32; n + 1];
+    dp[0] = 0; dp[1] = 1;                     // base cases -> initialization
+    for i in 2..=n {                           // order: low -> high (depends on i-1, i-2)
+        dp[i] = dp[i - 1] + dp[i - 2];        // call -> table read
+    }
+    dp[n]                                      // answer location
 }
 
 // Space-optimized — only the last two states matter
-int fibOpt(int n) {
-    if (n <= 1) return n;
-    int prev2 = 0, prev1 = 1;
-    for (int i = 2; i <= n; i++) {
-        int cur = prev1 + prev2;
+fn fib_opt(n: usize) -> i32 {
+    if n <= 1 { return n as i32; }
+    let (mut prev2, mut prev1) = (0i32, 1i32);
+    for _ in 2..=n {
+        let cur = prev1 + prev2;
         prev2 = prev1;
         prev1 = cur;
     }
-    return prev1;
+    prev1
 }
 ```
 
@@ -229,18 +219,22 @@ The progression `recursion → memoization → tabulation → space-optimized` a
 
 ## 6. Recursion Depth & Stack Overflow
 
-C++'s default thread stack (typically **1–8 MB** depending on OS) can overflow with deep recursion. A top-down DP over `n = 10^5` along a single chain (e.g., LIS, Word Break, Frog Jump on a large array) can blow the stack.
+Rust's default thread stack (typically **8 MB**) can overflow with deep recursion. A top-down DP over `n = 10^5` along a single chain (e.g., LIS, Word Break, Frog Jump on a large array) can blow the stack.
 
 Mitigations, in order of preference:
 
 1. **Convert to tabulation.** The cleanest fix — no recursion at all.
-2. **Increase the stack size** when you must keep top-down:
-   ```cpp
-   // On Linux/macOS: ulimit -s unlimited before running the binary.
-   // On Windows (MSVC): use /F<size> linker flag, e.g. /F67108864 for 64 MB.
-   // In competitive programming, a common trick is a pragma comment:
-   // #pragma comment(linker, "/STACK:1000000000")
-   // There is no portable standard-library mechanism for this in C++.
+2. **Spawn a thread with a larger stack** when you must keep top-down:
+   ```rust
+   // Spawn a thread with a 64 MB stack for deep recursion.
+   std::thread::Builder::new()
+       .stack_size(64 * 1024 * 1024)
+       .spawn(|| {
+           // your DP function here
+       })
+       .unwrap()
+       .join()
+       .unwrap();
    ```
 3. **Iterative explicit-stack DFS** for the rare case where the recurrence is awkward to tabulate.
 
@@ -270,55 +264,63 @@ Each state is computed exactly once (after that it's a cache hit), so the total 
 
 Putting the framework together: brute force, then array memo, then the array memo's space-optimized tabulation. This is the template behind every problem in [Knapsack (Subset Sum)](../Patterns/Knapsack%20(Subset%20Sum).md).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // ---- Step 1: brute-force recursion (exponential) ----
-int rec(int i, int cap, vector<int>& wt, vector<int>& val) {
-    if (i < 0 || cap == 0) return 0;
-    int notTake = rec(i - 1, cap, wt, val);
-    int take = INT_MIN;
-    if (wt[i] <= cap) take = val[i] + rec(i - 1, cap - wt[i], wt, val);
-    return max(take, notTake);
+fn rec(i: i32, cap: usize, wt: &[i32], val: &[i32]) -> i32 {
+    if i < 0 || cap == 0 { return 0; }
+    let ui = i as usize;
+    let not_take = rec(i - 1, cap, wt, val);
+    let mut take = i32::MIN;
+    if wt[ui] as usize <= cap {
+        take = val[ui] + rec(i - 1, cap - wt[ui] as usize, wt, val);
+    }
+    take.max(not_take)
 }
 
 // ---- Step 2: top-down memoization ----
-int memoHelper(int i, int cap, vector<int>& wt, vector<int>& val, vector<vector<int>>& memo) {
-    if (i < 0 || cap == 0) return 0;
-    if (memo[i][cap] != -1) return memo[i][cap];
-    int notTake = memoHelper(i - 1, cap, wt, val, memo);
-    int take = INT_MIN;
-    if (wt[i] <= cap) take = val[i] + memoHelper(i - 1, cap - wt[i], wt, val, memo);
-    return memo[i][cap] = max(take, notTake);
+fn memo_helper(i: i32, cap: usize, wt: &[i32], val: &[i32], memo: &mut Vec<Vec<i32>>) -> i32 {
+    if i < 0 || cap == 0 { return 0; }
+    let ui = i as usize;
+    if memo[ui][cap] != -1 { return memo[ui][cap]; }
+    let not_take = memo_helper(i - 1, cap, wt, val, memo);
+    let mut take = i32::MIN;
+    if wt[ui] as usize <= cap {
+        take = val[ui] + memo_helper(i - 1, cap - wt[ui] as usize, wt, val, memo);
+    }
+    memo[ui][cap] = take.max(not_take);
+    memo[ui][cap]
 }
 
-int memoized(int n, int W, vector<int>& wt, vector<int>& val) {
-    vector<vector<int>> memo(n, vector<int>(W + 1, -1));
-    return memoHelper(n - 1, W, wt, val, memo);
+fn memoized(n: usize, w: usize, wt: &[i32], val: &[i32]) -> i32 {
+    let mut memo = vec![vec![-1i32; w + 1]; n];
+    memo_helper(n as i32 - 1, w, wt, val, &mut memo)
 }
 
 // ---- Step 3: bottom-up tabulation ----
-int tabulation(int n, int W, vector<int>& wt, vector<int>& val) {
-    vector<vector<int>> dp(n + 1, vector<int>(W + 1, 0));   // dp[i][cap] using items 0..i-1
-    for (int i = 1; i <= n; i++) {
-        for (int cap = 0; cap <= W; cap++) {
-            int notTake = dp[i - 1][cap];
-            int take = INT_MIN;
-            if (wt[i - 1] <= cap) take = val[i - 1] + dp[i - 1][cap - wt[i - 1]];
-            dp[i][cap] = max(take, notTake);
+fn tabulation(n: usize, w: usize, wt: &[i32], val: &[i32]) -> i32 {
+    let mut dp = vec![vec![0i32; w + 1]; n + 1];   // dp[i][cap] using items 0..i-1
+    for i in 1..=n {
+        for cap in 0..=w {
+            let not_take = dp[i - 1][cap];
+            let mut take = i32::MIN;
+            if wt[i - 1] as usize <= cap {
+                take = val[i - 1] + dp[i - 1][cap - wt[i - 1] as usize];
+            }
+            dp[i][cap] = take.max(not_take);
         }
     }
-    return dp[n][W];
+    dp[n][w]
 }
 
 // ---- Step 4: 1D space optimization (iterate capacity DOWNWARD for 0/1) ----
-int spaceOptimized(int n, int W, vector<int>& wt, vector<int>& val) {
-    vector<int> dp(W + 1, 0);
-    for (int i = 0; i < n; i++)
-        for (int cap = W; cap >= wt[i]; cap--)        // downward => each item used once
-            dp[cap] = max(dp[cap], val[i] + dp[cap - wt[i]]);
-    return dp[W];
+fn space_optimized(n: usize, w: usize, wt: &[i32], val: &[i32]) -> i32 {
+    let mut dp = vec![0i32; w + 1];
+    for i in 0..n {
+        for cap in (wt[i] as usize..=w).rev() {    // downward => each item used once
+            dp[cap] = dp[cap].max(val[i] + dp[cap - wt[i] as usize]);
+        }
+    }
+    dp[w]
 }
 ```
 
@@ -331,7 +333,7 @@ The four functions return identical answers; they differ only in time/space and 
 1. **Define the state** — the minimal set of arguments that determines the answer.
 2. **Write the recurrence** — express the answer in terms of smaller states.
 3. **Establish base cases** — the smallest states with direct answers.
-4. **Choose memo storage** — array if dense/integer-indexed, `unordered_map` if sparse/irregular; pick a safe sentinel.
+4. **Choose memo storage** — array if dense/integer-indexed, `HashMap` if sparse/irregular; pick a safe sentinel.
 5. **Decide order** (for tabulation) — compute each state after its dependencies.
 6. **Locate the answer** — the state matching the original top-level call.
 7. **Space-optimize last** — only if you don't need to reconstruct the path.

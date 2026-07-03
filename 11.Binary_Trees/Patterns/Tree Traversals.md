@@ -6,13 +6,22 @@ Traversal is the foundation of every binary-tree algorithm. Master the four core
 (preorder, inorder, postorder, level-order) both recursively and iteratively, plus the two
 "hard" traversals interviewers love: **zigzag** and **vertical order**.
 
-```cpp
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
-};
+```rust
+use std::rc::Rc;
+use std::cell::RefCell;
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Rc<RefCell<TreeNode>>>,
+    pub right: Option<Rc<RefCell<TreeNode>>>,
+}
+
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 ---
@@ -22,32 +31,40 @@ struct TreeNode {
 The recursive shape is identical for all three orders — only the *position* of the visit
 statement changes.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::rc::Rc;
+use std::cell::RefCell;
+
+type TreeLink = Option<Rc<RefCell<TreeNode>>>;
 
 // Preorder: Root -> Left -> Right
-void preorder(TreeNode* node, vector<int>& out) {
-    if (node == nullptr) return;
-    out.push_back(node->val);              // visit
-    preorder(node->left, out);
-    preorder(node->right, out);
+fn preorder(node: &TreeLink, out: &mut Vec<i32>) {
+    if let Some(n) = node {
+        let n = n.borrow();
+        out.push(n.val);              // visit
+        preorder(&n.left, out);
+        preorder(&n.right, out);
+    }
 }
 
 // Inorder: Left -> Root -> Right
-void inorder(TreeNode* node, vector<int>& out) {
-    if (node == nullptr) return;
-    inorder(node->left, out);
-    out.push_back(node->val);              // visit
-    inorder(node->right, out);
+fn inorder(node: &TreeLink, out: &mut Vec<i32>) {
+    if let Some(n) = node {
+        let n = n.borrow();
+        inorder(&n.left, out);
+        out.push(n.val);              // visit
+        inorder(&n.right, out);
+    }
 }
 
 // Postorder: Left -> Right -> Root
-void postorder(TreeNode* node, vector<int>& out) {
-    if (node == nullptr) return;
-    postorder(node->left, out);
-    postorder(node->right, out);
-    out.push_back(node->val);              // visit
+fn postorder(node: &TreeLink, out: &mut Vec<i32>) {
+    if let Some(n) = node {
+        let n = n.borrow();
+        postorder(&n.left, out);
+        postorder(&n.right, out);
+        out.push(n.val);              // visit
+    }
 }
 ```
 
@@ -61,24 +78,26 @@ two recursive descents.
 Walk all the way left pushing onto a stack, then pop (visit), then move to the right child
 and repeat.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::rc::Rc;
+use std::cell::RefCell;
 
-vector<int> inorderTraversal(TreeNode* root) {
-    vector<int> out;
-    stack<TreeNode*> stk;
-    TreeNode* curr = root;
-    while (curr != nullptr || !stk.empty()) {
-        while (curr != nullptr) {      // push the entire left spine
-            stk.push(curr);
-            curr = curr->left;
+type TreeLink = Option<Rc<RefCell<TreeNode>>>;
+
+fn inorder_traversal(root: TreeLink) -> Vec<i32> {
+    let mut out = Vec::new();
+    let mut stk: Vec<Rc<RefCell<TreeNode>>> = Vec::new();
+    let mut curr = root;
+    while curr.is_some() || !stk.is_empty() {
+        while let Some(node) = curr {       // push the entire left spine
+            curr = node.borrow().left.clone();
+            stk.push(node);
         }
-        curr = stk.top(); stk.pop();   // leftmost unvisited node
-        out.push_back(curr->val);      // visit
-        curr = curr->right;            // then explore its right subtree
+        let node = stk.pop().unwrap();      // leftmost unvisited node
+        out.push(node.borrow().val);        // visit
+        curr = node.borrow().right.clone(); // then explore its right subtree
     }
-    return out;
+    out
 }
 ```
 
@@ -89,22 +108,23 @@ vector<int> inorderTraversal(TreeNode* root) {
 Because a stack is LIFO, push the **right** child first so the **left** child is processed
 next (preorder = Root, Left, Right).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::rc::Rc;
+use std::cell::RefCell;
 
-vector<int> preorderTraversal(TreeNode* root) {
-    vector<int> out;
-    if (root == nullptr) return out;
-    stack<TreeNode*> stk;
-    stk.push(root);
-    while (!stk.empty()) {
-        TreeNode* node = stk.top(); stk.pop();
-        out.push_back(node->val);                        // visit root first
-        if (node->right != nullptr) stk.push(node->right); // right pushed first
-        if (node->left  != nullptr) stk.push(node->left);  // left popped first
+type TreeLink = Option<Rc<RefCell<TreeNode>>>;
+
+fn preorder_traversal(root: TreeLink) -> Vec<i32> {
+    let mut out = Vec::new();
+    if root.is_none() { return out; }
+    let mut stk: Vec<Rc<RefCell<TreeNode>>> = Vec::new();
+    stk.push(root.unwrap());
+    while let Some(node) = stk.pop() {
+        out.push(node.borrow().val);                                           // visit root first
+        if let Some(right) = node.borrow().right.clone() { stk.push(right); } // right pushed first
+        if let Some(left)  = node.borrow().left.clone()  { stk.push(left);  } // left popped first
     }
-    return out;
+    out
 }
 ```
 
@@ -115,52 +135,64 @@ vector<int> preorderTraversal(TreeNode* root) {
 ### Approach A — two stacks
 Do a *modified preorder* (Root, Right, Left) onto `stack2`, then reverse it by popping.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::rc::Rc;
+use std::cell::RefCell;
 
-vector<int> postorderTraversal(TreeNode* root) {
-    vector<int> out;
-    if (root == nullptr) return out;
-    stack<TreeNode*> stk;
-    stk.push(root);
-    while (!stk.empty()) {
-        TreeNode* node = stk.top(); stk.pop();
-        out.push_back(node->val);                  // collect Root,Right,Left
-        if (node->left  != nullptr) stk.push(node->left);
-        if (node->right != nullptr) stk.push(node->right);
+type TreeLink = Option<Rc<RefCell<TreeNode>>>;
+
+fn postorder_traversal(root: TreeLink) -> Vec<i32> {
+    let mut out = Vec::new();
+    if root.is_none() { return out; }
+    let mut stk: Vec<Rc<RefCell<TreeNode>>> = Vec::new();
+    stk.push(root.unwrap());
+    while let Some(node) = stk.pop() {
+        out.push(node.borrow().val);                    // collect Root,Right,Left
+        if let Some(left)  = node.borrow().left.clone()  { stk.push(left);  }
+        if let Some(right) = node.borrow().right.clone() { stk.push(right); }
     }
-    reverse(out.begin(), out.end()); // ends up Left, Right, Root
-    return out;
+    out.reverse(); // ends up Left, Right, Root
+    out
 }
 ```
 
 This is the **reverse-of-modified-preorder trick**: preorder visiting Root→Right→Left,
-collected with `push_back` then `reverse`, yields Left→Right→Root.
+collected with `push` then `reverse`, yields Left→Right→Root.
 
-### Approach B — single stack with a `lastVisited` pointer
+### Approach B — single stack with a `last_visited` pointer
 Visit a node only after its right child has been fully processed.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::rc::Rc;
+use std::cell::RefCell;
 
-vector<int> postorderSingleStack(TreeNode* root) {
-    vector<int> out;
-    stack<TreeNode*> stk;
-    TreeNode* curr = root;
-    TreeNode* lastVisited = nullptr;
-    while (curr != nullptr || !stk.empty()) {
-        while (curr != nullptr) { stk.push(curr); curr = curr->left; }
-        TreeNode* peek = stk.top();
-        if (peek->right != nullptr && lastVisited != peek->right) {
-            curr = peek->right;                   // go right before visiting
+type TreeLink = Option<Rc<RefCell<TreeNode>>>;
+
+fn postorder_single_stack(root: TreeLink) -> Vec<i32> {
+    let mut out = Vec::new();
+    let mut stk: Vec<Rc<RefCell<TreeNode>>> = Vec::new();
+    let mut curr = root;
+    let mut last_visited: Option<Rc<RefCell<TreeNode>>> = None;
+    while curr.is_some() || !stk.is_empty() {
+        while let Some(node) = curr {
+            curr = node.borrow().left.clone();
+            stk.push(node);
+        }
+        let peek = stk.last().unwrap().clone();
+        let peek_right = peek.borrow().right.clone();
+        let should_go_right = match (&peek_right, &last_visited) {
+            (Some(r), Some(lv)) => !Rc::ptr_eq(r, lv),
+            (Some(_), None) => true,
+            _ => false,
+        };
+        if should_go_right {
+            curr = peek_right;                    // go right before visiting
         } else {
-            out.push_back(peek->val);
-            lastVisited = stk.top(); stk.pop();
+            out.push(peek.borrow().val);
+            last_visited = Some(stk.pop().unwrap());
         }
     }
-    return out;
+    out
 }
 ```
 
@@ -171,31 +203,45 @@ vector<int> postorderSingleStack(TreeNode* root) {
 Threads each node's predecessor's right pointer to itself, removing the need for a stack.
 Time O(n), space **O(1)** (mutates then restores pointers).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::rc::Rc;
+use std::cell::RefCell;
 
-vector<int> morrisInorder(TreeNode* root) {
-    vector<int> out;
-    TreeNode* curr = root;
-    while (curr != nullptr) {
-        if (curr->left == nullptr) {
-            out.push_back(curr->val);
-            curr = curr->right;
+type TreeLink = Option<Rc<RefCell<TreeNode>>>;
+
+fn morris_inorder(root: TreeLink) -> Vec<i32> {
+    let mut out = Vec::new();
+    let mut curr = root;
+    while let Some(curr_rc) = curr.clone() {
+        if curr_rc.borrow().left.is_none() {
+            out.push(curr_rc.borrow().val);
+            curr = curr_rc.borrow().right.clone();
         } else {
-            TreeNode* pred = curr->left;
-            while (pred->right != nullptr && pred->right != curr) pred = pred->right;
-            if (pred->right == nullptr) {            // create thread
-                pred->right = curr;
-                curr = curr->left;
-            } else {                             // thread exists -> remove it, visit
-                pred->right = nullptr;
-                out.push_back(curr->val);
-                curr = curr->right;
+            // find inorder predecessor
+            let mut pred_opt = curr_rc.borrow().left.clone();
+            loop {
+                let next = {
+                    let pred = pred_opt.as_ref().unwrap().borrow();
+                    match &pred.right {
+                        Some(r) if !Rc::ptr_eq(r, &curr_rc) => Some(r.clone()),
+                        _ => None,
+                    }
+                };
+                if let Some(n) = next { pred_opt = Some(n); }
+                else { break; }
+            }
+            let pred_rc = pred_opt.unwrap();
+            if pred_rc.borrow().right.is_none() {          // create thread
+                pred_rc.borrow_mut().right = Some(curr_rc.clone());
+                curr = curr_rc.borrow().left.clone();
+            } else {                                       // thread exists -> remove it, visit
+                pred_rc.borrow_mut().right = None;
+                out.push(curr_rc.borrow().val);
+                curr = curr_rc.borrow().right.clone();
             }
         }
     }
-    return out;
+    out
 }
 ```
 
@@ -203,31 +249,33 @@ vector<int> morrisInorder(TreeNode* root) {
 
 ## 6. Level Order — BFS with size snapshot (LC 102)
 
-The **size-snapshot** is the key idiom: capture `queue.size()` *before* the inner loop so
+The **size-snapshot** is the key idiom: capture `queue.len()` *before* the inner loop so
 you process exactly one level at a time.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::collections::VecDeque;
 
-vector<vector<int>> levelOrder(TreeNode* root) {
-    vector<vector<int>> result;
-    if (root == nullptr) return result;
-    queue<TreeNode*> q;
-    q.push(root);
-    while (!q.empty()) {
-        int size = q.size();                 // snapshot: nodes on this level
-        vector<int> level;
-        level.reserve(size);
-        for (int i = 0; i < size; i++) {
-            TreeNode* node = q.front(); q.pop();
-            level.push_back(node->val);
-            if (node->left  != nullptr) q.push(node->left);
-            if (node->right != nullptr) q.push(node->right);
+type TreeLink = Option<Rc<RefCell<TreeNode>>>;
+
+fn level_order(root: TreeLink) -> Vec<Vec<i32>> {
+    let mut result = Vec::new();
+    if root.is_none() { return result; }
+    let mut q: VecDeque<Rc<RefCell<TreeNode>>> = VecDeque::new();
+    q.push_back(root.unwrap());
+    while !q.is_empty() {
+        let size = q.len();                    // snapshot: nodes on this level
+        let mut level = Vec::with_capacity(size);
+        for _ in 0..size {
+            let node = q.pop_front().unwrap();
+            level.push(node.borrow().val);
+            if let Some(left)  = node.borrow().left.clone()  { q.push_back(left);  }
+            if let Some(right) = node.borrow().right.clone() { q.push_back(right); }
         }
-        result.push_back(level);
+        result.push(level);
     }
-    return result;
+    result
 }
 ```
 
@@ -236,33 +284,36 @@ vector<vector<int>> levelOrder(TreeNode* root) {
 ## 7. Zigzag Level Order (LC 103)
 
 Run normal BFS but alternate the **insertion direction** within each level using a
-`deque` + `push_front`/`push_back`. This keeps each insert O(1) (never inserting at an
+`VecDeque` + `push_front`/`push_back`. This keeps each insert O(1) (never inserting at an
 arbitrary index).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::collections::VecDeque;
 
-vector<vector<int>> zigzagLevelOrder(TreeNode* root) {
-    vector<vector<int>> result;
-    if (root == nullptr) return result;
-    queue<TreeNode*> q;
-    q.push(root);
-    bool leftToRight = true;
-    while (!q.empty()) {
-        int size = q.size();
-        deque<int> level;
-        for (int i = 0; i < size; i++) {
-            TreeNode* node = q.front(); q.pop();
-            if (leftToRight) level.push_back(node->val);
-            else             level.push_front(node->val);
-            if (node->left  != nullptr) q.push(node->left);
-            if (node->right != nullptr) q.push(node->right);
+type TreeLink = Option<Rc<RefCell<TreeNode>>>;
+
+fn zigzag_level_order(root: TreeLink) -> Vec<Vec<i32>> {
+    let mut result = Vec::new();
+    if root.is_none() { return result; }
+    let mut q: VecDeque<Rc<RefCell<TreeNode>>> = VecDeque::new();
+    q.push_back(root.unwrap());
+    let mut left_to_right = true;
+    while !q.is_empty() {
+        let size = q.len();
+        let mut level: VecDeque<i32> = VecDeque::new();
+        for _ in 0..size {
+            let node = q.pop_front().unwrap();
+            if left_to_right { level.push_back(node.borrow().val); }
+            else             { level.push_front(node.borrow().val); }
+            if let Some(left)  = node.borrow().left.clone()  { q.push_back(left);  }
+            if let Some(right) = node.borrow().right.clone() { q.push_back(right); }
         }
-        result.push_back(vector<int>(level.begin(), level.end()));
-        leftToRight = !leftToRight;
+        result.push(level.into_iter().collect());
+        left_to_right = !left_to_right;
     }
-    return result;
+    result
 }
 ```
 
@@ -272,29 +323,34 @@ vector<vector<int>> zigzagLevelOrder(TreeNode* root) {
 
 Identical BFS, but children come from a list (`node.children`).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::collections::VecDeque;
 
-struct Node { int val; vector<Node*> children; };
+#[derive(Debug)]
+pub struct Node {
+    pub val: i32,
+    pub children: Vec<Rc<RefCell<Node>>>,
+}
 
-vector<vector<int>> levelOrder(Node* root) {
-    vector<vector<int>> result;
-    if (root == nullptr) return result;
-    queue<Node*> q;
-    q.push(root);
-    while (!q.empty()) {
-        int size = q.size();
-        vector<int> level;
-        level.reserve(size);
-        for (int i = 0; i < size; i++) {
-            Node* node = q.front(); q.pop();
-            level.push_back(node->val);
-            for (auto& child : node->children) q.push(child);
+fn level_order_nary(root: Option<Rc<RefCell<Node>>>) -> Vec<Vec<i32>> {
+    let mut result = Vec::new();
+    if root.is_none() { return result; }
+    let mut q: VecDeque<Rc<RefCell<Node>>> = VecDeque::new();
+    q.push_back(root.unwrap());
+    while !q.is_empty() {
+        let size = q.len();
+        let mut level = Vec::with_capacity(size);
+        for _ in 0..size {
+            let node = q.pop_front().unwrap();
+            level.push(node.borrow().val);
+            let children: Vec<_> = node.borrow().children.clone();
+            for child in children { q.push_back(child); }
         }
-        result.push_back(level);
+        result.push(level);
     }
-    return result;
+    result
 }
 ```
 
@@ -304,37 +360,45 @@ vector<vector<int>> levelOrder(Node* root) {
 
 Group nodes by **column** (root = 0, left = col−1, right = col+1). Within a column, order by
 **row** (depth), and ties at the same (row, col) by **value**. A
-`map<col, map<row, priority_queue<val>>>` makes ordering deterministic without a final
-sort — `std::map` is used (not `std::unordered_map`) precisely because we need keys iterated in sorted
+`BTreeMap<col, BTreeMap<row, BinaryHeap<Reverse<val>>>>` makes ordering deterministic without a final
+sort — `BTreeMap` is used (not `HashMap`) precisely because we need keys iterated in sorted
 order.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, BinaryHeap};
+use std::cmp::Reverse;
 
-void dfs(TreeNode* node, int row, int col,
-         map<int, map<int, priority_queue<int, vector<int>, greater<int>>>>& mp) {
-    if (node == nullptr) return;
-    mp[col][row].push(node->val);
-    dfs(node->left,  row + 1, col - 1, mp);
-    dfs(node->right, row + 1, col + 1, mp);
+type TreeLink = Option<Rc<RefCell<TreeNode>>>;
+
+fn dfs(node: &TreeLink, row: i32, col: i32,
+       mp: &mut BTreeMap<i32, BTreeMap<i32, BinaryHeap<Reverse<i32>>>>) {
+    if let Some(n) = node {
+        let val   = n.borrow().val;
+        let left  = n.borrow().left.clone();
+        let right = n.borrow().right.clone();
+        mp.entry(col).or_default().entry(row).or_default().push(Reverse(val));
+        dfs(&left,  row + 1, col - 1, mp);
+        dfs(&right, row + 1, col + 1, mp);
+    }
 }
 
-vector<vector<int>> verticalTraversal(TreeNode* root) {
+fn vertical_traversal(root: TreeLink) -> Vec<Vec<i32>> {
     // col -> (row -> min-heap of values)
-    map<int, map<int, priority_queue<int, vector<int>, greater<int>>>> mp;
-    dfs(root, 0, 0, mp);
+    let mut mp: BTreeMap<i32, BTreeMap<i32, BinaryHeap<Reverse<i32>>>> = BTreeMap::new();
+    dfs(&root, 0, 0, &mut mp);
 
-    vector<vector<int>> result;
-    for (auto& [colKey, rows] : mp) {
-        vector<int> col;
-        for (auto& [rowKey, pq] : rows) {
-            auto tmp = pq; // copy so we can pop
-            while (!tmp.empty()) { col.push_back(tmp.top()); tmp.pop(); }
+    let mut result = Vec::new();
+    for (_col_key, rows) in &mut mp {
+        let mut col = Vec::new();
+        for (_row_key, heap) in rows.iter_mut() {
+            let mut tmp = std::mem::take(heap);
+            while let Some(Reverse(val)) = tmp.pop() { col.push(val); }
         }
-        result.push_back(col);
+        result.push(col);
     }
-    return result;
+    result
 }
 ```
 
@@ -347,12 +411,12 @@ vector<vector<int>> verticalTraversal(TreeNode* root) {
 | Inorder / Preorder / Postorder (recursive) | DFS | O(n) | O(h) stack |
 | Inorder (iterative) | explicit stack | O(n) | O(h) |
 | Preorder (iterative) | explicit stack | O(n) | O(h) |
-| Postorder (iterative) | two-stack / lastVisited | O(n) | O(h) |
+| Postorder (iterative) | two-stack / last_visited | O(n) | O(h) |
 | Inorder (Morris) | threading | O(n) | **O(1)** |
 | Level Order (LC 102) | BFS | O(n) | O(w) queue |
 | Zigzag (LC 103) | BFS | O(n) | O(w) |
 | N-ary Level Order (LC 429) | BFS | O(n) | O(w) |
-| Vertical Order (LC 987) | DFS + std::map | O(n log n) | O(n) |
+| Vertical Order (LC 987) | DFS + BTreeMap | O(n log n) | O(n) |
 
 *h = tree height (O(log n) balanced, O(n) skewed); w = max width of any level.*
 

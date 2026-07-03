@@ -6,7 +6,7 @@ String DP problems revolve around comparing, matching, partitioning, or transfor
 
 This pattern is the natural extension of [Longest Common Subsequence](./Longest%20Common%20Subsequence.md): once you internalize the `i`/`j` prefix-state formulation, edit distance, wildcard matching, regex matching, and interleaving all become variations on the same skeleton. Single-string problems (word break, decode ways, palindromic substrings) reuse the prefix idea with a 1D state or a 2D substring table `dp[i][j]` over the span `[i, j]`.
 
-This document covers eight canonical problems (48–55). Each section gives the **state definition**, **recurrence**, **base cases**, a **complexity table**, full compilable C++ (recursion → memoization → tabulation → space optimization where relevant), and at least one worked dry-run.
+This document covers eight canonical problems (48–55). Each section gives the **state definition**, **recurrence**, **base cases**, a **complexity table**, full compilable Rust (recursion → memoization → tabulation → space optimization where relevant), and at least one worked dry-run.
 
 ---
 
@@ -20,7 +20,7 @@ Given two strings `word1` and `word2`, return the minimum number of operations �
 
 ### Recurrence
 
-Let `m = word1.size()`, `n = word2.size()`. Consider the last characters `word1[i - 1]` and `word2[j - 1]`:
+Let `m = word1.len()`, `n = word2.len()`. Consider the last characters `word1[i - 1]` and `word2[j - 1]`:
 
 - If they match: `dp[i][j] = dp[i - 1][j - 1]` (no operation needed).
 - Otherwise take the best of three operations:
@@ -42,125 +42,128 @@ Let `m = word1.size()`, `n = word2.size()`. Consider the last characters `word1[
 | Tabulation | O(m · n) | O(m · n) |
 | 1D space optimized | O(m · n) | O(n) |
 
-### C++ — Recursion
+### Rust — Recursion
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct EditDistanceRecursion;
 
-class EditDistanceRecursion {
-public:
-    int minDistance(string word1, string word2) {
-        return solve(word1, word2, word1.size(), word2.size());
+impl EditDistanceRecursion {
+    fn min_distance(word1: String, word2: String) -> i32 {
+        let w1: Vec<char> = word1.chars().collect();
+        let w2: Vec<char> = word2.chars().collect();
+        Self::solve(&w1, &w2, w1.len(), w2.len())
     }
 
-private:
-    int solve(const string& w1, const string& w2, int i, int j) {
-        if (i == 0) return j; // insert remaining j chars
-        if (j == 0) return i; // delete remaining i chars
+    fn solve(w1: &[char], w2: &[char], i: usize, j: usize) -> i32 {
+        if i == 0 { return j as i32; } // insert remaining j chars
+        if j == 0 { return i as i32; } // delete remaining i chars
 
-        if (w1[i - 1] == w2[j - 1]) {
-            return solve(w1, w2, i - 1, j - 1);
+        if w1[i - 1] == w2[j - 1] {
+            return Self::solve(w1, w2, i - 1, j - 1);
         }
-        int replace = solve(w1, w2, i - 1, j - 1);
-        int del = solve(w1, w2, i - 1, j);
-        int ins = solve(w1, w2, i, j - 1);
-        return 1 + min(replace, min(del, ins));
+        let replace = Self::solve(w1, w2, i - 1, j - 1);
+        let del = Self::solve(w1, w2, i - 1, j);
+        let ins = Self::solve(w1, w2, i, j - 1);
+        1 + replace.min(del).min(ins)
     }
-};
+}
 ```
 
-### C++ — Memoization
+### Rust — Memoization
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct EditDistanceMemo;
 
-class EditDistanceMemo {
-public:
-    int minDistance(string word1, string word2) {
-        int m = word1.size(), n = word2.size();
-        vector<vector<int>> dp(m + 1, vector<int>(n + 1, -1));
-        return solve(word1, word2, m, n, dp);
+impl EditDistanceMemo {
+    fn min_distance(word1: String, word2: String) -> i32 {
+        let w1: Vec<char> = word1.chars().collect();
+        let w2: Vec<char> = word2.chars().collect();
+        let m = w1.len();
+        let n = w2.len();
+        let mut dp = vec![vec![-1i32; n + 1]; m + 1];
+        Self::solve(&w1, &w2, m, n, &mut dp)
     }
 
-private:
-    int solve(const string& w1, const string& w2, int i, int j, vector<vector<int>>& dp) {
-        if (i == 0) return j;
-        if (j == 0) return i;
-        if (dp[i][j] != -1) return dp[i][j];
+    fn solve(w1: &[char], w2: &[char], i: usize, j: usize, dp: &mut Vec<Vec<i32>>) -> i32 {
+        if i == 0 { return j as i32; }
+        if j == 0 { return i as i32; }
+        if dp[i][j] != -1 { return dp[i][j]; }
 
-        if (w1[i - 1] == w2[j - 1]) {
-            return dp[i][j] = solve(w1, w2, i - 1, j - 1, dp);
-        }
-        int replace = solve(w1, w2, i - 1, j - 1, dp);
-        int del = solve(w1, w2, i - 1, j, dp);
-        int ins = solve(w1, w2, i, j - 1, dp);
-        return dp[i][j] = 1 + min(replace, min(del, ins));
+        let result = if w1[i - 1] == w2[j - 1] {
+            Self::solve(w1, w2, i - 1, j - 1, dp)
+        } else {
+            let replace = Self::solve(w1, w2, i - 1, j - 1, dp);
+            let del = Self::solve(w1, w2, i - 1, j, dp);
+            let ins = Self::solve(w1, w2, i, j - 1, dp);
+            1 + replace.min(del).min(ins)
+        };
+        dp[i][j] = result;
+        result
     }
-};
+}
 ```
 
-### C++ — Tabulation
+### Rust — Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct EditDistanceTabulation;
 
-class EditDistanceTabulation {
-public:
-    int minDistance(string word1, string word2) {
-        int m = word1.size(), n = word2.size();
-        vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
+impl EditDistanceTabulation {
+    fn min_distance(word1: String, word2: String) -> i32 {
+        let w1: Vec<char> = word1.chars().collect();
+        let w2: Vec<char> = word2.chars().collect();
+        let m = w1.len();
+        let n = w2.len();
+        let mut dp = vec![vec![0i32; n + 1]; m + 1];
 
-        for (int j = 0; j <= n; j++) dp[0][j] = j; // base row
-        for (int i = 0; i <= m; i++) dp[i][0] = i; // base column
+        for j in 0..=n { dp[0][j] = j as i32; } // base row
+        for i in 0..=m { dp[i][0] = i as i32; } // base column
 
-        for (int i = 1; i <= m; i++) {
-            for (int j = 1; j <= n; j++) {
-                if (word1[i - 1] == word2[j - 1]) {
+        for i in 1..=m {
+            for j in 1..=n {
+                if w1[i - 1] == w2[j - 1] {
                     dp[i][j] = dp[i - 1][j - 1];
                 } else {
-                    int replace = dp[i - 1][j - 1];
-                    int del = dp[i - 1][j];
-                    int ins = dp[i][j - 1];
-                    dp[i][j] = 1 + min(replace, min(del, ins));
+                    let replace = dp[i - 1][j - 1];
+                    let del = dp[i - 1][j];
+                    let ins = dp[i][j - 1];
+                    dp[i][j] = 1 + replace.min(del).min(ins);
                 }
             }
         }
-        return dp[m][n];
+        dp[m][n]
     }
-};
+}
 ```
 
-### C++ — 1D Space Optimized
+### Rust — 1D Space Optimized
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct EditDistanceSpaceOptimized;
 
-class EditDistanceSpaceOptimized {
-public:
-    int minDistance(string word1, string word2) {
-        int m = word1.size(), n = word2.size();
-        vector<int> prev(n + 1), curr(n + 1);
+impl EditDistanceSpaceOptimized {
+    fn min_distance(word1: String, word2: String) -> i32 {
+        let w1: Vec<char> = word1.chars().collect();
+        let w2: Vec<char> = word2.chars().collect();
+        let m = w1.len();
+        let n = w2.len();
+        let mut prev: Vec<i32> = (0..=(n as i32)).collect(); // dp[0][j]
+        let mut curr = vec![0i32; n + 1];
 
-        for (int j = 0; j <= n; j++) prev[j] = j; // dp[0][j]
-
-        for (int i = 1; i <= m; i++) {
-            curr[0] = i; // dp[i][0]
-            for (int j = 1; j <= n; j++) {
-                if (word1[i - 1] == word2[j - 1]) {
+        for i in 1..=m {
+            curr[0] = i as i32; // dp[i][0]
+            for j in 1..=n {
+                if w1[i - 1] == w2[j - 1] {
                     curr[j] = prev[j - 1];
                 } else {
-                    curr[j] = 1 + min(prev[j - 1], min(prev[j], curr[j - 1]));
+                    curr[j] = 1 + prev[j - 1].min(prev[j]).min(curr[j - 1]);
                 }
             }
-            swap(prev, curr); // reuse the array
+            std::mem::swap(&mut prev, &mut curr); // reuse the array
         }
-        return prev[n];
+        prev[n]
     }
-};
+}
 ```
 
 ### Dry Run
@@ -212,42 +215,43 @@ Inspect `p[j - 1]`:
 |---|---|---|
 | Tabulation | O(m · n) | O(m · n) |
 
-(where `m = s.size()`, `n = p.size()`)
+(where `m = s.len()`, `n = p.len()`)
 
-### C++ — Tabulation
+### Rust — Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct WildcardMatching;
 
-class WildcardMatching {
-public:
-    bool isMatch(string s, string p) {
-        int m = s.size(), n = p.size();
-        vector<vector<bool>> dp(m + 1, vector<bool>(n + 1, false));
+impl WildcardMatching {
+    fn is_match(s: String, p: String) -> bool {
+        let s: Vec<char> = s.chars().collect();
+        let p: Vec<char> = p.chars().collect();
+        let m = s.len();
+        let n = p.len();
+        let mut dp = vec![vec![false; n + 1]; m + 1];
 
         dp[0][0] = true; // empty matches empty
-        for (int j = 1; j <= n; j++) {
+        for j in 1..=n {
             // leading '*' can match empty prefix of s
             dp[0][j] = dp[0][j - 1] && p[j - 1] == '*';
         }
 
-        for (int i = 1; i <= m; i++) {
-            for (int j = 1; j <= n; j++) {
-                char pc = p[j - 1];
-                if (pc == '*') {
+        for i in 1..=m {
+            for j in 1..=n {
+                let pc = p[j - 1];
+                if pc == '*' {
                     // '*' = empty (dp[i][j-1]) OR absorb s[i-1] (dp[i-1][j])
                     dp[i][j] = dp[i][j - 1] || dp[i - 1][j];
-                } else if (pc == '?' || pc == s[i - 1]) {
+                } else if pc == '?' || pc == s[i - 1] {
                     dp[i][j] = dp[i - 1][j - 1];
                 } else {
                     dp[i][j] = false;
                 }
             }
         }
-        return dp[m][n];
+        dp[m][n]
     }
-};
+}
 ```
 
 ### Dry Run
@@ -292,86 +296,85 @@ Inspect `p[j - 1]`:
 | Memoization | O(m · n) | O(m · n) + stack |
 | Tabulation | O(m · n) | O(m · n) |
 
-### C++ — Memoization
+### Rust — Memoization
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct RegexMatchingMemo;
 
-class RegexMatchingMemo {
-    // 0 = unknown, 1 = true, -1 = false (since bool cannot hold "unset")
-    vector<vector<int>> memo;
-
-public:
-    bool isMatch(string s, string p) {
-        memo.assign(s.size() + 1, vector<int>(p.size() + 1, 0));
-        return solve(s, p, 0, 0);
+impl RegexMatchingMemo {
+    fn is_match(s: String, p: String) -> bool {
+        let s_chars: Vec<char> = s.chars().collect();
+        let p_chars: Vec<char> = p.chars().collect();
+        let m = s_chars.len();
+        let n = p_chars.len();
+        // 0 = unknown, 1 = true, -1 = false (since bool cannot hold "unset")
+        let mut memo = vec![vec![0i32; n + 1]; m + 1];
+        Self::solve(&s_chars, &p_chars, 0, 0, &mut memo)
     }
 
-private:
-    bool solve(const string& s, const string& p, int i, int j) {
-        if (j == (int)p.size()) return i == (int)s.size();
-        if (memo[i][j] != 0) return memo[i][j] == 1;
+    fn solve(s: &[char], p: &[char], i: usize, j: usize, memo: &mut Vec<Vec<i32>>) -> bool {
+        if j == p.len() { return i == s.len(); }
+        if memo[i][j] != 0 { return memo[i][j] == 1; }
 
-        bool firstMatch = i < (int)s.size()
-                && (p[j] == '.' || p[j] == s[i]);
+        let first_match = i < s.len() && (p[j] == '.' || p[j] == s[i]);
 
-        bool result;
-        if (j + 1 < (int)p.size() && p[j + 1] == '*') {
+        let result = if j + 1 < p.len() && p[j + 1] == '*' {
             // zero occurrences (skip "x*") OR one+ (consume s[i])
-            result = solve(s, p, i, j + 2)
-                    || (firstMatch && solve(s, p, i + 1, j));
+            let zero_occ = Self::solve(s, p, i, j + 2, memo);
+            let one_plus = first_match && Self::solve(s, p, i + 1, j, memo);
+            zero_occ || one_plus
         } else {
-            result = firstMatch && solve(s, p, i + 1, j + 1);
-        }
+            first_match && Self::solve(s, p, i + 1, j + 1, memo)
+        };
 
-        memo[i][j] = result ? 1 : -1;
-        return result;
+        memo[i][j] = if result { 1 } else { -1 };
+        result
     }
-};
+}
 ```
 
-### C++ — Tabulation
+### Rust — Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct RegexMatchingTabulation;
 
-class RegexMatchingTabulation {
-public:
-    bool isMatch(string s, string p) {
-        int m = s.size(), n = p.size();
-        vector<vector<bool>> dp(m + 1, vector<bool>(n + 1, false));
+impl RegexMatchingTabulation {
+    fn is_match(s: String, p: String) -> bool {
+        let s: Vec<char> = s.chars().collect();
+        let p: Vec<char> = p.chars().collect();
+        let m = s.len();
+        let n = p.len();
+        let mut dp = vec![vec![false; n + 1]; m + 1];
 
         dp[0][0] = true;
         // patterns like a*, a*b* may match empty string
-        for (int j = 2; j <= n; j++) {
-            if (p[j - 1] == '*') {
+        for j in 2..=n {
+            if p[j - 1] == '*' {
                 dp[0][j] = dp[0][j - 2];
             }
         }
 
-        for (int i = 1; i <= m; i++) {
-            for (int j = 1; j <= n; j++) {
-                char pc = p[j - 1];
-                if (pc == '*') {
-                    char prev = p[j - 2];
+        for i in 1..=m {
+            for j in 1..=n {
+                let pc = p[j - 1];
+                if pc == '*' {
+                    let prev = p[j - 2];
                     // zero occurrences of the preceding element
                     dp[i][j] = dp[i][j - 2];
                     // one or more occurrences
-                    if (prev == '.' || prev == s[i - 1]) {
+                    if prev == '.' || prev == s[i - 1] {
                         dp[i][j] = dp[i][j] || dp[i - 1][j];
                     }
-                } else if (pc == '.' || pc == s[i - 1]) {
+                } else if pc == '.' || pc == s[i - 1] {
                     dp[i][j] = dp[i - 1][j - 1];
                 } else {
                     dp[i][j] = false;
                 }
             }
         }
-        return dp[m][n];
+        dp[m][n]
     }
-};
+}
 ```
 
 ### Dry Run
@@ -386,15 +389,15 @@ Given a string `s` and a dictionary `wordDict`, return whether `s` can be segmen
 
 ### State
 
-`dp[i]` = whether the prefix `s.substr(0, i)` (length `i`) can be segmented entirely using dictionary words.
+`dp[i]` = whether the prefix `&s[0..i]` (length `i`) can be segmented entirely using dictionary words.
 
 ### Recurrence
 
 For each end position `i`, try every split point `j < i`:
 
-`dp[i] = OR over j in [0, i) of ( dp[j] && dictionary.count(s.substr(j, i - j)) )`.
+`dp[i] = OR over j in [0, i) of ( dp[j] && dictionary.contains(&s[j..i]) )`.
 
-In words: the prefix of length `i` is breakable if some earlier prefix of length `j` is breakable AND the remaining segment `s[j..i)` is a dictionary word.
+In words: the prefix of length `i` is breakable if some earlier prefix of length `j` is breakable AND the remaining segment `s[j..i]` is a dictionary word.
 
 ### Base Case
 
@@ -404,35 +407,35 @@ In words: the prefix of length `i` is breakable if some earlier prefix of length
 
 | Approach | Time | Space |
 |---|---|---|
-| Tabulation (unordered_set lookup) | O(n^2 · L) | O(n + dict) |
+| Tabulation (HashSet lookup) | O(n^2 · L) | O(n + dict) |
 
-`n = s.size()`, `L` = average word length (cost of substring + hashing).
+`n = s.len()`, `L` = average word length (cost of substring + hashing).
 
-### C++ — Tabulation
+### Rust — Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-class WordBreak {
-public:
-    bool wordBreak(string s, vector<string>& wordDict) {
-        unordered_set<string> dictionary(wordDict.begin(), wordDict.end());
-        int n = s.size();
-        vector<bool> dp(n + 1, false);
+struct WordBreak;
+
+impl WordBreak {
+    fn word_break(s: String, word_dict: Vec<String>) -> bool {
+        let dictionary: HashSet<String> = word_dict.into_iter().collect();
+        let n = s.len();
+        let mut dp = vec![false; n + 1];
         dp[0] = true; // empty prefix
 
-        for (int i = 1; i <= n; i++) {
-            for (int j = 0; j < i; j++) {
-                if (dp[j] && dictionary.count(s.substr(j, i - j))) {
+        for i in 1..=n {
+            for j in 0..i {
+                if dp[j] && dictionary.contains(&s[j..i]) {
                     dp[i] = true;
                     break; // one valid split is enough
                 }
             }
         }
-        return dp[n];
+        dp[n]
     }
-};
+}
 ```
 
 ### Dry Run
@@ -453,7 +456,7 @@ A message of digits is encoded with `A → 1`, ..., `Z → 26`. Given a digit st
 
 ### State
 
-`dp[i]` = number of ways to decode the prefix `s.substr(0, i)` (length `i`).
+`dp[i]` = number of ways to decode the prefix `&s[0..i]` (length `i`).
 
 ### Recurrence
 
@@ -469,7 +472,7 @@ A character `'0'` can never decode as a single digit and is only valid as the se
 ### Base Cases
 
 - `dp[0] = 1` — empty string has one (empty) decoding.
-- `dp[1] = (s[0] == '0') ? 0 : 1`.
+- `dp[1] = if s[0] == b'0' { 0 } else { 1 }`.
 
 ### Complexity
 
@@ -478,72 +481,70 @@ A character `'0'` can never decode as a single digit and is only valid as the se
 | Tabulation | O(n) | O(n) |
 | O(1) space variant | O(n) | O(1) |
 
-### C++ — Tabulation
+### Rust — Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct DecodeWays;
 
-class DecodeWays {
-public:
-    int numDecodings(string s) {
-        int n = s.size();
-        if (n == 0 || s[0] == '0') return 0;
+impl DecodeWays {
+    fn num_decodings(s: String) -> i32 {
+        let s: Vec<u8> = s.bytes().collect();
+        let n = s.len();
+        if n == 0 || s[0] == b'0' { return 0; }
 
-        vector<int> dp(n + 1, 0);
+        let mut dp = vec![0i32; n + 1];
         dp[0] = 1;
         dp[1] = 1; // s[0] is guaranteed != '0' here
 
-        for (int i = 2; i <= n; i++) {
-            char one = s[i - 1];
-            char tens = s[i - 2];
+        for i in 2..=n {
+            let one = s[i - 1];
+            let tens = s[i - 2];
 
-            if (one != '0') {                 // single-digit decode 1..9
+            if one != b'0' {                 // single-digit decode 1..9
                 dp[i] += dp[i - 1];
             }
-            int twoDigit = (tens - '0') * 10 + (one - '0');
-            if (twoDigit >= 10 && twoDigit <= 26) { // two-digit decode 10..26
+            let two_digit = (tens - b'0') as i32 * 10 + (one - b'0') as i32;
+            if two_digit >= 10 && two_digit <= 26 { // two-digit decode 10..26
                 dp[i] += dp[i - 2];
             }
         }
-        return dp[n];
+        dp[n]
     }
-};
+}
 ```
 
-### C++ — O(1) Space
+### Rust — O(1) Space
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct DecodeWaysSpaceOptimized;
 
-class DecodeWaysSpaceOptimized {
-public:
-    int numDecodings(string s) {
-        int n = s.size();
-        if (n == 0 || s[0] == '0') return 0;
+impl DecodeWaysSpaceOptimized {
+    fn num_decodings(s: String) -> i32 {
+        let s: Vec<u8> = s.bytes().collect();
+        let n = s.len();
+        if n == 0 || s[0] == b'0' { return 0; }
 
-        int prev2 = 1;        // dp[i-2]
-        int prev1 = 1;        // dp[i-1], i.e. dp[1]
+        let mut prev2 = 1i32;        // dp[i-2]
+        let mut prev1 = 1i32;        // dp[i-1], i.e. dp[1]
 
-        for (int i = 2; i <= n; i++) {
-            int curr = 0;
-            char one = s[i - 1];
-            char tens = s[i - 2];
+        for i in 2..=n {
+            let mut curr = 0i32;
+            let one = s[i - 1];
+            let tens = s[i - 2];
 
-            if (one != '0') {
+            if one != b'0' {
                 curr += prev1;
             }
-            int twoDigit = (tens - '0') * 10 + (one - '0');
-            if (twoDigit >= 10 && twoDigit <= 26) {
+            let two_digit = (tens - b'0') as i32 * 10 + (one - b'0') as i32;
+            if two_digit >= 10 && two_digit <= 26 {
                 curr += prev2;
             }
             prev2 = prev1;
             prev1 = curr;
         }
-        return prev1;
+        prev1
     }
-};
+}
 ```
 
 ### Dry Run
@@ -568,7 +569,7 @@ Every palindrome has a center: either a single character (odd length, `n` center
 
 ### Approach B — DP Boolean Table
 
-`dp[i][j]` = whether `s.substr(i, j - i + 1)` is a palindrome.
+`dp[i][j]` = whether `s[i..=j]` is a palindrome.
 
 Recurrence: `dp[i][j] = (s[i] == s[j]) && (j - i < 2 || dp[i + 1][j - 1])`.
 
@@ -581,61 +582,58 @@ The condition `j - i < 2` covers length-1 (`i == j`) and length-2 (`j == i + 1`)
 | Expand around center | O(n^2) | O(1) |
 | DP boolean table | O(n^2) | O(n^2) |
 
-### C++ — Expand Around Center
+### Rust — Expand Around Center
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct PalindromicSubstringsExpand;
 
-class PalindromicSubstringsExpand {
-public:
-    int countSubstrings(string s) {
-        int count = 0;
-        for (int center = 0; center < (int)s.size(); center++) {
-            count += expand(s, center, center);     // odd length
-            count += expand(s, center, center + 1);  // even length
+impl PalindromicSubstringsExpand {
+    fn count_substrings(s: String) -> i32 {
+        let s: Vec<char> = s.chars().collect();
+        let mut count = 0;
+        for center in 0..s.len() {
+            count += Self::expand(&s, center as i32, center as i32);     // odd length
+            count += Self::expand(&s, center as i32, center as i32 + 1);  // even length
         }
-        return count;
+        count
     }
 
-private:
-    int expand(const string& s, int left, int right) {
-        int count = 0;
-        while (left >= 0 && right < (int)s.size()
-                && s[left] == s[right]) {
-            count++;
-            left--;
-            right++;
+    fn expand(s: &[char], mut left: i32, mut right: i32) -> i32 {
+        let mut count = 0;
+        while left >= 0 && right < s.len() as i32
+                && s[left as usize] == s[right as usize] {
+            count += 1;
+            left -= 1;
+            right += 1;
         }
-        return count;
+        count
     }
-};
+}
 ```
 
-### C++ — DP Boolean Table
+### Rust — DP Boolean Table
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct PalindromicSubstringsDP;
 
-class PalindromicSubstringsDP {
-public:
-    int countSubstrings(string s) {
-        int n = s.size();
-        vector<vector<bool>> dp(n, vector<bool>(n, false));
-        int count = 0;
+impl PalindromicSubstringsDP {
+    fn count_substrings(s: String) -> i32 {
+        let s: Vec<char> = s.chars().collect();
+        let n = s.len();
+        let mut dp = vec![vec![false; n]; n];
+        let mut count = 0;
 
-        for (int i = n - 1; i >= 0; i--) {
-            for (int j = i; j < n; j++) {
-                if (s[i] == s[j] && (j - i < 2 || dp[i + 1][j - 1])) {
+        for i in (0..n).rev() {
+            for j in i..n {
+                if s[i] == s[j] && (j - i < 2 || dp[i + 1][j - 1]) {
                     dp[i][j] = true;
-                    count++;
+                    count += 1;
                 }
             }
         }
-        return count;
+        count
     }
-};
+}
 ```
 
 ### Dry Run
@@ -654,7 +652,7 @@ Same `2n - 1` centers as above, but instead of counting, track the longest match
 
 ### Approach B — DP Table
 
-`dp[i][j]` = whether `s.substr(i, j - i + 1)` is a palindrome (same recurrence as Section 6). While filling, record the longest `(i, j)` span where `dp[i][j]` is true.
+`dp[i][j]` = whether `s[i..=j]` is a palindrome (same recurrence as Section 6). While filling, record the longest `(i, j)` span where `dp[i][j]` is true.
 
 ### Complexity
 
@@ -663,71 +661,73 @@ Same `2n - 1` centers as above, but instead of counting, track the longest match
 | Expand around center | O(n^2) | O(1) |
 | DP table | O(n^2) | O(n^2) |
 
-### C++ — Expand Around Center
+### Rust — Expand Around Center
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct LongestPalindromeExpand {
+    start: usize,
+    max_len: usize,
+}
 
-class LongestPalindromeExpand {
-    int start = 0;
-    int maxLen = 0;
-
-public:
-    string longestPalindrome(string s) {
-        if (s.empty()) return "";
-        for (int center = 0; center < (int)s.size(); center++) {
-            expand(s, center, center);      // odd length
-            expand(s, center, center + 1);  // even length
-        }
-        return s.substr(start, maxLen);
+impl LongestPalindromeExpand {
+    fn new() -> Self {
+        LongestPalindromeExpand { start: 0, max_len: 0 }
     }
 
-private:
-    void expand(const string& s, int left, int right) {
-        while (left >= 0 && right < (int)s.size()
-                && s[left] == s[right]) {
-            left--;
-            right++;
+    fn longest_palindrome(&mut self, s: String) -> String {
+        let s_chars: Vec<char> = s.chars().collect();
+        if s_chars.is_empty() { return String::new(); }
+        for center in 0..s_chars.len() {
+            self.expand(&s_chars, center as i32, center as i32);      // odd length
+            self.expand(&s_chars, center as i32, center as i32 + 1);  // even length
         }
-        int len = right - left - 1; // window after the failing step
-        if (len > maxLen) {
-            maxLen = len;
-            start = left + 1;
+        s_chars[self.start..self.start + self.max_len].iter().collect()
+    }
+
+    fn expand(&mut self, s: &[char], mut left: i32, mut right: i32) {
+        while left >= 0 && right < s.len() as i32
+                && s[left as usize] == s[right as usize] {
+            left -= 1;
+            right += 1;
+        }
+        let len = (right - left - 1) as usize; // window after the failing step
+        if len > self.max_len {
+            self.max_len = len;
+            self.start = (left + 1) as usize;
         }
     }
-};
+}
 ```
 
-### C++ — DP Table
+### Rust — DP Table
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct LongestPalindromeDP;
 
-class LongestPalindromeDP {
-public:
-    string longestPalindrome(string s) {
-        int n = s.size();
-        if (n < 2) return s;
+impl LongestPalindromeDP {
+    fn longest_palindrome(s: String) -> String {
+        let s_chars: Vec<char> = s.chars().collect();
+        let n = s_chars.len();
+        if n < 2 { return s; }
 
-        vector<vector<bool>> dp(n, vector<bool>(n, false));
-        int bestStart = 0, bestLen = 1;
+        let mut dp = vec![vec![false; n]; n];
+        let mut best_start = 0usize;
+        let mut best_len = 1usize;
 
-        for (int i = n - 1; i >= 0; i--) {
-            for (int j = i; j < n; j++) {
-                if (s[i] == s[j] && (j - i < 2 || dp[i + 1][j - 1])) {
+        for i in (0..n).rev() {
+            for j in i..n {
+                if s_chars[i] == s_chars[j] && (j - i < 2 || dp[i + 1][j - 1]) {
                     dp[i][j] = true;
-                    if (j - i + 1 > bestLen) {
-                        bestLen = j - i + 1;
-                        bestStart = i;
+                    if j - i + 1 > best_len {
+                        best_len = j - i + 1;
+                        best_start = i;
                     }
                 }
             }
         }
-        return s.substr(bestStart, bestLen);
+        s_chars[best_start..best_start + best_len].iter().collect()
     }
-};
+}
 ```
 
 ### Dry Run
@@ -742,7 +742,7 @@ Given `s1`, `s2`, and `s3`, return whether `s3` is formed by an interleaving of 
 
 ### Length Check First
 
-An interleaving must use every character of both inputs, so `s1.size() + s2.size() == s3.size()` is a necessary precondition. If it fails, return `false` immediately.
+An interleaving must use every character of both inputs, so `s1.len() + s2.len() == s3.len()` is a necessary precondition. If it fails, return `false` immediately.
 
 ### State
 
@@ -769,39 +769,41 @@ The character `s3[i + j - 1]` came from either `s1` or `s2`:
 |---|---|---|
 | Tabulation | O(m · n) | O(m · n) |
 
-### C++ — Tabulation
+### Rust — Tabulation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct InterleavingString;
 
-class InterleavingString {
-public:
-    bool isInterleave(string s1, string s2, string s3) {
-        int m = s1.size(), n = s2.size();
-        if (m + n != (int)s3.size()) return false; // length precondition
+impl InterleavingString {
+    fn is_interleave(s1: String, s2: String, s3: String) -> bool {
+        let s1: Vec<char> = s1.chars().collect();
+        let s2: Vec<char> = s2.chars().collect();
+        let s3: Vec<char> = s3.chars().collect();
+        let m = s1.len();
+        let n = s2.len();
+        if m + n != s3.len() { return false; } // length precondition
 
-        vector<vector<bool>> dp(m + 1, vector<bool>(n + 1, false));
+        let mut dp = vec![vec![false; n + 1]; m + 1];
         dp[0][0] = true;
 
-        for (int i = 1; i <= m; i++) { // first column: only s1
+        for i in 1..=m { // first column: only s1
             dp[i][0] = dp[i - 1][0] && s1[i - 1] == s3[i - 1];
         }
-        for (int j = 1; j <= n; j++) { // first row: only s2
+        for j in 1..=n { // first row: only s2
             dp[0][j] = dp[0][j - 1] && s2[j - 1] == s3[j - 1];
         }
 
-        for (int i = 1; i <= m; i++) {
-            for (int j = 1; j <= n; j++) {
-                char target = s3[i + j - 1];
-                bool fromS1 = dp[i - 1][j] && s1[i - 1] == target;
-                bool fromS2 = dp[i][j - 1] && s2[j - 1] == target;
-                dp[i][j] = fromS1 || fromS2;
+        for i in 1..=m {
+            for j in 1..=n {
+                let target = s3[i + j - 1];
+                let from_s1 = dp[i - 1][j] && s1[i - 1] == target;
+                let from_s2 = dp[i][j - 1] && s2[j - 1] == target;
+                dp[i][j] = from_s1 || from_s2;
             }
         }
-        return dp[m][n];
+        dp[m][n]
     }
-};
+}
 ```
 
 ### Dry Run

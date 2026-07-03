@@ -12,59 +12,76 @@
 - **Min-heap (`hi`):** upper half of all elements; root = smallest in upper half
 
 **Invariants to maintain after every operation:**
-1. **Size balance:** `lo.size() == hi.size()` OR `lo.size() == hi.size() + 1` (lo can have one extra)
-2. **Order property:** `lo.top() ≤ hi.top()` (every lower-half element ≤ every upper-half element)
+1. **Size balance:** `lo.len() == hi.len()` OR `lo.len() == hi.len() + 1` (lo can have one extra)
+2. **Order property:** `lo.peek() ≤ hi.peek()` (every lower-half element ≤ every upper-half element)
 
 **Median:**
-- If `lo.size() == hi.size()`: median = `(lo.top() + hi.top()) / 2.0`
-- If `lo.size() > hi.size()`: median = `lo.top()`
+- If `lo.len() == hi.len()`: median = `(lo.peek() + hi.peek()) / 2.0`
+- If `lo.len() > hi.len()`: median = `lo.peek()`
 
 ---
 
 ## Problem 1: Find Median from Data Stream — LC 295
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-class MedianFinder {
-    priority_queue<int> lo;                            // max-heap (default)
-    priority_queue<int, vector<int>, greater<int>> hi; // min-heap
+struct MedianFinder {
+    lo: BinaryHeap<i32>,          // max-heap (lower half)
+    hi: BinaryHeap<Reverse<i32>>, // min-heap (upper half)
+}
 
-public:
-    void addNum(int num) {
+impl MedianFinder {
+    fn new() -> Self {
+        MedianFinder {
+            lo: BinaryHeap::new(),
+            hi: BinaryHeap::new(),
+        }
+    }
+
+    fn add_num(&mut self, num: i32) {
         // Step 1: Route to correct heap
-        if (lo.empty() || num <= lo.top()) lo.push(num);
-        else hi.push(num);
+        if self.lo.is_empty() || num <= *self.lo.peek().unwrap() {
+            self.lo.push(num);
+        } else {
+            self.hi.push(Reverse(num));
+        }
 
-        // Step 2: Rebalance so |lo.size() - hi.size()| <= 1
-        if (lo.size() > hi.size() + 1) { hi.push(lo.top()); lo.pop(); }
-        else if (hi.size() > lo.size()) { lo.push(hi.top()); hi.pop(); }
+        // Step 2: Rebalance so |lo.len() - hi.len()| <= 1
+        if self.lo.len() > self.hi.len() + 1 {
+            self.hi.push(Reverse(self.lo.pop().unwrap()));
+        } else if self.hi.len() > self.lo.len() {
+            self.lo.push(self.hi.pop().unwrap().0);
+        }
     }
 
-    double findMedian() {
-        if (lo.size() == hi.size()) return (lo.top() + hi.top()) / 2.0;
-        return lo.top();   // lo always has the extra element
+    fn find_median(&self) -> f64 {
+        if self.lo.len() == self.hi.len() {
+            (*self.lo.peek().unwrap() as f64 + self.hi.peek().unwrap().0 as f64) / 2.0
+        } else {
+            *self.lo.peek().unwrap() as f64  // lo always has the extra element
+        }
     }
-};
+}
 ```
 
-**Trace for addNum sequence [5, 3, 8, 1]:**
+**Trace for add_num sequence [5, 3, 8, 1]:**
 ```
-addNum(5): lo=[5], hi=[]
-addNum(3): 3<=5 → lo=[5,3]. lo.size=2 > hi.size+1=1 → move to hi. lo=[5], hi=[3]
-           Wait — rebalance: lo.size(2) > hi.size(0)+1=1 → hi.offer(lo.poll()=5) → lo=[3], hi=[5]
-           Actually: lo.size=2 > hi.size+1=1, rebalance → hi.offer(lo.poll()) → lo=[3], hi=[5]
+add_num(5): lo=[5], hi=[]
+add_num(3): 3<=5 → lo=[5,3]. lo.len=2 > hi.len+1=1 → move to hi. lo=[5], hi=[3]
+           Wait — rebalance: lo.len(2) > hi.len(0)+1=1 → hi.push(Reverse(lo.pop()=5)) → lo=[3], hi=[5]
+           Actually: lo.len=2 > hi.len+1=1, rebalance → hi.push(Reverse(lo.pop())) → lo=[3], hi=[5]
            Hmm, 3 should be in lo (lower half). Let me retrace:
-           addNum(3): 3 <= lo.top()=5 → lo.push(3) → lo=[5,3]. Rebalance: lo.size=2 > hi.size(0)+1=1 → hi.push(lo.top()=5); lo.pop() → lo=[3], hi=[5]
-           findMedian: lo.size=hi.size=1 → (3+5)/2=4
-addNum(8): 8 > lo.top()=3 → hi.push(8) → hi=[5,8]. Rebalance: hi.size=2 > lo.size=1 → lo.push(hi.top()=5); hi.pop() → lo=[5,3], hi=[8]
-           findMedian: lo.size=2 > hi.size=1 → lo.top()=5
-addNum(1): 1 <= lo.top()=5 → lo.push(1) → lo=[5,3,1]. Rebalance: lo.size=3 > hi.size+1=2 → hi.push(lo.top()=5); lo.pop() → lo=[3,1], hi=[5,8]
-           findMedian: lo.size=hi.size=2 → (3+5)/2=4
+           add_num(3): 3 <= lo.peek()=5 → lo.push(3) → lo=[5,3]. Rebalance: lo.len=2 > hi.len(0)+1=1 → hi.push(Reverse(lo.pop()=5)); → lo=[3], hi=[5]
+           find_median: lo.len=hi.len=1 → (3+5)/2=4
+add_num(8): 8 > lo.peek()=3 → hi.push(Reverse(8)) → hi=[5,8]. Rebalance: hi.len=2 > lo.len=1 → lo.push(hi.pop().0=5); → lo=[5,3], hi=[8]
+           find_median: lo.len=2 > hi.len=1 → lo.peek()=5
+add_num(1): 1 <= lo.peek()=5 → lo.push(1) → lo=[5,3,1]. Rebalance: lo.len=3 > hi.len+1=2 → hi.push(Reverse(lo.pop()=5)); → lo=[3,1], hi=[5,8]
+           find_median: lo.len=hi.len=2 → (3+5)/2=4
 ```
 
-**Complexity:** O(log n) addNum, O(1) findMedian, O(n) space
+**Complexity:** O(log n) add_num, O(1) find_median, O(n) space
 
 ---
 
@@ -74,74 +91,97 @@ Find the median of each window of size k as it slides.
 
 **Challenge:** Standard two-heap doesn't support removal of arbitrary elements. Solution: lazy deletion using a `toRemove` counter map.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BTreeMap;
 
-vector<double> medianSlidingWindow(vector<int>& nums, int k) {
-    // map acts as ordered multiset with counts
-    map<int,int> lo; // lower half — use rbegin() for max
-    map<int,int> hi; // upper half — use begin() for min
-    int loSize = 0, hiSize = 0;
+fn median_sliding_window(nums: &[i32], k: usize) -> Vec<f64> {
+    // BTreeMap acts as ordered multiset with counts
+    let mut lo: BTreeMap<i32, i32> = BTreeMap::new(); // lower half — use last_key_value() for max
+    let mut hi: BTreeMap<i32, i32> = BTreeMap::new(); // upper half — use first_key_value() for min
+    let mut lo_size: usize = 0;
+    let mut hi_size: usize = 0;
 
-    vector<double> result(nums.size() - k + 1);
+    let mut result = vec![0.0f64; nums.len() - k + 1];
 
-    for (int i = 0; i < (int)nums.size(); i++) {
+    for i in 0..nums.len() {
         // Add incoming element
-        if (lo.empty() || nums[i] <= lo.rbegin()->first) {
-            lo[nums[i]]++; loSize++;
+        let lo_max = lo.keys().next_back().copied();
+        if lo.is_empty() || nums[i] <= lo_max.unwrap() {
+            *lo.entry(nums[i]).or_insert(0) += 1;
+            lo_size += 1;
         } else {
-            hi[nums[i]]++; hiSize++;
+            *hi.entry(nums[i]).or_insert(0) += 1;
+            hi_size += 1;
         }
 
         // Rebalance
-        if (loSize > hiSize + 1) {
-            int top = lo.rbegin()->first;
-            hi[top]++; hiSize++;
-            if (--lo[top] == 0) lo.erase(top);
-            loSize--;
-        } else if (hiSize > loSize) {
-            int top = hi.begin()->first;
-            lo[top]++; loSize++;
-            if (--hi[top] == 0) hi.erase(top);
-            hiSize--;
+        if lo_size > hi_size + 1 {
+            let top = *lo.keys().next_back().unwrap();
+            *hi.entry(top).or_insert(0) += 1;
+            hi_size += 1;
+            let cnt = lo.get_mut(&top).unwrap();
+            *cnt -= 1;
+            if *cnt == 0 { lo.remove(&top); }
+            lo_size -= 1;
+        } else if hi_size > lo_size {
+            let top = *hi.keys().next().unwrap();
+            *lo.entry(top).or_insert(0) += 1;
+            lo_size += 1;
+            let cnt = hi.get_mut(&top).unwrap();
+            *cnt -= 1;
+            if *cnt == 0 { hi.remove(&top); }
+            hi_size -= 1;
         }
 
         // Window is full starting at i == k-1
-        if (i >= k - 1) {
-            result[i - k + 1] = (loSize == hiSize)
-                ? ((double)lo.rbegin()->first + hi.begin()->first) / 2.0
-                : lo.rbegin()->first;
+        if i >= k - 1 {
+            let lo_max_val = *lo.keys().next_back().unwrap();
+            let hi_min_val = *hi.keys().next().unwrap();
+            result[i - k + 1] = if lo_size == hi_size {
+                (lo_max_val as f64 + hi_min_val as f64) / 2.0
+            } else {
+                lo_max_val as f64
+            };
 
             // Remove outgoing element (leftmost of window)
-            int out = nums[i - k + 1];
-            if (lo.count(out)) {
-                if (--lo[out] == 0) lo.erase(out);
-                loSize--;
+            let out = nums[i - k + 1];
+            if lo.contains_key(&out) {
+                let cnt = lo.get_mut(&out).unwrap();
+                *cnt -= 1;
+                if *cnt == 0 { lo.remove(&out); }
+                lo_size -= 1;
             } else {
-                if (--hi[out] == 0) hi.erase(out);
-                hiSize--;
+                let cnt = hi.get_mut(&out).unwrap();
+                *cnt -= 1;
+                if *cnt == 0 { hi.remove(&out); }
+                hi_size -= 1;
             }
 
             // Rebalance after removal
-            if (loSize > hiSize + 1) {
-                int top = lo.rbegin()->first;
-                hi[top]++; hiSize++;
-                if (--lo[top] == 0) lo.erase(top);
-                loSize--;
-            } else if (hiSize > loSize) {
-                int top = hi.begin()->first;
-                lo[top]++; loSize++;
-                if (--hi[top] == 0) hi.erase(top);
-                hiSize--;
+            if lo_size > hi_size + 1 {
+                let top = *lo.keys().next_back().unwrap();
+                *hi.entry(top).or_insert(0) += 1;
+                hi_size += 1;
+                let cnt = lo.get_mut(&top).unwrap();
+                *cnt -= 1;
+                if *cnt == 0 { lo.remove(&top); }
+                lo_size -= 1;
+            } else if hi_size > lo_size {
+                let top = *hi.keys().next().unwrap();
+                *lo.entry(top).or_insert(0) += 1;
+                lo_size += 1;
+                let cnt = hi.get_mut(&top).unwrap();
+                *cnt -= 1;
+                if *cnt == 0 { hi.remove(&top); }
+                hi_size -= 1;
             }
         }
     }
-    return result;
+    result
 }
 ```
 
-**Why `std::map` instead of `std::priority_queue`?** `priority_queue` does not support O(log n) arbitrary removal. `std::map` with erase is O(log n). For a sliding window, O(log n) removal is essential.
+**Why `BTreeMap` instead of `BinaryHeap`?** `BinaryHeap` does not support O(log n) arbitrary removal. `BTreeMap` with remove is O(log n). For a sliding window, O(log n) removal is essential.
 
 ---
 
@@ -149,30 +189,35 @@ vector<double> medianSlidingWindow(vector<int>& nums, int k) {
 
 Maximize capital after k projects. Each project has profit and capital requirement.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-int findMaximizedCapital(int k, int w, vector<int>& profits, vector<int>& capital) {
-    int n = profits.size();
+fn find_maximized_capital(k: i32, mut w: i32, profits: &[i32], capital: &[i32]) -> i32 {
+    let n = profits.len();
     // Min-heap by capital requirement — projects we can't afford yet
-    priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> locked;
+    let mut locked: BinaryHeap<Reverse<(i32, i32)>> = BinaryHeap::new();
     // Max-heap by profit — projects we can afford; pick most profitable
-    priority_queue<int> available;
+    let mut available: BinaryHeap<i32> = BinaryHeap::new();
 
-    for (int i = 0; i < n; i++) locked.push({capital[i], profits[i]});
-
-    for (int i = 0; i < k; i++) {
-        // Unlock all projects we can now afford
-        while (!locked.empty() && locked.top().first <= w) {
-            available.push(locked.top().second);
-            locked.pop();
-        }
-        if (available.empty()) break;   // no affordable projects
-        w += available.top();           // pick most profitable
-        available.pop();
+    for i in 0..n {
+        locked.push(Reverse((capital[i], profits[i])));
     }
-    return w;
+
+    for _ in 0..k {
+        // Unlock all projects we can now afford
+        while let Some(&Reverse((cap, _))) = locked.peek() {
+            if cap <= w {
+                let Reverse((_, profit)) = locked.pop().unwrap();
+                available.push(profit);
+            } else {
+                break;
+            }
+        }
+        if available.is_empty() { break; }  // no affordable projects
+        w += available.pop().unwrap();       // pick most profitable
+    }
+    w
 }
 ```
 
@@ -186,7 +231,7 @@ int findMaximizedCapital(int k, int w, vector<int>& profits, vector<int>& capita
 
 | Problem | lo (max-heap) | hi (min-heap) | Invariant |
 |---------|--------------|--------------|-----------|
-| Median Stream | lower half | upper half | \|lo\|-\|hi\| ≤ 1; lo.top ≤ hi.top |
+| Median Stream | lower half | upper half | \|lo\|-\|hi\| ≤ 1; lo.peek ≤ hi.peek |
 | Sliding Window Median | lower half of window | upper half of window | Same + need removal |
 | IPO | available projects (by profit) | locked projects (by capital) | Different semantic — unlock to available on each step |
 

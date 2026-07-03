@@ -10,7 +10,7 @@
 1. [Problem Statement](#problem-statement)
 2. [Interview Expectations](#interview-expectations)
 3. [Approaches](#approaches)
-4. [C++ Implementation](#cpp-implementation)
+4. [Rust Implementation](#rust-implementation)
 5. [Complexity Analysis](#complexity-analysis)
 6. [Edge Cases](#edge-cases)
 7. [Similar Problems](#similar-problems)
@@ -63,57 +63,63 @@ The two windows overlap, but since we're taking minimum (idempotent), overlap is
 
 ---
 
-## C++ Implementation
+## Rust Implementation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+#[derive(Debug, Clone)]
+struct SparseTable {
+    table: Vec<Vec<i32>>,
+    log2: Vec<usize>,
+    n: usize,
+}
 
-class SparseTable {
-    vector<vector<int>> table;
-    vector<int> log2;
-    int n;
-
-public:
-    SparseTable(vector<int>& arr) {
-        n = arr.size();
-        int maxLog = (int)(log2f(n)) + 1;
-        table.assign(n, vector<int>(maxLog));
-        log2.resize(n + 1);
+impl SparseTable {
+    fn new(arr: &[i32]) -> Self {
+        let n = arr.len();
+        let max_log = (n as f64).log2() as usize + 1;
+        let mut table = vec![vec![0i32; max_log]; n];
+        let mut log2 = vec![0usize; n + 1];
 
         // Precompute log2 floor values
         log2[1] = 0;
-        for (int i = 2; i <= n; i++) {
+        for i in 2..=n {
             log2[i] = log2[i / 2] + 1;
         }
 
         // Base case: intervals of length 1
-        for (int i = 0; i < n; i++) table[i][0] = arr[i];
+        for i in 0..n {
+            table[i][0] = arr[i];
+        }
 
         // Fill for lengths 2, 4, 8, ...
-        for (int j = 1; (1 << j) <= n; j++) {
-            for (int i = 0; i + (1 << j) - 1 < n; i++) {
-                table[i][j] = min(table[i][j - 1],
-                                  table[i + (1 << (j - 1))][j - 1]);
+        let mut j = 1;
+        while (1 << j) <= n {
+            let mut i = 0;
+            while i + (1 << j) - 1 < n {
+                table[i][j] = table[i][j - 1].min(table[i + (1 << (j - 1))][j - 1]);
+                i += 1;
             }
+            j += 1;
         }
+
+        SparseTable { table, log2, n }
     }
 
     // O(1) query: minimum of arr[l..r] (inclusive, 0-indexed)
-    int queryMin(int l, int r) {
-        int k = log2[r - l + 1];
-        return min(table[l][k], table[r - (1 << k) + 1][k]);
+    fn query_min(&self, l: usize, r: usize) -> i32 {
+        let k = self.log2[r - l + 1];
+        self.table[l][k].min(self.table[r - (1 << k) + 1][k])
     }
-};
+}
 ```
 
 ### Maximum Query Variant
 
-```cpp
+```rust
 // Replace min with max — works because max is also idempotent
-int queryMax(int l, int r) {
-    int k = log2[r - l + 1];
-    return max(table[l][k], table[r - (1 << k) + 1][k]);
+fn query_max(&self, l: usize, r: usize) -> i32 {
+    let k = self.log2[r - l + 1];
+    self.table[l][k].max(self.table[r - (1 << k) + 1][k])
 }
 ```
 

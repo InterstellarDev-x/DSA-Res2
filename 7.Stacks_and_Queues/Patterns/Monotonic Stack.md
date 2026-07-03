@@ -17,25 +17,22 @@ A **monotonic stack** maintains elements in a strictly increasing or decreasing 
 
 ## Template 1: Next Greater Element (NGE)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // For each element, find the first element to its RIGHT that is greater
-vector<int> nextGreaterElements(vector<int>& nums) {
-    int n = nums.size();
-    vector<int> result(n, -1);          // default: no NGE found
-    stack<int> stk;  // stores INDICES
+fn next_greater_elements(nums: &[i32]) -> Vec<i32> {
+    let n = nums.len();
+    let mut result = vec![-1; n];          // default: no NGE found
+    let mut stk: Vec<usize> = Vec::new();  // stores INDICES
 
-    for (int i = 0; i < n; i++) {
+    for i in 0..n {
         // Pop all elements smaller than nums[i] — nums[i] is their NGE
-        while (!stk.empty() && nums[stk.top()] < nums[i]) {
-            result[stk.top()] = nums[i];
-            stk.pop();
+        while !stk.is_empty() && nums[*stk.last().unwrap()] < nums[i] {
+            let top = stk.pop().unwrap();
+            result[top] = nums[i];
         }
         stk.push(i);
     }
-    return result;
+    result
     // Remaining indices in stack have no NGE → stay -1
 }
 ```
@@ -48,27 +45,22 @@ vector<int> nextGreaterElements(vector<int>& nums) {
 
 Two arrays: find NGE of each element of `nums1` within `nums2`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-vector<int> nextGreaterElement(vector<int>& nums1, vector<int>& nums2) {
-    unordered_map<int, int> nge;
-    stack<int> stk;
+fn next_greater_element(nums1: &[i32], nums2: &[i32]) -> Vec<i32> {
+    let mut nge: HashMap<i32, i32> = HashMap::new();
+    let mut stk: Vec<i32> = Vec::new();
 
-    for (int val : nums2) {
-        while (!stk.empty() && stk.top() < val) {
-            nge[stk.top()] = val;   // store value→NGE mapping
-            stk.pop();
+    for &val in nums2 {
+        while !stk.is_empty() && *stk.last().unwrap() < val {
+            let top = stk.pop().unwrap();
+            nge.insert(top, val);   // store value→NGE mapping
         }
         stk.push(val);
     }
 
-    vector<int> result(nums1.size());
-    for (int i = 0; i < (int)nums1.size(); i++) {
-        result[i] = (nge.count(nums1[i]) ? nge[nums1[i]] : -1);
-    }
-    return result;
+    nums1.iter().map(|&x| *nge.get(&x).unwrap_or(&-1)).collect()
 }
 ```
 
@@ -80,28 +72,24 @@ vector<int> nextGreaterElement(vector<int>& nums1, vector<int>& nums2) {
 
 Find, for each day, how many days until a warmer temperature.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn daily_temperatures(temperatures: &[i32]) -> Vec<i32> {
+    let n = temperatures.len();
+    let mut result = vec![0; n];
+    let mut stk: Vec<usize> = Vec::new();  // indices
 
-vector<int> dailyTemperatures(vector<int>& temperatures) {
-    int n = temperatures.size();
-    vector<int> result(n);
-    stack<int> stk;  // indices
-
-    for (int i = 0; i < n; i++) {
-        while (!stk.empty() && temperatures[stk.top()] < temperatures[i]) {
-            int prevIdx = stk.top();
-            stk.pop();
-            result[prevIdx] = i - prevIdx;   // days to wait = index difference
+    for i in 0..n {
+        while !stk.is_empty() && temperatures[*stk.last().unwrap()] < temperatures[i] {
+            let prev_idx = stk.pop().unwrap();
+            result[prev_idx] = (i - prev_idx) as i32;   // days to wait = index difference
         }
         stk.push(i);
     }
-    return result;
+    result
 }
 ```
 
-**Key insight:** `i - prevIdx` gives the distance (days to wait). This only works because we store indices, not temperatures.
+**Key insight:** `i - prev_idx` gives the distance (days to wait). This only works because we store indices, not temperatures.
 
 ---
 
@@ -109,29 +97,26 @@ vector<int> dailyTemperatures(vector<int>& temperatures) {
 
 Array is circular — wrap around once.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> nextGreaterElements(vector<int>& nums) {
-    int n = nums.size();
-    vector<int> result(n, -1);
-    stack<int> stk;
+```rust
+fn next_greater_elements(nums: &[i32]) -> Vec<i32> {
+    let n = nums.len();
+    let mut result = vec![-1; n];
+    let mut stk: Vec<usize> = Vec::new();
 
     // Loop twice to simulate circular array
-    for (int i = 0; i < 2 * n; i++) {
-        int idx = i % n;
-        while (!stk.empty() && nums[stk.top()] < nums[idx]) {
-            result[stk.top()] = nums[idx];
-            stk.pop();
+    for i in 0..2 * n {
+        let idx = i % n;
+        while !stk.is_empty() && nums[*stk.last().unwrap()] < nums[idx] {
+            let top = stk.pop().unwrap();
+            result[top] = nums[idx];
         }
-        if (i < n) stk.push(idx);   // only push indices from first pass
+        if i < n { stk.push(idx); }   // only push indices from first pass
     }
-    return result;
+    result
 }
 ```
 
-**Why `if (i < n)` for push?** During the second pass, we only need to resolve remaining stack elements — we don't push new indices again (they're already in result or will be resolved).
+**Why `if i < n` for push?** During the second pass, we only need to resolve remaining stack elements — we don't push new indices again (they're already in result or will be resolved).
 
 ---
 
@@ -139,26 +124,27 @@ vector<int> nextGreaterElements(vector<int>& nums) {
 
 Design: `next(price)` returns the number of consecutive days (including today) for which today's price ≥ the price on those days.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-class StockSpanner {
+```rust
+struct StockSpanner {
     // Stack stores (price, span) pairs
-    stack<pair<int,int>> stk;
+    stk: Vec<(i32, i32)>,
+}
 
-public:
-    int next(int price) {
-        int span = 1;
-        // Absorb all previous days where price was ≤ current price
-        while (!stk.empty() && stk.top().first <= price) {
-            span += stk.top().second;
-            stk.pop();
-        }
-        stk.push({price, span});
-        return span;
+impl StockSpanner {
+    fn new() -> Self {
+        StockSpanner { stk: Vec::new() }
     }
-};
+
+    fn next(&mut self, price: i32) -> i32 {
+        let mut span = 1;
+        // Absorb all previous days where price was ≤ current price
+        while !self.stk.is_empty() && self.stk.last().unwrap().0 <= price {
+            span += self.stk.pop().unwrap().1;
+        }
+        self.stk.push((price, span));
+        span
+    }
+}
 ```
 
 **Key trick:** Store cumulative span. When absorbing a previous day, we don't need to re-examine what it absorbed — its stored span already accounts for those days. This achieves O(1) amortized.
@@ -184,24 +170,20 @@ Find i < j < k such that `nums[i] < nums[k] < nums[j]`.
 - `third` = the best candidate for `nums[k]` (largest value seen below a "mountain top")
 - Stack maintains potential `nums[j]` values (decreasing)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn find132pattern(nums: &[i32]) -> bool {
+    let n = nums.len();
+    let mut third = i32::MIN;            // best candidate for nums[k]
+    let mut stk: Vec<i32> = Vec::new();  // candidates for nums[j]
 
-bool find132pattern(vector<int>& nums) {
-    int n = nums.size();
-    int third = INT_MIN;       // best candidate for nums[k]
-    stack<int> stk;  // candidates for nums[j]
-
-    for (int i = n - 1; i >= 0; i--) {
-        if (nums[i] < third) return true;    // nums[i] is nums[1] (smallest)
-        while (!stk.empty() && stk.top() < nums[i]) {
-            third = stk.top();   // this is nums[k] — it was below nums[j]=nums[i]
-            stk.pop();
+    for i in (0..n).rev() {
+        if nums[i] < third { return true; }    // nums[i] is nums[1] (smallest)
+        while !stk.is_empty() && *stk.last().unwrap() < nums[i] {
+            third = stk.pop().unwrap();   // this is nums[k] — it was below nums[j]=nums[i]
         }
         stk.push(nums[i]);
     }
-    return false;
+    false
 }
 ```
 
@@ -213,39 +195,29 @@ bool find132pattern(vector<int>& nums) {
 
 Asteroids: positive = moving right, negative = moving left. Collision: right-moving hits left-moving. Larger absolute value survives; equal sizes both explode.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> asteroidCollision(vector<int>& asteroids) {
-    stack<int> stk;
-    for (int a : asteroids) {
-        bool exploded = false;
-        while (!stk.empty() && a < 0 && stk.top() > 0) {
-            if (stk.top() < -a) {
+```rust
+fn asteroid_collision(asteroids: Vec<i32>) -> Vec<i32> {
+    let mut stk: Vec<i32> = Vec::new();
+    for a in asteroids {
+        let mut exploded = false;
+        while !stk.is_empty() && a < 0 && *stk.last().unwrap() > 0 {
+            if *stk.last().unwrap() < -a {
                 stk.pop();   // right-moving asteroid explodes
                 continue;
-            } else if (stk.top() == -a) {
+            } else if *stk.last().unwrap() == -a {
                 stk.pop();   // both explode
             }
-            // stk.top() > -a: new asteroid explodes
+            // stk.last() > -a: new asteroid explodes
             exploded = true;
             break;
         }
-        if (!exploded) stk.push(a);
+        if !exploded { stk.push(a); }
     }
-
-    // Convert stack to vector (stack is in reverse order)
-    vector<int> result(stk.size());
-    for (int i = result.size() - 1; i >= 0; i--) {
-        result[i] = stk.top();
-        stk.pop();
-    }
-    return result;
+    stk
 }
 ```
 
-**Collision only when:** current asteroid is negative (`a < 0`) AND stack top is positive (`stk.top() > 0`). Same direction = no collision.
+**Collision only when:** current asteroid is negative (`a < 0`) AND stack top is positive (`stk.last() > 0`). Same direction = no collision.
 
 ---
 
@@ -255,32 +227,32 @@ Remove `k` digits from `num` string to get the smallest possible number.
 
 **Greedy with monotonic stack:** maintain an increasing stack. Whenever we see a digit smaller than the top, pop (that digit is a larger digit we should remove).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-string removeKdigits(string num, int k) {
-    string stk;
-    for (char c : num) {
-        while (k > 0 && !stk.empty() && stk.back() > c) {
-            stk.pop_back();
-            k--;
+```rust
+fn remove_kdigits(num: String, mut k: i32) -> String {
+    let mut stk: Vec<char> = Vec::new();
+    for c in num.chars() {
+        while k > 0 && !stk.is_empty() && *stk.last().unwrap() > c {
+            stk.pop();
+            k -= 1;
         }
-        stk.push_back(c);
+        stk.push(c);
     }
     // If k > 0, remove from the end (digits are already in increasing order)
-    while (k-- > 0) stk.pop_back();
+    while k > 0 {
+        stk.pop();
+        k -= 1;
+    }
 
     // Build result, skipping leading zeros
-    string result;
-    bool leadingZero = true;
+    let mut result = String::new();
+    let mut leading_zero = true;
     // stk is already in insertion order
-    for (char c : stk) {
-        if (leadingZero && c == '0') continue;
-        leadingZero = false;
-        result += c;
+    for &c in &stk {
+        if leading_zero && c == '0' { continue; }
+        leading_zero = false;
+        result.push(c);
     }
-    return result.empty() ? "0" : result;
+    if result.is_empty() { "0".to_string() } else { result }
 }
 ```
 
@@ -294,27 +266,23 @@ string removeKdigits(string num, int k) {
 
 ### Monotonic Stack Approach — O(n) time, O(n) space
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn trap(height: &[i32]) -> i32 {
+    let mut stk: Vec<usize> = Vec::new();  // decreasing stack of indices
+    let mut water = 0i32;
 
-int trap(vector<int>& height) {
-    stack<int> stk;  // decreasing stack of indices
-    int water = 0;
-
-    for (int i = 0; i < (int)height.size(); i++) {
-        while (!stk.empty() && height[stk.top()] < height[i]) {
-            int bottom = stk.top();
-            stk.pop();
-            if (stk.empty()) break;
-            int left = stk.top();
-            int width = i - left - 1;
-            int boundedHeight = min(height[left], height[i]) - height[bottom];
-            water += width * boundedHeight;
+    for i in 0..height.len() {
+        while !stk.is_empty() && height[*stk.last().unwrap()] < height[i] {
+            let bottom = stk.pop().unwrap();
+            if stk.is_empty() { break; }
+            let left = *stk.last().unwrap();
+            let width = (i - left - 1) as i32;
+            let bounded_height = height[left].min(height[i]) - height[bottom];
+            water += width * bounded_height;
         }
         stk.push(i);
     }
-    return water;
+    water
 }
 ```
 
@@ -322,25 +290,25 @@ int trap(vector<int>& height) {
 
 ### Two-Pointer Approach — O(n) time, O(1) space
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int trap(vector<int>& height) {
-    int left = 0, right = height.size() - 1;
-    int maxLeft = 0, maxRight = 0, water = 0;
-    while (left < right) {
-        if (height[left] <= height[right]) {
-            if (height[left] >= maxLeft) maxLeft = height[left];
-            else water += maxLeft - height[left];
-            left++;
+```rust
+fn trap(height: &[i32]) -> i32 {
+    let mut left = 0usize;
+    let mut right = height.len() - 1;
+    let mut max_left = 0i32;
+    let mut max_right = 0i32;
+    let mut water = 0i32;
+    while left < right {
+        if height[left] <= height[right] {
+            if height[left] >= max_left { max_left = height[left]; }
+            else { water += max_left - height[left]; }
+            left += 1;
         } else {
-            if (height[right] >= maxRight) maxRight = height[right];
-            else water += maxRight - height[right];
-            right--;
+            if height[right] >= max_right { max_right = height[right]; }
+            else { water += max_right - height[right]; }
+            right -= 1;
         }
     }
-    return water;
+    water
 }
 ```
 
@@ -356,37 +324,34 @@ For each subarray, find its minimum and sum all minimums. Answer modulo 10^9 + 7
 - `left[i]` = number of subarrays ending at `i` where `A[i]` is minimum (distance to previous smaller element)
 - `right[i]` = number of subarrays starting at `i` where `A[i]` is minimum (distance to next smaller or equal element)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int sumSubarrayMins(vector<int>& arr) {
-    int MOD = 1'000'000'007;
-    int n = arr.size();
-    vector<int> left(n);    // left[i] = # subarrays where arr[i] is min, ending at i
-    vector<int> right(n);   // right[i] = # subarrays where arr[i] is min, starting at i
-    stack<int> stk;
+```rust
+fn sum_subarray_mins(arr: &[i32]) -> i32 {
+    const MOD: i64 = 1_000_000_007;
+    let n = arr.len();
+    let mut left = vec![0i32; n];    // left[i] = # subarrays where arr[i] is min, ending at i
+    let mut right = vec![0i32; n];   // right[i] = # subarrays where arr[i] is min, starting at i
+    let mut stk: Vec<usize> = Vec::new();
 
     // Compute left[i]: distance to previous STRICTLY smaller element
-    for (int i = 0; i < n; i++) {
-        while (!stk.empty() && arr[stk.top()] >= arr[i]) stk.pop();
-        left[i] = stk.empty() ? i + 1 : i - stk.top();
+    for i in 0..n {
+        while !stk.is_empty() && arr[*stk.last().unwrap()] >= arr[i] { stk.pop(); }
+        left[i] = if stk.is_empty() { (i + 1) as i32 } else { (i - stk.last().unwrap()) as i32 };
         stk.push(i);
     }
-    while (!stk.empty()) stk.pop();
+    stk.clear();
     // Compute right[i]: distance to next SMALLER OR EQUAL element
     // Use <= for right to avoid double-counting equal elements
-    for (int i = n - 1; i >= 0; i--) {
-        while (!stk.empty() && arr[stk.top()] > arr[i]) stk.pop();
-        right[i] = stk.empty() ? n - i : stk.top() - i;
+    for i in (0..n).rev() {
+        while !stk.is_empty() && arr[*stk.last().unwrap()] > arr[i] { stk.pop(); }
+        right[i] = if stk.is_empty() { (n - i) as i32 } else { (*stk.last().unwrap() - i) as i32 };
         stk.push(i);
     }
 
-    long ans = 0;
-    for (int i = 0; i < n; i++) {
-        ans = (ans + (long) arr[i] * left[i] * right[i]) % MOD;
+    let mut ans: i64 = 0;
+    for i in 0..n {
+        ans = (ans + arr[i] as i64 * left[i] as i64 * right[i] as i64) % MOD;
     }
-    return (int) ans;
+    ans as i32
 }
 ```
 
@@ -398,28 +363,28 @@ int sumSubarrayMins(vector<int>& arr) {
 
 Return the smallest lexicographic subsequence containing all unique characters exactly once.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn remove_duplicate_letters(s: &str) -> String {
+    let mut count = [0i32; 26];
+    let mut in_stack = [false; 26];
+    for c in s.chars() { count[(c as u8 - b'a') as usize] += 1; }
 
-string removeDuplicateLetters(string s) {
-    int count[26] = {};
-    bool inStack[26] = {};
-    for (char c : s) count[c - 'a']++;
-
-    string stk;
-    for (char c : s) {
-        count[c - 'a']--;
-        if (inStack[c - 'a']) continue;    // already in result
+    let mut stk: Vec<char> = Vec::new();
+    for c in s.chars() {
+        count[(c as u8 - b'a') as usize] -= 1;
+        if in_stack[(c as u8 - b'a') as usize] { continue; }    // already in result
         // Pop if current char is smaller AND the top char appears later
-        while (!stk.empty() && stk.back() > c && count[stk.back() - 'a'] > 0) {
-            inStack[stk.back() - 'a'] = false;
-            stk.pop_back();
+        while !stk.is_empty()
+            && *stk.last().unwrap() > c
+            && count[(*stk.last().unwrap() as u8 - b'a') as usize] > 0
+        {
+            in_stack[(*stk.last().unwrap() as u8 - b'a') as usize] = false;
+            stk.pop();
         }
-        stk.push_back(c);
-        inStack[c - 'a'] = true;
+        stk.push(c);
+        in_stack[(c as u8 - b'a') as usize] = true;
     }
-    return stk;
+    stk.iter().collect()
 }
 ```
 

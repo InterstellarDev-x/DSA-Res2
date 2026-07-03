@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [C++ Templates](#cpp-templates)
+5. [Rust Templates](#rust-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -58,7 +58,7 @@ update answer
 | "longest subarray / substring with ..." | Variable window (maximize) |
 | "smallest subarray with sum ≥ k" | Variable window (minimize) |
 | "at most k distinct characters / elements" | Variable window + frequency map |
-| "no repeating characters" | Variable window + unordered_set |
+| "no repeating characters" | Variable window + `HashSet` |
 
 ---
 
@@ -67,47 +67,44 @@ update answer
 | Variant | Time | Space |
 |---------|------|-------|
 | Fixed window (sum) | O(n) | O(1) |
-| Variable window (unordered_set) | O(n) | O(n) |
+| Variable window (`HashSet`) | O(n) | O(n) |
 | Variable window (freq map) | O(n) | O(26) / O(n) |
 
 ---
 
-## C++ Templates
+## Rust Templates
 
 ### 1. Fixed Window — Maximum Sum of Size K
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int maxSumSubarray(vector<int>& arr, int k) {
-    int windowSum = 0;
-    for (int i = 0; i < k; i++) windowSum += arr[i]; // first window
-
-    int maxSum = windowSum;
-    for (int i = k; i < (int)arr.size(); i++) {
-        windowSum += arr[i] - arr[i - k]; // slide: add new, remove old
-        maxSum = max(maxSum, windowSum);
+```rust
+fn max_sum_subarray(arr: &[i32], k: usize) -> i32 {
+    let mut window_sum: i32 = arr[..k].iter().sum(); // first window
+    let mut max_sum = window_sum;
+    for i in k..arr.len() {
+        window_sum += arr[i] - arr[i - k]; // slide: add new, remove old
+        max_sum = max_sum.max(window_sum);
     }
-    return maxSum;
+    max_sum
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 2. Variable Window — Longest Subarray with Sum ≤ K (Non-negative values)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int longestSubarrayWithSumK(vector<int>& arr, int k) {
-    int l = 0, sum = 0, maxLen = 0;
-    for (int r = 0; r < (int)arr.size(); r++) {
+```rust
+fn longest_subarray_with_sum_k(arr: &[i32], k: i32) -> usize {
+    let mut l = 0;
+    let mut sum = 0;
+    let mut max_len = 0;
+    for r in 0..arr.len() {
         sum += arr[r];
-        while (sum > k) sum -= arr[l++]; // shrink from left
-        maxLen = max(maxLen, r - l + 1);
+        while sum > k {
+            sum -= arr[l];
+            l += 1; // shrink from left
+        }
+        max_len = max_len.max(r - l + 1);
     }
-    return maxLen;
+    max_len
 }
 // Time: O(n) | Space: O(1)
 // Note: while loop is amortized O(n) total — l never decreases
@@ -115,79 +112,102 @@ int longestSubarrayWithSumK(vector<int>& arr, int k) {
 
 ### 3. Variable Window — Longest Substring Without Repeating Characters
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-int lengthOfLongestSubstring(string s) {
-    unordered_map<char, int> lastSeen;
-    int l = 0, maxLen = 0;
-    for (int r = 0; r < (int)s.length(); r++) {
-        char c = s[r];
-        if (lastSeen.count(c) && lastSeen[c] >= l) {
-            l = lastSeen[c] + 1; // jump l past the duplicate
+fn length_of_longest_substring(s: &str) -> usize {
+    let chars: Vec<char> = s.chars().collect();
+    let mut last_seen: HashMap<char, usize> = HashMap::new();
+    let mut l = 0;
+    let mut max_len = 0;
+    for r in 0..chars.len() {
+        let c = chars[r];
+        if let Some(&prev) = last_seen.get(&c) {
+            if prev >= l {
+                l = prev + 1; // jump l past the duplicate
+            }
         }
-        lastSeen[c] = r;
-        maxLen = max(maxLen, r - l + 1);
+        last_seen.insert(c, r);
+        max_len = max_len.max(r - l + 1);
     }
-    return maxLen;
+    max_len
 }
 // Time: O(n) | Space: O(min(n, 26))
 ```
 
 ### 4. Variable Window — At Most K Distinct Characters
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-int longestSubstringKDistinct(string s, int k) {
-    unordered_map<char, int> freq;
-    int l = 0, maxLen = 0;
-    for (int r = 0; r < (int)s.length(); r++) {
-        freq[s[r]]++;
-        while ((int)freq.size() > k) {
-            char left = s[l++];
-            freq[left]--;
-            if (freq[left] == 0) freq.erase(left);
+fn longest_substring_k_distinct(s: &str, k: usize) -> usize {
+    let chars: Vec<char> = s.chars().collect();
+    let mut freq: HashMap<char, usize> = HashMap::new();
+    let mut l = 0;
+    let mut max_len = 0;
+    for r in 0..chars.len() {
+        *freq.entry(chars[r]).or_insert(0) += 1;
+        while freq.len() > k {
+            let left = chars[l];
+            l += 1;
+            *freq.get_mut(&left).unwrap() -= 1;
+            if freq[&left] == 0 {
+                freq.remove(&left);
+            }
         }
-        maxLen = max(maxLen, r - l + 1);
+        max_len = max_len.max(r - l + 1);
     }
-    return maxLen;
+    max_len
 }
 // Time: O(n) | Space: O(k)
 ```
 
 ### 5. Minimum Window Substring (Hard)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-string minWindow(string s, string t) {
-    if (s.empty() || t.empty()) return "";
-    unordered_map<char, int> need;
-    for (char c : t) need[c]++;
+fn min_window(s: &str, t: &str) -> String {
+    if s.is_empty() || t.is_empty() {
+        return String::new();
+    }
+    let s_chars: Vec<char> = s.chars().collect();
+    let mut need: HashMap<char, i32> = HashMap::new();
+    for c in t.chars() {
+        *need.entry(c).or_insert(0) += 1;
+    }
 
-    int l = 0, formed = 0, required = (int)need.size();
-    unordered_map<char, int> window;
-    int ansLen = -1, ansL = 0, ansR = 0; // [length, l, r]
+    let mut l = 0;
+    let mut formed = 0;
+    let required = need.len();
+    let mut window: HashMap<char, i32> = HashMap::new();
+    let mut ans: Option<(usize, usize, usize)> = None; // (length, l, r)
 
-    for (int r = 0; r < (int)s.length(); r++) {
-        char c = s[r];
-        window[c]++;
-        if (need.count(c) && window[c] == need[c]) formed++;
+    for r in 0..s_chars.len() {
+        let c = s_chars[r];
+        *window.entry(c).or_insert(0) += 1;
+        if need.contains_key(&c) && window[&c] == need[&c] {
+            formed += 1;
+        }
 
-        while (formed == required) {
-            if (ansLen == -1 || r - l + 1 < ansLen) {
-                ansLen = r - l + 1; ansL = l; ansR = r;
+        while formed == required {
+            let len = r - l + 1;
+            if ans.map_or(true, |(prev_len, _, _)| len < prev_len) {
+                ans = Some((len, l, r));
             }
-            char lc = s[l++];
-            window[lc]--;
-            if (need.count(lc) && window[lc] < need[lc]) formed--;
+            let lc = s_chars[l];
+            l += 1;
+            *window.get_mut(&lc).unwrap() -= 1;
+            if need.contains_key(&lc) && window[&lc] < need[&lc] {
+                formed -= 1;
+            }
         }
     }
-    return ansLen == -1 ? "" : s.substr(ansL, ansLen);
+
+    match ans {
+        None => String::new(),
+        Some((_, al, ar)) => s_chars[al..=ar].iter().collect(),
+    }
 }
 // Time: O(|s| + |t|) | Space: O(|s| + |t|)
 ```
@@ -199,7 +219,7 @@ string minWindow(string s, string t) {
 | Mistake | Fix |
 |---------|-----|
 | Using sliding window when values can be negative | Switch to Prefix Sum + HashMap |
-| Not removing key from map when frequency → 0 | Always `map.erase(key)` when count hits 0 |
+| Not removing key from map when frequency → 0 | Always `map.remove(&key)` when count hits 0 |
 | Fixed window: off-by-one when removing old element | Remove `arr[i - k]`, not `arr[i - k + 1]` |
 | Variable window: over-shrinking | `while` condition, not `if` |
 | Counting `formed` with `>=` instead of `==` | Only increment `formed` when count matches exactly |

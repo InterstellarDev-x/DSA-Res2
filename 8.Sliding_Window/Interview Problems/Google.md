@@ -10,43 +10,49 @@
 
 ### Both Approaches
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
 // Approach 1: atMost trick — O(n) time, O(1) space
-int numSubarraysWithSum(vector<int>& nums, int goal) {
-    return atMost(nums, goal) - atMost(nums, goal - 1);
-}
-int atMost(vector<int>& nums, int goal) {
-    if (goal < 0) return 0;
-    int left = 0, sum = 0, result = 0;
-    for (int right = 0; right < (int)nums.size(); right++) {
-        sum += nums[right];
-        while (sum > goal) sum -= nums[left++];
-        result += right - left + 1;
-    }
-    return result;
+fn num_subarrays_with_sum(nums: &[i32], goal: i32) -> i32 {
+    at_most(nums, goal) - at_most(nums, goal - 1)
 }
 
-// Approach 2: Prefix Sum + unordered_map — O(n) time, O(n) space
-int numSubarraysWithSum(vector<int>& nums, int goal) {
-    unordered_map<int, int> prefixCount;
-    prefixCount[0] = 1;
-    int sum = 0, result = 0;
-    for (auto& num : nums) {
-        sum += num;
-        result += (prefixCount.count(sum - goal) ? prefixCount[sum - goal] : 0);
-        prefixCount[sum]++;
+fn at_most(nums: &[i32], goal: i32) -> i32 {
+    if goal < 0 { return 0; }
+    let mut left = 0;
+    let mut sum = 0;
+    let mut result = 0;
+    for right in 0..nums.len() {
+        sum += nums[right];
+        while sum > goal {
+            sum -= nums[left];
+            left += 1;
+        }
+        result += (right - left + 1) as i32;
     }
-    return result;
+    result
+}
+
+// Approach 2: Prefix Sum + HashMap — O(n) time, O(n) space
+fn num_subarrays_with_sum_v2(nums: &[i32], goal: i32) -> i32 {
+    let mut prefix_count: HashMap<i32, i32> = HashMap::new();
+    prefix_count.insert(0, 1);
+    let mut sum = 0;
+    let mut result = 0;
+    for &num in nums {
+        sum += num;
+        result += prefix_count.get(&(sum - goal)).copied().unwrap_or(0);
+        *prefix_count.entry(sum).or_insert(0) += 1;
+    }
+    result
 }
 ```
 
 **Q: When would you prefer prefix sum over atMost?**
 A: Prefix sum works for negative numbers too. `atMost` sliding window assumes monotonic sums — adding an element can only increase the sum. For arrays with negatives, the `while (sum > goal)` shrink loop can overshoot. Prefix sum doesn't have this restriction.
 
-**Q: Why `prefixCount[0] = 1` initialization?**
+**Q: Why `prefix_count[0] = 1` initialization?**
 A: The subarray from index 0 to some index `j` has sum = `prefix[j+1]`. For this to equal `goal`, we need `prefix[j+1] - prefix[0] = goal → prefix[0] = prefix[j+1] - goal`. Since `prefix[0] = 0`, we initialize with `count[0] = 1` to count subarrays starting from index 0.
 
 ---
@@ -55,26 +61,25 @@ A: The subarray from index 0 to some index `j` has sum = `prefix[j+1]`. For this
 
 **LC 1004** · Medium
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int longestOnes(vector<int>& nums, int k) {
-    int left = 0, zeros = 0, maxLen = 0;
-    for (int right = 0; right < (int)nums.size(); right++) {
-        if (nums[right] == 0) zeros++;
-        while (zeros > k) {
-            if (nums[left] == 0) zeros--;
-            left++;
+```rust
+fn longest_ones(nums: &[i32], k: i32) -> i32 {
+    let mut left = 0;
+    let mut zeros = 0;
+    let mut max_len = 0;
+    for right in 0..nums.len() {
+        if nums[right] == 0 { zeros += 1; }
+        while zeros > k {
+            if nums[left] == 0 { zeros -= 1; }
+            left += 1;
         }
-        maxLen = max(maxLen, right - left + 1);
+        max_len = max_len.max(right - left + 1);
     }
-    return maxLen;
+    max_len as i32
 }
 ```
 
 **Q: Google follow-up — what if we can also flip at most k ones to zeros (i.e., keep at most k zeros OR ones)?**
-A: Two separate calls: `max(longestOnes(nums, k), longestZeros(nums, k))` where `longestZeros` flips the values.
+A: Two separate calls: `max(longest_ones(nums, k), longest_zeros(nums, k))` where `longest_zeros` flips the values.
 
 **Q: Google follow-up — if you could flip any substring (not individual bits) at most once, find the longest all-ones subarray?**
 A: This becomes a different problem — find the longest window with ≤ 1 "block" of zeros (since flipping a substring flips all bits in it). Use segment analysis or dynamic programming.
@@ -85,25 +90,25 @@ A: This becomes a different problem — find the longest window with ≤ 1 "bloc
 
 **LC 1358** · Medium
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int numberOfSubstrings(string s) {
-    int count[3] = {0, 0, 0};
-    int left = 0, result = 0;
-    for (int right = 0; right < (int)s.size(); right++) {
-        count[s[right] - 'a']++;
-        while (count[0] > 0 && count[1] > 0 && count[2] > 0) {
-            result += (int)s.size() - right;
-            count[s[left++] - 'a']--;
+```rust
+fn number_of_substrings(s: &str) -> i32 {
+    let s: Vec<u8> = s.bytes().collect();
+    let mut count = [0i32; 3];
+    let mut left = 0;
+    let mut result = 0;
+    for right in 0..s.len() {
+        count[(s[right] - b'a') as usize] += 1;
+        while count[0] > 0 && count[1] > 0 && count[2] > 0 {
+            result += (s.len() - right) as i32;
+            count[(s[left] - b'a') as usize] -= 1;
+            left += 1;
         }
     }
-    return result;
+    result
 }
 ```
 
-**Q: Explain the `result += s.size() - right` insight.**
+**Q: Explain the `result += s.len() - right` insight.**
 A: When `[left..right]` contains all three characters, extending the right boundary to any position from `right` to `n-1` still contains all three. So every substring `[left..right]`, `[left..right+1]`, ..., `[left..n-1]` is valid — that's `n - right` subarrays starting at `left`. Then we shrink `left` and check if the shorter window still has all three.
 
 **Google L4 follow-up:** Generalize to count substrings containing all characters of a given target string `t`. Use the `have/need` framework from Minimum Window Substring.

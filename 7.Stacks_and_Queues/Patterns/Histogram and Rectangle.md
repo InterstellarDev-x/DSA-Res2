@@ -25,30 +25,27 @@ The monotonic stack computes both boundaries in one O(n) pass.
 
 **Invariant:** Stack maintains indices of bars in **increasing height order**. When we find a shorter bar, all taller bars on the stack are "blocked" — their right boundary has been found.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+fn largest_rectangle_area(heights: &[i32]) -> i32 {
+    let n = heights.len();
+    let mut stk: Vec<usize> = Vec::new();
+    let mut max_area = 0i32;
 
-int largestRectangleArea(vector<int>& heights) {
-    int n = heights.size();
-    stack<int> stk;
-    int maxArea = 0;
-
-    for (int i = 0; i <= n; i++) {
+    for i in 0..=n {
         // Sentinel: treat index n as height 0 to flush stack at end
-        int currHeight = (i == n) ? 0 : heights[i];
+        let curr_height = if i == n { 0 } else { heights[i] };
 
-        while (!stk.empty() && heights[stk.top()] > currHeight) {
-            int h = heights[stk.top()]; stk.pop();
+        while !stk.is_empty() && heights[*stk.last().unwrap()] > curr_height {
+            let h = heights[stk.pop().unwrap()];
             // Left boundary = new stack top + 1 (or 0 if stack empty)
-            int leftBound = stk.empty() ? 0 : stk.top() + 1;
-            int rightBound = i - 1;
-            int width = rightBound - leftBound + 1;
-            maxArea = max(maxArea, h * width);
+            let left_bound = if stk.is_empty() { 0 } else { stk.last().unwrap() + 1 };
+            let right_bound = i - 1; // safe: i >= 1 when stack is non-empty
+            let width = (right_bound - left_bound + 1) as i32;
+            max_area = max_area.max(h * width);
         }
         stk.push(i);
     }
-    return maxArea;
+    max_area
 }
 ```
 
@@ -68,36 +65,38 @@ maxArea = 10
 
 ### Approach 2: Precompute Left/Right Smaller — O(n) time, O(n) space
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int largestRectangleArea(vector<int>& heights) {
-    int n = heights.size();
-    vector<int> left(n);   // index of first bar shorter to the left
-    vector<int> right(n);  // index of first bar shorter to the right
-    stack<int> stk;
+```rust
+fn largest_rectangle_area(heights: &[i32]) -> i32 {
+    let n = heights.len();
+    let mut left = vec![0isize; n];  // index of first bar shorter to the left (-1 means none)
+    let mut right = vec![0usize; n]; // index of first bar shorter to the right (n means none)
+    let mut stk: Vec<usize> = Vec::new();
 
     // Compute left smaller
-    for (int i = 0; i < n; i++) {
-        while (!stk.empty() && heights[stk.top()] >= heights[i]) stk.pop();
-        left[i] = stk.empty() ? -1 : stk.top();
+    for i in 0..n {
+        while !stk.is_empty() && heights[*stk.last().unwrap()] >= heights[i] {
+            stk.pop();
+        }
+        left[i] = if stk.is_empty() { -1 } else { *stk.last().unwrap() as isize };
         stk.push(i);
     }
-    while (!stk.empty()) stk.pop(); // clear stack
+    stk.clear(); // clear stack
 
     // Compute right smaller
-    for (int i = n - 1; i >= 0; i--) {
-        while (!stk.empty() && heights[stk.top()] >= heights[i]) stk.pop();
-        right[i] = stk.empty() ? n : stk.top();
+    for i in (0..n).rev() {
+        while !stk.is_empty() && heights[*stk.last().unwrap()] >= heights[i] {
+            stk.pop();
+        }
+        right[i] = if stk.is_empty() { n } else { *stk.last().unwrap() };
         stk.push(i);
     }
 
-    int maxArea = 0;
-    for (int i = 0; i < n; i++) {
-        maxArea = max(maxArea, heights[i] * (right[i] - left[i] - 1));
+    let mut max_area = 0i32;
+    for i in 0..n {
+        let width = (right[i] as isize - left[i] - 1) as i32;
+        max_area = max_area.max(heights[i] * width);
     }
-    return maxArea;
+    max_area
 }
 ```
 
@@ -111,41 +110,38 @@ int largestRectangleArea(vector<int>& heights) {
 
 **Key insight:** Build a histogram for each row where `heights[j]` = number of consecutive `'1'`s in column `j` ending at the current row. Then apply Largest Rectangle in Histogram to each row's heights.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int largestRectangleArea(vector<int>& heights) {
-    int n = heights.size();
-    stack<int> stk;
-    int maxArea = 0;
-    for (int i = 0; i <= n; i++) {
-        int h = (i == n) ? 0 : heights[i];
-        while (!stk.empty() && heights[stk.top()] > h) {
-            int height = heights[stk.top()]; stk.pop();
-            int width = stk.empty() ? i : i - stk.top() - 1;
-            maxArea = max(maxArea, height * width);
+```rust
+fn largest_rectangle_area(heights: &[i32]) -> i32 {
+    let n = heights.len();
+    let mut stk: Vec<usize> = Vec::new();
+    let mut max_area = 0i32;
+    for i in 0..=n {
+        let h = if i == n { 0 } else { heights[i] };
+        while !stk.is_empty() && heights[*stk.last().unwrap()] > h {
+            let height = heights[stk.pop().unwrap()];
+            let width = if stk.is_empty() { i } else { i - stk.last().unwrap() - 1 };
+            max_area = max_area.max(height * width as i32);
         }
         stk.push(i);
     }
-    return maxArea;
+    max_area
 }
 
-int maximalRectangle(vector<vector<char>>& matrix) {
-    if (matrix.empty()) return 0;
-    int cols = matrix[0].size();
-    vector<int> heights(cols);
-    int maxArea = 0;
+fn maximal_rectangle(matrix: &[Vec<char>]) -> i32 {
+    if matrix.is_empty() { return 0; }
+    let cols = matrix[0].len();
+    let mut heights = vec![0i32; cols];
+    let mut max_area = 0i32;
 
-    for (auto& row : matrix) {
+    for row in matrix {
         // Update histogram heights
-        for (int j = 0; j < cols; j++) {
-            heights[j] = (row[j] == '1') ? heights[j] + 1 : 0;
+        for j in 0..cols {
+            heights[j] = if row[j] == '1' { heights[j] + 1 } else { 0 };
         }
         // Apply LRH on current row's histogram
-        maxArea = max(maxArea, largestRectangleArea(heights));
+        max_area = max_area.max(largest_rectangle_area(&heights));
     }
-    return maxArea;
+    max_area
 }
 ```
 
@@ -170,7 +166,7 @@ Overall: 6
 
 ## Why This Pattern Is Hard
 
-1. **Width calculation is subtle:** `width = i - stk.top() - 1` where `stk.top()` is the left boundary (exclusive), not inclusive.
+1. **Width calculation is subtle:** `width = i - stk.last() - 1` where `stk.last()` is the left boundary (exclusive), not inclusive.
 2. **Sentinel element needed:** Without it, bars remaining in stack after the loop never compute their area.
 3. **Equal heights:** Using `>=` vs `>` in the stack condition affects correctness. Use `>` (pop only when strictly taller) — otherwise equal bars could get wrong widths.
 4. **2D extension (Maximal Rectangle):** The jump from 1D histogram to 2D matrix requires recognizing the "row-by-row histogram" decomposition.
@@ -182,7 +178,7 @@ Overall: 6
 | Scenario | Formula |
 |----------|---------|
 | Stack is empty after pop | `width = i` (extends from 0 to i-1) |
-| Stack has element after pop | `width = i - stk.top() - 1` (extends from `stk.top()+1` to `i-1`) |
+| Stack has element after pop | `width = i - stk.last() - 1` (extends from `stk.last()+1` to `i-1`) |
 
 For the precompute approach: `width = right[i] - left[i] - 1` where `left[i]` and `right[i]` are the exclusive boundaries.
 

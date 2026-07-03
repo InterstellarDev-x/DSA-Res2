@@ -8,36 +8,35 @@ Ten battle-tested idioms that make graph code shorter, faster, and correct. See 
 
 ## 1. Standard adjacency-list build idiom
 
-For a weighted graph use `unordered_map<int, vector<pair<int,int>>>`; for unweighted, `vector<vector<int>>`. Build once, reuse everywhere.
+For a weighted graph use `HashMap<i32, Vec<(i32, i32)>>`; for unweighted, `Vec<Vec<i32>>`. Build once, reuse everywhere.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-vector<vector<int>> adj(n);
-for (auto& e : edges) {
-    adj[e[0]].push_back(e[1]);
-    adj[e[1]].push_back(e[0]);          // BOTH directions for undirected
+let mut adj: Vec<Vec<i32>> = vec![vec![]; n];
+for e in &edges {
+    adj[e[0] as usize].push(e[1]);
+    adj[e[1] as usize].push(e[0]);          // BOTH directions for undirected
 }
 // weighted:
-unordered_map<int, vector<pair<int,int>>> wadj;
-for (auto& e : edges)
-    wadj[e[0]].push_back({e[1], e[2]});
+let mut wadj: HashMap<i32, Vec<(i32, i32)>> = HashMap::new();
+for e in &edges {
+    wadj.entry(e[0]).or_default().push((e[1], e[2]));
+}
 ```
 
-## 2. Use a `vector<vector<int>> dirs` array for grid neighbors
+## 2. Use a direction-tuple array `[(i32, i32)]` for grid neighbors
 
 Replaces four near-identical blocks with one loop. Use 8-dir only when diagonals count.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> dirs = {{1,0},{-1,0},{0,1},{0,-1}};            // 4-directional
-vector<vector<int>> dirs8 = {{1,0},{-1,0},{0,1},{0,-1},{1,1},{1,-1},{-1,1},{-1,-1}}; // 8-dir
-for (auto& d : dirs) {
-    int r = row + d[0], c = col + d[1];
-    if (r < 0 || r >= m || c < 0 || c >= n) continue;  // bounds FIRST
+```rust
+let dirs: [(i32, i32); 4] = [(1,0),(-1,0),(0,1),(0,-1)];            // 4-directional
+let dirs8: [(i32, i32); 8] = [(1,0),(-1,0),(0,1),(0,-1),(1,1),(1,-1),(-1,1),(-1,-1)]; // 8-dir
+for &(dr, dc) in &dirs {
+    let r = row as i32 + dr;
+    let c = col as i32 + dc;
+    if r < 0 || r >= m as i32 || c < 0 || c >= n as i32 { continue; }  // bounds FIRST
+    let (r, c) = (r as usize, c as usize);
     // ... use grid[r][c]
 }
 ```
@@ -46,19 +45,19 @@ for (auto& d : dirs) {
 
 The single most important BFS rule. Marking at dequeue lets the same node be pushed by multiple neighbors → duplicates, bloated queue, sometimes wrong counts.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
 visited[start] = true;
-q.push(start);
-while (!q.empty()) {
-    int u = q.front(); q.pop();
-    for (int v : adj[u])
-        if (!visited[v]) {
+let mut q: VecDeque<usize> = VecDeque::new();
+q.push_back(start);
+while let Some(u) = q.pop_front() {
+    for &v in &adj[u] {
+        if !visited[v] {
             visited[v] = true;          // mark at the moment you enqueue
-            q.push(v);
+            q.push_back(v);
         }
+    }
 }
 ```
 
@@ -66,18 +65,20 @@ while (!q.empty()) {
 
 For "spread from many origins simultaneously" (Rotting Oranges, 01 Matrix, Walls and Gates), push every source at time 0, then expand level by level.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-for (int i = 0; i < m; i++)
-    for (int j = 0; j < n; j++)
-        if (isSource(grid[i][j])) q.push({i, j});
-int level = 0;
-while (!q.empty()) {
-    int size = q.size();            // freeze the layer
-    for (int s = 0; s < size; s++) { /* expand one cell */ }
-    level++;
+let mut q: VecDeque<(usize, usize)> = VecDeque::new();
+for i in 0..m {
+    for j in 0..n {
+        if is_source(grid[i][j]) { q.push_back((i, j)); }
+    }
+}
+let mut level = 0;
+while !q.is_empty() {
+    let size = q.len();            // freeze the layer
+    for _ in 0..size { /* expand one cell */ }
+    level += 1;
 }
 ```
 
@@ -85,41 +86,38 @@ while (!q.empty()) {
 
 Lazy-deletion heap: re-push on relax, skip popped entries that are worse than the recorded best. Always use a proper comparator, never `a[1] - b[1]`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> pq;
-pq.push({0, src});
-while (!pq.empty()) {
-    auto [d, u] = pq.top(); pq.pop();
-    if (d > dist[u]) continue;          // stale — already finalized cheaper
-    for (auto& [v, w] : adj[u]) {
-        int nd = d + w;
-        if (nd < dist[v]) { dist[v] = nd; pq.push({nd, v}); }
+let mut pq: BinaryHeap<Reverse<(i32, usize)>> = BinaryHeap::new();
+pq.push(Reverse((0, src)));
+while let Some(Reverse((d, u))) = pq.pop() {
+    if d > dist[u] { continue; }          // stale — already finalized cheaper
+    for &(v, w) in &adj[u] {
+        let nd = d + w;
+        if nd < dist[v] { dist[v] = nd; pq.push(Reverse((nd, v))); }
     }
 }
 ```
 
-## 6. 0-1 BFS with a `deque`
+## 6. 0-1 BFS with a `VecDeque`
 
-When edge weights are only 0 or 1, replace Dijkstra's heap with a deque: push 0-weight moves to the **front**, 1-weight to the **back**. O(V+E).
+When edge weights are only 0 or 1, replace Dijkstra's heap with a `VecDeque`: push 0-weight moves to the **front**, 1-weight to the **back**. O(V+E).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-deque<pair<int,int>> dq;
-dq.push_front({src, 0});
-while (!dq.empty()) {
-    auto [u, d] = dq.front(); dq.pop_front();
-    if (d > dist[u]) continue;
-    for (auto& [v, w] : adj[u]) {
-        int nd = d + w;              // w is 0 or 1
-        if (nd < dist[v]) {
+let mut dq: VecDeque<(usize, i32)> = VecDeque::new();
+dq.push_front((src, 0));
+while let Some((u, d)) = dq.pop_front() {
+    if d > dist[u] { continue; }
+    for &(v, w) in &adj[u] {
+        let nd = d + w;              // w is 0 or 1
+        if nd < dist[v] {
             dist[v] = nd;
-            if (w == 0) dq.push_front({v, nd});
-            else        dq.push_back({v, nd});
+            if w == 0 { dq.push_front((v, nd)); }
+            else       { dq.push_back((v, nd)); }
         }
     }
 }
@@ -129,47 +127,52 @@ while (!dq.empty()) {
 
 The canonical near-O(α(n)) disjoint-set. Memorize it; it appears in Union-Find, MST (Kruskal), and cycle detection.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 struct DSU {
-    vector<int> parent, rank_;
-    DSU(int n) : parent(n), rank_(n, 0) {
-        iota(parent.begin(), parent.end(), 0);
+    parent: Vec<usize>,
+    rank: Vec<usize>,
+}
+
+impl DSU {
+    fn new(n: usize) -> Self {
+        DSU {
+            parent: (0..n).collect(),
+            rank: vec![0; n],
+        }
     }
-    int find(int x) {
-        while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x]; } // compression
-        return x;
+    fn find(&mut self, x: usize) -> usize {
+        let mut x = x;
+        while self.parent[x] != x {
+            self.parent[x] = self.parent[self.parent[x]]; // compression
+            x = self.parent[x];
+        }
+        x
     }
-    bool unite(int a, int b) {
-        int ra = find(a), rb = find(b);
-        if (ra == rb) return false;     // already connected (cycle for undirected)
-        if (rank_[ra] < rank_[rb]) swap(ra, rb);
-        parent[rb] = ra;
-        if (rank_[ra] == rank_[rb]) rank_[ra]++;
-        return true;
+    fn unite(&mut self, a: usize, b: usize) -> bool {
+        let (mut ra, mut rb) = (self.find(a), self.find(b));
+        if ra == rb { return false; }     // already connected (cycle for undirected)
+        if self.rank[ra] < self.rank[rb] { std::mem::swap(&mut ra, &mut rb); }
+        self.parent[rb] = ra;
+        if self.rank[ra] == self.rank[rb] { self.rank[ra] += 1; }
+        true
     }
-};
+}
 ```
 
 ## 8. 3-color DFS for directed cycle detection
 
 WHITE (unvisited) / GRAY (on the current DFS stack) / BLACK (done). A GRAY→GRAY edge is a back edge = cycle. Do **not** use parent-tracking for directed graphs (that's the undirected technique).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<int> color;   // 0 white, 1 gray, 2 black
-bool hasCycle(int u, vector<vector<int>>& adj) {
+```rust
+// color: Vec<u8> initialized to 0 (0 = white, 1 = gray, 2 = black)
+fn has_cycle(u: usize, adj: &Vec<Vec<usize>>, color: &mut Vec<u8>) -> bool {
     color[u] = 1;
-    for (int v : adj[u]) {
-        if (color[v] == 1) return true;        // back edge → cycle
-        if (color[v] == 0 && hasCycle(v, adj)) return true;
+    for &v in &adj[u] {
+        if color[v] == 1 { return true; }        // back edge → cycle
+        if color[v] == 0 && has_cycle(v, adj, color) { return true; }
     }
     color[u] = 2;
-    return false;
+    false
 }
 ```
 
@@ -177,47 +180,47 @@ bool hasCycle(int u, vector<vector<int>>& adj) {
 
 BFS over zero-indegree nodes. If you can't process all nodes, the graph has a cycle.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-vector<int> indegree(n, 0);
-for (auto& e : edges) indegree[e[1]]++;        // edge u->v
-queue<int> q;
-for (int i = 0; i < n; i++) if (indegree[i] == 0) q.push(i);
-vector<int> order;
-while (!q.empty()) {
-    int u = q.front(); q.pop();
-    order.push_back(u);
-    for (int v : adj[u]) if (--indegree[v] == 0) q.push(v);
+let mut indegree = vec![0usize; n];
+for e in &edges { indegree[e[1]] += 1; }        // edge u->v
+let mut q: VecDeque<usize> = VecDeque::new();
+for i in 0..n { if indegree[i] == 0 { q.push_back(i); } }
+let mut order: Vec<usize> = Vec::new();
+while let Some(u) = q.pop_front() {
+    order.push(u);
+    for &v in &adj[u] {
+        indegree[v] -= 1;
+        if indegree[v] == 0 { q.push_back(v); }
+    }
 }
-bool acyclic = (int)order.size() == n;           // else cycle
+let acyclic = order.len() == n;           // else cycle
 ```
 
 ## 10. Bitmask state for "visit all nodes"
 
 When the answer depends on *which subset* of nodes you've visited (Shortest Path Visiting All Nodes), make the BFS state `(node, mask)`. Goal: `mask == (1 << n) - 1`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::VecDeque;
 
-int full = (1 << n) - 1;
-queue<pair<int,int>> q;           // {node, mask}
-vector<vector<bool>> seen(n, vector<bool>(1 << n, false));
-for (int i = 0; i < n; i++) { q.push({i, 1 << i}); seen[i][1 << i] = true; }
-int steps = 0;
-while (!q.empty()) {
-    int size = q.size();
-    for (int s = 0; s < size; s++) {
-        auto [node, mask] = q.front(); q.pop();
-        if (mask == full) return steps;
-        for (int nb : adj[node]) {
-            int nmask = mask | (1 << nb);
-            if (!seen[nb][nmask]) { seen[nb][nmask] = true; q.push({nb, nmask}); }
+let full = (1usize << n) - 1;
+let mut q: VecDeque<(usize, usize)> = VecDeque::new();           // (node, mask)
+let mut seen = vec![vec![false; 1 << n]; n];
+for i in 0..n { q.push_back((i, 1 << i)); seen[i][1 << i] = true; }
+let mut steps = 0;
+while !q.is_empty() {
+    let size = q.len();
+    for _ in 0..size {
+        let (node, mask) = q.pop_front().unwrap();
+        if mask == full { return steps; }
+        for &nb in &adj[node] {
+            let nmask = mask | (1 << nb);
+            if !seen[nb][nmask] { seen[nb][nmask] = true; q.push_back((nb, nmask)); }
         }
     }
-    steps++;
+    steps += 1;
 }
 ```
 

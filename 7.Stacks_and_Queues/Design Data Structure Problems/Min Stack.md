@@ -15,35 +15,44 @@ The challenge: standard stacks don't track minimums. After a `pop`, the minimum 
 
 ### Approach 1: Auxiliary Min Stack — O(1) all operations, O(n) space
 
-Maintain a second stack (`minStack`) that tracks the running minimum at each level.
+Maintain a second stack (`min_stk`) that tracks the running minimum at each level.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct MinStack {
+    stk: Vec<i32>,
+    min_stk: Vec<i32>,
+}
 
-class MinStack {
-    stack<int> stk;
-    stack<int> minStk;
-
-public:
-    void push(int val) {
-        stk.push(val);
-        // Push to minStk if it's the new minimum (or minStk is empty)
-        int mn = minStk.empty() ? val : min(val, minStk.top());
-        minStk.push(mn);
+impl MinStack {
+    fn new() -> Self {
+        MinStack {
+            stk: Vec::new(),
+            min_stk: Vec::new(),
+        }
     }
 
-    void pop() {
-        stk.pop();
-        minStk.pop();    // always pop both together
+    fn push(&mut self, val: i32) {
+        self.stk.push(val);
+        // Push to min_stk if it's the new minimum (or min_stk is empty)
+        let mn = if self.min_stk.is_empty() {
+            val
+        } else {
+            val.min(*self.min_stk.last().unwrap())
+        };
+        self.min_stk.push(mn);
     }
 
-    int top()    { return stk.top(); }
-    int getMin() { return minStk.top(); }
-};
+    fn pop(&mut self) {
+        self.stk.pop();
+        self.min_stk.pop();    // always pop both together
+    }
+
+    fn top(&self) -> i32     { *self.stk.last().unwrap() }
+    fn get_min(&self) -> i32 { *self.min_stk.last().unwrap() }
+}
 ```
 
-**Why push min every time (not only when it changes)?** Because `pop()` must always pop both stacks together. If we only pushed to `minStack` when value decreases, the two stacks would have different sizes and fall out of sync.
+**Why push min every time (not only when it changes)?** Because `pop()` must always pop both stacks together. If we only pushed to `min_stk` when value decreases, the two stacks would have different sizes and fall out of sync.
 
 **Trace:**
 ```
@@ -62,28 +71,34 @@ getMin()=3 ✓
 
 ### Approach 2: Single Stack with Pairs — O(1) all operations, O(n) space
 
-Store `(value, minAtThisPoint)` as a pair in each stack entry. Uses one structure instead of two.
+Store `(value, minAtThisPoint)` as a tuple in each stack entry. Uses one structure instead of two.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct MinStack {
+    stk: Vec<(i32, i32)>,  // (val, min_so_far)
+}
 
-class MinStack {
-    stack<pair<int,int>> stk;  // {val, minSoFar}
-
-public:
-    void push(int val) {
-        int mn = stk.empty() ? val : min(val, stk.top().second);
-        stk.push({val, mn});
+impl MinStack {
+    fn new() -> Self {
+        MinStack { stk: Vec::new() }
     }
 
-    void pop()    { stk.pop(); }
-    int top()     { return stk.top().first; }
-    int getMin()  { return stk.top().second; }
-};
+    fn push(&mut self, val: i32) {
+        let mn = if self.stk.is_empty() {
+            val
+        } else {
+            val.min(self.stk.last().unwrap().1)
+        };
+        self.stk.push((val, mn));
+    }
+
+    fn pop(&mut self)         { self.stk.pop(); }
+    fn top(&self) -> i32      { self.stk.last().unwrap().0 }
+    fn get_min(&self) -> i32  { self.stk.last().unwrap().1 }
+}
 ```
 
-**Trade-off:** Slightly more memory per entry (two ints), but one data structure. The pair approach is cleaner in code.
+**Trade-off:** Slightly more memory per entry (two i32s), but one data structure. The tuple approach is cleaner in code.
 
 ---
 
@@ -91,40 +106,46 @@ public:
 
 Store the difference `(val - currentMin)` in the stack. When difference is negative, we know `val` was a new minimum.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct MinStack {
+    stk: Vec<i64>,
+    mn: i64,
+}
 
-class MinStack {
-    stack<long> stk;
-    long mn = LONG_MAX;
-
-public:
-    void push(int val) {
-        if (stk.empty()) {
-            stk.push(0L);
-            mn = val;
-        } else {
-            stk.push((long) val - mn);
-            if (val < mn) mn = val;
+impl MinStack {
+    fn new() -> Self {
+        MinStack {
+            stk: Vec::new(),
+            mn: i64::MAX,
         }
     }
 
-    void pop() {
-        long diff = stk.top(); stk.pop();
-        if (diff < 0) mn = mn - diff;   // restore previous min
+    fn push(&mut self, val: i32) {
+        let val = val as i64;
+        if self.stk.is_empty() {
+            self.stk.push(0);
+            self.mn = val;
+        } else {
+            self.stk.push(val - self.mn);
+            if val < self.mn { self.mn = val; }
+        }
     }
 
-    int top() {
-        long diff = stk.top();
-        return diff < 0 ? (int) mn : (int)(mn + diff);
+    fn pop(&mut self) {
+        let diff = self.stk.pop().unwrap();
+        if diff < 0 { self.mn = self.mn - diff; }   // restore previous min
     }
 
-    int getMin() { return (int) mn; }
-};
+    fn top(&self) -> i32 {
+        let diff = *self.stk.last().unwrap();
+        if diff < 0 { self.mn as i32 } else { (self.mn + diff) as i32 }
+    }
+
+    fn get_min(&self) -> i32 { self.mn as i32 }
+}
 ```
 
-**Why `long`?** `val - min` can overflow `int` if `val` is large positive and `min` is large negative (or vice versa).
+**Why `i64`?** `val - min` can overflow `i32` if `val` is large positive and `min` is large negative (or vice versa).
 
 **Restore logic on pop:** If stored `diff < 0`, it means `min` was updated to `val = min + diff` when this was pushed. The previous min = `min - diff`.
 
@@ -136,37 +157,46 @@ public:
 
 ### Array-based Circular Buffer
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct MyCircularQueue {
+    data: Vec<i32>,
+    head: usize,
+    tail: usize,   // initialized to capacity-1; first enqueue wraps to 0
+    sz: usize,
+    capacity: usize,
+}
 
-class MyCircularQueue {
-    vector<int> data;
-    int head, tail, sz, capacity;
-
-public:
-    MyCircularQueue(int k) : data(k), head(0), tail(-1), sz(0), capacity(k) {}
-
-    bool enQueue(int value) {
-        if (isFull()) return false;
-        tail = (tail + 1) % capacity;
-        data[tail] = value;
-        sz++;
-        return true;
+impl MyCircularQueue {
+    fn new(k: usize) -> Self {
+        MyCircularQueue {
+            data: vec![0; k],
+            head: 0,
+            tail: k - 1,  // equivalent to -1: (k-1+1)%k = 0 on first enqueue
+            sz: 0,
+            capacity: k,
+        }
     }
 
-    bool deQueue() {
-        if (isEmpty()) return false;
-        head = (head + 1) % capacity;
-        sz--;
-        return true;
+    fn en_queue(&mut self, value: i32) -> bool {
+        if self.is_full() { return false; }
+        self.tail = (self.tail + 1) % self.capacity;
+        self.data[self.tail] = value;
+        self.sz += 1;
+        true
     }
 
-    int Front() { return isEmpty() ? -1 : data[head]; }
-    int Rear()  { return isEmpty() ? -1 : data[tail]; }
-    bool isEmpty() { return sz == 0; }
-    bool isFull()  { return sz == capacity; }
-};
+    fn de_queue(&mut self) -> bool {
+        if self.is_empty() { return false; }
+        self.head = (self.head + 1) % self.capacity;
+        self.sz -= 1;
+        true
+    }
+
+    fn front(&self) -> i32 { if self.is_empty() { -1 } else { self.data[self.head] } }
+    fn rear(&self) -> i32  { if self.is_empty() { -1 } else { self.data[self.tail] } }
+    fn is_empty(&self) -> bool { self.sz == 0 }
+    fn is_full(&self) -> bool  { self.sz == self.capacity }
+}
 ```
 
 **Why track `size` separately?** Avoids the "one slot wasted" trick (reserving one empty slot to distinguish full from empty based on head/tail positions).
@@ -200,19 +230,19 @@ Option 1 is cleanest for interviews.
 
 ### Min Stack
 **Q: Can you do O(1) getMin with O(1) push/pop using less space?**
-A: The pair/two-stack approaches are O(n) by necessity — we must remember the minimum at each stack level in case pops reveal a new minimum. The encoding trick reduces constant factor but is still O(n). Fundamental lower bound: O(n) space for a stack supporting getMin in O(1).
+A: The tuple/two-stack approaches are O(n) by necessity — we must remember the minimum at each stack level in case pops reveal a new minimum. The encoding trick reduces constant factor but is still O(n). Fundamental lower bound: O(n) space for a stack supporting getMin in O(1).
 
 **Q: Thread safety?**
-A: Wrap methods with `std::mutex` and `std::lock_guard` (or `std::unique_lock`). The two-stack approach has a window where stack has been popped but minStack hasn't — this is a critical section.
+A: Wrap the struct in `std::sync::Mutex` and use `MutexGuard` for access. The two-stack approach has a window where the main stack has been popped but `min_stk` hasn't — this is a critical section.
 
 ### Circular Queue
-**Q: Why circular instead of `std::list`?**
-A: Array has O(1) index access and better cache locality. Linked list has pointer overhead per node. For a fixed-size bounded queue, circular array is standard.
+**Q: Why circular instead of `VecDeque`?**
+A: Array has O(1) index access and better cache locality. A linked list has pointer overhead per node. For a fixed-size bounded queue, circular array is standard.
 
 **Q: How to implement a circular DEQUE?**
-A: Same structure but add `enqueueFront` and `dequeueRear`:
-- `enqueueFront`: `head = (head - 1 + capacity) % capacity`
-- `dequeueRear`: `tail = (tail - 1 + capacity) % capacity`
+A: Same structure but add `enqueue_front` and `dequeue_rear`:
+- `enqueue_front`: `head = (head + capacity - 1) % capacity`
+- `dequeue_rear`: `tail = (tail + capacity - 1) % capacity`
 
 ---
 

@@ -17,26 +17,23 @@ Two implementation strategies:
 
 ## Template 1 — Permutations via used[] (LC 46)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> permute(vector<int>& nums) {
-    vector<vector<int>> result;
-    vector<bool> used(nums.size(), false);
-    vector<int> path;
-    backtrack(nums, used, path, result);
-    return result;
+```rust
+fn permute(nums: &[i32]) -> Vec<Vec<i32>> {
+    let mut result = Vec::new();
+    let mut used = vec![false; nums.len()];
+    let mut path = Vec::new();
+    backtrack(nums, &mut used, &mut path, &mut result);
+    result
 }
 
-void backtrack(vector<int>& nums, vector<bool>& used, vector<int>& path, vector<vector<int>>& res) {
-    if (path.size() == nums.size()) { res.push_back(path); return; }
-    for (int i = 0; i < nums.size(); i++) {
-        if (used[i]) continue;
+fn backtrack(nums: &[i32], used: &mut Vec<bool>, path: &mut Vec<i32>, res: &mut Vec<Vec<i32>>) {
+    if path.len() == nums.len() { res.push(path.clone()); return; }
+    for i in 0..nums.len() {
+        if used[i] { continue; }
         used[i] = true;
-        path.push_back(nums[i]);
+        path.push(nums[i]);
         backtrack(nums, used, path, res);
-        path.pop_back();
+        path.pop();
         used[i] = false;
     }
 }
@@ -46,26 +43,23 @@ void backtrack(vector<int>& nums, vector<bool>& used, vector<int>& path, vector<
 
 ## Template 2 — Permutations via Swap (LC 46, O(1) extra space)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> permute(vector<int> nums) {
-    vector<vector<int>> result;
-    permuteHelper(nums, 0, result);
-    return result;
+```rust
+fn permute(mut nums: Vec<i32>) -> Vec<Vec<i32>> {
+    let mut result = Vec::new();
+    permute_helper(&mut nums, 0, &mut result);
+    result
 }
 
-void permuteHelper(vector<int>& nums, int start, vector<vector<int>>& res) {
-    if (start == nums.size()) {
+fn permute_helper(nums: &mut Vec<i32>, start: usize, res: &mut Vec<Vec<i32>>) {
+    if start == nums.len() {
         // Collect current array state as a permutation
-        res.push_back(nums);
+        res.push(nums.clone());
         return;
     }
-    for (int i = start; i < nums.size(); i++) {
-        swap(nums[start], nums[i]);          // put nums[i] at position start
-        permuteHelper(nums, start + 1, res);
-        swap(nums[start], nums[i]);          // restore
+    for i in start..nums.len() {
+        nums.swap(start, i);          // put nums[i] at position start
+        permute_helper(nums, start + 1, res);
+        nums.swap(start, i);          // restore
     }
 }
 ```
@@ -83,30 +77,27 @@ i=2: [3,2,1] → recurse start=1
 
 Sort first. Skip if same value was already placed at the current position this level.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> permuteUnique(vector<int>& nums) {
-    sort(nums.begin(), nums.end());
-    vector<vector<int>> result;
-    vector<bool> used(nums.size(), false);
-    vector<int> path;
-    backtrack(nums, used, path, result);
-    return result;
+```rust
+fn permute_unique(mut nums: Vec<i32>) -> Vec<Vec<i32>> {
+    nums.sort();
+    let mut result = Vec::new();
+    let mut used = vec![false; nums.len()];
+    let mut path = Vec::new();
+    backtrack(&nums, &mut used, &mut path, &mut result);
+    result
 }
 
-void backtrack(vector<int>& nums, vector<bool>& used, vector<int>& path, vector<vector<int>>& res) {
-    if (path.size() == nums.size()) { res.push_back(path); return; }
-    for (int i = 0; i < nums.size(); i++) {
-        if (used[i]) continue;
+fn backtrack(nums: &[i32], used: &mut Vec<bool>, path: &mut Vec<i32>, res: &mut Vec<Vec<i32>>) {
+    if path.len() == nums.len() { res.push(path.clone()); return; }
+    for i in 0..nums.len() {
+        if used[i] { continue; }
         // Skip: same value AND previous duplicate not used
         // Ensures duplicates are placed in order (prevents same-level reuse)
-        if (i > 0 && nums[i] == nums[i - 1] && !used[i - 1]) continue;
+        if i > 0 && nums[i] == nums[i - 1] && !used[i - 1] { continue; }
         used[i] = true;
-        path.push_back(nums[i]);
+        path.push(nums[i]);
         backtrack(nums, used, path, res);
-        path.pop_back();
+        path.pop();
         used[i] = false;
     }
 }
@@ -119,28 +110,26 @@ If `nums[i-1] == nums[i]` and `used[i-1]` is false, it means `nums[i-1]` was pre
 
 ## Template 4 — String Permutations (all permutations of a string)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<string> permutations(string s) {
-    vector<string> result;
-    sort(s.begin(), s.end());
-    vector<bool> used(s.size(), false);
-    string current;
-    permuteStr(s, used, current, result);
-    return result;
+```rust
+fn permutations(s: &str) -> Vec<String> {
+    let mut chars: Vec<char> = s.chars().collect();
+    chars.sort();
+    let mut result = Vec::new();
+    let mut used = vec![false; chars.len()];
+    let mut current = String::new();
+    permute_str(&chars, &mut used, &mut current, &mut result);
+    result
 }
 
-void permuteStr(const string& s, vector<bool>& used, string& current, vector<string>& res) {
-    if (current.size() == s.size()) { res.push_back(current); return; }
-    for (int i = 0; i < s.size(); i++) {
-        if (used[i]) continue;
-        if (i > 0 && s[i] == s[i - 1] && !used[i - 1]) continue; // skip dup
+fn permute_str(s: &[char], used: &mut Vec<bool>, current: &mut String, res: &mut Vec<String>) {
+    if current.chars().count() == s.len() { res.push(current.clone()); return; }
+    for i in 0..s.len() {
+        if used[i] { continue; }
+        if i > 0 && s[i] == s[i - 1] && !used[i - 1] { continue; } // skip dup
         used[i] = true;
-        current += s[i];
-        permuteStr(s, used, current, res);
-        current.pop_back();
+        current.push(s[i]);
+        permute_str(s, used, current, res);
+        current.pop();
         used[i] = false;
     }
 }
@@ -152,24 +141,25 @@ void permuteStr(const string& s, vector<bool>& used, string& current, vector<str
 
 Finds the lexicographically next permutation in-place:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-void nextPermutation(vector<int>& nums) {
-    int n = nums.size();
+```rust
+fn next_permutation(nums: &mut Vec<i32>) {
+    let n = nums.len();
     // Step 1: find largest i where nums[i] < nums[i+1] (rightmost "dip")
-    int i = n - 2;
-    while (i >= 0 && nums[i] >= nums[i + 1]) i--;
+    let mut i = n as i32 - 2;
+    while i >= 0 && nums[i as usize] >= nums[i as usize + 1] {
+        i -= 1;
+    }
 
-    if (i >= 0) {
+    if i >= 0 {
         // Step 2: find smallest j > i where nums[j] > nums[i]
-        int j = n - 1;
-        while (nums[j] <= nums[i]) j--;
-        swap(nums[i], nums[j]);
+        let mut j = n as i32 - 1;
+        while nums[j as usize] <= nums[i as usize] {
+            j -= 1;
+        }
+        nums.swap(i as usize, j as usize);
     }
     // Step 3: reverse suffix from i+1 to end
-    reverse(nums.begin() + i + 1, nums.end());
+    nums[i as usize + 1..].reverse();
 }
 ```
 
@@ -202,9 +192,9 @@ void nextPermutation(vector<int>& nums) {
 | Mistake | Fix |
 |---------|-----|
 | `i > 0 && !used[i-1]` — condition reversed | `nums[i] == nums[i-1] && !used[i-1]` — check value equality AND parent not used |
-| In swap approach: not restoring (forgetting second swap) | Both `swap(nums[start], nums[i])` calls are required |
-| Storing reference to `path` | `res.push_back(path)` copies by value at the leaf |
-| Swap approach: collecting result without copying | Copy `nums` explicitly: `res.push_back(nums)` |
+| In swap approach: not restoring (forgetting second swap) | Both `nums.swap(start, i)` calls are required |
+| Storing reference to `path` | `res.push(path.clone())` copies by value at the leaf |
+| Swap approach: collecting result without copying | Copy `nums` explicitly: `res.push(nums.clone())` |
 
 ---
 

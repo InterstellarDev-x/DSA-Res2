@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [C++ Templates](#c-templates)
+5. [Rust Templates](#rust-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -24,7 +24,7 @@
 Binary Search on Answer doesn't search **in** an array — it searches **for** an answer in a value range `[lo, hi]`. The search space is the set of all possible answer values, and a **predicate function** tells us whether a candidate answer is feasible.
 
 **Core Insight:**
-> If `isFeasible(x)` is monotone (false for small x, true for large x), binary search finds the minimum x where `isFeasible(x)` is true.
+> If `is_feasible(x)` is monotone (false for small x, true for large x), binary search finds the minimum x where `is_feasible(x)` is true.
 
 ```
 Answer space:  [lo ..... threshold ..... hi]
@@ -36,8 +36,8 @@ isFeasible:     F  F  F  F  T  T  T  T  T
 
 | Type | What to binary search | Predicate |
 |------|-----------------------|-----------|
-| **Minimize maximum** | Binary search on the max value | `canAchieveWithMax(m)` |
-| **Maximize minimum** | Binary search on the min value | `canAchieveWithMin(m)` |
+| **Minimize maximum** | Binary search on the max value | `can_achieve_with_max(m)` |
+| **Maximize minimum** | Binary search on the min value | `can_achieve_with_min(m)` |
 
 ---
 
@@ -73,28 +73,25 @@ isFeasible:     F  F  F  F  T  T  T  T  T
 
 ---
 
-## C++ Templates
+## Rust Templates
 
 ### Master Template
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+// Find minimum answer m such that is_feasible(m) is true
+fn binary_search_on_answer(/* problem params */) -> i32 {
+    let mut lo: i32 = /* minimum possible answer */;
+    let mut hi: i32 = /* maximum possible answer */;
 
-// Find minimum answer m such that isFeasible(m) is true
-int binarySearchOnAnswer(/* problem params */) {
-    int lo = /* minimum possible answer */;
-    int hi = /* maximum possible answer */;
-
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (isFeasible(mid /*, other params */)) {
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if is_feasible(mid /*, other params */) {
             hi = mid;        // mid works; try smaller
         } else {
             lo = mid + 1;    // mid doesn't work; need larger
         }
     }
-    return lo; // minimum feasible answer
+    lo // minimum feasible answer
 }
 ```
 
@@ -102,109 +99,124 @@ int binarySearchOnAnswer(/* problem params */) {
 
 ### 1. Koko Eating Bananas
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Koko eats at speed k bananas/hr. Min k to finish all piles in h hours.
-bool canFinish(vector<int>& piles, int h, int speed) {
-    int hours = 0;
-    for (int pile : piles)
+fn can_finish(piles: &[i32], h: i32, speed: i32) -> bool {
+    let mut hours = 0i32;
+    for &pile in piles {
         hours += (pile + speed - 1) / speed; // ceil division
-    return hours <= h;
+    }
+    hours <= h
 }
 
-int minEatingSpeed(vector<int>& piles, int h) {
-    int lo = 1, hi = *max_element(piles.begin(), piles.end());
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (canFinish(piles, h, mid)) hi = mid;
-        else lo = mid + 1;
+fn min_eating_speed(piles: Vec<i32>, h: i32) -> i32 {
+    let mut lo = 1;
+    let mut hi = *piles.iter().max().unwrap();
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if can_finish(&piles, h, mid) {
+            hi = mid;
+        } else {
+            lo = mid + 1;
+        }
     }
-    return lo;
+    lo
 }
 // Time: O(n log maxPile) | Space: O(1)
 ```
 
 ### 2. Capacity to Ship Packages in D Days
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool canShip(vector<int>& weights, int days, int capacity) {
-    int daysNeeded = 1, current = 0;
-    for (int w : weights) {
-        if (current + w > capacity) { daysNeeded++; current = 0; }
+```rust
+fn can_ship(weights: &[i32], days: i32, capacity: i32) -> bool {
+    let mut days_needed = 1i32;
+    let mut current = 0i32;
+    for &w in weights {
+        if current + w > capacity {
+            days_needed += 1;
+            current = 0;
+        }
         current += w;
     }
-    return daysNeeded <= days;
+    days_needed <= days
 }
 
-int shipWithinDays(vector<int>& weights, int days) {
-    int lo = *max_element(weights.begin(), weights.end()); // must carry heaviest
-    int hi = accumulate(weights.begin(), weights.end(), 0); // carry all in 1 day
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (canShip(weights, days, mid)) hi = mid;
-        else lo = mid + 1;
+fn ship_within_days(weights: Vec<i32>, days: i32) -> i32 {
+    let mut lo = *weights.iter().max().unwrap(); // must carry heaviest
+    let mut hi: i32 = weights.iter().sum();      // carry all in 1 day
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if can_ship(&weights, days, mid) {
+            hi = mid;
+        } else {
+            lo = mid + 1;
+        }
     }
-    return lo;
+    lo
 }
 // Time: O(n log(sum-max)) | Space: O(1)
 ```
 
 ### 3. Split Array Largest Sum (= Book Allocation = Painter's Partition)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool canSplit(vector<int>& nums, int k, int maxSum) {
-    int parts = 1, current = 0;
-    for (int num : nums) {
-        if (current + num > maxSum) { parts++; current = 0; }
+```rust
+fn can_split(nums: &[i32], k: i32, max_sum: i32) -> bool {
+    let mut parts = 1i32;
+    let mut current = 0i32;
+    for &num in nums {
+        if current + num > max_sum {
+            parts += 1;
+            current = 0;
+        }
         current += num;
     }
-    return parts <= k;
+    parts <= k
 }
 
-int splitArray(vector<int>& nums, int k) {
-    int lo = *max_element(nums.begin(), nums.end());
-    int hi = accumulate(nums.begin(), nums.end(), 0);
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (canSplit(nums, k, mid)) hi = mid;
-        else lo = mid + 1;
+fn split_array(nums: Vec<i32>, k: i32) -> i32 {
+    let mut lo = *nums.iter().max().unwrap();
+    let mut hi: i32 = nums.iter().sum();
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if can_split(&nums, k, mid) {
+            hi = mid;
+        } else {
+            lo = mid + 1;
+        }
     }
-    return lo;
+    lo
 }
 // Time: O(n log(sum)) | Space: O(1)
 ```
 
 ### 4. Aggressive Cows — Maximize Minimum Distance
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool canPlace(vector<int>& stalls, int k, int minDist) {
-    int count = 1, last = stalls[0];
-    for (int i = 1; i < (int)stalls.size(); i++) {
-        if (stalls[i] - last >= minDist) { count++; last = stalls[i]; }
+```rust
+fn can_place(stalls: &[i32], k: i32, min_dist: i32) -> bool {
+    let mut count = 1i32;
+    let mut last = stalls[0];
+    for i in 1..stalls.len() {
+        if stalls[i] - last >= min_dist {
+            count += 1;
+            last = stalls[i];
+        }
     }
-    return count >= k;
+    count >= k
 }
 
-int aggressiveCows(vector<int>& stalls, int k) {
-    sort(stalls.begin(), stalls.end());
-    int lo = 1, hi = stalls[stalls.size() - 1] - stalls[0];
-    while (lo < hi) {
-        int mid = lo + (hi - lo + 1) / 2;  // upper-mid for maximize
-        if (canPlace(stalls, k, mid)) lo = mid;
-        else hi = mid - 1;
+fn aggressive_cows(mut stalls: Vec<i32>, k: i32) -> i32 {
+    stalls.sort();
+    let mut lo = 1;
+    let mut hi = stalls[stalls.len() - 1] - stalls[0];
+    while lo < hi {
+        let mid = lo + (hi - lo + 1) / 2;  // upper-mid for maximize
+        if can_place(&stalls, k, mid) {
+            lo = mid;
+        } else {
+            hi = mid - 1;
+        }
     }
-    return lo;
+    lo
 }
 // Time: O(n log n + n log(max-min)) | Space: O(1)
 ```
@@ -213,62 +225,78 @@ int aggressiveCows(vector<int>& stalls, int k) {
 
 ### 5. Minimum Days to Make M Bouquets
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-bool canMake(vector<int>& bloomDay, int m, int k, int day) {
-    int bouquets = 0, consecutive = 0;
-    for (int d : bloomDay) {
-        if (d <= day) { consecutive++; if (consecutive == k) { bouquets++; consecutive = 0; } }
-        else consecutive = 0;
+```rust
+fn can_make(bloom_day: &[i32], m: i32, k: i32, day: i32) -> bool {
+    let mut bouquets = 0i32;
+    let mut consecutive = 0i32;
+    for &d in bloom_day {
+        if d <= day {
+            consecutive += 1;
+            if consecutive == k {
+                bouquets += 1;
+                consecutive = 0;
+            }
+        } else {
+            consecutive = 0;
+        }
     }
-    return bouquets >= m;
+    bouquets >= m
 }
 
-int minDays(vector<int>& bloomDay, int m, int k) {
-    if ((long long) m * k > (int)bloomDay.size()) return -1;
-    int lo = *min_element(bloomDay.begin(), bloomDay.end());
-    int hi = *max_element(bloomDay.begin(), bloomDay.end());
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (canMake(bloomDay, m, k, mid)) hi = mid;
-        else lo = mid + 1;
+fn min_days(bloom_day: Vec<i32>, m: i32, k: i32) -> i32 {
+    if (m as i64) * (k as i64) > bloom_day.len() as i64 {
+        return -1;
     }
-    return lo;
+    let mut lo = *bloom_day.iter().min().unwrap();
+    let mut hi = *bloom_day.iter().max().unwrap();
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if can_make(&bloom_day, m, k, mid) {
+            hi = mid;
+        } else {
+            lo = mid + 1;
+        }
+    }
+    lo
 }
 ```
 
 ### 6. Median of Two Sorted Arrays (Hard)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-double findMedianSortedArrays(vector<int>& nums1, vector<int>& nums2) {
+```rust
+fn find_median_sorted_arrays(nums1: Vec<i32>, nums2: Vec<i32>) -> f64 {
     // Ensure nums1 is the shorter array
-    if (nums1.size() > nums2.size()) return findMedianSortedArrays(nums2, nums1);
-    int m = nums1.size(), n = nums2.size();
-    int lo = 0, hi = m;
-
-    while (lo <= hi) {
-        int cut1 = lo + (hi - lo) / 2;
-        int cut2 = (m + n + 1) / 2 - cut1;
-
-        int l1 = (cut1 == 0) ? INT_MIN : nums1[cut1 - 1];
-        int l2 = (cut2 == 0) ? INT_MIN : nums2[cut2 - 1];
-        int r1 = (cut1 == m) ? INT_MAX : nums1[cut1];
-        int r2 = (cut2 == n) ? INT_MAX : nums2[cut2];
-
-        if (l1 <= r2 && l2 <= r1) {
-            if ((m + n) % 2 == 0)
-                return (max(l1, l2) + min(r1, r2)) / 2.0;
-            else
-                return max(l1, l2);
-        } else if (l1 > r2) hi = cut1 - 1;
-        else lo = cut1 + 1;
+    if nums1.len() > nums2.len() {
+        return find_median_sorted_arrays(nums2, nums1);
     }
-    return 0.0;
+    let m = nums1.len();
+    let n = nums2.len();
+    let mut lo = 0usize;
+    let mut hi = m;
+
+    while lo <= hi {
+        let cut1 = lo + (hi - lo) / 2;
+        let cut2 = (m + n + 1) / 2 - cut1;
+
+        let l1 = if cut1 == 0 { i32::MIN } else { nums1[cut1 - 1] };
+        let l2 = if cut2 == 0 { i32::MIN } else { nums2[cut2 - 1] };
+        let r1 = if cut1 == m { i32::MAX } else { nums1[cut1] };
+        let r2 = if cut2 == n { i32::MAX } else { nums2[cut2] };
+
+        if l1 <= r2 && l2 <= r1 {
+            if (m + n) % 2 == 0 {
+                return (l1.max(l2) + r1.min(r2)) as f64 / 2.0;
+            } else {
+                return l1.max(l2) as f64;
+            }
+        } else if l1 > r2 {
+            if cut1 == 0 { break; }
+            hi = cut1 - 1;
+        } else {
+            lo = cut1 + 1;
+        }
+    }
+    0.0
 }
 // Time: O(log(min(m,n))) | Space: O(1)
 ```
@@ -280,10 +308,10 @@ double findMedianSortedArrays(vector<int>& nums1, vector<int>& nums2) {
 | Mistake | Fix |
 |---------|-----|
 | Wrong `lo`/`hi` initialization | `lo` = min possible, `hi` = max possible. For capacity: `lo = max(arr)`, `hi = sum(arr)` |
-| Integer overflow in `hi = sum` | Use `long` or validate input constraints |
+| Integer overflow in `hi = sum` | Use `i64` or validate input constraints |
 | Minimize: `mid = lo + (hi-lo)/2`, `hi = mid` — but maximize: need `mid = lo + (hi-lo+1)/2`, `lo = mid` | Maximize requires upper-mid to avoid infinite loop at `lo+1==hi` |
-| Feasibility check using strict vs non-strict | Off-by-one in `<=` vs `<` inside `canAchieve` |
-| Not validating that a solution exists | E.g., `if (m*k > n) return -1` before binary search |
+| Feasibility check using strict vs non-strict | Off-by-one in `<=` vs `<` inside `can_achieve` |
+| Not validating that a solution exists | E.g., `if m*k > n { return -1; }` before binary search |
 
 ---
 
@@ -293,7 +321,7 @@ double findMedianSortedArrays(vector<int>& nums1, vector<int>& nums2) {
 |-----------|-------------|
 | Kth missing positive | Binary search on index + math |
 | Smallest divisor given threshold | `hi = max(arr)`, minimize `ceil` sum |
-| Minimize max distance to gas station | Continuous search space — use `double` lo/hi |
+| Minimize max distance to gas station | Continuous search space — use `f64` lo/hi |
 | Nth root of M | `lo=1, hi=m`, check `mid^n` with overflow guard |
 
 ---
@@ -323,6 +351,6 @@ double findMedianSortedArrays(vector<int>& nums1, vector<int>& nums2) {
 
 ---
 
-> **Interview Tip:** The hardest part is identifying `lo`, `hi`, and the predicate. Once you write `isFeasible(mid)`, the outer binary search structure is always the same. Practice writing feasibility checks for 10+ problems — the pattern becomes mechanical.
+> **Interview Tip:** The hardest part is identifying `lo`, `hi`, and the predicate. Once you write `is_feasible(mid)`, the outer binary search structure is always the same. Practice writing feasibility checks for 10+ problems — the pattern becomes mechanical.
 
 > **Last Updated:** 2026-06-26

@@ -19,71 +19,67 @@ Before writing a single line of code, answer these three questions:
 
 ---
 
-## C++ Checklist
+## Rust Checklist
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // ✅ Always use this mid formula (prevents integer overflow)
-int mid = lo + (hi - lo) / 2;
+let mid = lo + (hi - lo) / 2;
 
 // ✅ For maximize problems, use upper-mid to prevent infinite loop
-int mid = lo + (hi - lo + 1) / 2;
+let mid = lo + (hi - lo + 1) / 2;
 
 // ✅ Prefer hi = n (not n-1) for lower/upper bound templates
-int hi = nums.size(); // allows returning "not found" = n
+let hi = nums.len(); // allows returning "not found" = n
 
 // ✅ Verify target exists after lower bound
-int lb = lowerBound(nums, target);
-if (lb == (int)nums.size() || nums[lb] != target) return -1;
+let lb = lower_bound(&nums, target);
+if lb == nums.len() || nums[lb] != target { return -1; }
 
 // ✅ Ceil division for feasibility checks
-int hoursNeeded = (pile + speed - 1) / speed; // equivalent to ceil(pile / speed)
+let hours_needed = (pile + speed - 1) / speed; // equivalent to ceil(pile / speed)
 
-// ✅ Use long for sums that may overflow
-long hi = 0;
-for (int w : weights) hi += w; // int sum of vector<int> can overflow
+// ✅ Use i64 for sums that may overflow
+let mut hi: i64 = 0;
+for &w in &weights { hi += w as i64; } // i32 sum of Vec<i32> can overflow
 ```
 
 ---
 
-## Common C++ Patterns
+## Common Rust Patterns
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Lower bound (first index where arr[i] >= target)
-int lowerBound(vector<int>& arr, int target) {
-    int lo = 0, hi = arr.size();
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (arr[mid] < target) lo = mid + 1;
-        else hi = mid;
+fn lower_bound(arr: &[i32], target: i32) -> usize {
+    let mut lo = 0;
+    let mut hi = arr.len();
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if arr[mid] < target { lo = mid + 1; }
+        else { hi = mid; }
     }
-    return lo;
+    lo
 }
 
 // Upper bound (first index where arr[i] > target)
-int upperBound(vector<int>& arr, int target) {
-    int lo = 0, hi = arr.size();
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (arr[mid] <= target) lo = mid + 1;
-        else hi = mid;
+fn upper_bound(arr: &[i32], target: i32) -> usize {
+    let mut lo = 0;
+    let mut hi = arr.len();
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if arr[mid] <= target { lo = mid + 1; }
+        else { hi = mid; }
     }
-    return lo;
+    lo
 }
 
 // Binary search on answer (minimize)
-int bsOnAnswer(int lo, int hi) {
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (isFeasible(mid)) hi = mid;
-        else lo = mid + 1;
+fn bs_on_answer(mut lo: i32, mut hi: i32) -> i32 {
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if is_feasible(mid) { hi = mid; }
+        else { lo = mid + 1; }
     }
-    return lo;
+    lo
 }
 ```
 

@@ -4,13 +4,19 @@
 
 Eight tips that turn most BST interview problems into a 5-minute exercise.
 
-```cpp
-struct TreeNode {
-    int val;
-    TreeNode* left;
-    TreeNode* right;
-    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
-};
+```rust
+#[derive(Debug)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+}
+
+impl TreeNode {
+    pub fn new(val: i32) -> Self {
+        TreeNode { val, left: None, right: None }
+    }
+}
 ```
 
 ---
@@ -24,47 +30,61 @@ kth-smallest, min-abs-diff, two-sum, and recover.
 A node can be larger than its parent yet still violate an ancestor's bound. Pass an open interval
 down and tighten it:
 
-```cpp
-bool valid(TreeNode* n, long lo, long hi) {
-    if (n == nullptr) return true;
-    if (n->val <= lo || n->val >= hi) return false;
-    return valid(n->left, lo, n->val) && valid(n->right, n->val, hi);
+```rust
+fn valid(n: Option<&Box<TreeNode>>, lo: i64, hi: i64) -> bool {
+    match n {
+        None => true,
+        Some(node) => {
+            let v = node.val as i64;
+            if v <= lo || v >= hi { return false; }
+            valid(node.left.as_ref(), lo, v) && valid(node.right.as_ref(), v, hi)
+        }
+    }
 }
 ```
 
-### 3. Use `long` for validation bounds.
-A node holding `INT_MIN` or `INT_MAX` breaks `int` bounds at the boundary.
-Start from `LONG_MIN` / `LONG_MAX` (or store the previous `TreeNode*` reference instead
+### 3. Use `i64` for validation bounds.
+A node holding `i32::MIN` or `i32::MAX` breaks `i32` bounds at the boundary.
+Start from `i64::MIN` / `i64::MAX` (or store the previous `&TreeNode` reference instead
 of a primitive).
 
 ### 4. O(h) compare-and-descend for LCA, floor, ceil, successor.
 Never run a full-tree O(n) search when ordering is available. Compare the target against the
 current node and descend one side, updating a candidate as you pass.
 
-```cpp
+```rust
 // LCA: descend to the split point
-while (cur != nullptr) {
-    if (p->val < cur->val && q->val < cur->val)      cur = cur->left;
-    else if (p->val > cur->val && q->val > cur->val) cur = cur->right;
-    else return cur;
+let mut cur = root.as_ref();
+while let Some(node) = cur {
+    if p_val < node.val && q_val < node.val {
+        cur = node.left.as_ref();
+    } else if p_val > node.val && q_val > node.val {
+        cur = node.right.as_ref();
+    } else {
+        return cur; // split point is the LCA
+    }
 }
 ```
 
 ### 5. Use an explicit stack for *controlled* inorder.
 When you need to stop early (kth smallest) or pause/resume (BST Iterator), drive inorder with a
-`stack`:
+`Vec` as a stack:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-stack<TreeNode*> stk;
-TreeNode* cur = root;
-while (cur != nullptr || !stk.empty()) {
-    while (cur != nullptr) { stk.push(cur); cur = cur->left; }
-    cur = stk.top(); stk.pop();
-    // visit cur — break here for early stop
-    cur = cur->right;
+```rust
+let mut stk: Vec<&TreeNode> = Vec::new();
+let mut cur = root.as_ref();
+loop {
+    while let Some(node) = cur {
+        stk.push(node);
+        cur = node.left.as_ref();
+    }
+    match stk.pop() {
+        None => break,
+        Some(node) => {
+            // visit node — break here for early stop
+            cur = node.right.as_ref();
+        }
+    }
 }
 ```
 
@@ -76,11 +96,15 @@ tree (LC 538) in one pass.
 The successor (leftmost of the right subtree) is the smallest key larger than the node, so
 promoting its value keeps the invariant. Then delete that successor copy from the right subtree.
 
-```cpp
-TreeNode* succ = root->right;
-while (succ->left != nullptr) succ = succ->left;
-root->val = succ->val;
-root->right = deleteNode(root->right, succ->val);
+```rust
+// find inorder successor (leftmost of right subtree)
+let mut succ = root.right.as_ref().unwrap();
+while let Some(left) = succ.left.as_ref() {
+    succ = left;
+}
+let succ_val = succ.val;
+root.val = succ_val;
+root.right = delete_node(root.right.take(), succ_val);
 ```
 
 ### 8. Prune with the BST property on range queries.
@@ -89,7 +113,7 @@ subtree is. Skip them — that is the entire speedup of [Range Sum](../Patterns/
 
 ---
 
-> **Bonus — comparisons:** use `(a > b) - (a < b)` rather than `a - b`; subtraction overflows
+> **Bonus — comparisons:** use `(a > b) as i32 - (a < b) as i32` rather than `a - b`; subtraction overflows
 > for large/negative values. It rarely matters inside a BST descent (which uses `<`/`>`) but
 > matters whenever you write a comparator over node values.
 

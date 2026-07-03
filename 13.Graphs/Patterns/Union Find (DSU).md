@@ -35,58 +35,68 @@ DSU does **not** support efficient *deletion* of edges (no easy "un-union"). For
 
 ## Reusable Template
 
-Use this DSU class throughout. It carries both `rnk` (for union by rank) and `sz` (handy for problems that need the size of a component), plus a live `count` of disjoint sets.
+Use this DSU struct throughout. It carries both `rnk` (for union by rank) and `sz` (handy for problems that need the size of a component), plus a live `count` of disjoint sets.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 struct UnionFind {
-    vector<int> parent, rnk, sz;
-    int count; // number of disjoint sets
+    parent: Vec<usize>,
+    rnk: Vec<usize>,
+    sz: Vec<usize>,
+    count: usize, // number of disjoint sets
+}
 
-    UnionFind(int n) : parent(n), rnk(n, 0), sz(n, 1), count(n) {
-        iota(parent.begin(), parent.end(), 0);
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        let parent: Vec<usize> = (0..n).collect();
+        UnionFind {
+            parent,
+            rnk: vec![0; n],
+            sz: vec![1; n],
+            count: n,
+        }
     }
 
     // find with path compression (iterative, no stack overflow risk)
-    int find(int x) {
-        int root = x;
-        while (root != parent[root]) {
-            root = parent[root];
+    fn find(&mut self, x: usize) -> usize {
+        let mut root = x;
+        while root != self.parent[root] {
+            root = self.parent[root];
         }
-        while (x != root) {       // compress the path
-            int next = parent[x];
-            parent[x] = root;
+        let mut x = x;
+        while x != root {       // compress the path
+            let next = self.parent[x];
+            self.parent[x] = root;
             x = next;
         }
-        return root;
+        root
     }
 
     // unite by rank; returns true if a real merge happened, false if already connected
-    bool unite(int a, int b) {
-        int ra = find(a), rb = find(b);
-        if (ra == rb) return false;
-        if (rnk[ra] < rnk[rb]) swap(ra, rb);
-        parent[rb] = ra;
-        sz[ra] += sz[rb];
-        if (rnk[ra] == rnk[rb]) rnk[ra]++;
-        count--;
-        return true;
+    fn unite(&mut self, a: usize, b: usize) -> bool {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return false; }
+        let (ra, rb) = if self.rnk[ra] < self.rnk[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        self.sz[ra] += self.sz[rb];
+        if self.rnk[ra] == self.rnk[rb] { self.rnk[ra] += 1; }
+        self.count -= 1;
+        true
     }
 
-    bool connected(int a, int b) {
-        return find(a) == find(b);
+    fn connected(&mut self, a: usize, b: usize) -> bool {
+        self.find(a) == self.find(b)
     }
 
-    int size(int x) {
-        return sz[find(x)];
+    fn size(&mut self, x: usize) -> usize {
+        let root = self.find(x);
+        self.sz[root]
     }
 
-    int getCount() {
-        return count;
+    fn get_count(&self) -> usize {
+        self.count
     }
-};
+}
 ```
 
 > The `unite` return value (`true` = merged, `false` = already in same set) is the single most useful signal in DSU problems — it instantly detects cycles and redundant edges.
@@ -98,7 +108,7 @@ struct UnionFind {
 | "Are these two connected?" asked repeatedly | `connected(a, b)` in O(α) |
 | Edges added one at a time; answer changes per addition | Incremental `unite`, online queries |
 | "Find the edge that creates a cycle" | First `unite` returning `false` |
-| "How many groups / provinces / islands / components?" | `getCount()` |
+| "How many groups / provinces / islands / components?" | `get_count()` |
 | "Merge accounts / friends / equal things" | Transitive grouping by root |
 | "Valid tree?" | n−1 edges **and** every `unite` succeeds |
 | "Equations a==b, a!=b — consistent?" | Unite the `==`, verify the `!=` |
@@ -110,43 +120,52 @@ struct UnionFind {
 
 **Idea:** A tree with `n` nodes has exactly `n−1` edges; one extra edge creates a cycle. Process edges in order and return the first one whose two endpoints are *already* connected.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct UnionFind {
+    parent: Vec<usize>,
+    rnk: Vec<usize>,
+}
 
-class Solution {
-    struct UnionFind {
-        vector<int> parent, rnk;
-        UnionFind(int n) : parent(n), rnk(n, 0) {
-            iota(parent.begin(), parent.end(), 0);
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        let parent: Vec<usize> = (0..n).collect();
+        UnionFind {
+            parent,
+            rnk: vec![0; n],
         }
-        int find(int x) {
-            int root = x;
-            while (root != parent[root]) root = parent[root];
-            while (x != root) { int nx = parent[x]; parent[x] = root; x = nx; }
-            return root;
-        }
-        bool unite(int a, int b) {
-            int ra = find(a), rb = find(b);
-            if (ra == rb) return false;
-            if (rnk[ra] < rnk[rb]) swap(ra, rb);
-            parent[rb] = ra;
-            if (rnk[ra] == rnk[rb]) rnk[ra]++;
-            return true;
-        }
-    };
-public:
-    vector<int> findRedundantConnection(vector<vector<int>>& edges) {
-        int n = edges.size();            // n nodes, n edges (1-indexed)
-        UnionFind uf(n + 1);
-        for (auto& e : edges) {
-            if (!uf.unite(e[0], e[1])) {  // already connected -> cycle edge
-                return e;
+    }
+    fn find(&mut self, x: usize) -> usize {
+        let mut root = x;
+        while root != self.parent[root] { root = self.parent[root]; }
+        let mut x = x;
+        while x != root { let nx = self.parent[x]; self.parent[x] = root; x = nx; }
+        root
+    }
+    fn unite(&mut self, a: usize, b: usize) -> bool {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return false; }
+        let (ra, rb) = if self.rnk[ra] < self.rnk[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        if self.rnk[ra] == self.rnk[rb] { self.rnk[ra] += 1; }
+        true
+    }
+}
+
+struct Solution;
+
+impl Solution {
+    pub fn find_redundant_connection(edges: Vec<Vec<i32>>) -> Vec<i32> {
+        let n = edges.len();            // n nodes, n edges (1-indexed)
+        let mut uf = UnionFind::new(n + 1);
+        for e in &edges {
+            if !uf.unite(e[0] as usize, e[1] as usize) {  // already connected -> cycle edge
+                return e.clone();
             }
         }
-        return {}; // unreachable per constraints
+        vec![] // unreachable per constraints
     }
-};
+}
 ```
 
 **Complexity:** Time O(n·α(n)) ≈ O(n). Space O(n).
@@ -157,67 +176,78 @@ public:
 
 **Idea:** Union all emails belonging to the same account (and across accounts that share any email). Then group emails by their DSU root, sort each group, and prepend the owner's name.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::{HashMap, BTreeSet};
 
-class Solution {
-    struct UnionFind {
-        vector<int> parent, rnk;
-        UnionFind(int n) : parent(n), rnk(n, 0) {
-            iota(parent.begin(), parent.end(), 0);
+struct UnionFind {
+    parent: Vec<usize>,
+    rnk: Vec<usize>,
+}
+
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        let parent: Vec<usize> = (0..n).collect();
+        UnionFind {
+            parent,
+            rnk: vec![0; n],
         }
-        int find(int x) {
-            int root = x;
-            while (root != parent[root]) root = parent[root];
-            while (x != root) { int nx = parent[x]; parent[x] = root; x = nx; }
-            return root;
-        }
-        void unite(int a, int b) {
-            int ra = find(a), rb = find(b);
-            if (ra == rb) return;
-            if (rnk[ra] < rnk[rb]) swap(ra, rb);
-            parent[rb] = ra;
-            if (rnk[ra] == rnk[rb]) rnk[ra]++;
-        }
-    };
-public:
-    vector<vector<string>> accountsMerge(vector<vector<string>>& accounts) {
-        int n = accounts.size();
-        UnionFind uf(n);
+    }
+    fn find(&mut self, x: usize) -> usize {
+        let mut root = x;
+        while root != self.parent[root] { root = self.parent[root]; }
+        let mut x = x;
+        while x != root { let nx = self.parent[x]; self.parent[x] = root; x = nx; }
+        root
+    }
+    fn unite(&mut self, a: usize, b: usize) {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return; }
+        let (ra, rb) = if self.rnk[ra] < self.rnk[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        if self.rnk[ra] == self.rnk[rb] { self.rnk[ra] += 1; }
+    }
+}
+
+struct Solution;
+
+impl Solution {
+    pub fn accounts_merge(accounts: Vec<Vec<String>>) -> Vec<Vec<String>> {
+        let n = accounts.len();
+        let mut uf = UnionFind::new(n);
 
         // Map each email to the index of the first account it appears in.
-        unordered_map<string, int> emailToAccount;
-        for (int i = 0; i < n; i++) {
-            auto& acc = accounts[i];
-            for (int j = 1; j < (int)acc.size(); j++) {
-                string email = acc[j];
-                if (emailToAccount.count(email)) {
-                    uf.unite(i, emailToAccount[email]); // shared email -> same person
+        let mut email_to_account: HashMap<String, usize> = HashMap::new();
+        for i in 0..n {
+            let acc = &accounts[i];
+            for j in 1..acc.len() {
+                let email = acc[j].clone();
+                if let Some(&acct_idx) = email_to_account.get(&email) {
+                    uf.unite(i, acct_idx); // shared email -> same person
                 } else {
-                    emailToAccount[email] = i;
+                    email_to_account.insert(email, i);
                 }
             }
         }
 
         // Collect emails under each account's root.
-        unordered_map<int, set<string>> rootToEmails;
-        for (auto& [email, acctIdx] : emailToAccount) {
-            int root = uf.find(acctIdx);
-            rootToEmails[root].insert(email);
+        let mut root_to_emails: HashMap<usize, BTreeSet<String>> = HashMap::new();
+        for (email, acct_idx) in &email_to_account {
+            let root = uf.find(*acct_idx);
+            root_to_emails.entry(root).or_default().insert(email.clone());
         }
 
         // Build result: name + sorted emails.
-        vector<vector<string>> result;
-        for (auto& [root, emails] : rootToEmails) {
-            string name = accounts[root][0];
-            vector<string> merged = {name};
-            merged.insert(merged.end(), emails.begin(), emails.end()); // set keeps them sorted
-            result.push_back(merged);
+        let mut result: Vec<Vec<String>> = Vec::new();
+        for (root, emails) in &root_to_emails {
+            let name = accounts[*root][0].clone();
+            let mut merged = vec![name];
+            merged.extend(emails.iter().cloned()); // BTreeSet keeps them sorted
+            result.push(merged);
         }
-        return result;
+        result
     }
-};
+}
 ```
 
 **Dry run.** Suppose:
@@ -231,7 +261,7 @@ accounts = [
 ]
 ```
 
-1. **Build `emailToAccount` and unite as we go.**
+1. **Build `email_to_account` and unite as we go.**
    - Account 0: `a@x.com` -> not seen, map `a@x.com=0`. `b@x.com` -> map `b@x.com=0`.
    - Account 1: `c@x.com` -> map `c@x.com=1`.
    - Account 2: `a@x.com` -> already maps to 0, so `unite(2, 0)`. Now roots: parent[2]=0 (say). `c@x.com` -> already maps to 1, so `unite(2, 1)`; find(2)=0, find(1)=1, merge -> parent[1]=0. Now accounts {0,1,2} share one root (0).
@@ -242,7 +272,7 @@ accounts = [
    - `b@x.com` (acct 0) -> root 0
    - `c@x.com` (acct 1) -> find(1)=0 -> root 0
    - `m@x.com` (acct 3) -> root 3
-   - `rootToEmails = { 0: {a@x.com, b@x.com, c@x.com}, 3: {m@x.com} }` (std::set auto-sorts).
+   - `root_to_emails = { 0: {a@x.com, b@x.com, c@x.com}, 3: {m@x.com} }` (BTreeSet auto-sorts).
 
 3. **Emit with names.**
    - Root 0 -> name `accounts[0][0]` = "John" -> `["John","a@x.com","b@x.com","c@x.com"]`.
@@ -250,7 +280,7 @@ accounts = [
 
 The two "John" accounts that shared `a@x.com`/`c@x.com` collapse into one, while the unrelated "Mary" stays separate. Even though all three Johns happen to share the same name, they merge only because of shared *emails*, not the name.
 
-**Complexity:** Let `N` be the total number of emails. Time O(N·α(N) + N log N) for sorting via std::set. Space O(N).
+**Complexity:** Let `N` be the total number of emails. Time O(N·α(N) + N log N) for sorting via BTreeSet. Space O(N).
 
 ---
 
@@ -258,44 +288,55 @@ The two "John" accounts that shared `a@x.com`/`c@x.com` collapse into one, while
 
 **Idea:** To connect `c` components you need `c−1` cables. You can only reuse cables you already have, so you must hold at least `n−1` edges total; otherwise it is impossible (return −1). Otherwise the answer is `components − 1`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct UnionFind {
+    parent: Vec<usize>,
+    rnk: Vec<usize>,
+    count: usize,
+}
 
-class Solution {
-    struct UnionFind {
-        vector<int> parent, rnk;
-        int count;
-        UnionFind(int n) : parent(n), rnk(n, 0), count(n) {
-            iota(parent.begin(), parent.end(), 0);
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        let parent: Vec<usize> = (0..n).collect();
+        UnionFind {
+            parent,
+            rnk: vec![0; n],
+            count: n,
         }
-        int find(int x) {
-            int root = x;
-            while (root != parent[root]) root = parent[root];
-            while (x != root) { int nx = parent[x]; parent[x] = root; x = nx; }
-            return root;
-        }
-        void unite(int a, int b) {
-            int ra = find(a), rb = find(b);
-            if (ra == rb) return;
-            if (rnk[ra] < rnk[rb]) swap(ra, rb);
-            parent[rb] = ra;
-            if (rnk[ra] == rnk[rb]) rnk[ra]++;
-            count--;
-        }
-        int getCount() { return count; }
-    };
-public:
-    int makeConnected(int n, vector<vector<int>>& connections) {
-        if ((int)connections.size() < n - 1) return -1; // not enough cables to ever connect
-
-        UnionFind uf(n);
-        for (auto& c : connections) {
-            uf.unite(c[0], c[1]);
-        }
-        return uf.getCount() - 1; // cables needed = components - 1
     }
-};
+    fn find(&mut self, x: usize) -> usize {
+        let mut root = x;
+        while root != self.parent[root] { root = self.parent[root]; }
+        let mut x = x;
+        while x != root { let nx = self.parent[x]; self.parent[x] = root; x = nx; }
+        root
+    }
+    fn unite(&mut self, a: usize, b: usize) {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return; }
+        let (ra, rb) = if self.rnk[ra] < self.rnk[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        if self.rnk[ra] == self.rnk[rb] { self.rnk[ra] += 1; }
+        self.count -= 1;
+    }
+    fn get_count(&self) -> usize { self.count }
+}
+
+struct Solution;
+
+impl Solution {
+    pub fn make_connected(n: i32, connections: Vec<Vec<i32>>) -> i32 {
+        let n = n as usize;
+        if connections.len() < n - 1 { return -1; } // not enough cables to ever connect
+
+        let mut uf = UnionFind::new(n);
+        for c in &connections {
+            uf.unite(c[0] as usize, c[1] as usize);
+        }
+        (uf.get_count() - 1) as i32 // cables needed = components - 1
+    }
+}
 ```
 
 **Complexity:** Time O(E·α(n) + n). Space O(n).
@@ -306,52 +347,63 @@ public:
 
 **Idea:** Two-pass. First union every variable joined by `==`. Then for every `!=`, if the two variables are already in the same set, it is a contradiction.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct UnionFind {
+    parent: Vec<usize>,
+    rnk: Vec<usize>,
+}
 
-class Solution {
-    struct UnionFind {
-        vector<int> parent, rnk;
-        UnionFind(int n) : parent(n), rnk(n, 0) {
-            iota(parent.begin(), parent.end(), 0);
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        let parent: Vec<usize> = (0..n).collect();
+        UnionFind {
+            parent,
+            rnk: vec![0; n],
         }
-        int find(int x) {
-            int root = x;
-            while (root != parent[root]) root = parent[root];
-            while (x != root) { int nx = parent[x]; parent[x] = root; x = nx; }
-            return root;
-        }
-        void unite(int a, int b) {
-            int ra = find(a), rb = find(b);
-            if (ra == rb) return;
-            if (rnk[ra] < rnk[rb]) swap(ra, rb);
-            parent[rb] = ra;
-            if (rnk[ra] == rnk[rb]) rnk[ra]++;
-        }
-        bool connected(int a, int b) { return find(a) == find(b); }
-    };
-public:
-    bool equationsPossible(vector<string>& equations) {
-        UnionFind uf(26); // variables are single lowercase letters
+    }
+    fn find(&mut self, x: usize) -> usize {
+        let mut root = x;
+        while root != self.parent[root] { root = self.parent[root]; }
+        let mut x = x;
+        while x != root { let nx = self.parent[x]; self.parent[x] = root; x = nx; }
+        root
+    }
+    fn unite(&mut self, a: usize, b: usize) {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return; }
+        let (ra, rb) = if self.rnk[ra] < self.rnk[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        if self.rnk[ra] == self.rnk[rb] { self.rnk[ra] += 1; }
+    }
+    fn connected(&mut self, a: usize, b: usize) -> bool { self.find(a) == self.find(b) }
+}
+
+struct Solution;
+
+impl Solution {
+    pub fn equations_possible(equations: Vec<String>) -> bool {
+        let mut uf = UnionFind::new(26); // variables are single lowercase letters
 
         // Pass 1: unite all equalities.
-        for (auto& eq : equations) {
-            if (eq[1] == '=') {
-                uf.unite(eq[0] - 'a', eq[3] - 'a');
+        for eq in &equations {
+            let bytes = eq.as_bytes();
+            if bytes[1] == b'=' {
+                uf.unite((bytes[0] - b'a') as usize, (bytes[3] - b'a') as usize);
             }
         }
         // Pass 2: verify inequalities don't conflict.
-        for (auto& eq : equations) {
-            if (eq[1] == '!') {
-                if (uf.connected(eq[0] - 'a', eq[3] - 'a')) {
+        for eq in &equations {
+            let bytes = eq.as_bytes();
+            if bytes[1] == b'!' {
+                if uf.connected((bytes[0] - b'a') as usize, (bytes[3] - b'a') as usize) {
                     return false;
                 }
             }
         }
-        return true;
+        true
     }
-};
+}
 ```
 
 **Complexity:** Time O(n·α(26)) ≈ O(n) where n = number of equations. Space O(1) (fixed 26 variables).
@@ -362,49 +414,60 @@ public:
 
 **Idea:** A stone can be removed if it shares a row or column with another stone — i.e., stones in the same connected component can be reduced to one. Union stones by shared row and column; the answer is `total stones − number of components`. To union by row/column cheaply, map columns into a separate index space.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashSet;
 
-class Solution {
-    struct UnionFind {
-        vector<int> parent, rnk;
-        UnionFind(int n) : parent(n), rnk(n, 0) {
-            iota(parent.begin(), parent.end(), 0);
-        }
-        int find(int x) {
-            int root = x;
-            while (root != parent[root]) root = parent[root];
-            while (x != root) { int nx = parent[x]; parent[x] = root; x = nx; }
-            return root;
-        }
-        void unite(int a, int b) {
-            int ra = find(a), rb = find(b);
-            if (ra == rb) return;
-            if (rnk[ra] < rnk[rb]) swap(ra, rb);
-            parent[rb] = ra;
-            if (rnk[ra] == rnk[rb]) rnk[ra]++;
-        }
-    };
-public:
-    int removeStones(vector<vector<int>>& stones) {
-        int n = stones.size();
-        UnionFind uf(20000); // rows 0..9999, cols 10000..19999
+struct UnionFind {
+    parent: Vec<usize>,
+    rnk: Vec<usize>,
+}
 
-        for (auto& s : stones) {
-            int row = s[0];
-            int col = s[1] + 10000; // shift columns into disjoint index range
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        let parent: Vec<usize> = (0..n).collect();
+        UnionFind {
+            parent,
+            rnk: vec![0; n],
+        }
+    }
+    fn find(&mut self, x: usize) -> usize {
+        let mut root = x;
+        while root != self.parent[root] { root = self.parent[root]; }
+        let mut x = x;
+        while x != root { let nx = self.parent[x]; self.parent[x] = root; x = nx; }
+        root
+    }
+    fn unite(&mut self, a: usize, b: usize) {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return; }
+        let (ra, rb) = if self.rnk[ra] < self.rnk[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        if self.rnk[ra] == self.rnk[rb] { self.rnk[ra] += 1; }
+    }
+}
+
+struct Solution;
+
+impl Solution {
+    pub fn remove_stones(stones: Vec<Vec<i32>>) -> i32 {
+        let n = stones.len();
+        let mut uf = UnionFind::new(20000); // rows 0..9999, cols 10000..19999
+
+        for s in &stones {
+            let row = s[0] as usize;
+            let col = s[1] as usize + 10000; // shift columns into disjoint index range
             uf.unite(row, col);
         }
 
         // Count distinct roots among the indices actually used.
-        unordered_set<int> roots;
-        for (auto& s : stones) {
-            roots.insert(uf.find(s[0]));
+        let mut roots: HashSet<usize> = HashSet::new();
+        for s in &stones {
+            roots.insert(uf.find(s[0] as usize));
         }
-        return n - (int)roots.size(); // stones - components
+        (n - roots.len()) as i32 // stones - components
     }
-};
+}
 ```
 
 > **Why count roots from the row index only?** Each stone unites its row with its column, so a stone's row index already belongs to the same component as its column. Collecting `find(row)` over all stones therefore yields exactly the distinct components.
@@ -417,61 +480,73 @@ public:
 
 **Idea:** Process land additions online. Start with 0 islands. Each `addLand(r, c)`: if the cell is new land, increment the count, then union it with any of its 4 neighbors that are already land — each successful merge of two distinct islands decrements the count. Record the count after every operation.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct UnionFind {
+    parent: Vec<usize>,
+    rnk: Vec<usize>,
+}
 
-class Solution {
-    struct UnionFind {
-        vector<int> parent, rnk;
-        UnionFind(int n) : parent(n), rnk(n, 0) {
-            iota(parent.begin(), parent.end(), 0);
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        let parent: Vec<usize> = (0..n).collect();
+        UnionFind {
+            parent,
+            rnk: vec![0; n],
         }
-        int find(int x) {
-            int root = x;
-            while (root != parent[root]) root = parent[root];
-            while (x != root) { int nx = parent[x]; parent[x] = root; x = nx; }
-            return root;
-        }
-        bool unite(int a, int b) {
-            int ra = find(a), rb = find(b);
-            if (ra == rb) return false;
-            if (rnk[ra] < rnk[rb]) swap(ra, rb);
-            parent[rb] = ra;
-            if (rnk[ra] == rnk[rb]) rnk[ra]++;
-            return true;
-        }
-    };
-public:
-    vector<int> numIslands2(int m, int n, vector<vector<int>>& positions) {
-        UnionFind uf(m * n);
-        vector<bool> isLand(m * n, false);
-        vector<int> result;
-        int dirs[4][2] = {{-1,0},{1,0},{0,-1},{0,1}};
-        int count = 0;
+    }
+    fn find(&mut self, x: usize) -> usize {
+        let mut root = x;
+        while root != self.parent[root] { root = self.parent[root]; }
+        let mut x = x;
+        while x != root { let nx = self.parent[x]; self.parent[x] = root; x = nx; }
+        root
+    }
+    fn unite(&mut self, a: usize, b: usize) -> bool {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return false; }
+        let (ra, rb) = if self.rnk[ra] < self.rnk[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        if self.rnk[ra] == self.rnk[rb] { self.rnk[ra] += 1; }
+        true
+    }
+}
 
-        for (auto& p : positions) {
-            int r = p[0], c = p[1];
-            int id = r * n + c;
-            if (isLand[id]) {                 // duplicate add -> count unchanged
-                result.push_back(count);
+struct Solution;
+
+impl Solution {
+    pub fn num_islands2(m: i32, n: i32, positions: Vec<Vec<i32>>) -> Vec<i32> {
+        let (m, n) = (m as usize, n as usize);
+        let mut uf = UnionFind::new(m * n);
+        let mut is_land = vec![false; m * n];
+        let mut result = Vec::new();
+        let dirs: [(i32, i32); 4] = [(-1, 0), (1, 0), (0, -1), (0, 1)];
+        let mut count = 0i32;
+
+        for p in &positions {
+            let r = p[0] as usize;
+            let c = p[1] as usize;
+            let id = r * n + c;
+            if is_land[id] {                 // duplicate add -> count unchanged
+                result.push(count);
                 continue;
             }
-            isLand[id] = true;
-            count++;                          // new island for now
-            for (auto& d : dirs) {
-                int nr = r + d[0], nc = c + d[1];
-                if (nr < 0 || nr >= m || nc < 0 || nc >= n) continue;
-                int nid = nr * n + nc;
-                if (isLand[nid] && uf.unite(id, nid)) {
-                    count--;                  // merged two distinct islands
+            is_land[id] = true;
+            count += 1;                      // new island for now
+            for (dr, dc) in &dirs {
+                let nr = p[0] + dr;
+                let nc = p[1] + dc;
+                if nr < 0 || nr >= m as i32 || nc < 0 || nc >= n as i32 { continue; }
+                let nid = nr as usize * n + nc as usize;
+                if is_land[nid] && uf.unite(id, nid) {
+                    count -= 1;              // merged two distinct islands
                 }
             }
-            result.push_back(count);
+            result.push(count);
         }
-        return result;
+        result
     }
-};
+}
 ```
 
 **Dry run.** `m = 3, n = 3`, `positions = [[0,0],[0,1],[1,2],[2,1],[1,1]]`.
@@ -494,47 +569,58 @@ At step 5 the new land at (1,1) bridges three previously separate islands at onc
 
 **Idea:** Subdivide each `1×1` cell into 4 triangles indexed **0 = top, 1 = right, 2 = bottom, 3 = left**. Within a cell: `'/'` separates {top,left} from {bottom,right}; `'\\'` separates {top,right} from {bottom,left}; `' '` unions all four. Across cells: a cell's right triangle (1) unions the right neighbor's left (3); a cell's bottom triangle (2) unions the lower neighbor's top (0). The number of regions equals the final component count.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct UnionFind {
+    parent: Vec<usize>,
+    rnk: Vec<usize>,
+    count: usize,
+}
 
-class Solution {
-    struct UnionFind {
-        vector<int> parent, rnk;
-        int count;
-        UnionFind(int n) : parent(n), rnk(n, 0), count(n) {
-            iota(parent.begin(), parent.end(), 0);
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        let parent: Vec<usize> = (0..n).collect();
+        UnionFind {
+            parent,
+            rnk: vec![0; n],
+            count: n,
         }
-        int find(int x) {
-            int root = x;
-            while (root != parent[root]) root = parent[root];
-            while (x != root) { int nx = parent[x]; parent[x] = root; x = nx; }
-            return root;
-        }
-        void unite(int a, int b) {
-            int ra = find(a), rb = find(b);
-            if (ra == rb) return;
-            if (rnk[ra] < rnk[rb]) swap(ra, rb);
-            parent[rb] = ra;
-            if (rnk[ra] == rnk[rb]) rnk[ra]++;
-            count--;
-        }
-        int getCount() { return count; }
-    };
-public:
-    int regionsBySlashes(vector<string>& grid) {
-        int n = grid.size();
-        UnionFind uf(4 * n * n);
+    }
+    fn find(&mut self, x: usize) -> usize {
+        let mut root = x;
+        while root != self.parent[root] { root = self.parent[root]; }
+        let mut x = x;
+        while x != root { let nx = self.parent[x]; self.parent[x] = root; x = nx; }
+        root
+    }
+    fn unite(&mut self, a: usize, b: usize) {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return; }
+        let (ra, rb) = if self.rnk[ra] < self.rnk[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        if self.rnk[ra] == self.rnk[rb] { self.rnk[ra] += 1; }
+        self.count -= 1;
+    }
+    fn get_count(&self) -> usize { self.count }
+}
 
-        for (int r = 0; r < n; r++) {
-            for (int c = 0; c < n; c++) {
-                int base = 4 * (r * n + c); // base index of this cell's 4 triangles
-                char ch = grid[r][c];
+struct Solution;
+
+impl Solution {
+    pub fn regions_by_slashes(grid: Vec<String>) -> i32 {
+        let n = grid.len();
+        let mut uf = UnionFind::new(4 * n * n);
+
+        for r in 0..n {
+            let row_bytes = grid[r].as_bytes();
+            for c in 0..n {
+                let base = 4 * (r * n + c); // base index of this cell's 4 triangles
+                let ch = row_bytes[c] as char;
                 // 0=top, 1=right, 2=bottom, 3=left
-                if (ch == '/') {
+                if ch == '/' {
                     uf.unite(base + 0, base + 3); // top + left
                     uf.unite(base + 1, base + 2); // right + bottom
-                } else if (ch == '\\') {
+                } else if ch == '\\' {
                     uf.unite(base + 0, base + 1); // top + right
                     uf.unite(base + 2, base + 3); // bottom + left
                 } else { // ' '
@@ -543,19 +629,19 @@ public:
                     uf.unite(base + 2, base + 3);
                 }
                 // Unite across cell boundaries.
-                if (c + 1 < n) { // my right (1) with right-neighbor's left (3)
-                    int rightBase = 4 * (r * n + (c + 1));
-                    uf.unite(base + 1, rightBase + 3);
+                if c + 1 < n { // my right (1) with right-neighbor's left (3)
+                    let right_base = 4 * (r * n + (c + 1));
+                    uf.unite(base + 1, right_base + 3);
                 }
-                if (r + 1 < n) { // my bottom (2) with lower-neighbor's top (0)
-                    int downBase = 4 * ((r + 1) * n + c);
-                    uf.unite(base + 2, downBase + 0);
+                if r + 1 < n { // my bottom (2) with lower-neighbor's top (0)
+                    let down_base = 4 * ((r + 1) * n + c);
+                    uf.unite(base + 2, down_base + 0);
                 }
             }
         }
-        return uf.getCount();
+        uf.get_count() as i32
     }
-};
+}
 ```
 
 **Complexity:** Time O(n²·α). Space O(n²).
@@ -566,58 +652,70 @@ public:
 
 **Idea:** Each pair `[i, j]` means indices `i` and `j` can be swapped any number of times; transitively, all indices in one connected component can be permuted freely. So group indices by DSU root, sort the characters within each group, and place the smallest characters at the smallest indices.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-class Solution {
-    struct UnionFind {
-        vector<int> parent, rnk;
-        UnionFind(int n) : parent(n), rnk(n, 0) {
-            iota(parent.begin(), parent.end(), 0);
+struct UnionFind {
+    parent: Vec<usize>,
+    rnk: Vec<usize>,
+}
+
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        let parent: Vec<usize> = (0..n).collect();
+        UnionFind {
+            parent,
+            rnk: vec![0; n],
         }
-        int find(int x) {
-            int root = x;
-            while (root != parent[root]) root = parent[root];
-            while (x != root) { int nx = parent[x]; parent[x] = root; x = nx; }
-            return root;
-        }
-        void unite(int a, int b) {
-            int ra = find(a), rb = find(b);
-            if (ra == rb) return;
-            if (rnk[ra] < rnk[rb]) swap(ra, rb);
-            parent[rb] = ra;
-            if (rnk[ra] == rnk[rb]) rnk[ra]++;
-        }
-    };
-public:
-    string smallestStringWithSwaps(string s, vector<vector<int>>& pairs) {
-        int n = s.length();
-        UnionFind uf(n);
-        for (auto& p : pairs) {
-            uf.unite(p[0], p[1]);
+    }
+    fn find(&mut self, x: usize) -> usize {
+        let mut root = x;
+        while root != self.parent[root] { root = self.parent[root]; }
+        let mut x = x;
+        while x != root { let nx = self.parent[x]; self.parent[x] = root; x = nx; }
+        root
+    }
+    fn unite(&mut self, a: usize, b: usize) {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return; }
+        let (ra, rb) = if self.rnk[ra] < self.rnk[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        if self.rnk[ra] == self.rnk[rb] { self.rnk[ra] += 1; }
+    }
+}
+
+struct Solution;
+
+impl Solution {
+    pub fn smallest_string_with_swaps(s: String, pairs: Vec<Vec<i32>>) -> String {
+        let n = s.len();
+        let mut uf = UnionFind::new(n);
+        for p in &pairs {
+            uf.unite(p[0] as usize, p[1] as usize);
         }
 
         // Bucket indices by their root.
-        unordered_map<int, vector<int>> groups;
-        for (int i = 0; i < n; i++) {
-            groups[uf.find(i)].push_back(i);
+        let mut groups: HashMap<usize, Vec<usize>> = HashMap::new();
+        for i in 0..n {
+            let root = uf.find(i);
+            groups.entry(root).or_default().push(i);
         }
 
-        string result = s;
-        for (auto& [root, indices] : groups) {
+        let s_bytes: Vec<u8> = s.into_bytes();
+        let mut result = s_bytes.clone();
+        for (_root, indices) in &groups {
             // Collect the characters at these indices and sort them.
-            vector<char> chars;
-            for (int idx : indices) chars.push_back(s[idx]);
-            sort(chars.begin(), chars.end());
+            let mut chars: Vec<u8> = indices.iter().map(|&idx| s_bytes[idx]).collect();
+            chars.sort();
             // indices is already ascending (built by increasing i); assign smallest chars first.
-            for (int k = 0; k < (int)indices.size(); k++) {
-                result[indices[k]] = chars[k];
+            for (k, &idx) in indices.iter().enumerate() {
+                result[idx] = chars[k];
             }
         }
-        return result;
+        String::from_utf8(result).unwrap()
     }
-};
+}
 ```
 
 **Complexity:** Time O(n log n + P·α(n)) where P = number of pairs. Space O(n).
@@ -628,45 +726,55 @@ public:
 
 **Idea:** A graph on `n` nodes is a tree iff it is fully connected **and** acyclic. With DSU: it must have exactly `n−1` edges, and every `unite` must succeed (a `unite` that returns `false` means both endpoints are already connected — a cycle).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct UnionFind {
+    parent: Vec<usize>,
+    rnk: Vec<usize>,
+}
 
-class Solution {
-    struct UnionFind {
-        vector<int> parent, rnk;
-        UnionFind(int n) : parent(n), rnk(n, 0) {
-            iota(parent.begin(), parent.end(), 0);
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        let parent: Vec<usize> = (0..n).collect();
+        UnionFind {
+            parent,
+            rnk: vec![0; n],
         }
-        int find(int x) {
-            int root = x;
-            while (root != parent[root]) root = parent[root];
-            while (x != root) { int nx = parent[x]; parent[x] = root; x = nx; }
-            return root;
-        }
-        bool unite(int a, int b) {
-            int ra = find(a), rb = find(b);
-            if (ra == rb) return false;
-            if (rnk[ra] < rnk[rb]) swap(ra, rb);
-            parent[rb] = ra;
-            if (rnk[ra] == rnk[rb]) rnk[ra]++;
-            return true;
-        }
-    };
-public:
-    bool validTree(int n, vector<vector<int>>& edges) {
-        if ((int)edges.size() != n - 1) return false; // tree must have exactly n-1 edges
+    }
+    fn find(&mut self, x: usize) -> usize {
+        let mut root = x;
+        while root != self.parent[root] { root = self.parent[root]; }
+        let mut x = x;
+        while x != root { let nx = self.parent[x]; self.parent[x] = root; x = nx; }
+        root
+    }
+    fn unite(&mut self, a: usize, b: usize) -> bool {
+        let ra = self.find(a);
+        let rb = self.find(b);
+        if ra == rb { return false; }
+        let (ra, rb) = if self.rnk[ra] < self.rnk[rb] { (rb, ra) } else { (ra, rb) };
+        self.parent[rb] = ra;
+        if self.rnk[ra] == self.rnk[rb] { self.rnk[ra] += 1; }
+        true
+    }
+}
 
-        UnionFind uf(n);
-        for (auto& e : edges) {
-            if (!uf.unite(e[0], e[1])) {
+struct Solution;
+
+impl Solution {
+    pub fn valid_tree(n: i32, edges: Vec<Vec<i32>>) -> bool {
+        let n = n as usize;
+        if edges.len() != n - 1 { return false; } // tree must have exactly n-1 edges
+
+        let mut uf = UnionFind::new(n);
+        for e in &edges {
+            if !uf.unite(e[0] as usize, e[1] as usize) {
                 return false; // cycle: endpoints already connected
             }
         }
         // n-1 successful unites guarantee a single connected acyclic component.
-        return true;
+        true
     }
-};
+}
 ```
 
 > Why both checks? `n−1` edges with no cycle ⇒ connected (a forest with `n−1` edges and no cycle is a single tree). Either condition alone is insufficient: `n−1` edges could still form a cycle plus a disconnected node, and "all unites succeed" alone doesn't guarantee full connectivity if there are too few edges.

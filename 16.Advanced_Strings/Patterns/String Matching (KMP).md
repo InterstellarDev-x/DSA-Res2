@@ -19,33 +19,30 @@ For a string `s` of length `n`, define:
 
 When matching a pattern against a text and a mismatch happens at pattern index `j`, we already know that `s[0..j-1]` matched. The longest border `lps[j-1]` tells us the longest stretch we can *reuse* without re-reading the text. We jump `j` back to `lps[j-1]` instead of restarting at 0 — that is what turns naive O(nm) matching into O(n+m).
 
-### Construction — full C++
+### Construction — full Rust
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // lps[i] = length of the longest proper prefix of s[0..i] that is also a suffix.
-vector<int> buildLPS(const string& s) {
-    int n = s.length();
-    vector<int> lps(n);
-    lps[0] = 0;            // a single char has no proper prefix
-    int len = 0;          // length of the previous longest border
-    int i = 1;
-    while (i < n) {
-        if (s[i] == s[len]) {
-            len++;            // extend the current border by one
+fn build_lps(s: &[u8]) -> Vec<usize> {
+    let n = s.len();
+    let mut lps = vec![0usize; n];
+    // lps[0] = 0            a single char has no proper prefix
+    let mut len = 0usize;  // length of the previous longest border
+    let mut i = 1;
+    while i < n {
+        if s[i] == s[len] {
+            len += 1;            // extend the current border by one
             lps[i] = len;
-            i++;
-        } else if (len > 0) {
+            i += 1;
+        } else if len > 0 {
             // fall back to the longest border of the border (do NOT advance i)
             len = lps[len - 1];
         } else {
             lps[i] = 0;       // no border possible
-            i++;
+            i += 1;
         }
     }
-    return lps;
+    lps
 }
 ```
 
@@ -55,32 +52,37 @@ The crucial line is `len = lps[len - 1]`. On a mismatch we do **not** reset `len
 
 ## 2. KMP Search using the LPS array
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
+```rust
 // Returns the first index in text where pattern occurs, or -1.
-int kmpSearch(const string& text, const string& pattern) {
-    if (pattern.empty()) return 0;
-    vector<int> lps = buildLPS(pattern);
-    int i = 0; // index into text
-    int j = 0; // index into pattern
-    int n = text.length(), m = pattern.length();
-    while (i < n) {
-        if (text[i] == pattern[j]) {
-            i++; j++;
-            if (j == m) return i - j;          // full match found
-        } else if (j > 0) {
-            j = lps[j - 1];                    // reuse the matched border; i stays
+fn kmp_search(text: &str, pattern: &str) -> i32 {
+    if pattern.is_empty() {
+        return 0;
+    }
+    let text = text.as_bytes();
+    let pattern = pattern.as_bytes();
+    let lps = build_lps(pattern);
+    let mut i = 0usize; // index into text
+    let mut j = 0usize; // index into pattern
+    let n = text.len();
+    let m = pattern.len();
+    while i < n {
+        if text[i] == pattern[j] {
+            i += 1;
+            j += 1;
+            if j == m {
+                return (i - j) as i32; // full match found
+            }
+        } else if j > 0 {
+            j = lps[j - 1];            // reuse the matched border; i stays
         } else {
-            i++;                               // pattern restart, text advances
+            i += 1;                    // pattern restart, text advances
         }
     }
-    return -1;
+    -1
 }
 ```
 
-To find **all** occurrences, replace `return i - j;` with: record `i - j`, then continue via `j = lps[j - 1];`.
+To find **all** occurrences, replace `return (i - j) as i32;` with: record `i - j`, then continue via `j = lps[j - 1];`.
 
 ---
 
@@ -88,45 +90,53 @@ To find **all** occurrences, replace `return i - j;` with: record `i - j`, then 
 
 > Return the index of the first occurrence of `needle` in `haystack`, or -1.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int strStr(string haystack, string needle) {
-        if (needle.empty()) return 0;
-        vector<int> lps = buildLPS(needle);
-        int i = 0, j = 0, n = haystack.length(), m = needle.length();
-        while (i < n) {
-            if (haystack[i] == needle[j]) {
-                i++; j++;
-                if (j == m) return i - j;
-            } else if (j > 0) {
+impl Solution {
+    pub fn str_str(haystack: String, needle: String) -> i32 {
+        if needle.is_empty() {
+            return 0;
+        }
+        let lps = Self::build_lps(needle.as_bytes());
+        let haystack = haystack.as_bytes();
+        let needle = needle.as_bytes();
+        let mut i = 0usize;
+        let mut j = 0usize;
+        let n = haystack.len();
+        let m = needle.len();
+        while i < n {
+            if haystack[i] == needle[j] {
+                i += 1;
+                j += 1;
+                if j == m {
+                    return (i - j) as i32;
+                }
+            } else if j > 0 {
                 j = lps[j - 1];
             } else {
-                i++;
+                i += 1;
             }
         }
-        return -1;
+        -1
     }
 
-private:
-    vector<int> buildLPS(const string& s) {
-        int n = s.length();
-        vector<int> lps(n);
-        int len = 0, i = 1;
-        while (i < n) {
-            if (s[i] == s[len]) { lps[i++] = ++len; }
-            else if (len > 0) { len = lps[len - 1]; }
-            else { lps[i++] = 0; }
+    fn build_lps(s: &[u8]) -> Vec<usize> {
+        let n = s.len();
+        let mut lps = vec![0usize; n];
+        let mut len = 0usize;
+        let mut i = 1;
+        while i < n {
+            if s[i] == s[len] { len += 1; lps[i] = len; i += 1; }
+            else if len > 0 { len = lps[len - 1]; }
+            else { lps[i] = 0; i += 1; }
         }
-        return lps;
+        lps
     }
-};
+}
 ```
 
-**Complexity:** O(n + m) time, O(m) space. In C++ `haystack.find(needle) != string::npos` does the same job; use KMP only when the interviewer forbids library calls or asks for the algorithm explicitly.
+**Complexity:** O(n + m) time, O(m) space. In Rust `haystack.find(&needle).is_some()` does the same job; use KMP only when the interviewer forbids library calls or asks for the algorithm explicitly.
 
 ---
 
@@ -136,24 +146,24 @@ private:
 
 This is the prefix function **by definition**: the longest border of the whole string is `lps[n-1]`.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    string longestPrefix(string s) {
-        int n = s.length();
-        vector<int> lps(n);
-        int len = 0, i = 1;
-        while (i < n) {
-            if (s[i] == s[len]) { lps[i++] = ++len; }
-            else if (len > 0) { len = lps[len - 1]; }
-            else { lps[i++] = 0; }
+impl Solution {
+    pub fn longest_prefix(s: String) -> String {
+        let n = s.len();
+        let sb = s.as_bytes();
+        let mut lps = vec![0usize; n];
+        let mut len = 0usize;
+        let mut i = 1;
+        while i < n {
+            if sb[i] == sb[len] { len += 1; lps[i] = len; i += 1; }
+            else if len > 0 { len = lps[len - 1]; }
+            else { lps[i] = 0; i += 1; }
         }
-        return s.substr(0, lps[n - 1]);   // longest proper prefix == suffix
+        s[..lps[n - 1]].to_string()   // longest proper prefix == suffix
     }
-};
+}
 ```
 
 **Complexity:** O(n) time, O(n) space. This is the cleanest demonstration that the prefix function *is* the answer, not just a tool.
@@ -164,31 +174,31 @@ public:
 
 > Return true if `s` can be built by concatenating copies of some substring of it.
 
-**Key lemma.** Let `n = s.length()` and `k = lps[n-1]`. The string is periodic with smallest period `p = n - k`. The string is built from repeated copies **iff** `k != 0` and `n % p == 0`.
+**Key lemma.** Let `n = s.len()` and `k = lps[n-1]`. The string is periodic with smallest period `p = n - k`. The string is built from repeated copies **iff** `k != 0` and `n % p == 0`.
 
 ### Why the smallest period works
 
 `lps[n-1] = k` means the length-`k` prefix equals the length-`k` suffix. Overlaying these two borders forces `s[i] == s[i+p]` for all valid `i`, i.e. `p = n - k` is a period of `s`. If `p` divides `n`, the block `s[0..p-1]` tiles the whole string exactly `n/p` times. The `k != 0` guard rules out strings with no border at all (e.g. `"abc"`), where `p = n` would falsely "divide" `n` once.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    bool repeatedSubstringPattern(string s) {
-        int n = s.length();
-        vector<int> lps(n);
-        int len = 0, i = 1;
-        while (i < n) {
-            if (s[i] == s[len]) { lps[i++] = ++len; }
-            else if (len > 0) { len = lps[len - 1]; }
-            else { lps[i++] = 0; }
+impl Solution {
+    pub fn repeated_substring_pattern(s: String) -> bool {
+        let n = s.len();
+        let sb = s.as_bytes();
+        let mut lps = vec![0usize; n];
+        let mut len = 0usize;
+        let mut i = 1;
+        while i < n {
+            if sb[i] == sb[len] { len += 1; lps[i] = len; i += 1; }
+            else if len > 0 { len = lps[len - 1]; }
+            else { lps[i] = 0; i += 1; }
         }
-        int k = lps[n - 1];
-        return k != 0 && n % (n - k) == 0;
+        let k = lps[n - 1];
+        k != 0 && n % (n - k) == 0
     }
-};
+}
 ```
 
 **Complexity:** O(n) time, O(n) space.
@@ -201,51 +211,67 @@ public:
 
 **Insight.** If `b` is a substring of `a` repeated `q` times, the smallest `q` is at least `ceil(|b| / |a|)`. But `b` may straddle a boundary, so we may need **one more** copy. Therefore only `q` and `q+1` can ever be the answer — test both with a substring/KMP search.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+struct Solution;
 
-class Solution {
-public:
-    int repeatedStringMatch(string a, string b) {
-        string sb = "";
-        int count = 0;
+impl Solution {
+    pub fn repeated_string_match(a: String, b: String) -> i32 {
+        let mut sb = String::new();
+        let mut count = 0i32;
         // Append a until the built string is at least as long as b.
-        while (sb.length() < b.length()) { sb += a; count++; }
+        while sb.len() < b.len() {
+            sb.push_str(&a);
+            count += 1;
+        }
         // b might cross the boundary -> try with one extra copy.
-        if (contains(sb, b)) return count;
-        sb += a;
-        if (contains(sb, b)) return count + 1;
-        return -1;
+        if Self::contains(&sb, &b) {
+            return count;
+        }
+        sb.push_str(&a);
+        if Self::contains(&sb, &b) {
+            return count + 1;
+        }
+        -1
     }
 
-private:
-    // KMP membership test (or simply: return text.find(pattern) != string::npos; in an interview).
-    bool contains(const string& text, const string& pattern) {
-        vector<int> lps = buildLPS(pattern);
-        int i = 0, j = 0, n = text.length(), m = pattern.length();
-        while (i < n) {
-            if (text[i] == pattern[j]) {
-                i++; j++;
-                if (j == m) return true;
-            } else if (j > 0) { j = lps[j - 1]; }
-            else { i++; }
+    // KMP membership test (or simply: return text.contains(pattern); in an interview).
+    fn contains(text: &str, pattern: &str) -> bool {
+        let lps = Self::build_lps(pattern.as_bytes());
+        let text = text.as_bytes();
+        let pattern = pattern.as_bytes();
+        let mut i = 0usize;
+        let mut j = 0usize;
+        let n = text.len();
+        let m = pattern.len();
+        while i < n {
+            if text[i] == pattern[j] {
+                i += 1;
+                j += 1;
+                if j == m {
+                    return true;
+                }
+            } else if j > 0 {
+                j = lps[j - 1];
+            } else {
+                i += 1;
+            }
         }
-        return false;
+        false
     }
 
-    vector<int> buildLPS(const string& s) {
-        int n = s.length();
-        vector<int> lps(n);
-        int len = 0, i = 1;
-        while (i < n) {
-            if (s[i] == s[len]) { lps[i++] = ++len; }
-            else if (len > 0) { len = lps[len - 1]; }
-            else { lps[i++] = 0; }
+    fn build_lps(s: &[u8]) -> Vec<usize> {
+        let n = s.len();
+        let mut lps = vec![0usize; n];
+        let mut len = 0usize;
+        let mut i = 1;
+        while i < n {
+            if s[i] == s[len] { len += 1; lps[i] = len; i += 1; }
+            else if len > 0 { len = lps[len - 1]; }
+            else { lps[i] = 0; i += 1; }
         }
-        return lps;
+        lps
     }
-};
+}
 ```
 
 **Complexity:** O(|a| + |b|) time and space. The KMP membership keeps the search linear; the bound "only `q` or `q+1`" keeps the number of copies minimal.

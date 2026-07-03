@@ -26,23 +26,20 @@ At each element, make a binary decision: **include** or **exclude**. This genera
 
 ## Template 1 — Subsets (LC 78, no duplicates)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> subsets(vector<int>& nums) {
-    vector<vector<int>> result;
-    vector<int> path;
-    backtrack(nums, 0, path, result);
-    return result;
+```rust
+fn subsets(nums: &[i32]) -> Vec<Vec<i32>> {
+    let mut result = Vec::new();
+    let mut path = Vec::new();
+    backtrack(nums, 0, &mut path, &mut result);
+    result
 }
 
-void backtrack(vector<int>& nums, int start, vector<int>& path, vector<vector<int>>& res) {
-    res.push_back(path); // add at EVERY node, not just leaves
-    for (int i = start; i < (int)nums.size(); i++) {
-        path.push_back(nums[i]);
+fn backtrack(nums: &[i32], start: usize, path: &mut Vec<i32>, res: &mut Vec<Vec<i32>>) {
+    res.push(path.clone()); // add at EVERY node, not just leaves
+    for i in start..nums.len() {
+        path.push(nums[i]);
         backtrack(nums, i + 1, path, res); // i+1: each element used at most once
-        path.pop_back();
+        path.pop();
     }
 }
 ```
@@ -51,26 +48,23 @@ void backtrack(vector<int>& nums, int start, vector<int>& path, vector<vector<in
 
 ## Template 2 — Subsets II (LC 90, with duplicates)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> subsetsWithDup(vector<int>& nums) {
-    sort(nums.begin(), nums.end()); // MUST sort to group duplicates
-    vector<vector<int>> result;
-    vector<int> path;
-    backtrack(nums, 0, path, result);
-    return result;
+```rust
+fn subsets_with_dup(nums: &mut Vec<i32>) -> Vec<Vec<i32>> {
+    nums.sort(); // MUST sort to group duplicates
+    let mut result = Vec::new();
+    let mut path = Vec::new();
+    backtrack(nums, 0, &mut path, &mut result);
+    result
 }
 
-void backtrack(vector<int>& nums, int start, vector<int>& path, vector<vector<int>>& res) {
-    res.push_back(path);
-    for (int i = start; i < (int)nums.size(); i++) {
+fn backtrack(nums: &[i32], start: usize, path: &mut Vec<i32>, res: &mut Vec<Vec<i32>>) {
+    res.push(path.clone());
+    for i in start..nums.len() {
         // Skip duplicates at the SAME recursion level (not within a branch)
-        if (i > start && nums[i] == nums[i - 1]) continue;
-        path.push_back(nums[i]);
+        if i > start && nums[i] == nums[i - 1] { continue; }
+        path.push(nums[i]);
         backtrack(nums, i + 1, path, res);
-        path.pop_back();
+        path.pop();
     }
 }
 ```
@@ -85,25 +79,22 @@ void backtrack(vector<int>& nums, int start, vector<int>& path, vector<vector<in
 
 Same element can be used unlimited times → pass `i` not `i+1` on recursion.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> combinationSum(vector<int>& candidates, int target) {
-    sort(candidates.begin(), candidates.end()); // enables pruning
-    vector<vector<int>> result;
-    vector<int> path;
-    backtrack(candidates, 0, target, path, result);
-    return result;
+```rust
+fn combination_sum(candidates: &mut Vec<i32>, target: i32) -> Vec<Vec<i32>> {
+    candidates.sort(); // enables pruning
+    let mut result = Vec::new();
+    let mut path = Vec::new();
+    backtrack(candidates, 0, target, &mut path, &mut result);
+    result
 }
 
-void backtrack(vector<int>& cands, int start, int remaining, vector<int>& path, vector<vector<int>>& res) {
-    if (remaining == 0) { res.push_back(path); return; }
-    for (int i = start; i < (int)cands.size(); i++) {
-        if (cands[i] > remaining) break; // pruning: sorted, so rest also > remaining
-        path.push_back(cands[i]);
+fn backtrack(cands: &[i32], start: usize, remaining: i32, path: &mut Vec<i32>, res: &mut Vec<Vec<i32>>) {
+    if remaining == 0 { res.push(path.clone()); return; }
+    for i in start..cands.len() {
+        if cands[i] > remaining { break; } // pruning: sorted, so rest also > remaining
+        path.push(cands[i]);
         backtrack(cands, i, remaining - cands[i], path, res); // i, NOT i+1 (reuse OK)
-        path.pop_back();
+        path.pop();
     }
 }
 ```
@@ -114,26 +105,23 @@ void backtrack(vector<int>& cands, int start, int remaining, vector<int>& path, 
 
 Each element used at most once; input may have duplicates; no duplicate combinations.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> combinationSum2(vector<int>& candidates, int target) {
-    sort(candidates.begin(), candidates.end());
-    vector<vector<int>> result;
-    vector<int> path;
-    backtrack(candidates, 0, target, path, result);
-    return result;
+```rust
+fn combination_sum2(candidates: &mut Vec<i32>, target: i32) -> Vec<Vec<i32>> {
+    candidates.sort();
+    let mut result = Vec::new();
+    let mut path = Vec::new();
+    backtrack(candidates, 0, target, &mut path, &mut result);
+    result
 }
 
-void backtrack(vector<int>& cands, int start, int remaining, vector<int>& path, vector<vector<int>>& res) {
-    if (remaining == 0) { res.push_back(path); return; }
-    for (int i = start; i < (int)cands.size(); i++) {
-        if (cands[i] > remaining) break;
-        if (i > start && cands[i] == cands[i - 1]) continue; // skip duplicate at same level
-        path.push_back(cands[i]);
+fn backtrack(cands: &[i32], start: usize, remaining: i32, path: &mut Vec<i32>, res: &mut Vec<Vec<i32>>) {
+    if remaining == 0 { res.push(path.clone()); return; }
+    for i in start..cands.len() {
+        if cands[i] > remaining { break; }
+        if i > start && cands[i] == cands[i - 1] { continue; } // skip duplicate at same level
+        path.push(cands[i]);
         backtrack(cands, i + 1, remaining - cands[i], path, res); // i+1: no reuse
-        path.pop_back();
+        path.pop();
     }
 }
 ```
@@ -144,25 +132,22 @@ void backtrack(vector<int>& cands, int start, int remaining, vector<int>& path, 
 
 Exactly k numbers from 1–9 summing to n.
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-vector<vector<int>> combinationSum3(int k, int n) {
-    vector<vector<int>> result;
-    vector<int> path;
-    backtrack(1, k, n, path, result);
-    return result;
+```rust
+fn combination_sum3(k: usize, n: i32) -> Vec<Vec<i32>> {
+    let mut result = Vec::new();
+    let mut path = Vec::new();
+    backtrack(1, k, n, &mut path, &mut result);
+    result
 }
 
-void backtrack(int start, int k, int remaining, vector<int>& path, vector<vector<int>>& res) {
-    if ((int)path.size() == k && remaining == 0) { res.push_back(path); return; }
-    if ((int)path.size() == k || remaining <= 0) return; // prune
-    for (int i = start; i <= 9; i++) {
-        if (i > remaining) break; // prune
-        path.push_back(i);
+fn backtrack(start: i32, k: usize, remaining: i32, path: &mut Vec<i32>, res: &mut Vec<Vec<i32>>) {
+    if path.len() == k && remaining == 0 { res.push(path.clone()); return; }
+    if path.len() == k || remaining <= 0 { return; } // prune
+    for i in start..=9 {
+        if i > remaining { break; } // prune
+        path.push(i);
         backtrack(i + 1, k, remaining - i, path, res);
-        path.pop_back();
+        path.pop();
     }
 }
 ```
@@ -171,26 +156,22 @@ void backtrack(int start, int k, int remaining, vector<int>& path, vector<vector
 
 ## Template 6 — Letter Combinations of Phone Number (LC 17)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-static const string MAP[] = {"", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"};
-
-vector<string> letterCombinations(string digits) {
-    vector<string> result;
-    if (digits.empty()) return result;
-    string path;
-    backtrack(digits, 0, path, result);
-    return result;
+```rust
+fn letter_combinations(digits: &str) -> Vec<String> {
+    const MAP: [&str; 10] = ["", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"];
+    let mut result = Vec::new();
+    if digits.is_empty() { return result; }
+    let mut path = String::new();
+    backtrack(digits.as_bytes(), 0, &mut path, &mut result, &MAP);
+    result
 }
 
-void backtrack(const string& digits, int i, string& path, vector<string>& res) {
-    if (i == (int)digits.size()) { res.push_back(path); return; }
-    for (char ch : MAP[digits[i] - '0']) {
-        path += ch;
-        backtrack(digits, i + 1, path, res);
-        path.pop_back();
+fn backtrack(digits: &[u8], i: usize, path: &mut String, res: &mut Vec<String>, map: &[&str; 10]) {
+    if i == digits.len() { res.push(path.clone()); return; }
+    for ch in map[(digits[i] - b'0') as usize].chars() {
+        path.push(ch);
+        backtrack(digits, i + 1, path, res, map);
+        path.pop();
     }
 }
 ```
@@ -210,8 +191,8 @@ void backtrack(const string& digits, int i, string& path, vector<string>& res) {
 
 ## Duplicate Skipping Rule (Memorize This)
 
-```cpp
-if (i > start && nums[i] == nums[i - 1]) continue;
+```rust
+if i > start && nums[i] == nums[i - 1] { continue; }
 ```
 
 - **Sort first** — duplicates are adjacent
@@ -224,7 +205,7 @@ if (i > start && nums[i] == nums[i - 1]) continue;
 
 | Mistake | Fix |
 |---------|-----|
-| Not copying `path` on add | `vector<int>(path)` — stores a snapshot (or just `path` when passed by value) |
+| Not copying `path` on add | `path.clone()` — stores a snapshot (or just `path` when passed by value) |
 | Adding to result at leaf only (subset) | Add at every node for subsets, at leaf only for combinations |
 | Reuse: passing `i+1` instead of `i` | Combination Sum I requires `i` |
 | Duplicate skip: `i > 0` instead of `i > start` | `i > start` preserves first pick at each level |

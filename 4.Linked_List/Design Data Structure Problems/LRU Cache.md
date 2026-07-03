@@ -20,7 +20,7 @@ Design a data structure that follows the **Least Recently Used** (LRU) cache evi
 
 Two data structures combined:
 
-1. **unordered_map<int, Node\*>** — O(1) lookup by key to the node in the DLL
+1. **HashMap<i32, usize>** — O(1) lookup by key to the node index in the DLL
 2. **Doubly Linked List** — O(1) move-to-front and evict-from-back
 
 ```
@@ -29,66 +29,85 @@ head ↔ [most recent] ↔ ... ↔ [least recent] ↔ tail
 
 Sentinel nodes `head` and `tail` eliminate edge cases (no null checks on insert/remove).
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-class LRUCache {
-    struct Node {
-        int key, val;
-        Node* prev;
-        Node* next;
-        Node(int k, int v) : key(k), val(v), prev(nullptr), next(nullptr) {}
-    };
+struct Node {
+    key: i32,
+    val: i32,
+    prev: usize,
+    next: usize,
+}
 
-    int capacity;
-    unordered_map<int, Node*> map;
-    Node* head;
-    Node* tail; // sentinels
+struct LRUCache {
+    capacity: usize,
+    map: HashMap<i32, usize>, // key -> index in nodes Vec
+    nodes: Vec<Node>,
+    // nodes[0] = head sentinel, nodes[1] = tail sentinel
+}
 
-    void remove(Node* node) {
-        node->prev->next = node->next;
-        node->next->prev = node->prev;
-    }
-
-    void insertFront(Node* node) {
-        node->next = head->next;
-        node->prev = head;
-        head->next->prev = node;
-        head->next = node;
-    }
-
-public:
-    LRUCache(int capacity) : capacity(capacity) {
-        head = new Node(0, 0);
-        tail = new Node(0, 0);
-        head->next = tail;
-        tail->prev = head;
-    }
-
-    int get(int key) {
-        if (!map.count(key)) return -1;
-        Node* node = map[key];
-        remove(node);
-        insertFront(node);
-        return node->val;
-    }
-
-    void put(int key, int value) {
-        if (map.count(key)) {
-            remove(map[key]);
-        } else if ((int)map.size() == capacity) {
-            // Evict LRU: node just before tail
-            Node* lru = tail->prev;
-            remove(lru);
-            map.erase(lru->key);
-            delete lru;
+impl LRUCache {
+    fn new(capacity: i32) -> Self {
+        let nodes = vec![
+            Node { key: 0, val: 0, prev: 0, next: 1 }, // head: next=tail(1)
+            Node { key: 0, val: 0, prev: 0, next: 1 }, // tail: prev=head(0)
+        ];
+        LRUCache {
+            capacity: capacity as usize,
+            map: HashMap::new(),
+            nodes,
         }
-        Node* node = new Node(key, value);
-        insertFront(node);
-        map[key] = node;
     }
-};
+
+    fn remove(&mut self, idx: usize) {
+        let prev = self.nodes[idx].prev;
+        let next = self.nodes[idx].next;
+        self.nodes[prev].next = next;
+        self.nodes[next].prev = prev;
+    }
+
+    fn insert_front(&mut self, idx: usize) {
+        let head_next = self.nodes[0].next;
+        self.nodes[idx].next = head_next;
+        self.nodes[idx].prev = 0;
+        self.nodes[head_next].prev = idx;
+        self.nodes[0].next = idx;
+    }
+
+    fn get(&mut self, key: i32) -> i32 {
+        if let Some(&idx) = self.map.get(&key) {
+            self.remove(idx);
+            self.insert_front(idx);
+            self.nodes[idx].val
+        } else {
+            -1
+        }
+    }
+
+    fn put(&mut self, key: i32, value: i32) {
+        if let Some(&idx) = self.map.get(&key) {
+            self.remove(idx);
+            self.nodes[idx].val = value;
+            self.insert_front(idx);
+        } else if self.map.len() == self.capacity {
+            // Evict LRU: node just before tail (index 1)
+            let lru_idx = self.nodes[1].prev;
+            let lru_key = self.nodes[lru_idx].key;
+            self.remove(lru_idx);
+            self.map.remove(&lru_key);
+            // Reuse the evicted slot for the new node
+            self.nodes[lru_idx].key = key;
+            self.nodes[lru_idx].val = value;
+            self.insert_front(lru_idx);
+            self.map.insert(key, lru_idx);
+        } else {
+            let idx = self.nodes.len();
+            self.nodes.push(Node { key, val: value, prev: 0, next: 0 });
+            self.insert_front(idx);
+            self.map.insert(key, idx);
+        }
+    }
+}
 ```
 
 ---
@@ -101,47 +120,101 @@ public:
 
 ## Why Store `key` in the Node?
 
-When evicting `tail->prev`, we need to remove it from the `unordered_map`. Without `key` in the node, there's no way to look it up — we'd have to scan the map (O(n)).
+When evicting `tail->prev`, we need to remove it from the `HashMap`. Without `key` in the node, there's no way to look it up — we'd have to scan the map (O(n)).
 
 ---
 
-## C++ std::list Shortcut
+## Rust Index-Based DLL Alternative
 
-C++ has no direct equivalent of Java's `LinkedHashMap` with `accessOrder`. The idiomatic C++ approach uses `std::list` paired with `std::unordered_map` storing list iterators, enabling O(1) splice (move-to-front) without pointer rewiring:
+Rust cannot store `LinkedList` node handles in a `HashMap` due to ownership rules. The idiomatic Rust approach uses an index-based DLL (`Vec` with `usize` "pointers") paired with a `HashMap` storing `Vec` indices, enabling O(1) splice (move-to-front) without pointer rewiring:
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::HashMap;
 
-// C++ idiomatic LRU using std::list + unordered_map
-class LRUCache {
-    int capacity;
-    list<pair<int,int>> lruList; // {key, value}, front = most recent
-    unordered_map<int, list<pair<int,int>>::iterator> map;
+// Rust idiomatic LRU using index-based DLL + HashMap
+// Note: Rust's ownership model prevents storing LinkedList node handles in a HashMap.
+// Vec indices serve as "iterators" — enabling O(1) splice (move-to-front).
+struct Node {
+    key: i32,
+    val: i32,
+    prev: usize,
+    next: usize,
+}
 
-public:
-    LRUCache(int capacity) : capacity(capacity) {}
+struct LRUCache {
+    capacity: usize,
+    lru_list: Vec<Node>,        // index-based DLL; 0=head sentinel, 1=tail sentinel
+    map: HashMap<i32, usize>,  // key -> Vec index (replaces list iterator)
+}
 
-    int get(int key) {
-        if (!map.count(key)) return -1;
-        lruList.splice(lruList.begin(), lruList, map[key]);
-        return map[key]->second;
+impl LRUCache {
+    fn new(capacity: i32) -> Self {
+        let lru_list = vec![
+            Node { key: 0, val: 0, prev: 0, next: 1 }, // head sentinel
+            Node { key: 0, val: 0, prev: 0, next: 1 }, // tail sentinel
+        ];
+        LRUCache { capacity: capacity as usize, lru_list, map: HashMap::new() }
     }
 
-    void put(int key, int value) {
-        if (map.count(key)) {
-            lruList.erase(map[key]);
-        } else if ((int)lruList.size() == capacity) {
-            map.erase(lruList.back().first);
-            lruList.pop_back();
+    // Equivalent of lruList.splice(lruList.begin(), lruList, it)
+    fn splice_front(&mut self, idx: usize) {
+        let prev = self.lru_list[idx].prev;
+        let next = self.lru_list[idx].next;
+        self.lru_list[prev].next = next;
+        self.lru_list[next].prev = prev;
+        let head_next = self.lru_list[0].next;
+        self.lru_list[idx].next = head_next;
+        self.lru_list[idx].prev = 0;
+        self.lru_list[head_next].prev = idx;
+        self.lru_list[0].next = idx;
+    }
+
+    fn get(&mut self, key: i32) -> i32 {
+        if let Some(&idx) = self.map.get(&key) {
+            self.splice_front(idx);
+            self.lru_list[idx].val
+        } else {
+            -1
         }
-        lruList.push_front({key, value});
-        map[key] = lruList.begin();
     }
-};
+
+    fn put(&mut self, key: i32, value: i32) {
+        if let Some(&idx) = self.map.get(&key) {
+            self.lru_list[idx].val = value;
+            self.splice_front(idx);
+        } else if self.map.len() == self.capacity {
+            let lru_idx = self.lru_list[1].prev; // back of list = least recently used
+            let lru_key = self.lru_list[lru_idx].key;
+            self.map.remove(&lru_key);
+            // Remove from back
+            let prev = self.lru_list[lru_idx].prev;
+            let next = self.lru_list[lru_idx].next;
+            self.lru_list[prev].next = next;
+            self.lru_list[next].prev = prev;
+            // Reuse slot, insert at front
+            self.lru_list[lru_idx].key = key;
+            self.lru_list[lru_idx].val = value;
+            let head_next = self.lru_list[0].next;
+            self.lru_list[lru_idx].next = head_next;
+            self.lru_list[lru_idx].prev = 0;
+            self.lru_list[head_next].prev = lru_idx;
+            self.lru_list[0].next = lru_idx;
+            self.map.insert(key, lru_idx);
+        } else {
+            let idx = self.lru_list.len();
+            self.lru_list.push(Node { key, val: value, prev: 0, next: 0 });
+            let head_next = self.lru_list[0].next;
+            self.lru_list[idx].next = head_next;
+            self.lru_list[idx].prev = 0;
+            self.lru_list[head_next].prev = idx;
+            self.lru_list[0].next = idx;
+            self.map.insert(key, idx);
+        }
+    }
+}
 ```
 
-> **Note for interviews:** Mention the `std::list` variant exists but implement from scratch (DLL + `unordered_map`) unless told otherwise. Interviewers at Google/Amazon expect the DLL + HashMap design.
+> **Note for interviews:** Mention the index-based DLL variant exists but implement from scratch (DLL + `HashMap`) unless told otherwise. Interviewers at Google/Amazon expect the DLL + HashMap design.
 
 ---
 
@@ -171,7 +244,7 @@ get(2)   → return -1 (evicted)
 ## Follow-up Questions
 
 **Q: How would you make this thread-safe?**
-Wrap operations with `std::mutex` (exclusive lock) or use `std::shared_mutex` with `std::unique_lock` for writes and `std::shared_lock` for reads. Or use a `std::shared_mutex` as a reader-writer lock equivalent to Java's `ReentrantReadWriteLock`.
+Wrap operations with `Mutex<LRUCache>` (exclusive lock) from `std::sync`, or use `RwLock<LRUCache>` with `write()` guards for puts and `read()` guards for gets. This is equivalent to Java's `ReentrantReadWriteLock`.
 
 **Q: What if we want O(1) get/put but also O(1) `getMin`?**
 That's the [LFU Cache](./LFU%20Cache.md) variant for frequency, or add a parallel min-heap (but breaks O(1) for updates).

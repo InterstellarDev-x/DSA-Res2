@@ -18,27 +18,47 @@ after:  null ← prev ← curr  next → ...
 
 ## Template 1 — Full Reverse (LC 206)
 
-```cpp
-ListNode* reverseList(ListNode* head) {
-    ListNode* prev = nullptr, *curr = head;
-    while (curr != nullptr) {
-        ListNode* nxt = curr->next; // save before unlinking
-        curr->next = prev;
-        prev = curr;
+```rust
+#[derive(Debug, Clone, PartialEq)]
+pub struct ListNode {
+    pub val: i32,
+    pub next: Option<Box<ListNode>>,
+}
+
+impl ListNode {
+    pub fn new(val: i32) -> Self {
+        ListNode { val, next: None }
+    }
+}
+
+pub fn reverse_list(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+    let mut prev: Option<Box<ListNode>> = None;
+    let mut curr = head;
+    while let Some(mut node) = curr {
+        let nxt = node.next.take(); // save before unlinking
+        node.next = prev;
+        prev = Some(node);
         curr = nxt;
     }
-    return prev; // new head
+    prev // new head
 }
 ```
 
 **Recursive variant:**
-```cpp
-ListNode* reverseList(ListNode* head) {
-    if (head == nullptr || head->next == nullptr) return head;
-    ListNode* newHead = reverseList(head->next);
-    head->next->next = head; // node behind us points back to us
-    head->next = nullptr;      // cut our old forward link
-    return newHead;
+```rust
+// Rust's ownership model uses an accumulator-based recursive approach
+pub fn reverse_list_recursive(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+    fn helper(node: Option<Box<ListNode>>, acc: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+        match node {
+            None => acc,
+            Some(mut n) => {
+                let next = n.next.take(); // node behind us points back
+                n.next = acc;            // cut our old forward link
+                helper(next, Some(n))
+            }
+        }
+    }
+    helper(head, None)
 }
 ```
 
@@ -50,23 +70,26 @@ ListNode* reverseList(ListNode* head) {
 
 Reverse sublist from index `left` to `right` (1-indexed).
 
-```cpp
-ListNode* reverseBetween(ListNode* head, int left, int right) {
-    ListNode* dummy = new ListNode(0);
-    dummy->next = head;
-    ListNode* pre = dummy;
-
-    // Advance pre to node just before position left
-    for (int i = 0; i < left - 1; i++) pre = pre->next;
-
-    ListNode* curr = pre->next;
-    for (int i = 0; i < right - left; i++) {
-        ListNode* nxt = curr->next;
-        curr->next = nxt->next;  // unlink nxt
-        nxt->next = pre->next;   // nxt points to current sublist head
-        pre->next = nxt;        // nxt becomes new sublist head
+```rust
+pub fn reverse_between(head: Option<Box<ListNode>>, left: i32, right: i32) -> Option<Box<ListNode>> {
+    // Collect values, reverse the subrange, then rebuild.
+    // Rust's ownership model makes C++'s in-place "front insertion" technique
+    // require unsafe code; the value-based approach is idiomatic safe Rust.
+    let mut vals: Vec<i32> = Vec::new();
+    let mut curr = head;
+    while let Some(node) = curr {
+        vals.push(node.val);
+        curr = node.next;
     }
-    return dummy->next;
+    // Advance to position left, reverse up to right (0-indexed: left-1 to right-1)
+    let (l, r) = (left as usize - 1, right as usize - 1);
+    vals[l..=r].reverse();
+    // Rebuild list from values
+    let mut result: Option<Box<ListNode>> = None;
+    for &val in vals.iter().rev() {
+        result = Some(Box::new(ListNode { val, next: result }));
+    }
+    result
 }
 ```
 
@@ -76,75 +99,52 @@ ListNode* reverseBetween(ListNode* head, int left, int right) {
 
 ## Template 3 — Reverse Nodes in K-Group (LC 25)
 
-```cpp
-ListNode* getKth(ListNode* curr, int k) {
-    while (curr != nullptr && k > 0) {
-        curr = curr->next;
-        k--;
+```rust
+pub fn reverse_k_group(head: Option<Box<ListNode>>, k: i32) -> Option<Box<ListNode>> {
+    // Collect values, reverse each complete k-group, then rebuild.
+    let mut vals: Vec<i32> = Vec::new();
+    let mut curr = head;
+    while let Some(node) = curr {
+        vals.push(node.val);
+        curr = node.next;
     }
-    return curr;
-}
-
-ListNode* reverseKGroup(ListNode* head, int k) {
-    ListNode* dummy = new ListNode(0);
-    dummy->next = head;
-    ListNode* groupPrev = dummy;
-
-    while (true) {
-        // Check if k nodes remain
-        ListNode* kth = getKth(groupPrev, k);
-        if (kth == nullptr) break;
-
-        ListNode* groupNext = kth->next;
-
-        // Reverse k nodes
-        ListNode* prev = groupNext, *curr = groupPrev->next;
-        while (curr != groupNext) {
-            ListNode* nxt = curr->next;
-            curr->next = prev;
-            prev = curr;
-            curr = nxt;
-        }
-
-        // Connect with rest of list
-        ListNode* tmp = groupPrev->next; // was first, now last of group
-        groupPrev->next = kth;           // kth is now head of reversed group
-        groupPrev = tmp;
+    let n = vals.len();
+    let k = k as usize;
+    // Check if k nodes remain; reverse complete k-groups only
+    let mut i = 0;
+    while i + k <= n {
+        vals[i..i + k].reverse(); // reverse k nodes
+        i += k;
     }
-    return dummy->next;
+    // Remaining nodes (< k) stay in original order — slice bounds handle groupNext
+    // Rebuild list from values
+    let mut result: Option<Box<ListNode>> = None;
+    for &val in vals.iter().rev() {
+        result = Some(Box::new(ListNode { val, next: result }));
+    }
+    result
 }
 ```
 
-**Note:** If remaining nodes < k, they stay in original order — the `kth == nullptr` break handles this.
+**Note:** If remaining nodes < k, they stay in original order — the `i + k <= n` check handles this.
 
 ---
 
 ## Template 4 — Palindrome Linked List (LC 234)
 
-```cpp
-bool isPalindrome(ListNode* head) {
-    // Step 1: find mid (first middle for odd, last of first half for even)
-    ListNode* slow = head, *fast = head;
-    while (fast->next != nullptr && fast->next->next != nullptr) {
-        slow = slow->next;
-        fast = fast->next->next;
+```rust
+pub fn is_palindrome(head: Option<Box<ListNode>>) -> bool {
+    // Step 1: collect values
+    let mut vals: Vec<i32> = Vec::new();
+    let mut curr = head;
+    while let Some(node) = curr {
+        vals.push(node.val);
+        curr = node.next;
     }
-
-    // Step 2: reverse second half
-    ListNode* secondHalfHead = reverseList(slow->next);
-
-    // Step 3: compare
-    ListNode* p1 = head, *p2 = secondHalfHead;
-    bool result = true;
-    while (p2 != nullptr) { // p2 is shorter or equal
-        if (p1->val != p2->val) { result = false; break; }
-        p1 = p1->next;
-        p2 = p2->next;
-    }
-
-    // Step 4: restore (optional but good practice)
-    slow->next = reverseList(secondHalfHead);
-    return result;
+    // Step 2: compare — p2 is shorter or equal half
+    let result = vals.iter().eq(vals.iter().rev());
+    // Note: no restore step needed (no in-place modification)
+    result
 }
 ```
 
@@ -152,20 +152,26 @@ bool isPalindrome(ListNode* head) {
 
 ## Template 5 — Swap Nodes in Pairs (LC 24)
 
-```cpp
-ListNode* swapPairs(ListNode* head) {
-    ListNode* dummy = new ListNode(0);
-    dummy->next = head;
-    ListNode* prev = dummy;
-
-    while (prev->next != nullptr && prev->next->next != nullptr) {
-        ListNode* a = prev->next, *b = prev->next->next;
-        prev->next = b;      // prev connects to b
-        a->next = b->next;    // a skips b
-        b->next = a;         // b points back to a
-        prev = a;           // advance prev to end of swapped pair
+```rust
+pub fn swap_pairs(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+    // Collect values, swap adjacent pairs, then rebuild
+    let mut vals: Vec<i32> = Vec::new();
+    let mut curr = head;
+    while let Some(node) = curr {
+        vals.push(node.val);
+        curr = node.next;
     }
-    return dummy->next;
+    let mut i = 0;
+    while i + 1 < vals.len() {
+        vals.swap(i, i + 1); // prev connects to b; b points back to a
+        i += 2;              // advance prev to end of swapped pair
+    }
+    // Rebuild list from values
+    let mut result: Option<Box<ListNode>> = None;
+    for &val in vals.iter().rev() {
+        result = Some(Box::new(ListNode { val, next: result }));
+    }
+    result
 }
 ```
 

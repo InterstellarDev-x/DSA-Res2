@@ -6,56 +6,61 @@
 
 ## 1. Never Use Subtraction in Heap Comparators
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-// DANGEROUS — subtraction overflows for INT_MIN/INT_MAX
-auto bad_cmp = [](int a, int b) { return (b - a) > 0; }; // overflow-prone
-priority_queue<int, vector<int>, decltype(bad_cmp)> maxHeapBad(bad_cmp);
+// DANGEROUS — subtraction overflows for i32::MIN/i32::MAX — avoid this!
+// let bad_cmp = |a: i32, b: i32| (b - a) > 0; // overflow-prone, DON'T do this
 
-// SAFE — default priority_queue is already a max-heap in C++
-priority_queue<int> maxHeap; // max-heap (largest on top)
-// or with explicit safe lambda comparator
-auto safe_cmp = [](int a, int b) { return a < b; }; // max-heap
-priority_queue<int, vector<int>, decltype(safe_cmp)> maxHeap2(safe_cmp);
-// or use greater<int> for min-heap
-priority_queue<int, vector<int>, greater<int>> minHeap;
+// SAFE — BinaryHeap<T> is already a max-heap in Rust
+let mut max_heap: BinaryHeap<i32> = BinaryHeap::new(); // max-heap (largest on top)
+
+// For min-heap: wrap with Reverse
+let mut min_heap: BinaryHeap<Reverse<i32>> = BinaryHeap::new();
+// push: min_heap.push(Reverse(val));
+// peek: min_heap.peek().map(|Reverse(v)| v)
 ```
 
-For `vector<int> arrays` in the heap (common for K-way merge entries):
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+For `Vec<i32>` entries in the heap (common for K-way merge entries):
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
-// SAFE — compare array elements explicitly (no subtraction)
-auto cmp = [](const vector<int>& a, const vector<int>& b) { return a[0] > b[0]; }; // min-heap by first element
-priority_queue<vector<int>, vector<vector<int>>, decltype(cmp)> heap(cmp);
+// SAFE — compare elements explicitly (no subtraction)
+// Min-heap by first element: use Reverse on a tuple (value, list_idx, elem_idx)
+let mut heap: BinaryHeap<Reverse<(i32, usize, usize)>> = BinaryHeap::new();
+// heap.push(Reverse((val, list_index, elem_index)));
+// Tuples compare lexicographically, so minimum first element rises to top
 ```
 
 ---
 
 ## 2. Top K Pattern — Min-Heap for K Largest, Max-Heap for K Smallest
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
 // k LARGEST elements → min-heap size k (root = kth largest)
-priority_queue<int, vector<int>, greater<int>> minHeap;
-for (int n : nums) {
-    minHeap.push(n);
-    if ((int)minHeap.size() > k) minHeap.pop();
+let mut min_heap: BinaryHeap<Reverse<i32>> = BinaryHeap::new();
+for &n in &nums {
+    min_heap.push(Reverse(n));
+    if min_heap.len() > k {
+        min_heap.pop();
+    }
 }
-// minHeap.top() = kth largest
+// min_heap.peek() = Some(Reverse(kth_largest))
 
 // k SMALLEST elements → max-heap size k (root = kth smallest)
-priority_queue<int> maxHeap; // default max-heap
-for (int n : nums) {
-    maxHeap.push(n);
-    if ((int)maxHeap.size() > k) maxHeap.pop();
+let mut max_heap: BinaryHeap<i32> = BinaryHeap::new(); // default max-heap
+for &n in &nums {
+    max_heap.push(n);
+    if max_heap.len() > k {
+        max_heap.pop();
+    }
 }
-// maxHeap.top() = kth smallest
+// max_heap.peek() = Some(kth_smallest)
 ```
 
 Mnemonic: "Opposite heap, size k, root is the answer."
@@ -64,16 +69,16 @@ Mnemonic: "Opposite heap, size k, root is the answer."
 
 ## 3. K-Way Merge — Always Store (Value, ListIndex, ElementIndex)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::cmp::Reverse;
 
-// Standard K-way merge heap entry
-heap.push({value, listIndex, elementIndex});
-// When popping: advance elementIndex in the same list
-auto curr = heap.top(); heap.pop();
-if (curr[2] + 1 < (int)lists[curr[1]].size()) {
-    heap.push({lists[curr[1]][curr[2]+1], curr[1], curr[2]+1});
+// Standard K-way merge heap entry: (value, list_index, elem_index)
+// Use Reverse for min-heap ordering
+heap.push(Reverse((value, list_index, elem_index)));
+// When popping: advance elem_index in the same list
+let Reverse((val, li, ei)) = heap.pop().unwrap();
+if ei + 1 < lists[li].len() {
+    heap.push(Reverse((lists[li][ei + 1], li, ei + 1)));
 }
 ```
 
@@ -83,17 +88,26 @@ The three-element entry is the canonical pattern — never store value alone.
 
 ## 4. Two Heaps — Always Rebalance After Every Operation
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
 
+// lo: max-heap (lower half), hi: min-heap (upper half)
 // CORRECT — rebalance every time
-void addNum(int num) {
-    if (lo.empty() || num <= lo.top()) lo.push(num);
-    else hi.push(num);
+fn add_num(lo: &mut BinaryHeap<i32>, hi: &mut BinaryHeap<Reverse<i32>>, num: i32) {
+    if lo.is_empty() || num <= *lo.peek().unwrap() {
+        lo.push(num);
+    } else {
+        hi.push(Reverse(num));
+    }
     // ALWAYS rebalance
-    if (lo.size() > hi.size() + 1) { hi.push(lo.top()); lo.pop(); }
-    else if (hi.size() > lo.size()) { lo.push(hi.top()); hi.pop(); }
+    if lo.len() > hi.len() + 1 {
+        let top = lo.pop().unwrap();
+        hi.push(Reverse(top));
+    } else if hi.len() > lo.len() {
+        let Reverse(top) = hi.pop().unwrap();
+        lo.push(top);
+    }
 }
 ```
 
@@ -116,52 +130,57 @@ Formula: max((maxFreq - 1) * (n + 1) + maxCount, tasks.length)
 
 ---
 
-## 6. Median Two Heaps — `lo.top() / 2.0 + hi.top() / 2.0` for Overflow Safety
+## 6. Median Two Heaps — `lo_top / 2.0 + hi_top / 2.0` for Overflow Safety
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+// Potential overflow if lo.peek() and hi.peek() are both near i32::MAX
+// let median = (lo.peek().unwrap() + hi_top) as f64 / 2.0; // can overflow before cast
 
-// Potential overflow if lo.top() and hi.top() are both near INT_MAX
-return (lo.top() + hi.top()) / 2.0;   // can overflow before the cast
-
-// Safe version
-return lo.top() / 2.0 + hi.top() / 2.0;
+// Safe version — cast to f64 first, then divide
+let lo_top = *lo.peek().unwrap() as f64;
+let Reverse(hi_raw) = *hi.peek().unwrap();
+let hi_top = hi_raw as f64;
+return lo_top / 2.0 + hi_top / 2.0;
 ```
 
 Both are fine for typical LeetCode inputs, but the safe version is correct for all 32-bit integers.
 
 ---
 
-## 7. Element Removal from `priority_queue` Is O(n) — Avoid in Loops
+## 7. Element Removal from `BinaryHeap` Is O(n) — Avoid in Loops
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
+```rust
+use std::collections::BTreeMap;
 
-// SLOW — std::priority_queue has no direct remove(x); a workaround is O(n)
+// SLOW — BinaryHeap has no direct remove(x); a workaround is O(n)
 // Avoid manual element removal inside loops
 
-// Use std::multiset when O(log n) removal is needed (acts as ordered multiset)
-multiset<int> ms;
-ms.erase(ms.find(outgoingElement)); // O(log n)
+// Use BTreeMap<i32, usize> (value → count) when O(log n) removal is needed
+let mut ms: BTreeMap<i32, usize> = BTreeMap::new();
+// Insert one occurrence:
+*ms.entry(value).or_insert(0) += 1;
+// Remove one occurrence (O(log n)):
+if let Some(count) = ms.get_mut(&outgoing_element) {
+    *count -= 1;
+    if *count == 0 {
+        ms.remove(&outgoing_element);
+    }
+}
 
 // Or use lazy deletion: mark elements as deleted, skip on pop
 ```
 
-For sliding window median, use `std::map<int, int>` instead of `priority_queue` to get O(log n) removal.
+For sliding window median, use `BTreeMap<i32, usize>` instead of `BinaryHeap` to get O(log n) removal.
 
 ---
 
 ## 8. Reorganize String — Early Exit Check
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-int maxFreq = 0;
-for (int f : freq) maxFreq = max(maxFreq, f);
-if (maxFreq > ((int)s.length() + 1) / 2) return "";
+```rust
+let max_freq = *freq.iter().max().unwrap_or(&0);
+if max_freq > (s.len() as i32 + 1) / 2 {
+    return String::new();
+}
 ```
 
 Always check feasibility before attempting construction. Integer division: `(n+1)/2` correctly computes the ceiling of `n/2`.
@@ -170,20 +189,17 @@ Always check feasibility before attempting construction. Integer division: `(n+1
 
 ## 9. Pop from Empty Heap Is Undefined Behavior — Check Before Using
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-// SAFE pattern
-if (!heap.empty()) {
-    int val = heap.top(); heap.pop();  // guaranteed non-empty
+```rust
+// SAFE pattern — pop() returns Option<T>, no undefined behavior
+if let Some(val) = heap.pop() {
+    // val is guaranteed to exist
 }
 
-// Or use ternary (read only; still pop separately if needed)
-int val = heap.empty() ? -1 : heap.top();
+// Or peek first (read only)
+let val = heap.peek().copied().unwrap_or(-1);
 ```
 
-Unlike Java's `priority_queue::top()/pop()` on an empty container is undefined behavior in C++ — always guard with `.empty()`.
+Unlike Java's `BinaryHeap::peek()/pop()` returns `Option<T>` in Rust — no undefined behavior, always safe to call.
 
 ---
 
