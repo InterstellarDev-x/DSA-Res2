@@ -20,10 +20,12 @@ A **variable-size window** expands its right boundary to include new elements an
 
 ## Template A: Maximize Window (Shrink on Violation)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 // Find the longest window satisfying the constraint
 int left = 0, maxLen = 0;
-// data structure to track window state (Map, array, counter)
+// data structure to track window state (unordered_map, array, counter)
 
 for (int right = 0; right < n; right++) {
     // 1. Expand: add nums[right] to window
@@ -36,7 +38,7 @@ for (int right = 0; right < n; right++) {
     }
 
     // 3. Window [left..right] is now valid — update answer
-    maxLen = Math.max(maxLen, right - left + 1);
+    maxLen = max(maxLen, right - left + 1);
 }
 return maxLen;
 ```
@@ -45,9 +47,11 @@ return maxLen;
 
 ## Template B: Minimize Window (Shrink While Valid)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 // Find the smallest window satisfying the constraint
-int left = 0, minLen = Integer.MAX_VALUE;
+int left = 0, minLen = INT_MAX;
 
 for (int right = 0; right < n; right++) {
     // 1. Expand: add nums[right]
@@ -55,12 +59,12 @@ for (int right = 0; right < n; right++) {
 
     // 2. Shrink: while constraint is satisfied, try to make window smaller
     while (satisfied()) {
-        minLen = Math.min(minLen, right - left + 1);
+        minLen = min(minLen, right - left + 1);
         remove(nums[left]);
         left++;
     }
 }
-return minLen == Integer.MAX_VALUE ? 0 : minLen;
+return minLen == INT_MAX ? 0 : minLen;
 ```
 
 ---
@@ -69,18 +73,20 @@ return minLen == Integer.MAX_VALUE ? 0 : minLen;
 
 Find the minimum length subarray with sum ≥ target.
 
-```java
-public int minSubArrayLen(int target, int[] nums) {
-    int left = 0, sum = 0, minLen = Integer.MAX_VALUE;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+int minSubArrayLen(int target, vector<int>& nums) {
+    int left = 0, sum = 0, minLen = INT_MAX;
 
-    for (int right = 0; right < nums.length; right++) {
+    for (int right = 0; right < (int)nums.size(); right++) {
         sum += nums[right];
         while (sum >= target) {            // constraint MET → shrink
-            minLen = Math.min(minLen, right - left + 1);
+            minLen = min(minLen, right - left + 1);
             sum -= nums[left++];
         }
     }
-    return minLen == Integer.MAX_VALUE ? 0 : minLen;
+    return minLen == INT_MAX ? 0 : minLen;
 }
 ```
 
@@ -92,38 +98,42 @@ public int minSubArrayLen(int target, int[] nums) {
 
 ## Problem 2: Longest Substring Without Repeating Characters — LC 3
 
-```java
-public int lengthOfLongestSubstring(String s) {
-    int[] freq = new int[128];  // ASCII
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+int lengthOfLongestSubstring(string s) {
+    int freq[128] = {};  // ASCII
     int left = 0, maxLen = 0;
 
-    for (int right = 0; right < s.length(); right++) {
-        freq[s.charAt(right)]++;
+    for (int right = 0; right < (int)s.length(); right++) {
+        freq[s[right]]++;
 
-        while (freq[s.charAt(right)] > 1) {  // duplicate found → shrink
-            freq[s.charAt(left++)]--;
+        while (freq[s[right]] > 1) {  // duplicate found → shrink
+            freq[s[left++]]--;
         }
 
-        maxLen = Math.max(maxLen, right - left + 1);
+        maxLen = max(maxLen, right - left + 1);
     }
     return maxLen;
 }
 ```
 
-**Alternative: HashMap with last-seen index — jump left directly**
+**Alternative: std::unordered_map with last-seen index — jump left directly**
 
-```java
-public int lengthOfLongestSubstring(String s) {
-    Map<Character, Integer> lastSeen = new HashMap<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+int lengthOfLongestSubstring(string s) {
+    unordered_map<char, int> lastSeen;
     int left = 0, maxLen = 0;
 
-    for (int right = 0; right < s.length(); right++) {
-        char c = s.charAt(right);
-        if (lastSeen.containsKey(c) && lastSeen.get(c) >= left) {
-            left = lastSeen.get(c) + 1;   // jump left past the duplicate
+    for (int right = 0; right < (int)s.length(); right++) {
+        char c = s[right];
+        if (lastSeen.count(c) && lastSeen[c] >= left) {
+            left = lastSeen[c] + 1;   // jump left past the duplicate
         }
-        lastSeen.put(c, right);
-        maxLen = Math.max(maxLen, right - left + 1);
+        lastSeen[c] = right;
+        maxLen = max(maxLen, right - left + 1);
     }
     return maxLen;
 }
@@ -137,11 +147,13 @@ public int lengthOfLongestSubstring(String s) {
 
 Flip at most `k` zeroes. Find the longest subarray of ones.
 
-```java
-public int longestOnes(int[] nums, int k) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+int longestOnes(vector<int>& nums, int k) {
     int left = 0, zeros = 0, maxLen = 0;
 
-    for (int right = 0; right < nums.length; right++) {
+    for (int right = 0; right < (int)nums.size(); right++) {
         if (nums[right] == 0) zeros++;
 
         while (zeros > k) {          // too many zeros → shrink
@@ -149,7 +161,7 @@ public int longestOnes(int[] nums, int k) {
             left++;
         }
 
-        maxLen = Math.max(maxLen, right - left + 1);
+        maxLen = max(maxLen, right - left + 1);
     }
     return maxLen;
 }
@@ -163,21 +175,23 @@ public int longestOnes(int[] nums, int k) {
 
 Two baskets (at most 2 distinct fruit types). Find the longest subarray with ≤ 2 distinct values.
 
-```java
-public int totalFruit(int[] fruits) {
-    Map<Integer, Integer> basket = new HashMap<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+int totalFruit(vector<int>& fruits) {
+    unordered_map<int, int> basket;
     int left = 0, maxLen = 0;
 
-    for (int right = 0; right < fruits.length; right++) {
-        basket.merge(fruits[right], 1, Integer::sum);  // add fruit
+    for (int right = 0; right < (int)fruits.size(); right++) {
+        basket[fruits[right]]++;                       // add fruit
 
         while (basket.size() > 2) {                    // > 2 types → shrink
-            basket.merge(fruits[left], -1, Integer::sum);
-            if (basket.get(fruits[left]) == 0) basket.remove(fruits[left]);
+            basket[fruits[left]]--;
+            if (basket[fruits[left]] == 0) basket.erase(fruits[left]);
             left++;
         }
 
-        maxLen = Math.max(maxLen, right - left + 1);
+        maxLen = max(maxLen, right - left + 1);
     }
     return maxLen;
 }
@@ -193,23 +207,25 @@ Replace at most `k` characters. Find the longest substring where you can make al
 
 **Key insight:** In a valid window, the number of characters to replace = `window_size - max_frequency`. If this exceeds `k`, shrink.
 
-```java
-public int characterReplacement(String s, int k) {
-    int[] freq = new int[26];
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+int characterReplacement(string s, int k) {
+    int freq[26] = {};
     int left = 0, maxFreq = 0, maxLen = 0;
 
-    for (int right = 0; right < s.length(); right++) {
-        freq[s.charAt(right) - 'A']++;
-        maxFreq = Math.max(maxFreq, freq[s.charAt(right) - 'A']);
+    for (int right = 0; right < (int)s.length(); right++) {
+        freq[s[right] - 'A']++;
+        maxFreq = max(maxFreq, freq[s[right] - 'A']);
 
         // Window size - max_freq = chars to replace
         if ((right - left + 1) - maxFreq > k) {   // shrink
-            freq[s.charAt(left) - 'A']--;
+            freq[s[left] - 'A']--;
             left++;
             // Note: maxFreq is NOT recomputed — see explanation below
         }
 
-        maxLen = Math.max(maxLen, right - left + 1);
+        maxLen = max(maxLen, right - left + 1);
     }
     return maxLen;
 }
@@ -227,18 +243,20 @@ public int characterReplacement(String s, int k) {
 
 Find the minimum window in `s` containing all characters of `t`.
 
-```java
-public String minWindow(String s, String t) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+string minWindow(string s, string t) {
     if (s.length() < t.length()) return "";
 
-    int[] need = new int[128];
-    for (char c : t.toCharArray()) need[c]++;
+    int need[128] = {};
+    for (char c : t) need[c]++;
 
     int left = 0, have = 0, required = t.length();
-    int minLen = Integer.MAX_VALUE, minLeft = 0;
+    int minLen = INT_MAX, minLeft = 0;
 
-    for (int right = 0; right < s.length(); right++) {
-        char c = s.charAt(right);
+    for (int right = 0; right < (int)s.length(); right++) {
+        char c = s[right];
         if (need[c] > 0) have++;    // we needed this char and now have one more
         need[c]--;                  // reduce need (can go negative for excess chars)
 
@@ -247,13 +265,13 @@ public String minWindow(String s, String t) {
                 minLen = right - left + 1;
                 minLeft = left;
             }
-            char l = s.charAt(left);
+            char l = s[left];
             need[l]++;               // return char to need
             if (need[l] > 0) have--; // now we need this char again
             left++;
         }
     }
-    return minLen == Integer.MAX_VALUE ? "" : s.substring(minLeft, minLeft + minLen);
+    return minLen == INT_MAX ? "" : s.substr(minLeft, minLen);
 }
 ```
 
@@ -267,18 +285,20 @@ public String minWindow(String s, String t) {
 
 Count substrings containing at least one each of 'a', 'b', 'c'.
 
-```java
-public int numberOfSubstrings(String s) {
-    int[] count = new int[3];
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+int numberOfSubstrings(string s) {
+    int count[3] = {};
     int left = 0, result = 0;
 
-    for (int right = 0; right < s.length(); right++) {
-        count[s.charAt(right) - 'a']++;
+    for (int right = 0; right < (int)s.length(); right++) {
+        count[s[right] - 'a']++;
 
         while (count[0] > 0 && count[1] > 0 && count[2] > 0) {
             // All three chars present → count all extensions to the right
             result += s.length() - right;   // [left..right], [left..right+1], ..., [left..n-1]
-            count[s.charAt(left) - 'a']--;
+            count[s[left] - 'a']--;
             left++;
         }
     }
@@ -294,11 +314,13 @@ public int numberOfSubstrings(String s) {
 
 Delete exactly one element. Find longest subarray of 1s.
 
-```java
-public int longestSubarray(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+int longestSubarray(vector<int>& nums) {
     int left = 0, zeros = 0, maxLen = 0;
 
-    for (int right = 0; right < nums.length; right++) {
+    for (int right = 0; right < (int)nums.size(); right++) {
         if (nums[right] == 0) zeros++;
 
         while (zeros > 1) {
@@ -307,7 +329,7 @@ public int longestSubarray(int[] nums) {
         }
 
         // -1 because we must delete exactly one element (the 0 in the window, or any 1)
-        maxLen = Math.max(maxLen, right - left);  // right - left = window_size - 1
+        maxLen = max(maxLen, right - left);  // right - left = window_size - 1
     }
     return maxLen;
 }

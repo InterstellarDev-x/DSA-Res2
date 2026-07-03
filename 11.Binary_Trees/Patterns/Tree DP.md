@@ -6,12 +6,13 @@
 subtree** to its parent, and (optionally) a **global result** is updated at each node. The
 recurrence lives in how a parent combines its children's returns.
 
-```java
-public class TreeNode {
+```cpp
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
+};
 ```
 
 > The template: `f(node)` returns a *summary* of the subtree rooted at `node`; the parent
@@ -26,20 +27,23 @@ You can't rob two directly-connected nodes. Each node returns a 2-element state:
 `[notRob, rob]` where `notRob` = best when this node is NOT robbed (children free to do
 either), `rob` = `node.val + children's notRob`.
 
-```java
-public int rob(TreeNode root) {
-    int[] res = robSub(root);
-    return Math.max(res[0], res[1]);
-}
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 // returns {notRobbingThisNode, robbingThisNode}
-private int[] robSub(TreeNode node) {
-    if (node == null) return new int[]{0, 0};
-    int[] l = robSub(node.left);
-    int[] r = robSub(node.right);
-    int notRob = Math.max(l[0], l[1]) + Math.max(r[0], r[1]);  // children choose freely
-    int rob    = node.val + l[0] + r[0];                       // children must NOT be robbed
-    return new int[]{notRob, rob};
+vector<int> robSub(TreeNode* node) {
+    if (node == nullptr) return {0, 0};
+    auto l = robSub(node->left);
+    auto r = robSub(node->right);
+    int notRob = max(l[0], l[1]) + max(r[0], r[1]);  // children choose freely
+    int rob    = node->val + l[0] + r[0];             // children must NOT be robbed
+    return {notRob, rob};
+}
+
+int rob(TreeNode* root) {
+    auto res = robSub(root);
+    return max(res[0], res[1]);
 }
 ```
 
@@ -58,25 +62,25 @@ Greedy bottom-up DP with three states:
   it).
 - **Root special case:** after recursion, if the root is `NOT_COVERED`, add one camera.
 
-```java
-private int cameras = 0;
-private static final int NOT_COVERED = 0, HAS_CAMERA = 1, COVERED = 2;
+```cpp
+int cameras = 0;
+const int NOT_COVERED = 0, HAS_CAMERA = 1, COVERED = 2;
 
-public int minCameraCover(TreeNode root) {
-    if (dfs(root) == NOT_COVERED) cameras++;   // root left uncovered -> place a camera
-    return cameras;
-}
-
-private int dfs(TreeNode node) {
-    if (node == null) return COVERED;          // null is implicitly covered
-    int l = dfs(node.left);
-    int r = dfs(node.right);
+int dfs(TreeNode* node) {
+    if (node == nullptr) return COVERED;          // null is implicitly covered
+    int l = dfs(node->left);
+    int r = dfs(node->right);
     if (l == NOT_COVERED || r == NOT_COVERED) {
         cameras++;
         return HAS_CAMERA;
     }
     if (l == HAS_CAMERA || r == HAS_CAMERA) return COVERED;
     return NOT_COVERED;
+}
+
+int minCameraCover(TreeNode* root) {
+    if (dfs(root) == NOT_COVERED) cameras++;   // root left uncovered -> place a camera
+    return cameras;
 }
 ```
 
@@ -89,20 +93,23 @@ Each node should end with exactly 1 coin. The number of moves across an edge equ
 `excess = leftExcess + rightExcess + node.val − 1`; add `|excess|` to the answer and return
 `excess` to the parent.
 
-```java
-private int moves = 0;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public int distributeCoins(TreeNode root) {
-    excess(root);
-    return moves;
+int moves = 0;
+
+int excess(TreeNode* node) {
+    if (node == nullptr) return 0;
+    int left  = excess(node->left);
+    int right = excess(node->right);
+    moves += abs(left) + abs(right);     // coins crossing both child edges
+    return node->val + left + right - 1; // surplus(+)/deficit(-) passed up
 }
 
-private int excess(TreeNode node) {
-    if (node == null) return 0;
-    int left  = excess(node.left);
-    int right = excess(node.right);
-    moves += Math.abs(left) + Math.abs(right);     // coins crossing both child edges
-    return node.val + left + right - 1;            // surplus(+)/deficit(-) passed up
+int distributeCoins(TreeNode* root) {
+    excess(root);
+    return moves;
 }
 ```
 
@@ -113,13 +120,13 @@ private int excess(TreeNode node) {
 If the current node is `p` or `q`, return it. Recurse both sides; if **both** return non-null,
 the current node is the LCA. Otherwise propagate the non-null side up.
 
-```java
-public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
-    if (root == null || root == p || root == q) return root;
-    TreeNode left  = lowestCommonAncestor(root.left,  p, q);
-    TreeNode right = lowestCommonAncestor(root.right, p, q);
-    if (left != null && right != null) return root;   // p and q on opposite sides -> LCA
-    return left != null ? left : right;               // both on one side (or neither)
+```cpp
+TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
+    if (root == nullptr || root == p || root == q) return root;
+    TreeNode* left  = lowestCommonAncestor(root->left,  p, q);
+    TreeNode* right = lowestCommonAncestor(root->right, p, q);
+    if (left != nullptr && right != nullptr) return root;   // p and q on opposite sides -> LCA
+    return left != nullptr ? left : right;                  // both on one side (or neither)
 }
 ```
 
@@ -134,24 +141,25 @@ first node to receive non-null from *both* sides is the split point = the LCA. I
 Return a `(node, depth)` pair upward. Pick the side with greater depth; if both depths are
 equal, the **current node** is the LCA of all deepest leaves below it.
 
-```java
-private static class Result {
-    TreeNode node; int depth;
-    Result(TreeNode node, int depth) { this.node = node; this.depth = depth; }
-}
+```cpp
+struct Result {
+    TreeNode* node;
+    int depth;
+    Result(TreeNode* node, int depth) : node(node), depth(depth) {}
+};
 
-public TreeNode lcaDeepestLeaves(TreeNode root) {
-    return dfs(root).node;
-}
-
-private Result dfs(TreeNode node) {
-    if (node == null) return new Result(null, 0);
-    Result l = dfs(node.left);
-    Result r = dfs(node.right);
-    if (l.depth == r.depth) return new Result(node, l.depth + 1);  // balanced -> this node
+Result dfs(TreeNode* node) {
+    if (node == nullptr) return Result(nullptr, 0);
+    Result l = dfs(node->left);
+    Result r = dfs(node->right);
+    if (l.depth == r.depth) return Result(node, l.depth + 1);  // balanced -> this node
     return l.depth > r.depth
-        ? new Result(l.node, l.depth + 1)
-        : new Result(r.node, r.depth + 1);
+        ? Result(l.node, l.depth + 1)
+        : Result(r.node, r.depth + 1);
+}
+
+TreeNode* lcaDeepestLeaves(TreeNode* root) {
+    return dfs(root).node;
 }
 ```
 
@@ -159,33 +167,34 @@ private Result dfs(TreeNode node) {
 
 ## 6. Delete Nodes and Return Forest (LC 1110)
 
-Put the to-delete values in a `Set`. Post-order: a child that survives **becomes a new root**
+Put the to-delete values in an `unordered_set`. Post-order: a child that survives **becomes a new root**
 if its parent was deleted (or if it is the original root). When a node is deleted, its
-surviving children are added to the forest; the node returns `null` to detach itself.
+surviving children are added to the forest; the node returns `nullptr` to detach itself.
 
-```java
-public List<TreeNode> delNodes(TreeNode root, int[] to_delete) {
-    Set<Integer> toDelete = new HashSet<>();
-    for (int d : to_delete) toDelete.add(d);
-    List<TreeNode> forest = new ArrayList<>();
-    if (dfs(root, true, toDelete, forest) != null) forest.add(root);
-    return forest;
-}
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-// returns the node if it survives, else null (so the parent can detach it)
-private TreeNode dfs(TreeNode node, boolean isRoot,
-                     Set<Integer> toDelete, List<TreeNode> forest) {
-    if (node == null) return null;
-    boolean deleted = toDelete.contains(node.val);
-    if (isRoot && !deleted) { /* will be added by caller */ }
-    node.left  = dfs(node.left,  deleted, toDelete, forest);   // child is a root if I'm deleted
-    node.right = dfs(node.right, deleted, toDelete, forest);
+// returns the node if it survives, else nullptr (so the parent can detach it)
+TreeNode* dfs(TreeNode* node, bool isRoot,
+              unordered_set<int>& toDelete, vector<TreeNode*>& forest) {
+    if (node == nullptr) return nullptr;
+    bool deleted = toDelete.count(node->val) > 0;
+    node->left  = dfs(node->left,  deleted, toDelete, forest);   // child is a root if I'm deleted
+    node->right = dfs(node->right, deleted, toDelete, forest);
     if (deleted) {
-        if (node.left  != null) forest.add(node.left);
-        if (node.right != null) forest.add(node.right);
-        return null;
+        if (node->left  != nullptr) forest.push_back(node->left);
+        if (node->right != nullptr) forest.push_back(node->right);
+        return nullptr;
     }
     return node;
+}
+
+vector<TreeNode*> delNodes(TreeNode* root, vector<int>& to_delete) {
+    unordered_set<int> toDelete(to_delete.begin(), to_delete.end());
+    vector<TreeNode*> forest;
+    if (dfs(root, true, toDelete, forest) != nullptr) forest.push_back(root);
+    return forest;
 }
 ```
 
@@ -199,44 +208,51 @@ nodes are added inside `dfs`.)
 Two phases: (1) DFS to build a `child → parent` map so the tree becomes an undirected graph;
 (2) BFS from `target`, expanding to left/right/parent, until you reach distance `K`.
 
-```java
-public List<Integer> distanceK(TreeNode root, TreeNode target, int k) {
-    Map<TreeNode, TreeNode> parent = new HashMap<>();
-    buildParents(root, null, parent);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    Queue<TreeNode> queue = new LinkedList<>();
-    Set<TreeNode> visited = new HashSet<>();
-    queue.offer(target);
-    visited.add(target);
+void buildParents(TreeNode* node, TreeNode* par,
+                  unordered_map<TreeNode*, TreeNode*>& parent) {
+    if (node == nullptr) return;
+    parent[node] = par;
+    buildParents(node->left,  node, parent);
+    buildParents(node->right, node, parent);
+}
+
+vector<int> distanceK(TreeNode* root, TreeNode* target, int k) {
+    unordered_map<TreeNode*, TreeNode*> parent;
+    buildParents(root, nullptr, parent);
+
+    queue<TreeNode*> q;
+    unordered_set<TreeNode*> visited;
+    q.push(target);
+    visited.insert(target);
     int dist = 0;
-    while (!queue.isEmpty()) {
+    while (!q.empty()) {
         if (dist == k) {                          // current frontier is exactly distance k
-            List<Integer> res = new ArrayList<>();
-            for (TreeNode node : queue) res.add(node.val);
+            vector<int> res;
+            while (!q.empty()) {
+                res.push_back(q.front()->val);
+                q.pop();
+            }
             return res;
         }
-        int size = queue.size();
-        for (int i = 0; i < size; i++) {
-            TreeNode node = queue.poll();
-            for (TreeNode nei : new TreeNode[]{node.left, node.right, parent.get(node)}) {
-                if (nei != null && visited.add(nei)) queue.offer(nei);
+        int sz = q.size();
+        for (int i = 0; i < sz; i++) {
+            TreeNode* node = q.front(); q.pop();
+            for (TreeNode* nei : {node->left, node->right, parent[node]}) {
+                if (nei != nullptr && visited.insert(nei).second) q.push(nei);
             }
         }
         dist++;
     }
-    return new ArrayList<>();
-}
-
-private void buildParents(TreeNode node, TreeNode par, Map<TreeNode, TreeNode> parent) {
-    if (node == null) return;
-    parent.put(node, par);
-    buildParents(node.left,  node, parent);
-    buildParents(node.right, node, parent);
+    return {};
 }
 ```
 
-(`parent.put` is the explicit analogue of `Map.computeIfAbsent` for building the adjacency
-relation; here each node has exactly one parent so a direct put suffices.)
+(`parent[node] = par` is the direct map insertion for building the adjacency relation; here
+each node has exactly one parent so a direct assignment suffices.)
 
 ---
 

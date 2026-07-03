@@ -21,49 +21,57 @@ The unifying idea: the trie is a **shared index**, and DFS/recursion explores it
 
 `addWord` is a normal insert. `search` must handle `.` which matches **any** single character. When the DFS encounters `.`, it recurses into every non-null child.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct TrieNode {
+    TrieNode* children[26];
+    bool isEnd = false;
+    TrieNode() { fill(children, children + 26, nullptr); }
+};
+
 class WordDictionary {
-    static class TrieNode {
-        TrieNode[] children = new TrieNode[26];
-        boolean isEnd = false;
-    }
+private:
+    TrieNode* root;
 
-    private final TrieNode root = new TrieNode();
+    bool dfs(const string& word, int i, TrieNode* node) {
+        if (node == nullptr) return false;
+        if (i == (int)word.length()) return node->isEnd;   // matched all chars
 
-    public void addWord(String word) {
-        TrieNode node = root;
-        for (int i = 0; i < word.length(); i++) {
-            int idx = word.charAt(i) - 'a';
-            if (node.children[idx] == null) {
-                node.children[idx] = new TrieNode();
-            }
-            node = node.children[idx];
-        }
-        node.isEnd = true;
-    }
-
-    public boolean search(String word) {
-        return dfs(word, 0, root);
-    }
-
-    private boolean dfs(String word, int i, TrieNode node) {
-        if (node == null) return false;
-        if (i == word.length()) return node.isEnd;   // matched all chars
-
-        char c = word.charAt(i);
+        char c = word[i];
         if (c == '.') {
             // wildcard: try every existing child
-            for (TrieNode child : node.children) {
-                if (child != null && dfs(word, i + 1, child)) {
+            for (TrieNode* child : node->children) {
+                if (child != nullptr && dfs(word, i + 1, child)) {
                     return true;
                 }
             }
             return false;
         } else {
-            return dfs(word, i + 1, node.children[c - 'a']);
+            return dfs(word, i + 1, node->children[c - 'a']);
         }
     }
-}
+
+public:
+    WordDictionary() : root(new TrieNode()) {}
+
+    void addWord(const string& word) {
+        TrieNode* node = root;
+        for (char ch : word) {
+            int idx = ch - 'a';
+            if (node->children[idx] == nullptr) {
+                node->children[idx] = new TrieNode();
+            }
+            node = node->children[idx];
+        }
+        node->isEnd = true;
+    }
+
+    bool search(const string& word) {
+        return dfs(word, 0, root);
+    }
+};
 ```
 
 **Complexity:** `addWord` is **O(L)**. `search` is **O(L)** for a concrete word, but **O(26^k · L)** in the worst case where `k` is the number of `.` characters — each dot can branch into 26 subtrees. Full analysis in [Word Dictionary.md](../Design%20Data%20Structure%20Problems/Word%20Dictionary.md).
@@ -76,52 +84,58 @@ Find the longest word that can be **built one character at a time**, where every
 
 Insert all words, then DFS: only descend into a child if that child `isEnd` (its prefix is a valid buildable word). Because we iterate children `a → z`, the first/longest valid word we record under lexicographic tie-breaking is correct.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct TrieNode {
+    TrieNode* children[26];
+    bool isEnd = false;
+    TrieNode() { fill(children, children + 26, nullptr); }
+};
+
 class Solution {
-    static class TrieNode {
-        TrieNode[] children = new TrieNode[26];
-        boolean isEnd = false;
-    }
+private:
+    string best = "";
 
-    private String best = "";
-
-    public String longestWord(String[] words) {
-        TrieNode root = new TrieNode();
-        for (String w : words) insert(root, w);
-        // Root's prefix "" is trivially buildable, so start DFS from root.
-        dfs(root, new StringBuilder());
-        return best;
-    }
-
-    private void insert(TrieNode root, String w) {
-        TrieNode node = root;
-        for (int i = 0; i < w.length(); i++) {
-            int idx = w.charAt(i) - 'a';
-            if (node.children[idx] == null) node.children[idx] = new TrieNode();
-            node = node.children[idx];
+    void insert(TrieNode* root, const string& w) {
+        TrieNode* node = root;
+        for (char ch : w) {
+            int idx = ch - 'a';
+            if (node->children[idx] == nullptr) node->children[idx] = new TrieNode();
+            node = node->children[idx];
         }
-        node.isEnd = true;
+        node->isEnd = true;
     }
 
-    private void dfs(TrieNode node, StringBuilder path) {
+    void dfs(TrieNode* node, string& path) {
         // Update best: longer wins; on equal length, smaller lexicographic wins.
-        String cur = path.toString();
-        if (cur.length() > best.length()
-            || (cur.length() == best.length() && cur.compareTo(best) < 0)) {
-            best = cur;
+        if (path.length() > best.length()
+            || (path.length() == best.length() && path < best)) {
+            best = path;
         }
         // Iterate a..z so ties naturally favour the smaller letter.
         for (int c = 0; c < 26; c++) {
-            TrieNode child = node.children[c];
+            TrieNode* child = node->children[c];
             // Only continue if this prefix is itself a complete word.
-            if (child != null && child.isEnd) {
-                path.append((char) ('a' + c));
+            if (child != nullptr && child->isEnd) {
+                path += (char)('a' + c);
                 dfs(child, path);
-                path.deleteCharAt(path.length() - 1);   // backtrack
+                path.pop_back();   // backtrack
             }
         }
     }
-}
+
+public:
+    string longestWord(vector<string>& words) {
+        TrieNode* root = new TrieNode();
+        for (auto& w : words) insert(root, w);
+        // Root's prefix "" is trivially buildable, so start DFS from root.
+        string path = "";
+        dfs(root, path);
+        return best;
+    }
+};
 ```
 
 **Why the `child.isEnd` gate?** A word like `"apple"` is only valid if `"a"`, `"ap"`, `"app"`, `"appl"`, `"apple"` are *all* present. By refusing to descend through a non-`isEnd` node, the DFS structurally guarantees every prefix on the path is a word.
@@ -134,49 +148,62 @@ class Solution {
 
 Given a dictionary of roots and a sentence, replace each word by the **shortest root** that is a prefix of it. Build a trie of roots; for each word, walk the trie and stop at the first node with `isEnd` (shortest matching root). If no root matches, keep the word.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct TrieNode {
+    TrieNode* children[26];
+    bool isEnd = false;
+    TrieNode() { fill(children, children + 26, nullptr); }
+};
+
 class Solution {
-    static class TrieNode {
-        TrieNode[] children = new TrieNode[26];
-        boolean isEnd = false;
-    }
+private:
+    TrieNode* root;
 
-    private final TrieNode root = new TrieNode();
-
-    public String replaceWords(List<String> dictionary, String sentence) {
-        for (String r : dictionary) insert(r);
-
-        String[] words = sentence.split(" ");
-        StringBuilder sb = new StringBuilder();
-        for (int w = 0; w < words.length; w++) {
-            if (w > 0) sb.append(' ');
-            sb.append(shortestRoot(words[w]));
+    void insert(const string& r) {
+        TrieNode* node = this->root;
+        for (char ch : r) {
+            int idx = ch - 'a';
+            if (node->children[idx] == nullptr) node->children[idx] = new TrieNode();
+            node = node->children[idx];
         }
-        return sb.toString();
-    }
-
-    private void insert(String root) {
-        TrieNode node = this.root;
-        for (int i = 0; i < root.length(); i++) {
-            int idx = root.charAt(i) - 'a';
-            if (node.children[idx] == null) node.children[idx] = new TrieNode();
-            node = node.children[idx];
-        }
-        node.isEnd = true;
+        node->isEnd = true;
     }
 
     // Return the shortest root prefix of `word`, or `word` itself if none.
-    private String shortestRoot(String word) {
-        TrieNode node = root;
-        for (int i = 0; i < word.length(); i++) {
-            int idx = word.charAt(i) - 'a';
-            if (node.children[idx] == null) break;     // no further root possible
-            node = node.children[idx];
-            if (node.isEnd) return word.substring(0, i + 1);  // shortest root found
+    string shortestRoot(const string& word) {
+        TrieNode* node = root;
+        for (int i = 0; i < (int)word.length(); i++) {
+            int idx = word[i] - 'a';
+            if (node->children[idx] == nullptr) break;     // no further root possible
+            node = node->children[idx];
+            if (node->isEnd) return word.substr(0, i + 1);  // shortest root found
         }
         return word;
     }
-}
+
+public:
+    Solution() : root(new TrieNode()) {}
+
+    string replaceWords(vector<string>& dictionary, const string& sentence) {
+        for (auto& r : dictionary) insert(r);
+
+        // Split sentence by spaces
+        istringstream iss(sentence);
+        string token;
+        vector<string> words;
+        while (iss >> token) words.push_back(token);
+
+        string sb = "";
+        for (int w = 0; w < (int)words.size(); w++) {
+            if (w > 0) sb += ' ';
+            sb += shortestRoot(words[w]);
+        }
+        return sb;
+    }
+};
 ```
 
 **Key insight:** because we return at the *first* `isEnd` we hit while walking down, we always get the **shortest** root (e.g. given roots `"cat"` and `"cattle"`, the word `"cattle"` is replaced by `"cat"`).
@@ -190,66 +217,73 @@ class Solution {
 Find all dictionary words that exist on a 2D board (adjacent horizontally/vertically, no cell reuse within one word). The naive approach runs a separate DFS per word: **O(words · M·N·4^L)**. The trie approach builds **one** trie of all words and DFSes the board once, following the trie in lockstep with the board path.
 
 Two crucial optimizations:
-1. **Store the complete word at its leaf node** (`node.word`) so we never build a `StringBuilder` during the hot DFS — when `node.word != null` we have found that exact word.
-2. **Prune found words** by setting `node.word = null` after collecting them, so duplicates aren't re-reported and dead branches shrink.
+1. **Store the complete word at its leaf node** (`node.word`) so we never build a string during the hot DFS — when `node.word` is non-empty we have found that exact word.
+2. **Prune found words** by setting `node.word = ""` after collecting them, so duplicates aren't re-reported and dead branches shrink.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct TrieNode {
+    TrieNode* children[26];
+    string word = "";   // the full word ending here, or empty string
+
+    TrieNode() { fill(children, children + 26, nullptr); }
+};
+
 class Solution {
-    static class TrieNode {
-        TrieNode[] children = new TrieNode[26];
-        String word = null;   // the full word ending here, or null
-    }
-
-    public List<String> findWords(char[][] board, String[] words) {
-        TrieNode root = buildTrie(words);
-        List<String> result = new ArrayList<>();
-        for (int r = 0; r < board.length; r++) {
-            for (int c = 0; c < board[0].length; c++) {
-                dfs(board, r, c, root, result);
+private:
+    TrieNode* buildTrie(vector<string>& words) {
+        TrieNode* root = new TrieNode();
+        for (auto& w : words) {
+            TrieNode* node = root;
+            for (char ch : w) {
+                int idx = ch - 'a';
+                if (node->children[idx] == nullptr) node->children[idx] = new TrieNode();
+                node = node->children[idx];
             }
-        }
-        return result;
-    }
-
-    private TrieNode buildTrie(String[] words) {
-        TrieNode root = new TrieNode();
-        for (String w : words) {
-            TrieNode node = root;
-            for (int i = 0; i < w.length(); i++) {
-                int idx = w.charAt(i) - 'a';
-                if (node.children[idx] == null) node.children[idx] = new TrieNode();
-                node = node.children[idx];
-            }
-            node.word = w;        // store full word at leaf — no StringBuilder needed
+            node->word = w;        // store full word at leaf — no string building needed
         }
         return root;
     }
 
-    private void dfs(char[][] board, int r, int c, TrieNode node, List<String> result) {
+    void dfs(vector<vector<char>>& board, int r, int c, TrieNode* node, vector<string>& result) {
         char ch = board[r][c];
         if (ch == '#') return;                       // already visited on this path
-        TrieNode next = node.children[ch - 'a'];
-        if (next == null) return;                    // prune: no word continues here
+        TrieNode* next = node->children[ch - 'a'];
+        if (next == nullptr) return;                 // prune: no word continues here
 
-        if (next.word != null) {
-            result.add(next.word);
-            next.word = null;                        // prune: don't report twice
+        if (!next->word.empty()) {
+            result.push_back(next->word);
+            next->word = "";                         // prune: don't report twice
         }
 
         board[r][c] = '#';                           // mark visited
-        int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
-        for (int[] d : dirs) {
+        int dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+        for (auto& d : dirs) {
             int nr = r + d[0], nc = c + d[1];
-            if (nr >= 0 && nr < board.length && nc >= 0 && nc < board[0].length) {
+            if (nr >= 0 && nr < (int)board.size() && nc >= 0 && nc < (int)board[0].size()) {
                 dfs(board, nr, nc, next, result);
             }
         }
         board[r][c] = ch;                            // restore (backtrack)
     }
-}
+
+public:
+    vector<string> findWords(vector<vector<char>>& board, vector<string>& words) {
+        TrieNode* root = buildTrie(words);
+        vector<string> result;
+        for (int r = 0; r < (int)board.size(); r++) {
+            for (int c = 0; c < (int)board[0].size(); c++) {
+                dfs(board, r, c, root, result);
+            }
+        }
+        return result;
+    }
+};
 ```
 
-**Why this crushes the naive approach:** all words share the trie, so common prefixes are explored once. The board DFS is bounded by the trie depth (longest word) and dead-ends are cut immediately when `node.children[ch - 'a'] == null`. See the complexity comparison in [Interview Problems/Amazon.md](../Interview%20Problems/Amazon.md).
+**Why this crushes the naive approach:** all words share the trie, so common prefixes are explored once. The board DFS is bounded by the trie depth (longest word) and dead-ends are cut immediately when `node->children[ch - 'a'] == nullptr`. See the complexity comparison in [Interview Problems/Amazon.md](../Interview%20Problems/Amazon.md).
 
 **Complexity:** **O(M · N · 4^Lmax)** worst case (`Lmax` = longest word length, the `4` = branching after the first step is actually `3`, but `4` for the bound). Building the trie is **O(total characters in words)**.
 
@@ -270,12 +304,12 @@ Words: `["oath", "pea", "eat", "rain"]`. Trie leaves carry: `oath`, `pea`, `eat`
 - Neighbor `(1,0)='e'`? trie node after `o` has no `e` child → return (prune).
 - Neighbor `(0,1)='a'`: node after `o` has child `a` → follow `oa`.
   - From `(0,1)`, neighbor `(1,1)='t'`: node after `oa` has child `t` → `oat`.
-    - From `(1,1)`, neighbor `(2,1)='h'`: node after `oat` has child `h` → `oath`. `node.word == "oath"` → **add "oath"**, then set `node.word = null` (pruned).
+    - From `(1,1)`, neighbor `(2,1)='h'`: node after `oat` has child `h` → `oath`. `node->word == "oath"` → **add "oath"**, then set `node->word = ""` (pruned).
 - `"pea"` has no `p` anywhere reachable → never explored beyond the first cell mismatch.
 - `"eat"`: starts at `(1,0)='e'`. DFS reaches `eat` and adds it.
 - `"rain"`: `r` at `(2,3)`, but no path spells `rain` on adjacent cells → trie walk dead-ends → pruned early.
 
-Result: `["oath", "eat"]`. The `'#'` marking prevents reusing a cell; restoring it on backtrack keeps the board valid for other start cells; nulling `node.word` stops `"oath"` from being added again if reachable another way.
+Result: `["oath", "eat"]`. The `'#'` marking prevents reusing a cell; restoring it on backtrack keeps the board valid for other start cells; setting `node->word = ""` stops `"oath"` from being added again if reachable another way.
 
 ---
 

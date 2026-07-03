@@ -16,14 +16,14 @@ DP state: `dp[mask]` = answer considering exactly the elements in `mask`.
 ## Iterating Subsets
 
 **All subsets of n elements:**
-```java
+```cpp
 for (int mask = 0; mask < (1 << n); mask++) {
     // process subset represented by mask
 }
 ```
 
 **All subsets of a given mask (submasks):**
-```java
+```cpp
 for (int sub = mask; sub > 0; sub = (sub - 1) & mask) {
     // process submask `sub` of `mask`
     // (sub - 1) & mask clears the lowest set bit of sub within mask's bits
@@ -32,7 +32,7 @@ for (int sub = mask; sub > 0; sub = (sub - 1) & mask) {
 ```
 
 **Elements in a mask:**
-```java
+```cpp
 for (int i = 0; i < n; i++) {
     if ((mask >> i & 1) == 1) {
         // element i is in the subset
@@ -44,16 +44,19 @@ for (int i = 0; i < n; i++) {
 
 ## Template 1 — Subsets via Bitmask (LC 78)
 
-```java
-public List<List<Integer>> subsets(int[] nums) {
-    int n = nums.length;
-    List<List<Integer>> result = new ArrayList<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> subsets(vector<int>& nums) {
+    int n = nums.size();
+    vector<vector<int>> result;
     for (int mask = 0; mask < (1 << n); mask++) {
-        List<Integer> subset = new ArrayList<>();
+        vector<int> subset;
         for (int i = 0; i < n; i++) {
-            if ((mask >> i & 1) == 1) subset.add(nums[i]);
+            if ((mask >> i & 1) == 1) subset.push_back(nums[i]);
         }
-        result.add(subset);
+        result.push_back(subset);
     }
     return result;
 }
@@ -67,21 +70,23 @@ public List<List<Integer>> subsets(int[] nums) {
 
 Assign each element of `nums2` to one element of `nums1` (bijection). Minimize sum of `nums1[i] XOR nums2[assignment[i]]`.
 
-```java
-public int minimumXORSum(int[] nums1, int[] nums2) {
-    int n = nums1.length;
-    int[] dp = new int[1 << n];
-    Arrays.fill(dp, Integer.MAX_VALUE);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int minimumXORSum(vector<int>& nums1, vector<int>& nums2) {
+    int n = nums1.size();
+    vector<int> dp(1 << n, INT_MAX);
     dp[0] = 0;
 
     for (int mask = 0; mask < (1 << n); mask++) {
-        if (dp[mask] == Integer.MAX_VALUE) continue;
-        int i = Integer.bitCount(mask); // index in nums1 (number of bits set = next to assign)
+        if (dp[mask] == INT_MAX) continue;
+        int i = __builtin_popcount(mask); // index in nums1 (number of bits set = next to assign)
         if (i == n) continue;
         for (int j = 0; j < n; j++) {
             if ((mask >> j & 1) == 0) { // nums2[j] not yet assigned
                 int newMask = mask | (1 << j);
-                dp[newMask] = Math.min(dp[newMask], dp[mask] + (nums1[i] ^ nums2[j]));
+                dp[newMask] = min(dp[newMask], dp[mask] + (nums1[i] ^ nums2[j]));
             }
         }
     }
@@ -98,28 +103,31 @@ public int minimumXORSum(int[] nums1, int[] nums2) {
 
 BFS with bitmask state: `(node, visited)`.
 
-```java
-public int shortestPathLength(int[][] graph) {
-    int n = graph.length;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int shortestPathLength(vector<vector<int>>& graph) {
+    int n = graph.size();
     int fullMask = (1 << n) - 1;
-    Queue<int[]> queue = new LinkedList<>();
-    boolean[][] visited = new boolean[n][1 << n];
+    queue<vector<int>> q;
+    vector<vector<bool>> visited(n, vector<bool>(1 << n, false));
 
     // Start BFS from all nodes simultaneously
     for (int i = 0; i < n; i++) {
-        queue.offer(new int[]{i, 1 << i, 0}); // {node, visited_mask, distance}
+        q.push({i, 1 << i, 0}); // {node, visited_mask, distance}
         visited[i][1 << i] = true;
     }
 
-    while (!queue.isEmpty()) {
-        int[] curr = queue.poll();
+    while (!q.empty()) {
+        auto curr = q.front(); q.pop();
         int node = curr[0], mask = curr[1], dist = curr[2];
         if (mask == fullMask) return dist;
         for (int neighbor : graph[node]) {
             int newMask = mask | (1 << neighbor);
             if (!visited[neighbor][newMask]) {
                 visited[neighbor][newMask] = true;
-                queue.offer(new int[]{neighbor, newMask, dist + 1});
+                q.push({neighbor, newMask, dist + 1});
             }
         }
     }
@@ -133,18 +141,22 @@ public int shortestPathLength(int[][] graph) {
 
 ## Template 4 — Partition to K Equal Sum Subsets (LC 698)
 
-```java
-public boolean canPartitionKSubsets(int[] nums, int k) {
-    int sum = Arrays.stream(nums).sum();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool canPartitionKSubsets(vector<int>& nums, int k) {
+    int sum = 0;
+    for (int x : nums) sum += x;
     if (sum % k != 0) return false;
     int target = sum / k;
-    Arrays.sort(nums);
-    if (nums[nums.length - 1] > target) return false;
+    sort(nums.begin(), nums.end());
+    if (nums[nums.size() - 1] > target) return false;
 
-    int n = nums.length;
-    boolean[] dp = new boolean[1 << n]; // dp[mask] = can form valid k-1 subsets using nums in mask
+    int n = nums.size();
+    vector<bool> dp(1 << n, false); // dp[mask] = can form valid k-1 subsets using nums in mask
     dp[0] = true;
-    int[] curSum = new int[1 << n]; // current bucket sum for each mask
+    vector<int> curSum(1 << n, 0); // current bucket sum for each mask
 
     for (int mask = 0; mask < (1 << n); mask++) {
         if (!dp[mask]) continue;

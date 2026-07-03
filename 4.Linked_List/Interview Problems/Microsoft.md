@@ -29,38 +29,41 @@
 
 ### Full Solution
 
-```java
-public boolean isPalindrome(ListNode head) {
-    if (head == null || head.next == null) return true;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool isPalindrome(ListNode* head) {
+    if (head == nullptr || head->next == nullptr) return true;
 
     // Find end of first half
-    ListNode slow = head, fast = head;
-    while (fast.next != null && fast.next.next != null) {
-        slow = slow.next;
-        fast = fast.next.next;
+    ListNode* slow = head, *fast = head;
+    while (fast->next != nullptr && fast->next->next != nullptr) {
+        slow = slow->next;
+        fast = fast->next->next;
     }
     // slow is now last node of first half
 
     // Reverse second half
-    ListNode secondHalf = reverse(slow.next);
-    ListNode p1 = head, p2 = secondHalf;
-    boolean isPalin = true;
+    ListNode* secondHalf = reverse(slow->next);
+    ListNode* p1 = head, *p2 = secondHalf;
+    bool isPalin = true;
 
-    while (p2 != null) {
-        if (p1.val != p2.val) { isPalin = false; break; }
-        p1 = p1.next;
-        p2 = p2.next;
+    while (p2 != nullptr) {
+        if (p1->val != p2->val) { isPalin = false; break; }
+        p1 = p1->next;
+        p2 = p2->next;
     }
 
-    slow.next = reverse(secondHalf); // restore
+    slow->next = reverse(secondHalf); // restore
     return isPalin;
 }
 
-private ListNode reverse(ListNode head) {
-    ListNode prev = null, curr = head;
-    while (curr != null) {
-        ListNode nxt = curr.next;
-        curr.next = prev;
+ListNode* reverse(ListNode* head) {
+    ListNode* prev = nullptr, *curr = head;
+    while (curr != nullptr) {
+        ListNode* nxt = curr->next;
+        curr->next = prev;
         prev = curr;
         curr = nxt;
     }
@@ -76,7 +79,7 @@ private ListNode reverse(ListNode head) {
 
 Microsoft occasionally asks for the **O(1) space** sort — bottom-up merge sort avoids call stack:
 
-```java
+```cpp
 // Key insight: iterate sublist sizes 1, 2, 4, 8, ...
 // For each size, merge adjacent pairs of sublists
 for (int size = 1; size < length; size <<= 1) {
@@ -90,8 +93,8 @@ Full implementation in [Merge Linked Lists Pattern](../Patterns/Merge%20Linked%2
 
 ## Microsoft Interview Tips
 
-- Proactively mention edge cases: `null` head, single node, two nodes
-- For LRU Cache: mention `LinkedHashMap` exists in Java but implement from scratch
+- Proactively mention edge cases: `nullptr` head, single node, two nodes
+- For LRU Cache: mention `std::list` + `std::unordered_map` exists in C++ but implement from scratch
 - Dry run your pointer manipulations out loud — draw boxes and arrows if on whiteboard
 
 ---

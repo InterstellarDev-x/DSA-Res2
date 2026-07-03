@@ -18,38 +18,41 @@ Order information lives only in **adjacent pairs**. For consecutive words `w1`, 
 
 If `w1` is a **prefix-superset** of `w2` — i.e. `w2` is a proper prefix of `w1` like `["abc", "ab"]` — a longer word sorts before its own prefix, which is impossible. This must return `""`. It's the single most-missed case in this problem.
 
-```java
-public String alienOrder(String[] words) {
-    Map<Character, Set<Character>> adj = new HashMap<>();
-    Map<Character, Integer> indegree = new HashMap<>();
-    for (String w : words)
-        for (char c : w.toCharArray()) {
-            adj.putIfAbsent(c, new HashSet<>());
-            indegree.putIfAbsent(c, 0);      // every char is a node
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+string alienOrder(vector<string>& words) {
+    unordered_map<char, unordered_set<char>> adj;
+    unordered_map<char, int> indegree;
+    for (auto& w : words)
+        for (char c : w) {
+            if (!adj.count(c)) adj[c] = {};
+            if (!indegree.count(c)) indegree[c] = 0;  // every char is a node
         }
-    for (int i = 0; i + 1 < words.length; i++) {
-        String a = words[i], b = words[i + 1];
-        int len = Math.min(a.length(), b.length());
+    for (int i = 0; i + 1 < (int)words.size(); i++) {
+        auto& a = words[i]; auto& b = words[i + 1];
+        int len = min(a.length(), b.length());
         int j = 0;
-        while (j < len && a.charAt(j) == b.charAt(j)) j++;
-        if (j == len) {
+        while (j < (int)len && a[j] == b[j]) j++;
+        if (j == (int)len) {
             if (a.length() > b.length()) return "";   // prefix conflict
         } else {
-            char from = a.charAt(j), to = b.charAt(j);
-            if (adj.get(from).add(to)) indegree.merge(to, 1, Integer::sum);
+            char from = a[j], to = b[j];
+            if (adj[from].insert(to).second) indegree[to]++;
         }
     }
-    Queue<Character> queue = new ArrayDeque<>();
-    for (var e : indegree.entrySet())
-        if (e.getValue() == 0) queue.offer(e.getKey());
-    StringBuilder sb = new StringBuilder();
-    while (!queue.isEmpty()) {
-        char c = queue.poll();
-        sb.append(c);
-        for (char next : adj.get(c))
-            if (indegree.merge(next, -1, Integer::sum) == 0) queue.offer(next);
+    queue<char> q;
+    for (auto& [c, deg] : indegree)
+        if (deg == 0) q.push(c);
+    string sb;
+    while (!q.empty()) {
+        char c = q.front(); q.pop();
+        sb += c;
+        for (char next : adj[c])
+            if (--indegree[next] == 0) q.push(next);
     }
-    return sb.length() == indegree.size() ? sb.toString() : "";  // cycle ⇒ ""
+    return sb.size() == indegree.size() ? sb : "";  // cycle ⇒ ""
 }
 ```
 
@@ -71,34 +74,37 @@ Find every edge whose removal disconnects the graph (a **bridge**).
 
 Run a single DFS assigning each node a **discovery time** `disc[u]` (the timer when first visited). `low[u]` is the smallest discovery time reachable from `u`'s subtree using tree edges plus **at most one back edge**. An edge `(u, v)` (v a child of u) is a bridge **iff** `low[v] > disc[u]` — meaning v's subtree has no back edge climbing to u or above, so cutting `(u,v)` isolates it.
 
-```java
-int timer = 0;
-public List<List<Integer>> criticalConnections(int n, List<List<Integer>> connections) {
-    List<List<Integer>> adj = new ArrayList<>();
-    for (int i = 0; i < n; i++) adj.add(new ArrayList<>());
-    for (List<Integer> e : connections) {
-        adj.get(e.get(0)).add(e.get(1));
-        adj.get(e.get(1)).add(e.get(0));
-    }
-    int[] disc = new int[n], low = new int[n];
-    Arrays.fill(disc, -1);
-    List<List<Integer>> bridges = new ArrayList<>();
-    dfs(0, -1, adj, disc, low, bridges);
-    return bridges;
-}
-private void dfs(int u, int parent, List<List<Integer>> adj,
-                 int[] disc, int[] low, List<List<Integer>> bridges) {
-    disc[u] = low[u] = timer++;
-    for (int v : adj.get(u)) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int timer_ = 0;
+
+void dfs(int u, int parent, vector<vector<int>>& adj,
+         vector<int>& disc, vector<int>& low, vector<vector<int>>& bridges) {
+    disc[u] = low[u] = timer_++;
+    for (int v : adj[u]) {
         if (v == parent) continue;            // skip the edge we came in on
         if (disc[v] == -1) {
             dfs(v, u, adj, disc, low, bridges);
-            low[u] = Math.min(low[u], low[v]);
-            if (low[v] > disc[u]) bridges.add(List.of(u, v));   // bridge test
+            low[u] = min(low[u], low[v]);
+            if (low[v] > disc[u]) bridges.push_back({u, v});   // bridge test
         } else {
-            low[u] = Math.min(low[u], disc[v]);  // back edge
+            low[u] = min(low[u], disc[v]);  // back edge
         }
     }
+}
+
+vector<vector<int>> criticalConnections(int n, vector<vector<int>>& connections) {
+    vector<vector<int>> adj(n);
+    for (auto& e : connections) {
+        adj[e[0]].push_back(e[1]);
+        adj[e[1]].push_back(e[0]);
+    }
+    vector<int> disc(n, -1), low(n, 0);
+    vector<vector<int>> bridges;
+    dfs(0, -1, adj, disc, low, bridges);
+    return bridges;
 }
 ```
 
@@ -121,12 +127,14 @@ This is an MST on a **complete graph** (every pair is an edge → E = O(V²)).
 
 → For a complete graph, **Prim wins**. Kruskal shines on **sparse** graphs given as an edge list.
 
-```java
-public int minCostConnectPoints(int[][] points) {
-    int n = points.length;
-    boolean[] inMST = new boolean[n];
-    int[] minDist = new int[n];
-    Arrays.fill(minDist, Integer.MAX_VALUE);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int minCostConnectPoints(vector<vector<int>>& points) {
+    int n = points.size();
+    vector<bool> inMST(n, false);
+    vector<int> minDist(n, INT_MAX);
     minDist[0] = 0;
     int total = 0;
     for (int iter = 0; iter < n; iter++) {
@@ -137,8 +145,8 @@ public int minCostConnectPoints(int[][] points) {
         total += minDist[u];
         for (int v = 0; v < n; v++) {               // relax neighbors
             if (inMST[v]) continue;
-            int d = Math.abs(points[u][0] - points[v][0])
-                  + Math.abs(points[u][1] - points[v][1]);
+            int d = abs(points[u][0] - points[v][0])
+                  + abs(points[u][1] - points[v][1]);
             if (d < minDist[v]) minDist[v] = d;
         }
     }
@@ -158,47 +166,54 @@ Return **all** shortest transformation sequences.
 
 A single BFS finds the shortest length but not the paths. The clean approach: **BFS to build a parent (predecessor) map level by level**, ensuring we only keep predecessors from the *previous* layer (so all recorded paths are shortest), then **DFS-backtrack** from `endWord` to `beginWord` to reconstruct every path.
 
-```java
-public List<List<String>> findLadders(String beginWord, String endWord, List<String> wordList) {
-    Set<String> dict = new HashSet<>(wordList);
-    List<List<String>> res = new ArrayList<>();
-    if (!dict.contains(endWord)) return res;
-    Map<String, List<String>> parents = new HashMap<>();
-    Set<String> level = new HashSet<>();
-    level.add(beginWord);
-    boolean found = false;
-    while (!level.isEmpty() && !found) {
-        dict.removeAll(level);                       // remove this layer from dict
-        Set<String> next = new HashSet<>();
-        for (String word : level) {
-            char[] arr = word.toCharArray();
-            for (int i = 0; i < arr.length; i++) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void backtrack(const string& word, const string& begin,
+               unordered_map<string, vector<string>>& parents,
+               deque<string>& path, vector<vector<string>>& res) {
+    path.push_front(word);
+    if (word == begin) {
+        res.push_back(vector<string>(path.begin(), path.end()));
+    } else if (parents.count(word)) {
+        for (auto& p : parents[word]) backtrack(p, begin, parents, path, res);
+    }
+    path.pop_front();
+}
+
+vector<vector<string>> findLadders(string beginWord, string endWord, vector<string>& wordList) {
+    unordered_set<string> dict(wordList.begin(), wordList.end());
+    vector<vector<string>> res;
+    if (!dict.count(endWord)) return res;
+    unordered_map<string, vector<string>> parents;
+    unordered_set<string> level;
+    level.insert(beginWord);
+    bool found = false;
+    while (!level.empty() && !found) {
+        for (auto& w : level) dict.erase(w);         // remove this layer from dict
+        unordered_set<string> next;
+        for (auto& word : level) {
+            string arr = word;
+            for (int i = 0; i < (int)arr.size(); i++) {
                 char old = arr[i];
                 for (char c = 'a'; c <= 'z'; c++) {
                     arr[i] = c;
-                    String cand = new String(arr);
-                    if (!dict.contains(cand)) continue;
-                    if (cand.equals(endWord)) found = true;
-                    next.add(cand);
-                    parents.computeIfAbsent(cand, k -> new ArrayList<>()).add(word);
+                    if (!dict.count(arr)) continue;
+                    if (arr == endWord) found = true;
+                    next.insert(arr);
+                    parents[arr].push_back(word);
                 }
                 arr[i] = old;
             }
         }
         level = next;
     }
-    if (found) backtrack(endWord, beginWord, parents, new LinkedList<>(), res);
-    return res;
-}
-private void backtrack(String word, String begin, Map<String, List<String>> parents,
-                       LinkedList<String> path, List<List<String>> res) {
-    path.addFirst(word);
-    if (word.equals(begin)) {
-        res.add(new ArrayList<>(path));
-    } else if (parents.containsKey(word)) {
-        for (String p : parents.get(word)) backtrack(p, begin, parents, path, res);
+    if (found) {
+        deque<string> path;
+        backtrack(endWord, beginWord, parents, path, res);
     }
-    path.removeFirst();
+    return res;
 }
 ```
 

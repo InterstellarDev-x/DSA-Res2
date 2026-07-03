@@ -29,58 +29,59 @@ When the interval is empty or a single element (`i >= j`, or `i + 1 == j`, etc.)
 
 ### Memoized (top-down) skeleton
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class PartitionTemplate {
-    int[][] memo;
+    vector<vector<int>> memo;
 
-    int solve(int[] arr) {
-        int n = arr.length;
-        memo = new int[n][n];
-        for (int i = 0; i < n; i++) {
-            Arrays.fill(memo[i], -1);
-        }
+    int solve(vector<int>& arr) {
+        int n = arr.size();
+        memo.assign(n, vector<int>(n, -1));
         return dp(arr, /*i=*/0, /*j=*/n - 1);
     }
 
-    int dp(int[] arr, int i, int j) {
+    int dp(vector<int>& arr, int i, int j) {
         if (i >= j) {
             return 0;                       // empty / single-element interval
         }
         if (memo[i][j] != -1) {
             return memo[i][j];
         }
-        int best = Integer.MAX_VALUE;       // use Integer.MIN_VALUE for maximization
+        int best = INT_MAX;       // use INT_MIN for maximization
         for (int k = i; k < j; k++) {       // try every partition point
             int cost = dp(arr, i, k) + dp(arr, k + 1, j) + mergeCost(arr, i, k, j);
-            best = Math.min(best, cost);
+            best = min(best, cost);
         }
         return memo[i][j] = best;
     }
 
-    int mergeCost(int[] arr, int i, int k, int j) {
+    int mergeCost(vector<int>& arr, int i, int k, int j) {
         return 0;                           // problem-specific
     }
-}
+};
 ```
 
 ### Tabulated (bottom-up) skeleton
 
 Because `dp(i, j)` depends on **smaller intervals** (`[i, k]` and `[k+1, j]`, both shorter than `[i, j]`), we fill the table by **increasing interval length**. Equivalently, iterate `i` from high to low and `j` from low to high — this guarantees the sub-intervals are already computed.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class PartitionTemplateTab {
-    int solve(int[] arr) {
-        int n = arr.length;
-        int[][] dp = new int[n][n];         // dp[i][i] == 0 already (empty interval)
+    int solve(vector<int>& arr) {
+        int n = arr.size();
+        vector<vector<int>> dp(n, vector<int>(n, 0));  // dp[i][i] == 0 already (empty interval)
 
         for (int i = n - 1; i >= 0; i--) {      // decreasing i
             for (int j = i + 1; j < n; j++) {   // increasing j  (j > i)
-                int best = Integer.MAX_VALUE;
+                int best = INT_MAX;
                 for (int k = i; k < j; k++) {
                     int cost = dp[i][k] + dp[k + 1][j] + mergeCost(arr, i, k, j);
-                    best = Math.min(best, cost);
+                    best = min(best, cost);
                 }
                 dp[i][j] = best;
             }
@@ -88,10 +89,10 @@ class PartitionTemplateTab {
         return dp[0][n - 1];
     }
 
-    int mergeCost(int[] arr, int i, int k, int j) {
+    int mergeCost(vector<int>& arr, int i, int k, int j) {
         return 0;
     }
-}
+};
 ```
 
 > **Why decreasing `i`, increasing `j`?** `dp[i][k]` uses the same row `i` but a column `k < j` (already done in this row). `dp[k+1][j]` uses a *lower* row `k + 1 > i` (already done because we go from the bottom up). Filling by length `len = j - i` from `1` to `n - 1` is an equivalent, more explicit ordering.
@@ -113,63 +114,64 @@ Given dimensions `arr[]` where matrix `i` (1-indexed) has shape `arr[i-1] x arr[
 
 ### Recursion + Memoization
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class MatrixChainMemo {
-    int[][] memo;
+    vector<vector<int>> memo;
 
-    int matrixMultiplication(int[] arr) {
-        int n = arr.length;                 // n-1 matrices
-        memo = new int[n][n];
-        for (int i = 0; i < n; i++) {
-            Arrays.fill(memo[i], -1);
-        }
+    int matrixMultiplication(vector<int>& arr) {
+        int n = arr.size();                 // n-1 matrices
+        memo.assign(n, vector<int>(n, -1));
         return dp(arr, 1, n - 1);
     }
 
-    int dp(int[] arr, int i, int j) {
+    int dp(vector<int>& arr, int i, int j) {
         if (i >= j) {
             return 0;                       // single matrix (or empty)
         }
         if (memo[i][j] != -1) {
             return memo[i][j];
         }
-        int best = Integer.MAX_VALUE;
+        int best = INT_MAX;
         for (int k = i; k < j; k++) {
             int cost = dp(arr, i, k)
                      + dp(arr, k + 1, j)
                      + arr[i - 1] * arr[k] * arr[j];
-            best = Math.min(best, cost);
+            best = min(best, cost);
         }
         return memo[i][j] = best;
     }
-}
+};
 ```
 
 ### Tabulation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class MatrixChainTab {
-    int matrixMultiplication(int[] arr) {
-        int n = arr.length;
-        int[][] dp = new int[n][n];         // dp[i][i] = 0 by default
+    int matrixMultiplication(vector<int>& arr) {
+        int n = arr.size();
+        vector<vector<int>> dp(n, vector<int>(n, 0));  // dp[i][i] = 0 by default
 
         for (int i = n - 1; i >= 1; i--) {
             for (int j = i + 1; j < n; j++) {
-                int best = Integer.MAX_VALUE;
+                int best = INT_MAX;
                 for (int k = i; k < j; k++) {
                     int cost = dp[i][k]
                              + dp[k + 1][j]
                              + arr[i - 1] * arr[k] * arr[j];
-                    best = Math.min(best, cost);
+                    best = min(best, cost);
                 }
                 dp[i][j] = best;
             }
         }
         return dp[1][n - 1];
     }
-}
+};
 ```
 
 ### Dry run
@@ -214,79 +216,78 @@ A stick of length `n` must be cut at every position in `cuts[]`. The cost of one
 
 ### Memoization
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class CutStickMemo {
-    int[][] memo;
+    vector<vector<int>> memo;
 
-    int minCost(int n, int[] cuts) {
-        int c = cuts.length;
-        int[] arr = new int[c + 2];
+    int minCost(int n, vector<int>& cuts) {
+        int c = cuts.size();
+        vector<int> arr(c + 2);
         arr[0] = 0;
         arr[c + 1] = n;
         for (int i = 0; i < c; i++) {
             arr[i + 1] = cuts[i];
         }
-        Arrays.sort(arr);
+        sort(arr.begin(), arr.end());
 
-        int m = arr.length;
-        memo = new int[m][m];
-        for (int i = 0; i < m; i++) {
-            Arrays.fill(memo[i], -1);
-        }
+        int m = arr.size();
+        memo.assign(m, vector<int>(m, -1));
         return dp(arr, 0, m - 1);
     }
 
-    int dp(int[] arr, int i, int j) {
+    int dp(vector<int>& arr, int i, int j) {
         if (j - i <= 1) {
             return 0;                       // no cut lies strictly inside
         }
         if (memo[i][j] != -1) {
             return memo[i][j];
         }
-        int best = Integer.MAX_VALUE;
+        int best = INT_MAX;
         for (int k = i + 1; k < j; k++) {
             int cost = dp(arr, i, k) + dp(arr, k, j) + (arr[j] - arr[i]);
-            best = Math.min(best, cost);
+            best = min(best, cost);
         }
         return memo[i][j] = best;
     }
-}
+};
 ```
 
 ### Tabulation
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class CutStickTab {
-    int minCost(int n, int[] cuts) {
-        int c = cuts.length;
-        int[] arr = new int[c + 2];
+    int minCost(int n, vector<int>& cuts) {
+        int c = cuts.size();
+        vector<int> arr(c + 2);
         arr[0] = 0;
         arr[c + 1] = n;
         for (int i = 0; i < c; i++) {
             arr[i + 1] = cuts[i];
         }
-        Arrays.sort(arr);
+        sort(arr.begin(), arr.end());
 
-        int m = arr.length;
-        int[][] dp = new int[m][m];
+        int m = arr.size();
+        vector<vector<int>> dp(m, vector<int>(m, 0));
 
         for (int i = m - 1; i >= 0; i--) {
             for (int j = i + 2; j < m; j++) {   // need at least one cut between
-                int best = Integer.MAX_VALUE;
+                int best = INT_MAX;
                 for (int k = i + 1; k < j; k++) {
                     int cost = dp[i][k] + dp[k][j] + (arr[j] - arr[i]);
-                    best = Math.min(best, cost);
+                    best = min(best, cost);
                 }
                 dp[i][j] = best;
             }
         }
         return dp[0][m - 1];
     }
-}
+};
 ```
 
 ### Complexity
@@ -314,79 +315,80 @@ We pad `nums` with `1` on both ends so boundary multiplications are well-defined
 
 ### Memoization
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class BurstBalloonsMemo {
-    int[][] memo;
+    vector<vector<int>> memo;
 
-    int maxCoins(int[] nums) {
-        int n = nums.length;
-        int[] padded = new int[n + 2];
+    int maxCoins(vector<int>& nums) {
+        int n = nums.size();
+        vector<int> padded(n + 2);
         padded[0] = 1;
         padded[n + 1] = 1;
         for (int i = 0; i < n; i++) {
             padded[i + 1] = nums[i];
         }
 
-        int m = padded.length;
-        memo = new int[m][m];
-        for (int i = 0; i < m; i++) {
-            Arrays.fill(memo[i], -1);
-        }
+        int m = padded.size();
+        memo.assign(m, vector<int>(m, -1));
         return dp(padded, 0, m - 1);
     }
 
-    int dp(int[] padded, int i, int j) {
+    int dp(vector<int>& padded, int i, int j) {
         if (j - i <= 1) {
             return 0;                       // no balloon between i and j
         }
         if (memo[i][j] != -1) {
             return memo[i][j];
         }
-        int best = Integer.MIN_VALUE;
+        int best = INT_MIN;
         for (int k = i + 1; k < j; k++) {   // k = last balloon to burst in (i, j)
             int coins = dp(padded, i, k)
                       + dp(padded, k, j)
                       + padded[i] * padded[k] * padded[j];
-            best = Math.max(best, coins);
+            best = max(best, coins);
         }
         return memo[i][j] = best;
     }
-}
+};
 ```
 
 ### Tabulation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class BurstBalloonsTab {
-    int maxCoins(int[] nums) {
-        int n = nums.length;
-        int[] padded = new int[n + 2];
+    int maxCoins(vector<int>& nums) {
+        int n = nums.size();
+        vector<int> padded(n + 2);
         padded[0] = 1;
         padded[n + 1] = 1;
         for (int i = 0; i < n; i++) {
             padded[i + 1] = nums[i];
         }
 
-        int m = padded.length;
-        int[][] dp = new int[m][m];
+        int m = padded.size();
+        vector<vector<int>> dp(m, vector<int>(m, 0));
 
         for (int i = m - 1; i >= 0; i--) {
             for (int j = i + 2; j < m; j++) {
-                int best = Integer.MIN_VALUE;
+                int best = INT_MIN;
                 for (int k = i + 1; k < j; k++) {
                     int coins = dp[i][k]
                               + dp[k][j]
                               + padded[i] * padded[k] * padded[j];
-                    best = Math.max(best, coins);
+                    best = max(best, coins);
                 }
                 dp[i][j] = best;
             }
         }
         return dp[0][m - 1];
     }
-}
+};
 ```
 
 ### Complexity
@@ -415,42 +417,42 @@ Given a boolean expression string with operands `T`/`F` and operators `&`, `|`, 
 
 ### Memoization (encoded state)
 
-We encode `(i, j, isTrue)` into one integer key and memoize in a `HashMap`. Counts are kept modulo `1000` to match the GFG variant.
+We encode `(i, j, isTrue)` into one integer key and memoize in a `std::unordered_map`. Counts are kept modulo `1000` to match the GFG variant.
 
-```java
-import java.util.HashMap;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class BooleanEvalMemo {
-    static final int MOD = 1000;
-    HashMap<String, Integer> memo;
+    static const int MOD = 1000;
+    unordered_map<string, int> memo;
 
-    int countWays(String s) {
-        memo = new HashMap<>();
+    int countWays(string s) {
+        memo.clear();
         return solve(s, 0, s.length() - 1, true);
     }
 
     // returns number of ways s[i..j] evaluates to isTrue
-    int solve(String s, int i, int j, boolean isTrue) {
+    int solve(string& s, int i, int j, bool isTrue) {
         if (i > j) {
             return 0;
         }
         if (i == j) {
-            char c = s.charAt(i);
+            char c = s[i];
             if (isTrue) {
                 return c == 'T' ? 1 : 0;
             } else {
                 return c == 'F' ? 1 : 0;
             }
         }
-        String key = i + "_" + j + "_" + (isTrue ? 1 : 0);   // encoded state
-        Integer cached = memo.get(key);
-        if (cached != null) {
-            return cached;
+        string key = to_string(i) + "_" + to_string(j) + "_" + (isTrue ? "1" : "0");   // encoded state
+        if (memo.count(key)) {
+            return memo[key];
         }
 
         int ways = 0;
         for (int k = i + 1; k < j; k += 2) {                 // operators at odd offsets
-            char op = s.charAt(k);
+            char op = s[k];
             int lt = solve(s, i, k - 1, true);
             int lf = solve(s, i, k - 1, false);
             int rt = solve(s, k + 1, j, true);
@@ -469,10 +471,10 @@ class BooleanEvalMemo {
             ways %= MOD;
         }
 
-        memo.put(key, ways);
+        memo[key] = ways;
         return ways;
     }
-}
+};
 ```
 
 > **Note on the merge cost:** unlike pure MCM, here the "cost" combines *both* truth counts of the children, which is why we recurse for `true` and `false` separately. This is still a partition DP — `k` is the operator we evaluate **last**.
@@ -501,15 +503,18 @@ Partition string `s` so every substring is a palindrome; return the **minimum nu
 
 ### Precompute isPalindrome table
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class PalindromePartitionII {
 
-    boolean[][] buildIsPalindrome(String s) {
+    vector<vector<bool>> buildIsPalindrome(string& s) {
         int n = s.length();
-        boolean[][] isPal = new boolean[n][n];
+        vector<vector<bool>> isPal(n, vector<bool>(n, false));
         for (int i = n - 1; i >= 0; i--) {
             for (int j = i; j < n; j++) {
-                if (s.charAt(i) == s.charAt(j) && (j - i < 2 || isPal[i + 1][j - 1])) {
+                if (s[i] == s[j] && (j - i < 2 || isPal[i + 1][j - 1])) {
                     isPal[i][j] = true;
                 }
             }
@@ -518,52 +523,52 @@ class PalindromePartitionII {
     }
 
     // Tabulated front-partition DP
-    int minCut(String s) {
+    int minCut(string s) {
         int n = s.length();
-        boolean[][] isPal = buildIsPalindrome(s);
+        auto isPal = buildIsPalindrome(s);
 
-        int[] dp = new int[n + 1];
+        vector<int> dp(n + 1);
         dp[n] = -1;                         // sentinel so last palindrome costs 0 cuts
 
         for (int i = n - 1; i >= 0; i--) {
-            int best = Integer.MAX_VALUE;
+            int best = INT_MAX;
             for (int k = i; k < n; k++) {   // s[i..k] is the first piece
                 if (isPal[i][k]) {
-                    best = Math.min(best, 1 + dp[k + 1]);
+                    best = min(best, 1 + dp[k + 1]);
                 }
             }
             dp[i] = best;
         }
         return dp[0];
     }
-}
+};
 ```
 
 ### Memoized variant
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class PalindromePartitionIIMemo {
-    boolean[][] isPal;
-    int[] memo;
+    vector<vector<bool>> isPal;
+    vector<int> memo;
 
-    int minCut(String s) {
+    int minCut(string s) {
         int n = s.length();
-        isPal = new boolean[n][n];
+        isPal.assign(n, vector<bool>(n, false));
         for (int i = n - 1; i >= 0; i--) {
             for (int j = i; j < n; j++) {
-                if (s.charAt(i) == s.charAt(j) && (j - i < 2 || isPal[i + 1][j - 1])) {
+                if (s[i] == s[j] && (j - i < 2 || isPal[i + 1][j - 1])) {
                     isPal[i][j] = true;
                 }
             }
         }
-        memo = new int[n];
-        Arrays.fill(memo, -1);
+        memo.assign(n, -1);
         return dp(s, 0);
     }
 
-    int dp(String s, int i) {
+    int dp(string& s, int i) {
         int n = s.length();
         if (i == n) {
             return -1;                      // sentinel
@@ -571,15 +576,15 @@ class PalindromePartitionIIMemo {
         if (memo[i] != -1) {
             return memo[i];
         }
-        int best = Integer.MAX_VALUE;
+        int best = INT_MAX;
         for (int k = i; k < n; k++) {
             if (isPal[i][k]) {
-                best = Math.min(best, 1 + dp(s, k + 1));
+                best = min(best, 1 + dp(s, k + 1));
             }
         }
         return memo[i] = best;
     }
-}
+};
 ```
 
 ### Complexity
@@ -607,60 +612,63 @@ Partition `arr[]` into contiguous subarrays of length **at most `k`**. After par
 
 ### Tabulation (front partition)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class PartitionForMaxSum {
-    int maxSumAfterPartitioning(int[] arr, int k) {
-        int n = arr.length;
-        int[] dp = new int[n + 1];          // dp[n] = 0 by default
+    int maxSumAfterPartitioning(vector<int>& arr, int k) {
+        int n = arr.size();
+        vector<int> dp(n + 1, 0);          // dp[n] = 0 by default
 
         for (int i = n - 1; i >= 0; i--) {
-            int curMax = Integer.MIN_VALUE;
-            int best = Integer.MIN_VALUE;
+            int curMax = INT_MIN;
+            int best = INT_MIN;
             for (int len = 1; len <= k && i + len <= n; len++) {
-                curMax = Math.max(curMax, arr[i + len - 1]);
+                curMax = max(curMax, arr[i + len - 1]);
                 int candidate = curMax * len + dp[i + len];
-                best = Math.max(best, candidate);
+                best = max(best, candidate);
             }
             dp[i] = best;
         }
         return dp[0];
     }
-}
+};
 ```
 
 ### Memoized variant
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class PartitionForMaxSumMemo {
-    int[] memo;
+    vector<int> memo;
 
-    int maxSumAfterPartitioning(int[] arr, int k) {
-        int n = arr.length;
-        memo = new int[n];
-        Arrays.fill(memo, -1);
+    int maxSumAfterPartitioning(vector<int>& arr, int k) {
+        int n = arr.size();
+        memo.assign(n, -1);
         return dp(arr, k, 0);
     }
 
-    int dp(int[] arr, int k, int i) {
-        int n = arr.length;
+    int dp(vector<int>& arr, int k, int i) {
+        int n = arr.size();
         if (i == n) {
             return 0;
         }
         if (memo[i] != -1) {
             return memo[i];
         }
-        int curMax = Integer.MIN_VALUE;
-        int best = Integer.MIN_VALUE;
+        int curMax = INT_MIN;
+        int best = INT_MIN;
         for (int len = 1; len <= k && i + len <= n; len++) {
-            curMax = Math.max(curMax, arr[i + len - 1]);
+            curMax = max(curMax, arr[i + len - 1]);
             int candidate = curMax * len + dp(arr, k, i + len);
-            best = Math.max(best, candidate);
+            best = max(best, candidate);
         }
         return memo[i] = best;
     }
-}
+};
 ```
 
 ### Complexity
@@ -708,6 +716,6 @@ class PartitionForMaxSumMemo {
 - For Burst Balloons and Cut a Stick, reasoning about the **last** operation (rather than the first) keeps the boundary cost fixed and well-defined — padding with sentinels makes the boundaries always valid.
 - Boolean Evaluation generalizes the merge step: you must carry **both** truth counts because the cost of one child's truth depends on the other child's falsity.
 - **Front-partition** problems (46–47) collapse to a 1-D `dp[i]` because only the *first* piece's boundary matters; they are cheaper (`O(n^2)` or `O(n*k)`) and overlap with the [DP on Strings](./DP%20on%20Strings.md) pattern.
-- Always use `int[][] dp`/`int[] dp`, `Arrays.fill(memo[i], -1)` for memo sentinels, and `Math.min`/`Math.max` for the merge.
+- Always use `vector<vector<int>> dp`/`vector<int> dp`, `.assign(n, -1)` for memo sentinels, and `min`/`max` for the merge.
 
 > **Last Updated:** 2026-06-26

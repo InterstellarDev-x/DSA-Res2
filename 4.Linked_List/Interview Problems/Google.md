@@ -26,26 +26,26 @@ Leave them in original order. The check `getKth(groupPrev, k) == null` handles t
 
 **Q2: Can you do it recursively?**
 
-```java
-public ListNode reverseKGroup(ListNode head, int k) {
+```cpp
+ListNode* reverseKGroup(ListNode* head, int k) {
     // Check if k nodes exist
-    ListNode node = head;
+    ListNode* node = head;
     for (int i = 0; i < k; i++) {
-        if (node == null) return head; // < k nodes, no reversal
-        node = node.next;
+        if (node == nullptr) return head; // < k nodes, no reversal
+        node = node->next;
     }
 
     // Reverse k nodes
-    ListNode prev = null, curr = head;
+    ListNode* prev = nullptr, *curr = head;
     for (int i = 0; i < k; i++) {
-        ListNode nxt = curr.next;
-        curr.next = prev;
+        ListNode* nxt = curr->next;
+        curr->next = prev;
         prev = curr;
         curr = nxt;
     }
 
     // head is now tail of reversed group; connect to recursed rest
-    head.next = reverseKGroup(curr, k);
+    head->next = reverseKGroup(curr, k);
     return prev; // prev is new head
 }
 ```
@@ -73,8 +73,11 @@ next:   1  3  4  2  2
 Graph: 0→1→3→2→4→2 (cycle at 2)
 ```
 
-```java
-public int findDuplicate(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int findDuplicate(vector<int>& nums) {
     int slow = nums[0], fast = nums[nums[0]];
     while (slow != fast) {
         slow = nums[slow];

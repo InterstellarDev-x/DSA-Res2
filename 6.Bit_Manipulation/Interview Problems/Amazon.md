@@ -20,8 +20,8 @@
 
 ### The Carry Simulation Loop
 
-```java
-public int getSum(int a, int b) {
+```cpp
+int getSum(int a, int b) {
     while (b != 0) {
         int carry = (a & b) << 1; // AND gives carry positions; left shift moves them up
         a = a ^ b;                 // XOR gives sum without carry
@@ -42,14 +42,14 @@ public int getSum(int a, int b) {
 `a - b = a + (~b + 1) = getSum(a, getSum(~b, 1))`
 
 **Q: What about overflow?**
-In Java, `int` is 32-bit with overflow defined behavior (wraps around). No special handling needed — the carry eventually shifts out of 32 bits.
+In C++, `int` is 32-bit and signed integer overflow is undefined behavior; use `unsigned int` or cast to `unsigned` for safe wraparound. The carry eventually shifts out of 32 bits.
 
 ---
 
 ## Deep Dive: Single Number II
 
 **Method 1 — State machine (O(1) space):**
-```java
+```cpp
 int ones = 0, twos = 0;
 for (int n : nums) {
     ones = (ones ^ n) & ~twos;
@@ -59,7 +59,7 @@ return ones;
 ```
 
 **Method 2 — Bit counting (more explainable in interviews):**
-```java
+```cpp
 int result = 0;
 for (int bit = 0; bit < 32; bit++) {
     int bitSum = 0;
@@ -77,7 +77,7 @@ Method 2 is easier to explain: "Count how many numbers have each bit set. Divide
 
 | Problem | LP Principle |
 |---------|-------------|
-| Single Number | Invent and Simplify — O(1) XOR vs O(n) HashSet |
+| Single Number | Invent and Simplify — O(1) XOR vs O(n) `unordered_set` |
 | Sum of Two Integers | Dive Deep — carry simulation requires bit-level reasoning |
 | Single Number II | Are Right, A Lot — both methods work; explain tradeoffs |
 

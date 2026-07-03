@@ -6,42 +6,56 @@
 
 ## 1. Never Use Subtraction in Heap Comparators
 
-```java
-// DANGEROUS — subtraction overflows for MIN_VALUE/MAX_VALUE
-PriorityQueue<Integer> maxHeap = new PriorityQueue<>((a, b) -> b - a);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-// SAFE
-PriorityQueue<Integer> maxHeap = new PriorityQueue<>((a, b) -> Integer.compare(b, a));
-// or
-PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Comparator.reverseOrder());
+// DANGEROUS — subtraction overflows for INT_MIN/INT_MAX
+auto bad_cmp = [](int a, int b) { return (b - a) > 0; }; // overflow-prone
+priority_queue<int, vector<int>, decltype(bad_cmp)> maxHeapBad(bad_cmp);
+
+// SAFE — default priority_queue is already a max-heap in C++
+priority_queue<int> maxHeap; // max-heap (largest on top)
+// or with explicit safe lambda comparator
+auto safe_cmp = [](int a, int b) { return a < b; }; // max-heap
+priority_queue<int, vector<int>, decltype(safe_cmp)> maxHeap2(safe_cmp);
+// or use greater<int> for min-heap
+priority_queue<int, vector<int>, greater<int>> minHeap;
 ```
 
-For `int[] arrays` in the heap (common for K-way merge entries):
-```java
-// SAFE — compare array elements explicitly
-PriorityQueue<int[]> heap = new PriorityQueue<>((a, b) -> Integer.compare(a[0], b[0]));
+For `vector<int> arrays` in the heap (common for K-way merge entries):
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+// SAFE — compare array elements explicitly (no subtraction)
+auto cmp = [](const vector<int>& a, const vector<int>& b) { return a[0] > b[0]; }; // min-heap by first element
+priority_queue<vector<int>, vector<vector<int>>, decltype(cmp)> heap(cmp);
 ```
 
 ---
 
 ## 2. Top K Pattern — Min-Heap for K Largest, Max-Heap for K Smallest
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // k LARGEST elements → min-heap size k (root = kth largest)
-PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+priority_queue<int, vector<int>, greater<int>> minHeap;
 for (int n : nums) {
-    minHeap.offer(n);
-    if (minHeap.size() > k) minHeap.poll();
+    minHeap.push(n);
+    if ((int)minHeap.size() > k) minHeap.pop();
 }
-// minHeap.peek() = kth largest
+// minHeap.top() = kth largest
 
 // k SMALLEST elements → max-heap size k (root = kth smallest)
-PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Comparator.reverseOrder());
+priority_queue<int> maxHeap; // default max-heap
 for (int n : nums) {
-    maxHeap.offer(n);
-    if (maxHeap.size() > k) maxHeap.poll();
+    maxHeap.push(n);
+    if ((int)maxHeap.size() > k) maxHeap.pop();
 }
-// maxHeap.peek() = kth smallest
+// maxHeap.top() = kth smallest
 ```
 
 Mnemonic: "Opposite heap, size k, root is the answer."
@@ -50,13 +64,16 @@ Mnemonic: "Opposite heap, size k, root is the answer."
 
 ## 3. K-Way Merge — Always Store (Value, ListIndex, ElementIndex)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Standard K-way merge heap entry
-heap.offer(new int[]{value, listIndex, elementIndex});
+heap.push({value, listIndex, elementIndex});
 // When popping: advance elementIndex in the same list
-int[] curr = heap.poll();
-if (curr[2] + 1 < lists[curr[1]].length) {
-    heap.offer(new int[]{lists[curr[1]][curr[2]+1], curr[1], curr[2]+1});
+auto curr = heap.top(); heap.pop();
+if (curr[2] + 1 < (int)lists[curr[1]].size()) {
+    heap.push({lists[curr[1]][curr[2]+1], curr[1], curr[2]+1});
 }
 ```
 
@@ -66,18 +83,21 @@ The three-element entry is the canonical pattern — never store value alone.
 
 ## 4. Two Heaps — Always Rebalance After Every Operation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // CORRECT — rebalance every time
-public void addNum(int num) {
-    if (lo.isEmpty() || num <= lo.peek()) lo.offer(num);
-    else hi.offer(num);
+void addNum(int num) {
+    if (lo.empty() || num <= lo.top()) lo.push(num);
+    else hi.push(num);
     // ALWAYS rebalance
-    if (lo.size() > hi.size() + 1) hi.offer(lo.poll());
-    else if (hi.size() > lo.size())  lo.offer(hi.poll());
+    if (lo.size() > hi.size() + 1) { hi.push(lo.top()); lo.pop(); }
+    else if (hi.size() > lo.size()) { lo.push(hi.top()); hi.pop(); }
 }
 ```
 
-It's easy to forget the rebalance in a time-pressured interview. Write it as a `rebalance()` helper method to make it obvious and testable.
+It's easy to forget the rebalance in a time-pressured interview. Write it as a `rebalance()` helper function to make it obvious and testable.
 
 ---
 
@@ -96,61 +116,74 @@ Formula: max((maxFreq - 1) * (n + 1) + maxCount, tasks.length)
 
 ---
 
-## 6. Median Two Heaps — `lo.peek() / 2.0 + hi.peek() / 2.0` for Overflow Safety
+## 6. Median Two Heaps — `lo.top() / 2.0 + hi.top() / 2.0` for Overflow Safety
 
-```java
-// Potential overflow if lo.peek() and hi.peek() are both near Integer.MAX_VALUE
-return (lo.peek() + hi.peek()) / 2.0;   // can overflow before the cast
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+// Potential overflow if lo.top() and hi.top() are both near INT_MAX
+return (lo.top() + hi.top()) / 2.0;   // can overflow before the cast
 
 // Safe version
-return lo.peek() / 2.0 + hi.peek() / 2.0;
+return lo.top() / 2.0 + hi.top() / 2.0;
 ```
 
 Both are fine for typical LeetCode inputs, but the safe version is correct for all 32-bit integers.
 
 ---
 
-## 7. `PriorityQueue.remove(x)` Is O(n) — Avoid in Loops
+## 7. Element Removal from `priority_queue` Is O(n) — Avoid in Loops
 
-```java
-// SLOW — remove(x) is O(n) linear scan
-while (!pq.isEmpty()) {
-    pq.remove(outgoingElement);   // O(n) every time
-}
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-// Use TreeMap (as ordered multiset) when O(log n) removal is needed
-// Or use lazy deletion: mark elements as deleted, skip on poll
+// SLOW — std::priority_queue has no direct remove(x); a workaround is O(n)
+// Avoid manual element removal inside loops
+
+// Use std::multiset when O(log n) removal is needed (acts as ordered multiset)
+multiset<int> ms;
+ms.erase(ms.find(outgoingElement)); // O(log n)
+
+// Or use lazy deletion: mark elements as deleted, skip on pop
 ```
 
-For sliding window median, use `TreeMap<Integer, Integer>` instead of `PriorityQueue` to get O(log n) removal.
+For sliding window median, use `std::map<int, int>` instead of `priority_queue` to get O(log n) removal.
 
 ---
 
 ## 8. Reorganize String — Early Exit Check
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 int maxFreq = 0;
-for (int f : freq) maxFreq = Math.max(maxFreq, f);
-if (maxFreq > (s.length() + 1) / 2) return "";
+for (int f : freq) maxFreq = max(maxFreq, f);
+if (maxFreq > ((int)s.length() + 1) / 2) return "";
 ```
 
 Always check feasibility before attempting construction. Integer division: `(n+1)/2` correctly computes the ceiling of `n/2`.
 
 ---
 
-## 9. Poll from Empty Heap Returns Null — Check Before Using
+## 9. Pop from Empty Heap Is Undefined Behavior — Check Before Using
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // SAFE pattern
-if (!heap.isEmpty()) {
-    int val = heap.poll();  // guaranteed non-null
+if (!heap.empty()) {
+    int val = heap.top(); heap.pop();  // guaranteed non-empty
 }
 
-// Or use ternary
-int val = heap.isEmpty() ? -1 : heap.poll();
+// Or use ternary (read only; still pop separately if needed)
+int val = heap.empty() ? -1 : heap.top();
 ```
 
-`PriorityQueue.poll()` returns `null` if empty (unlike `remove()` which throws). For `int` primitive, auto-unboxing `null` throws `NullPointerException`.
+Unlike Java's `priority_queue::top()/pop()` on an empty container is undefined behavior in C++ — always guard with `.empty()`.
 
 ---
 

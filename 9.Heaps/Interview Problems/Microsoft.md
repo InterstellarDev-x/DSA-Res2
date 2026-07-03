@@ -9,24 +9,33 @@
 **LC 215** · Medium
 
 **Heap approach — O(n log k):**
-```java
-public int findKthLargest(int[] nums, int k) {
-    PriorityQueue<Integer> minHeap = new PriorityQueue<>();
-    for (int n : nums) {
-        minHeap.offer(n);
-        if (minHeap.size() > k) minHeap.poll();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int findKthLargest(vector<int>& nums, int k) {
+    priority_queue<int, vector<int>, greater<int>> minHeap;
+    for (auto n : nums) {
+        minHeap.push(n);
+        if (minHeap.size() > k) minHeap.pop();
     }
-    return minHeap.peek();
+    return minHeap.top();
 }
 ```
 
 **Quickselect — O(n) average:**
-```java
-public int findKthLargest(int[] nums, int k) {
-    return quickselect(nums, 0, nums.length - 1, nums.length - k);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int partition(vector<int>& nums, int l, int r) {
+    int pivot = nums[r], i = l;
+    for (int j = l; j < r; j++) if (nums[j] <= pivot) swap(nums[i++], nums[j]);
+    swap(nums[i], nums[r]);
+    return i;
 }
 
-private int quickselect(int[] nums, int l, int r, int target) {
+int quickselect(vector<int>& nums, int l, int r, int target) {
     if (l == r) return nums[l];
     int pivot = partition(nums, l, r);
     if (pivot == target) return nums[pivot];
@@ -34,13 +43,9 @@ private int quickselect(int[] nums, int l, int r, int target) {
                           : quickselect(nums, l, pivot - 1, target);
 }
 
-private int partition(int[] nums, int l, int r) {
-    int pivot = nums[r], i = l;
-    for (int j = l; j < r; j++) if (nums[j] <= pivot) swap(nums, i++, j);
-    swap(nums, i, r);
-    return i;
+int findKthLargest(vector<int>& nums, int k) {
+    return quickselect(nums, 0, nums.size() - 1, nums.size() - k);
 }
-private void swap(int[] a, int i, int j) { int t=a[i]; a[i]=a[j]; a[j]=t; }
 ```
 
 **Q: Microsoft asks — "Which approach would you use in production and why?"**
@@ -52,27 +57,36 @@ A: "It depends on context. If I can't modify the input array (immutable data), I
 
 **LC 23** · Hard
 
-```java
-public ListNode mergeKLists(ListNode[] lists) {
-    PriorityQueue<ListNode> heap = new PriorityQueue<>(
-        (a, b) -> Integer.compare(a.val, b.val)  // SAFE — no overflow
-    );
-    for (ListNode n : lists) if (n != null) heap.offer(n);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    ListNode dummy = new ListNode(0), tail = dummy;
-    while (!heap.isEmpty()) {
-        ListNode node = heap.poll();
-        tail.next = node;
-        tail = tail.next;
-        if (tail.next != null) heap.offer(tail.next);
+struct ListNode {
+    int val;
+    ListNode* next;
+    ListNode(int x) : val(x), next(nullptr) {}
+};
+
+ListNode* mergeKLists(vector<ListNode*>& lists) {
+    auto cmp = [](ListNode* a, ListNode* b) { return a->val > b->val; }; // SAFE — no overflow
+    priority_queue<ListNode*, vector<ListNode*>, decltype(cmp)> heap(cmp);
+    for (auto n : lists) if (n != nullptr) heap.push(n);
+
+    ListNode dummy(0);
+    ListNode* tail = &dummy;
+    while (!heap.empty()) {
+        ListNode* node = heap.top(); heap.pop();
+        tail->next = node;
+        tail = tail->next;
+        if (tail->next != nullptr) heap.push(tail->next);
     }
     return dummy.next;
 }
 ```
 
 **Microsoft edge cases:**
-- `lists = []` → return null (heap never filled, loop never runs, `dummy.next = null`)
-- `lists = [null]` → null filtered in initialization; returns null
+- `lists = []` → return nullptr (heap never filled, loop never runs, `dummy.next = nullptr`)
+- `lists = [nullptr]` → nullptr filtered in initialization; returns nullptr
 - Single list with elements → works correctly (heap has one item, processes all)
 
 **Q: Compare to divide-and-conquer approach.**

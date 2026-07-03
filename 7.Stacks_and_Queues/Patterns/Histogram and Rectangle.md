@@ -25,25 +25,28 @@ The monotonic stack computes both boundaries in one O(n) pass.
 
 **Invariant:** Stack maintains indices of bars in **increasing height order**. When we find a shorter bar, all taller bars on the stack are "blocked" — their right boundary has been found.
 
-```java
-public int largestRectangleArea(int[] heights) {
-    int n = heights.length;
-    Deque<Integer> stack = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int largestRectangleArea(vector<int>& heights) {
+    int n = heights.size();
+    stack<int> stk;
     int maxArea = 0;
 
     for (int i = 0; i <= n; i++) {
         // Sentinel: treat index n as height 0 to flush stack at end
         int currHeight = (i == n) ? 0 : heights[i];
 
-        while (!stack.isEmpty() && heights[stack.peek()] > currHeight) {
-            int h = heights[stack.pop()];
+        while (!stk.empty() && heights[stk.top()] > currHeight) {
+            int h = heights[stk.top()]; stk.pop();
             // Left boundary = new stack top + 1 (or 0 if stack empty)
-            int leftBound = stack.isEmpty() ? 0 : stack.peek() + 1;
+            int leftBound = stk.empty() ? 0 : stk.top() + 1;
             int rightBound = i - 1;
             int width = rightBound - leftBound + 1;
-            maxArea = Math.max(maxArea, h * width);
+            maxArea = max(maxArea, h * width);
         }
-        stack.push(i);
+        stk.push(i);
     }
     return maxArea;
 }
@@ -65,31 +68,34 @@ maxArea = 10
 
 ### Approach 2: Precompute Left/Right Smaller — O(n) time, O(n) space
 
-```java
-public int largestRectangleArea(int[] heights) {
-    int n = heights.length;
-    int[] left = new int[n];   // index of first bar shorter to the left
-    int[] right = new int[n];  // index of first bar shorter to the right
-    Deque<Integer> stack = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int largestRectangleArea(vector<int>& heights) {
+    int n = heights.size();
+    vector<int> left(n);   // index of first bar shorter to the left
+    vector<int> right(n);  // index of first bar shorter to the right
+    stack<int> stk;
 
     // Compute left smaller
     for (int i = 0; i < n; i++) {
-        while (!stack.isEmpty() && heights[stack.peek()] >= heights[i]) stack.pop();
-        left[i] = stack.isEmpty() ? -1 : stack.peek();
-        stack.push(i);
+        while (!stk.empty() && heights[stk.top()] >= heights[i]) stk.pop();
+        left[i] = stk.empty() ? -1 : stk.top();
+        stk.push(i);
     }
-    stack.clear();
+    while (!stk.empty()) stk.pop(); // clear stack
 
     // Compute right smaller
     for (int i = n - 1; i >= 0; i--) {
-        while (!stack.isEmpty() && heights[stack.peek()] >= heights[i]) stack.pop();
-        right[i] = stack.isEmpty() ? n : stack.peek();
-        stack.push(i);
+        while (!stk.empty() && heights[stk.top()] >= heights[i]) stk.pop();
+        right[i] = stk.empty() ? n : stk.top();
+        stk.push(i);
     }
 
     int maxArea = 0;
     for (int i = 0; i < n; i++) {
-        maxArea = Math.max(maxArea, heights[i] * (right[i] - left[i] - 1));
+        maxArea = max(maxArea, heights[i] * (right[i] - left[i] - 1));
     }
     return maxArea;
 }
@@ -105,36 +111,39 @@ public int largestRectangleArea(int[] heights) {
 
 **Key insight:** Build a histogram for each row where `heights[j]` = number of consecutive `'1'`s in column `j` ending at the current row. Then apply Largest Rectangle in Histogram to each row's heights.
 
-```java
-public int maximalRectangle(char[][] matrix) {
-    if (matrix.length == 0) return 0;
-    int cols = matrix[0].length;
-    int[] heights = new int[cols];
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int largestRectangleArea(vector<int>& heights) {
+    int n = heights.size();
+    stack<int> stk;
+    int maxArea = 0;
+    for (int i = 0; i <= n; i++) {
+        int h = (i == n) ? 0 : heights[i];
+        while (!stk.empty() && heights[stk.top()] > h) {
+            int height = heights[stk.top()]; stk.pop();
+            int width = stk.empty() ? i : i - stk.top() - 1;
+            maxArea = max(maxArea, height * width);
+        }
+        stk.push(i);
+    }
+    return maxArea;
+}
+
+int maximalRectangle(vector<vector<char>>& matrix) {
+    if (matrix.empty()) return 0;
+    int cols = matrix[0].size();
+    vector<int> heights(cols);
     int maxArea = 0;
 
-    for (char[] row : matrix) {
+    for (auto& row : matrix) {
         // Update histogram heights
         for (int j = 0; j < cols; j++) {
             heights[j] = (row[j] == '1') ? heights[j] + 1 : 0;
         }
         // Apply LRH on current row's histogram
-        maxArea = Math.max(maxArea, largestRectangleArea(heights));
-    }
-    return maxArea;
-}
-
-private int largestRectangleArea(int[] heights) {
-    int n = heights.length;
-    Deque<Integer> stack = new ArrayDeque<>();
-    int maxArea = 0;
-    for (int i = 0; i <= n; i++) {
-        int h = (i == n) ? 0 : heights[i];
-        while (!stack.isEmpty() && heights[stack.peek()] > h) {
-            int height = heights[stack.pop()];
-            int width = stack.isEmpty() ? i : i - stack.peek() - 1;
-            maxArea = Math.max(maxArea, height * width);
-        }
-        stack.push(i);
+        maxArea = max(maxArea, largestRectangleArea(heights));
     }
     return maxArea;
 }
@@ -161,7 +170,7 @@ Overall: 6
 
 ## Why This Pattern Is Hard
 
-1. **Width calculation is subtle:** `width = i - stack.peek() - 1` where `stack.peek()` is the left boundary (exclusive), not inclusive.
+1. **Width calculation is subtle:** `width = i - stk.top() - 1` where `stk.top()` is the left boundary (exclusive), not inclusive.
 2. **Sentinel element needed:** Without it, bars remaining in stack after the loop never compute their area.
 3. **Equal heights:** Using `>=` vs `>` in the stack condition affects correctness. Use `>` (pop only when strictly taller) — otherwise equal bars could get wrong widths.
 4. **2D extension (Maximal Rectangle):** The jump from 1D histogram to 2D matrix requires recognizing the "row-by-row histogram" decomposition.
@@ -173,7 +182,7 @@ Overall: 6
 | Scenario | Formula |
 |----------|---------|
 | Stack is empty after pop | `width = i` (extends from 0 to i-1) |
-| Stack has element after pop | `width = i - stack.peek() - 1` (extends from `stack.peek()+1` to `i-1`) |
+| Stack has element after pop | `width = i - stk.top() - 1` (extends from `stk.top()+1` to `i-1`) |
 
 For the precompute approach: `width = right[i] - left[i] - 1` where `left[i]` and `right[i]` are the exclusive boundaries.
 

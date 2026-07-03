@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#c-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -36,7 +36,7 @@ Count of 3s = upperBound(3) - lowerBound(3) = 3 - 1 = 2
 
 These two primitives unlock: floor, ceil, first/last occurrence, count occurrences, insertion point — all in O(log n).
 
-Java's `Arrays.binarySearch` is NOT lower/upper bound — it returns *any* matching index, not the first.
+C++'s `std::binary_search` is NOT lower/upper bound — it returns only a bool indicating presence, not the first matching index.
 
 ---
 
@@ -76,13 +76,16 @@ Java's `Arrays.binarySearch` is NOT lower/upper bound — it returns *any* match
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Lower Bound — First index where `arr[i] >= target`
 
-```java
-public int lowerBound(int[] arr, int target) {
-    int lo = 0, hi = arr.length; // hi = n (one past last valid)
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int lowerBound(vector<int>& arr, int target) {
+    int lo = 0, hi = arr.size(); // hi = n (one past last valid)
     while (lo < hi) {
         int mid = lo + (hi - lo) / 2;
         if (arr[mid] < target)
@@ -91,15 +94,18 @@ public int lowerBound(int[] arr, int target) {
             hi = mid;       // arr[mid] >= target: mid could be answer
     }
     return lo; // lo == hi == first position where arr[i] >= target
-    // Returns arr.length if all elements < target
+    // Returns arr.size() if all elements < target
 }
 ```
 
 ### 2. Upper Bound — First index where `arr[i] > target`
 
-```java
-public int upperBound(int[] arr, int target) {
-    int lo = 0, hi = arr.length;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int upperBound(vector<int>& arr, int target) {
+    int lo = 0, hi = arr.size();
     while (lo < hi) {
         int mid = lo + (hi - lo) / 2;
         if (arr[mid] <= target)
@@ -113,35 +119,44 @@ public int upperBound(int[] arr, int target) {
 
 ### 3. First and Last Occurrence of Target
 
-```java
-public int[] searchRange(int[] nums, int target) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> searchRange(vector<int>& nums, int target) {
     int first = lowerBound(nums, target);
     // Verify target actually exists
-    if (first == nums.length || nums[first] != target)
-        return new int[]{-1, -1};
+    if (first == (int)nums.size() || nums[first] != target)
+        return {-1, -1};
     int last = upperBound(nums, target) - 1;
-    return new int[]{first, last};
+    return {first, last};
 }
 // Time: O(log n) | Space: O(1)
 ```
 
 ### 4. Count Occurrences
 
-```java
-public int countOccurrences(int[] arr, int target) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int countOccurrences(vector<int>& arr, int target) {
     int first = lowerBound(arr, target);
-    if (first == arr.length || arr[first] != target) return 0;
+    if (first == (int)arr.size() || arr[first] != target) return 0;
     return upperBound(arr, target) - first;
 }
 ```
 
 ### 5. Floor — Largest element ≤ target
 
-```java
-public int floor(int[] arr, int target) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int floor(vector<int>& arr, int target) {
     int lb = lowerBound(arr, target);
     // If arr[lb] == target, that IS the floor
-    if (lb < arr.length && arr[lb] == target) return arr[lb];
+    if (lb < (int)arr.size() && arr[lb] == target) return arr[lb];
     // Otherwise, floor is the element just before lb
     if (lb == 0) return -1; // all elements > target
     return arr[lb - 1];
@@ -150,31 +165,44 @@ public int floor(int[] arr, int target) {
 
 ### 6. Ceil — Smallest element ≥ target
 
-```java
-public int ceil(int[] arr, int target) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int ceil(vector<int>& arr, int target) {
     int lb = lowerBound(arr, target);
-    if (lb == arr.length) return -1; // all elements < target
+    if (lb == (int)arr.size()) return -1; // all elements < target
     return arr[lb];
 }
 ```
 
 ### 7. Search Insert Position
 
-```java
-public int searchInsert(int[] nums, int target) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int searchInsert(vector<int>& nums, int target) {
     return lowerBound(nums, target);
     // If target exists, returns its first index
     // If not, returns where it would be inserted
 }
 ```
 
-### 8. Using Java Standard Library
+### 8. Using C++ Standard Library
 
-```java
-// Java's Arrays.binarySearch returns negative index if not found
-// To get lower bound equivalent:
-int lb = Arrays.binarySearch(arr, target);
-if (lb < 0) lb = -lb - 1; // insertion point
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+// C++ standard library provides lower_bound and upper_bound
+// lower_bound returns iterator to first element >= target
+auto it = lower_bound(arr.begin(), arr.end(), target);
+int lb = it - arr.begin();
+
+// upper_bound returns iterator to first element > target
+auto it2 = upper_bound(arr.begin(), arr.end(), target);
+int ub = it2 - arr.begin();
 
 // But roll your own for interviews — don't rely on library
 ```
@@ -185,7 +213,7 @@ if (lb < 0) lb = -lb - 1; // insertion point
 
 | Mistake | Fix |
 |---------|-----|
-| `hi = arr.length - 1` instead of `arr.length` | Lower/Upper bound range is `[0, n]` — include `n` as valid answer |
+| `hi = arr.size() - 1` instead of `arr.size()` | Lower/Upper bound range is `[0, n]` — include `n` as valid answer |
 | Returning `lo - 1` for upper bound | Upper bound returns `lo` directly (first index `> target`) |
 | Not verifying `arr[first] == target` after lower bound | Lower bound returns insertion point even when target absent |
 | Using `<` vs `<=` in condition | Lower bound: `arr[mid] < target` → `lo=mid+1`. Upper bound: `arr[mid] <= target` → `lo=mid+1` |

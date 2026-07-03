@@ -10,7 +10,7 @@
 | Property | Stack | Queue |
 |----------|-------|-------|
 | Ordering | LIFO (Last-In-First-Out) | FIFO (First-In-First-Out) |
-| Java class | `ArrayDeque` with `push/pop/peek` | `ArrayDeque` with `offer/poll/peek` |
+| C++ class | `stack<T>` with `push/pop/top` | `queue<T>` with `push/front/pop` |
 | Conceptual model | Undo/history, DFS, nesting | Scheduling, BFS, buffering |
 | Real-world analogy | Browser back button, call stack | Printer queue, task scheduler |
 
@@ -71,8 +71,8 @@ A Deque (double-ended queue) is the **superset** — it can act as both stack an
 
 | Use Case | Deque Operation |
 |----------|----------------|
-| Sliding window max | `offerLast` + `pollFirst` (expire) + `pollLast` (maintain order) |
-| Palindrome check (on characters) | Check `first == last`, remove both |
+| Sliding window max | `push_back` + `pop_front` (expire) + `pop_back` (maintain order) |
+| Palindrome check (on characters) | Check `front == back`, remove both |
 | Min/Max deque | Similar to sliding window, both ends |
 
 ---
@@ -121,40 +121,43 @@ A Deque (double-ended queue) is the **superset** — it can act as both stack an
 | "Balanced/valid parentheses" | Stack |
 | "Shortest path", "minimum steps" | Queue (BFS) |
 | "All paths", "combinations" | Stack (DFS / Backtracking) |
-| "Most frequent, then most recent" | HashMap + HashMap of Stacks |
+| "Most frequent, then most recent" | unordered_map + unordered_map of Stacks |
 | "Min/max accessible in O(1)" | Stack + Auxiliary Stack |
 | "Encode/decode nested structure" | Two Stacks (count + content) |
 | "Expression with precedence" | Stack of terms/operands |
 
 ---
 
-## Java API Quick Reference
+## C++ API Quick Reference
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Stack
-Deque<T> stack = new ArrayDeque<>();
-stack.push(x);          // O(1) amortized
-stack.pop();            // O(1)
-stack.peek();           // O(1)
-stack.isEmpty();        // O(1)
+stack<T> stk;
+stk.push(x);            // O(1) amortized
+stk.pop();              // O(1)
+stk.top();              // O(1)
+stk.empty();            // O(1)
 
 // Queue
-Queue<T> queue = new ArrayDeque<>();
-queue.offer(x);         // O(1) amortized — use over add() (add throws on failure)
-queue.poll();           // O(1) — use over remove() (remove throws on empty)
-queue.peek();           // O(1) — use over element() (element throws on empty)
+queue<T> q;
+q.push(x);              // O(1) amortized
+q.front(); q.pop();     // O(1) — front() to access, pop() to remove
+q.front();              // O(1) — view front without removing
 
 // Deque (explicit both-end access)
-Deque<T> dq = new ArrayDeque<>();
-dq.offerFirst(x);  dq.offerLast(x);
-dq.pollFirst();    dq.pollLast();
-dq.peekFirst();    dq.peekLast();
+deque<T> dq;
+dq.push_front(x);  dq.push_back(x);
+dq.pop_front();    dq.pop_back();
+dq.front();        dq.back();
 
 // Priority Queue (heap — not FIFO but common in "queue" context)
-PriorityQueue<T> pq = new PriorityQueue<>(Comparator.comparingInt(...));
-pq.offer(x);
-pq.poll();   // removes smallest (min-heap)
-pq.peek();   // views smallest
+priority_queue<T, vector<T>, greater<T>> pq; // min-heap
+pq.push(x);
+pq.pop();    // removes smallest (min-heap)
+pq.top();    // views smallest
 ```
 
 ---

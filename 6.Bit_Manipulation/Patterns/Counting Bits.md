@@ -9,8 +9,8 @@
 
 `n & (n-1)` clears the **lowest set bit** of n. Iterate until n = 0, counting iterations = popcount.
 
-```java
-public int hammingWeight(int n) {
+```cpp
+int hammingWeight(int n) {
     int count = 0;
     while (n != 0) {
         n &= (n - 1); // clear lowest set bit
@@ -29,15 +29,15 @@ public int hammingWeight(int n) {
 
 ---
 
-## Java Built-in popcount
+## C++ Built-in popcount
 
-```java
-Integer.bitCount(n);     // number of 1-bits in int n
-Long.bitCount(n);         // for long
-Integer.numberOfLeadingZeros(n);   // leading zeros
-Integer.numberOfTrailingZeros(n);  // trailing zeros = position of lowest set bit
-Integer.highestOneBit(n);          // keeps only the highest set bit
-Integer.lowestOneBit(n);           // keeps only the lowest set bit
+```cpp
+__builtin_popcount(n);              // number of 1-bits in int n
+__builtin_popcountll(n);            // for long long
+__builtin_clz(n);                   // leading zeros
+__builtin_ctz(n);                   // trailing zeros = position of lowest set bit
+(1 << (31 - __builtin_clz(n)));     // keeps only the highest set bit
+(n & (-n));                          // keeps only the lowest set bit
 ```
 
 ---
@@ -52,9 +52,12 @@ Return array where `result[i]` = number of 1 bits in i, for all i in [0, n].
 
 Key insight: `bits(n) = bits(n >> 1) + (n & 1)` — right-shift removes the last bit; `n & 1` adds it back if it was 1.
 
-```java
-public int[] countBits(int n) {
-    int[] dp = new int[n + 1];
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> countBits(int n) {
+    vector<int> dp(n + 1, 0);
     for (int i = 1; i <= n; i++) {
         dp[i] = dp[i >> 1] + (i & 1);
     }
@@ -63,7 +66,7 @@ public int[] countBits(int n) {
 ```
 
 **Alternative DP using `n & (n-1)`:**
-```java
+```cpp
 dp[i] = dp[i & (i - 1)] + 1; // i has one more bit than i-with-lowest-cleared
 ```
 
@@ -73,9 +76,9 @@ dp[i] = dp[i & (i - 1)] + 1; // i has one more bit than i-with-lowest-cleared
 
 Number of bit positions where two integers differ = popcount of their XOR.
 
-```java
-public int hammingDistance(int x, int y) {
-    return Integer.bitCount(x ^ y);
+```cpp
+int hammingDistance(int x, int y) {
+    return __builtin_popcount(x ^ y);
 }
 ```
 
@@ -87,12 +90,15 @@ Sum of hamming distances between all pairs in an array. Naive O(n²) is too slow
 
 **Key insight:** Consider each bit position independently. If `k` numbers have bit `i` set and `n-k` do not, that bit contributes `k × (n-k)` to the total hamming distance.
 
-```java
-public int totalHammingDistance(int[] nums) {
-    int total = 0, n = nums.length;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int totalHammingDistance(vector<int>& nums) {
+    int total = 0, n = nums.size();
     for (int bit = 0; bit < 32; bit++) {
         int ones = 0;
-        for (int num : nums) ones += (num >> bit) & 1;
+        for (auto& num : nums) ones += (num >> bit) & 1;
         total += ones * (n - ones); // pairs where this bit differs
     }
     return total;
@@ -107,9 +113,9 @@ public int totalHammingDistance(int[] nums) {
 
 At each step: if even, divide by 2 (right shift); if odd, subtract 1 (clear last bit).
 
-```java
-public int numberOfSteps(int num) {
-    return Integer.bitCount(num) + (32 - Integer.numberOfLeadingZeros(num)) - 1;
+```cpp
+int numberOfSteps(int num) {
+    return __builtin_popcount(num) + (32 - __builtin_clz(num)) - 1;
     // = (number of 1-bits) + (bit-length - 1)
     // = ones take 1 step each to subtract; zeros take 1 step each to shift
 }
@@ -140,7 +146,7 @@ public int numberOfSteps(int num) {
 | Problem | Time | Space |
 |---------|------|-------|
 | Hamming Weight (Kernighan) | O(popcount) | O(1) |
-| Hamming Weight (Java built-in) | O(1) | O(1) |
+| Hamming Weight (C++ built-in) | O(1) | O(1) |
 | Counting Bits 0..n (DP) | O(n) | O(n) |
 | Hamming Distance | O(1) | O(1) |
 | Total Hamming Distance | O(32n) = O(n) | O(1) |

@@ -12,63 +12,70 @@ Amazon loves Tries because they map directly onto real product surfaces: search 
 
 **Framing it as an autocomplete backend.** When a customer types into the Amazon search box, the backend must answer "is `lapt` a prefix of any product term?" in time proportional to the length of what the user typed, not the size of the catalog. A Trie gives exactly that: `startsWith` is `O(L)` regardless of how many millions of products exist. `search` is the "did they type a complete known term" check, and `insert` is how we load the dictionary of search terms at index-build time.
 
-**Design decision: `TrieNode[26]` vs `HashMap<Character, TrieNode>`.**
+**Design decision: `TrieNode*[26]` vs `unordered_map<char, TrieNode*>`.**
 
-| Aspect | `TrieNode[] children = new TrieNode[26]` | `HashMap<Character, TrieNode>` |
+| Aspect | `TrieNode* children[26]` | `unordered_map<char, TrieNode*>` |
 |---|---|---|
-| Lookup | O(1) array index, no hashing | O(1) amortized, but with hashing + boxing overhead |
-| Memory | 26 references per node even if sparse | Only allocates entries that exist |
+| Lookup | O(1) array index, no hashing | O(1) amortized, but with hashing overhead |
+| Memory | 26 pointers per node even if sparse | Only allocates entries that exist |
 | Alphabet | Fixed lowercase `a–z` | Arbitrary / Unicode |
 | Cache behavior | Contiguous, cache friendly | Pointer-chasing |
 
-For this problem the constraint is lowercase English letters, so the array form is preferred: it is faster and simpler, and the `26`-wide fan-out is acceptable. If the alphabet were Unicode or the tree extremely sparse, the HashMap form would win on memory. **Say this trade-off out loud in the interview** — that is the point of the question.
+For this problem the constraint is lowercase English letters, so the array form is preferred: it is faster and simpler, and the `26`-wide fan-out is acceptable. If the alphabet were Unicode or the tree extremely sparse, the unordered_map form would win on memory. **Say this trade-off out loud in the interview** — that is the point of the question.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct TrieNode {
+    TrieNode* children[26];
+    bool isEnd;
+    TrieNode() : isEnd(false) {
+        fill(begin(children), end(children), nullptr);
+    }
+};
+
 class Trie {
-    static class TrieNode {
-        TrieNode[] children = new TrieNode[26];
-        boolean isEnd;
-    }
+    TrieNode* root;
 
-    private final TrieNode root;
-
-    public Trie() {
-        root = new TrieNode();
-    }
-
-    public void insert(String word) {
-        TrieNode node = root;
-        for (int i = 0; i < word.length(); i++) {
-            int idx = word.charAt(i) - 'a';
-            if (node.children[idx] == null) {
-                node.children[idx] = new TrieNode();
+    TrieNode* find(const string& s) {
+        TrieNode* node = root;
+        for (char ch : s) {
+            int idx = ch - 'a';
+            if (node->children[idx] == nullptr) {
+                return nullptr;
             }
-            node = node.children[idx];
-        }
-        node.isEnd = true;
-    }
-
-    public boolean search(String word) {
-        TrieNode node = find(word);
-        return node != null && node.isEnd;
-    }
-
-    public boolean startsWith(String prefix) {
-        return find(prefix) != null;
-    }
-
-    private TrieNode find(String s) {
-        TrieNode node = root;
-        for (int i = 0; i < s.length(); i++) {
-            int idx = s.charAt(i) - 'a';
-            if (node.children[idx] == null) {
-                return null;
-            }
-            node = node.children[idx];
+            node = node->children[idx];
         }
         return node;
     }
-}
+
+public:
+    Trie() {
+        root = new TrieNode();
+    }
+
+    void insert(const string& word) {
+        TrieNode* node = root;
+        for (char ch : word) {
+            int idx = ch - 'a';
+            if (node->children[idx] == nullptr) {
+                node->children[idx] = new TrieNode();
+            }
+            node = node->children[idx];
+        }
+        node->isEnd = true;
+    }
+
+    bool search(const string& word) {
+        TrieNode* node = find(word);
+        return node != nullptr && node->isEnd;
+    }
+
+    bool startsWith(const string& prefix) {
+        return find(prefix) != nullptr;
+    }
+};
 ```
 
 **Reasoning.** `search` and `startsWith` differ only by the final `isEnd` check; factoring the walk into a private `find` removes duplication. The `isEnd` flag is what lets `"app"` and `"apple"` coexist — without it, inserting `"apple"` would make `search("app")` falsely return true.
@@ -76,7 +83,7 @@ class Trie {
 **Complexity.** Let `L` be the word/prefix length. `insert`, `search`, `startsWith` are each `O(L)` time. Space is `O(total characters inserted)` in the worst case, i.e. `O(N · L)` for `N` words with no shared prefixes.
 
 **Follow-ups.**
-- *Add autocomplete (`List<String> suggestions(prefix)`):* walk to the prefix node, then DFS collecting words. To bound it, cap at top-k.
+- *Add autocomplete (`vector<string> suggestions(prefix)`):* walk to the prefix node, then DFS collecting words. To bound it, cap at top-k.
 - *Make it case-insensitive / support digits:* widen the array or switch to a HashMap.
 - *Concurrency:* the read-heavy autocomplete case can use a copy-on-write or an immutable Trie rebuilt at index time.
 
@@ -88,43 +95,37 @@ class Trie {
 
 **Key idea.** Instead of running a board search for every word independently, build **one** Trie from all words and DFS the board once, walking the Trie in lockstep with the path. Shared prefixes are explored only once. We store the full word string at the terminal node so that when we reach an `isEnd`, we can collect the answer without reconstructing the path.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct TrieNode {
+    TrieNode* children[26];
+    string word; // non-empty only at a terminal node; holds the full word
+    TrieNode() {
+        fill(begin(children), end(children), nullptr);
+    }
+};
+
 class Solution {
-    static class TrieNode {
-        TrieNode[] children = new TrieNode[26];
-        String word;   // non-null only at a terminal node; holds the full word
-    }
-
-    public List<String> findWords(char[][] board, String[] words) {
-        TrieNode root = buildTrie(words);
-        List<String> result = new ArrayList<>();
-        int m = board.length, n = board[0].length;
-        for (int r = 0; r < m; r++) {
-            for (int c = 0; c < n; c++) {
-                dfs(board, r, c, root, result);
-            }
-        }
-        return result;
-    }
-
-    private TrieNode buildTrie(String[] words) {
-        TrieNode root = new TrieNode();
-        for (String w : words) {
-            TrieNode node = root;
-            for (int i = 0; i < w.length(); i++) {
-                int idx = w.charAt(i) - 'a';
-                if (node.children[idx] == null) {
-                    node.children[idx] = new TrieNode();
+    TrieNode* buildTrie(const vector<string>& words) {
+        TrieNode* root = new TrieNode();
+        for (auto& w : words) {
+            TrieNode* node = root;
+            for (char ch : w) {
+                int idx = ch - 'a';
+                if (node->children[idx] == nullptr) {
+                    node->children[idx] = new TrieNode();
                 }
-                node = node.children[idx];
+                node = node->children[idx];
             }
-            node.word = w;
+            node->word = w;
         }
         return root;
     }
 
-    private void dfs(char[][] board, int r, int c, TrieNode node, List<String> result) {
-        int m = board.length, n = board[0].length;
+    void dfs(vector<vector<char>>& board, int r, int c, TrieNode* node, vector<string>& result) {
+        int m = board.size(), n = board[0].size();
         if (r < 0 || r >= m || c < 0 || c >= n) {
             return;
         }
@@ -132,13 +133,13 @@ class Solution {
         if (ch == '#') {
             return;                       // already on current path
         }
-        TrieNode next = node.children[ch - 'a'];
-        if (next == null) {
+        TrieNode* next = node->children[ch - 'a'];
+        if (next == nullptr) {
             return;                       // no word continues with this prefix -> prune
         }
-        if (next.word != null) {
-            result.add(next.word);
-            next.word = null;             // prune: avoid adding duplicates
+        if (!next->word.empty()) {
+            result.push_back(next->word);
+            next->word = "";              // prune: avoid adding duplicates
         }
 
         board[r][c] = '#';                // mark visited
@@ -148,10 +149,23 @@ class Solution {
         dfs(board, r, c - 1, next, result);
         board[r][c] = ch;                 // restore
     }
-}
+
+public:
+    vector<string> findWords(vector<vector<char>>& board, vector<string>& words) {
+        TrieNode* root = buildTrie(words);
+        vector<string> result;
+        int m = board.size(), n = board[0].size();
+        for (int r = 0; r < m; r++) {
+            for (int c = 0; c < n; c++) {
+                dfs(board, r, c, root, result);
+            }
+        }
+        return result;
+    }
+};
 ```
 
-**The mark-visited trick.** A single word cannot reuse a cell, so during one DFS path we temporarily overwrite `board[r][c]` with `'#'` before recursing and restore the original character afterward. This in-place marking avoids allocating a separate `boolean[][] visited` per call and is `O(1)` per cell. The check `if (ch == '#') return;` is what enforces "no cell reused on the current path."
+**The mark-visited trick.** A single word cannot reuse a cell, so during one DFS path we temporarily overwrite `board[r][c]` with `'#'` before recursing and restore the original character afterward. This in-place marking avoids allocating a separate `vector<vector<bool>> visited` per call and is `O(1)` per cell. The check `if (ch == '#') return;` is what enforces "no cell reused on the current path."
 
 **The pruning trick.** Setting `next.word = null` after collecting a word means we never report the same word twice and we let the Trie shrink as words are found. A stronger variant also prunes dead leaf nodes (children that lead nowhere) to keep the search tree small — see the Google deep dive for that optimization.
 
@@ -179,57 +193,67 @@ Here `W` = number of words, `M·N` = board cells, `L` = word length, `Lmax` = lo
 
 **Shortest-root logic.** Build a Trie of the roots. For each word, walk character by character; the **first** time we hit a node with `isEnd == true`, we have found the shortest root (we stop immediately). If we never hit an `isEnd` (or the path breaks), keep the original word. Stopping at the first `isEnd` is what guarantees "shortest" — a longer matching root would only be found if we kept walking, and we deliberately do not.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct TrieNode {
+    TrieNode* children[26];
+    bool isEnd;
+    TrieNode() : isEnd(false) {
+        fill(begin(children), end(children), nullptr);
+    }
+};
+
 class Solution {
-    static class TrieNode {
-        TrieNode[] children = new TrieNode[26];
-        boolean isEnd;
-    }
-
-    public String replaceWords(List<String> dictionary, String sentence) {
-        TrieNode root = new TrieNode();
-        for (String r : dictionary) {
-            insert(root, r);
-        }
-
-        String[] words = sentence.split(" ");
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < words.length; i++) {
-            if (i > 0) {
-                sb.append(' ');
+    void insert(TrieNode* root, const string& word) {
+        TrieNode* node = root;
+        for (char ch : word) {
+            int idx = ch - 'a';
+            if (node->children[idx] == nullptr) {
+                node->children[idx] = new TrieNode();
             }
-            sb.append(shortestRoot(root, words[i]));
+            node = node->children[idx];
         }
-        return sb.toString();
+        node->isEnd = true;
     }
 
-    private void insert(TrieNode root, String word) {
-        TrieNode node = root;
-        for (int i = 0; i < word.length(); i++) {
-            int idx = word.charAt(i) - 'a';
-            if (node.children[idx] == null) {
-                node.children[idx] = new TrieNode();
-            }
-            node = node.children[idx];
-        }
-        node.isEnd = true;
-    }
-
-    private String shortestRoot(TrieNode root, String word) {
-        TrieNode node = root;
-        for (int i = 0; i < word.length(); i++) {
-            int idx = word.charAt(i) - 'a';
-            if (node.children[idx] == null) {
+    string shortestRoot(TrieNode* root, const string& word) {
+        TrieNode* node = root;
+        for (int i = 0; i < (int)word.size(); i++) {
+            int idx = word[i] - 'a';
+            if (node->children[idx] == nullptr) {
                 return word;              // path breaks, no root prefix
             }
-            node = node.children[idx];
-            if (node.isEnd) {
-                return word.substring(0, i + 1);   // first (shortest) root
+            node = node->children[idx];
+            if (node->isEnd) {
+                return word.substr(0, i + 1);   // first (shortest) root
             }
         }
         return word;                      // word itself never matched a root
     }
-}
+
+public:
+    string replaceWords(vector<string>& dictionary, string sentence) {
+        TrieNode* root = new TrieNode();
+        for (auto& r : dictionary) {
+            insert(root, r);
+        }
+
+        // split sentence by spaces
+        vector<string> words;
+        istringstream iss(sentence);
+        string token;
+        while (iss >> token) words.push_back(token);
+
+        string result;
+        for (int i = 0; i < (int)words.size(); i++) {
+            if (i > 0) result += ' ';
+            result += shortestRoot(root, words[i]);
+        }
+        return result;
+    }
+};
 ```
 
 **Reasoning.** The `return` inside the loop the moment `node.isEnd` is true is the entire "shortest" guarantee. `word.substring(0, i + 1)` slices off the root prefix. If the path through the Trie breaks before any `isEnd`, the word has no root prefix and is returned unchanged.

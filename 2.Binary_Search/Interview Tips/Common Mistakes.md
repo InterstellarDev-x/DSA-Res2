@@ -21,7 +21,7 @@
 
 ## Rotated Array Mistakes
 
-```java
+```cpp
 // WRONG: not determining which half is sorted first
 if (nums[mid] > target) hi = mid - 1; // incorrect for rotated array
 
@@ -34,14 +34,14 @@ if (nums[lo] <= nums[mid]) { // left half sorted
 
 ## Feasibility Check Mistakes
 
-```java
+```cpp
 // WRONG: using int sum that can overflow
 int hi = 0;
-for (int w : weights) hi += w; // OVERFLOW if weights are large
+for (auto& w : weights) hi += w; // OVERFLOW if weights are large
 
 // CORRECT:
-long hi = 0;
-for (int w : weights) hi += w;
+long long hi = 0;
+for (auto& w : weights) hi += w;
 ```
 
 ---

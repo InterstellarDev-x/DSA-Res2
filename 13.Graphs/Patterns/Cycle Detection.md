@@ -32,14 +32,15 @@ Key intuitions:
 
 For each edge, if both endpoints already share a root, we've found a cycle. Otherwise union them.
 
-```java
-class DSU {
-    int[] parent, rank;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    DSU(int n) {
-        parent = new int[n];
-        rank = new int[n];
-        for (int i = 0; i < n; i++) parent[i] = i;
+struct DSU {
+    vector<int> parent, rank_;
+
+    DSU(int n) : parent(n), rank_(n, 0) {
+        iota(parent.begin(), parent.end(), 0);
     }
 
     int find(int x) {                 // path compression
@@ -48,47 +49,51 @@ class DSU {
     }
 
     // returns false if x,y already connected (=> cycle); true if merged
-    boolean union(int x, int y) {
+    bool unite(int x, int y) {
         int rx = find(x), ry = find(y);
         if (rx == ry) return false;
-        if (rank[rx] < rank[ry])      { parent[rx] = ry; }
-        else if (rank[rx] > rank[ry]) { parent[ry] = rx; }
-        else                          { parent[ry] = rx; rank[rx]++; }
+        if (rank_[rx] < rank_[ry])      { parent[rx] = ry; }
+        else if (rank_[rx] > rank_[ry]) { parent[ry] = rx; }
+        else                            { parent[ry] = rx; rank_[rx]++; }
         return true;
     }
-}
+};
 
-public class UndirectedCycleDSU {
-    // edges given as int[][] where each row is {u, v}, vertices 0..n-1
-    public boolean hasCycle(int n, int[][] edges) {
-        DSU dsu = new DSU(n);
-        for (int[] e : edges) {
-            if (!dsu.union(e[0], e[1])) return true; // both share root => cycle
+class UndirectedCycleDSU {
+public:
+    // edges given as vector<vector<int>> where each row is {u, v}, vertices 0..n-1
+    bool hasCycle(int n, vector<vector<int>>& edges) {
+        DSU dsu(n);
+        for (auto& e : edges) {
+            if (!dsu.unite(e[0], e[1])) return true; // both share root => cycle
         }
         return false;
     }
-}
+};
 ```
 
 ### 2b. Via DFS with Parent Tracking
 
 Walk the graph; if you reach a visited neighbor that isn't the parent, it's a back edge → cycle. Handle disconnected graphs by starting DFS from every unvisited vertex.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class UndirectedCycleDFS {
-    public boolean hasCycle(int n, List<List<Integer>> adj) {
-        boolean[] visited = new boolean[n];
+class UndirectedCycleDFS {
+public:
+    bool hasCycle(int n, vector<vector<int>>& adj) {
+        vector<bool> visited(n, false);
         for (int i = 0; i < n; i++) {
             if (!visited[i] && dfs(i, -1, adj, visited)) return true;
         }
         return false;
     }
 
-    private boolean dfs(int node, int parent, List<List<Integer>> adj, boolean[] visited) {
+private:
+    bool dfs(int node, int parent, vector<vector<int>>& adj, vector<bool>& visited) {
         visited[node] = true;
-        for (int nei : adj.get(node)) {
+        for (int nei : adj[node]) {
             if (!visited[nei]) {
                 if (dfs(nei, node, adj, visited)) return true;
             } else if (nei != parent) {   // visited and not the node we came from
@@ -97,7 +102,7 @@ public class UndirectedCycleDFS {
         }
         return false;
     }
-}
+};
 ```
 
 > **BFS variant note:** The same idea works iteratively with BFS by storing `(node, parent)` pairs in the queue and flagging a cycle when a neighbor is already visited and isn't the parent. With parallel edges, track the edge instead of the parent vertex.
@@ -110,23 +115,26 @@ public class UndirectedCycleDFS {
 
 Colors: `0 = white` (unvisited), `1 = gray` (in current recursion stack), `2 = black` (fully processed). A cycle exists exactly when DFS hits a **gray** node.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class DirectedCycle3Color {
-    static final int WHITE = 0, GRAY = 1, BLACK = 2;
+class DirectedCycle3Color {
+    static const int WHITE = 0, GRAY = 1, BLACK = 2;
 
-    public boolean hasCycle(int n, List<List<Integer>> adj) {
-        int[] color = new int[n];          // all WHITE initially
+public:
+    bool hasCycle(int n, vector<vector<int>>& adj) {
+        vector<int> color(n, 0);          // all WHITE initially
         for (int i = 0; i < n; i++) {
             if (color[i] == WHITE && dfs(i, adj, color)) return true;
         }
         return false;
     }
 
-    private boolean dfs(int node, List<List<Integer>> adj, int[] color) {
+private:
+    bool dfs(int node, vector<vector<int>>& adj, vector<int>& color) {
         color[node] = GRAY;                 // entering recursion stack
-        for (int nei : adj.get(node)) {
+        for (int nei : adj[node]) {
             if (color[nei] == GRAY) return true;          // back edge => cycle
             if (color[nei] == WHITE && dfs(nei, adj, color)) return true;
             // color[nei] == BLACK => already done, safe to skip
@@ -134,37 +142,39 @@ public class DirectedCycle3Color {
         color[node] = BLACK;                // leaving recursion stack
         return false;
     }
-}
+};
 ```
 
 ### 3b. Via Kahn's Algorithm (BFS Topological Sort)
 
 Peel off indegree-0 vertices. If the number processed is less than `n`, the leftovers are stuck in a cycle.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class DirectedCycleKahn {
-    public boolean hasCycle(int n, List<List<Integer>> adj) {
-        int[] indeg = new int[n];
+class DirectedCycleKahn {
+public:
+    bool hasCycle(int n, vector<vector<int>>& adj) {
+        vector<int> indeg(n, 0);
         for (int u = 0; u < n; u++)
-            for (int v : adj.get(u)) indeg[v]++;
+            for (int v : adj[u]) indeg[v]++;
 
-        Queue<Integer> q = new ArrayDeque<>();
+        queue<int> q;
         for (int i = 0; i < n; i++)
-            if (indeg[i] == 0) q.offer(i);
+            if (indeg[i] == 0) q.push(i);
 
         int processed = 0;
-        while (!q.isEmpty()) {
-            int u = q.poll();
+        while (!q.empty()) {
+            int u = q.front(); q.pop();
             processed++;
-            for (int v : adj.get(u)) {
-                if (--indeg[v] == 0) q.offer(v);
+            for (int v : adj[u]) {
+                if (--indeg[v] == 0) q.push(v);
             }
         }
         return processed < n;   // couldn't topologically order everything => cycle
     }
-}
+};
 ```
 
 ---
@@ -196,56 +206,59 @@ Given an undirected graph with `n` vertices and an edge list, determine whether 
 
 **Approach A — DSU.** Process edges; the first edge whose endpoints already share a root proves a cycle.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class DetectCycleUndirected {
-    int[] parent, rank;
+class DetectCycleUndirected {
+    vector<int> parent, rank_;
 
     int find(int x) {
         if (parent[x] != x) parent[x] = find(parent[x]);
         return parent[x];
     }
 
-    boolean union(int x, int y) {
+    bool unite(int x, int y) {
         int rx = find(x), ry = find(y);
         if (rx == ry) return false;            // already connected => cycle
-        if (rank[rx] < rank[ry]) parent[rx] = ry;
-        else if (rank[rx] > rank[ry]) parent[ry] = rx;
-        else { parent[ry] = rx; rank[rx]++; }
+        if (rank_[rx] < rank_[ry]) parent[rx] = ry;
+        else if (rank_[rx] > rank_[ry]) parent[ry] = rx;
+        else { parent[ry] = rx; rank_[rx]++; }
         return true;
     }
 
-    public boolean hasCycle(int n, int[][] edges) {
-        parent = new int[n];
-        rank = new int[n];
-        for (int i = 0; i < n; i++) parent[i] = i;
-        for (int[] e : edges) {
-            if (!union(e[0], e[1])) return true;
+public:
+    bool hasCycle(int n, vector<vector<int>>& edges) {
+        parent.resize(n);
+        rank_.assign(n, 0);
+        iota(parent.begin(), parent.end(), 0);
+        for (auto& e : edges) {
+            if (!unite(e[0], e[1])) return true;
         }
         return false;
     }
 
     // Approach B — DFS with parent tracking (handles disconnected components)
-    public boolean hasCycleDFS(int n, List<List<Integer>> adj) {
-        boolean[] visited = new boolean[n];
+    bool hasCycleDFS(int n, vector<vector<int>>& adj) {
+        vector<bool> visited(n, false);
         for (int i = 0; i < n; i++)
             if (!visited[i] && dfs(i, -1, adj, visited)) return true;
         return false;
     }
 
-    private boolean dfs(int node, int parent, List<List<Integer>> adj, boolean[] visited) {
+private:
+    bool dfs(int node, int par, vector<vector<int>>& adj, vector<bool>& visited) {
         visited[node] = true;
-        for (int nei : adj.get(node)) {
+        for (int nei : adj[node]) {
             if (!visited[nei]) {
                 if (dfs(nei, node, adj, visited)) return true;
-            } else if (nei != parent) {
+            } else if (nei != par) {
                 return true;
             }
         }
         return false;
     }
-}
+};
 ```
 
 **Complexity:** DSU runs in `O(E · α(N))`; DFS in `O(V + E)`.
@@ -256,30 +269,33 @@ public class DetectCycleUndirected {
 
 Given a directed graph, determine whether it contains a directed cycle. Use 3-color DFS: a cycle exists iff DFS reaches a vertex currently on the recursion stack (gray).
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class DetectCycleDirected {
-    static final int WHITE = 0, GRAY = 1, BLACK = 2;
+class DetectCycleDirected {
+    static const int WHITE = 0, GRAY = 1, BLACK = 2;
 
-    public boolean hasCycle(int n, List<List<Integer>> adj) {
-        int[] color = new int[n];
+public:
+    bool hasCycle(int n, vector<vector<int>>& adj) {
+        vector<int> color(n, 0);
         for (int i = 0; i < n; i++) {
             if (color[i] == WHITE && dfs(i, adj, color)) return true;
         }
         return false;
     }
 
-    private boolean dfs(int node, List<List<Integer>> adj, int[] color) {
+private:
+    bool dfs(int node, vector<vector<int>>& adj, vector<int>& color) {
         color[node] = GRAY;
-        for (int nei : adj.get(node)) {
+        for (int nei : adj[node]) {
             if (color[nei] == GRAY) return true;                 // back edge
             if (color[nei] == WHITE && dfs(nei, adj, color)) return true;
         }
         color[node] = BLACK;
         return false;
     }
-}
+};
 ```
 
 **Why parent-tracking fails here:** In a directed graph `a→b` and `b→a` is a genuine 2-cycle, so we cannot "excuse the parent." The recursion-stack (gray) check correctly distinguishes a back edge (ancestor on the stack) from a harmless cross edge (already-finished black node).
@@ -294,20 +310,24 @@ public class DetectCycleDirected {
 
 Brief snippet (3-color DFS; safe ⟺ no cycle reachable):
 
-```java
-public List<Integer> eventualSafeNodes(int[][] graph) {
-    int n = graph.length;
-    int[] color = new int[n]; // 0 white, 1 gray, 2 black(safe)
-    List<Integer> res = new ArrayList<>();
-    for (int i = 0; i < n; i++) if (safe(i, graph, color)) res.add(i);
-    return res;
-}
-private boolean safe(int u, int[][] g, int[] color) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool safe(int u, vector<vector<int>>& g, vector<int>& color) {
     if (color[u] != 0) return color[u] == 2; // gray => unsafe, black => safe
     color[u] = 1;
     for (int v : g[u]) if (!safe(v, g, color)) return false;
     color[u] = 2;
     return true;
+}
+
+vector<int> eventualSafeNodes(vector<vector<int>>& graph) {
+    int n = graph.size();
+    vector<int> color(n, 0); // 0 white, 1 gray, 2 black(safe)
+    vector<int> res;
+    for (int i = 0; i < n; i++) if (safe(i, graph, color)) res.push_back(i);
+    return res;
 }
 ```
 
@@ -321,19 +341,21 @@ See [Topological Sort](./Topological%20Sort.md) for the detailed reverse-Kahn tr
 
 Brief snippet (Kahn's):
 
-```java
-public boolean canFinish(int numCourses, int[][] prerequisites) {
-    List<List<Integer>> adj = new ArrayList<>();
-    for (int i = 0; i < numCourses; i++) adj.add(new ArrayList<>());
-    int[] indeg = new int[numCourses];
-    for (int[] p : prerequisites) { adj.get(p[1]).add(p[0]); indeg[p[0]]++; }
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    Queue<Integer> q = new ArrayDeque<>();
-    for (int i = 0; i < numCourses; i++) if (indeg[i] == 0) q.offer(i);
+bool canFinish(int numCourses, vector<vector<int>>& prerequisites) {
+    vector<vector<int>> adj(numCourses);
+    vector<int> indeg(numCourses, 0);
+    for (auto& p : prerequisites) { adj[p[1]].push_back(p[0]); indeg[p[0]]++; }
+
+    queue<int> q;
+    for (int i = 0; i < numCourses; i++) if (indeg[i] == 0) q.push(i);
     int done = 0;
-    while (!q.isEmpty()) {
-        int u = q.poll(); done++;
-        for (int v : adj.get(u)) if (--indeg[v] == 0) q.offer(v);
+    while (!q.empty()) {
+        int u = q.front(); q.pop(); done++;
+        for (int v : adj[u]) if (--indeg[v] == 0) q.push(v);
     }
     return done == numCourses; // all scheduled => acyclic
 }
@@ -359,23 +381,25 @@ A rooted tree with `n` nodes is given `n` directed edges; exactly one extra edge
     - If there was **no** indegree-2 node, the redundant edge is simply the one that closed the cycle (pure cycle case). Return it.
     - If there **was** an indegree-2 node, then `cand1` is the offender (removing `cand2` didn't fix things, so the other parent edge `cand1` is part of the cycle). Return `cand1`.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class RedundantConnectionII {
-    int[] parent;
+class RedundantConnectionII {
+    vector<int> parent;
 
     int find(int x) {
         if (parent[x] != x) parent[x] = find(parent[x]);
         return parent[x];
     }
 
-    public int[] findRedundantDirectedConnection(int[][] edges) {
-        int n = edges.length;
-        parent = new int[n + 1];
-        int[] incomingParent = new int[n + 1]; // incomingParent[v] = which edge index gave v its parent
+public:
+    vector<int> findRedundantDirectedConnection(vector<vector<int>>& edges) {
+        int n = edges.size();
+        parent.resize(n + 1);
+        vector<int> incomingParent(n + 1, 0); // incomingParent[v] = which edge index gave v its parent
 
-        int[] cand1 = null, cand2 = null;      // two edges into the same node
+        vector<int> cand1, cand2;      // two edges into the same node
         for (int i = 0; i < n; i++) {
             int u = edges[i][0], v = edges[i][1];
             if (incomingParent[v] != 0) {       // v already has a parent edge
@@ -386,16 +410,16 @@ public class RedundantConnectionII {
             }
         }
 
-        for (int i = 0; i <= n; i++) parent[i] = i;
+        iota(parent.begin(), parent.end(), 0);
 
         // Run union over all edges except cand2 (if it exists)
         for (int i = 0; i < n; i++) {
-            if (cand2 != null && edges[i] == cand2) continue; // skip the second parent edge
+            if (!cand2.empty() && edges[i] == cand2) continue; // skip the second parent edge
             int u = edges[i][0], v = edges[i][1];
             int ru = find(u), rv = find(v);
             if (ru == rv) {
                 // a cycle formed without cand2
-                if (cand1 == null) return edges[i]; // pure cycle, no indegree-2 node
+                if (cand1.empty()) return edges[i]; // pure cycle, no indegree-2 node
                 return cand1;                       // indegree-2 case: cand1 is the bad edge
             }
             parent[rv] = ru;
@@ -403,11 +427,11 @@ public class RedundantConnectionII {
         // No cycle without cand2 => cand2 was the redundant edge
         return cand2;
     }
-}
+};
 ```
 
 **Walking the cases:**
-- **Only a cycle, no two-parent node:** `cand1`/`cand2` stay null; the union loop finds the closing edge and returns it.
+- **Only a cycle, no two-parent node:** `cand1`/`cand2` stay empty; the union loop finds the closing edge and returns it.
 - **Only two parents, no cycle:** Skipping `cand2` leaves a clean tree; loop finishes; we return `cand2`.
 - **Two parents AND a cycle:** Skipping `cand2` still leaves a cycle (because `cand1` is the one in the loop); we return `cand1`.
 
@@ -426,53 +450,54 @@ Given `n` servers (`0..n-1`) and undirected `connections`, return all **critical
 
 We must skip the immediate parent edge — but to handle **parallel edges** correctly, skip by *edge identity*, not by parent vertex.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class CriticalConnections {
-    private List<List<int[]>> adj;   // adj.get(u) = list of {neighbor, edgeId}
-    private int[] disc, low;
-    private boolean[] visited;
-    private int timer = 0;
-    private List<List<Integer>> bridges = new ArrayList<>();
+class CriticalConnections {
+    vector<vector<pair<int,int>>> adj;   // adj[u] = list of {neighbor, edgeId}
+    vector<int> disc, low;
+    vector<bool> visited;
+    int timer_ = 0;
+    vector<vector<int>> bridges;
 
-    public List<List<Integer>> criticalConnections(int n, List<List<Integer>> connections) {
-        adj = new ArrayList<>();
-        for (int i = 0; i < n; i++) adj.add(new ArrayList<>());
+public:
+    vector<vector<int>> criticalConnections(int n, vector<vector<int>>& connections) {
+        adj.assign(n, {});
         int id = 0;
-        for (List<Integer> c : connections) {
-            int u = c.get(0), v = c.get(1);
-            adj.get(u).add(new int[]{v, id});
-            adj.get(v).add(new int[]{u, id});
+        for (auto& c : connections) {
+            int u = c[0], v = c[1];
+            adj[u].push_back({v, id});
+            adj[v].push_back({u, id});
             id++;
         }
-        disc = new int[n];
-        low = new int[n];
-        visited = new boolean[n];
+        disc.resize(n);
+        low.resize(n);
+        visited.assign(n, false);
 
         for (int i = 0; i < n; i++)
             if (!visited[i]) dfs(i, -1);   // -1 = no incoming edge id
         return bridges;
     }
 
-    private void dfs(int u, int parentEdgeId) {
+private:
+    void dfs(int u, int parentEdgeId) {
         visited[u] = true;
-        disc[u] = low[u] = timer++;
-        for (int[] edge : adj.get(u)) {
-            int v = edge[0], eid = edge[1];
+        disc[u] = low[u] = timer_++;
+        for (auto& [v, eid] : adj[u]) {
             if (eid == parentEdgeId) continue;     // don't go back over the same edge
             if (!visited[v]) {
                 dfs(v, eid);
-                low[u] = Math.min(low[u], low[v]);
+                low[u] = min(low[u], low[v]);
                 if (low[v] > disc[u]) {            // bridge condition
-                    bridges.add(Arrays.asList(u, v));
+                    bridges.push_back({u, v});
                 }
             } else {
-                low[u] = Math.min(low[u], disc[v]); // back edge
+                low[u] = min(low[u], disc[v]); // back edge
             }
         }
     }
-}
+};
 ```
 
 ### Detailed Dry-Run
@@ -512,48 +537,49 @@ Given an undirected graph with `n` vertices and edge list, determine whether a p
 
 **Approach A — DSU.** Union every edge, then `source` and `destination` are connected iff they share a root.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class PathExists {
-    int[] parent;
+class PathExists {
+    vector<int> parent;
 
     int find(int x) {
         if (parent[x] != x) parent[x] = find(parent[x]);
         return parent[x];
     }
 
-    void union(int x, int y) {
+    void unite(int x, int y) {
         parent[find(x)] = find(y);
     }
 
-    public boolean validPath(int n, int[][] edges, int source, int destination) {
-        parent = new int[n];
-        for (int i = 0; i < n; i++) parent[i] = i;
-        for (int[] e : edges) union(e[0], e[1]);
+public:
+    bool validPath(int n, vector<vector<int>>& edges, int source, int destination) {
+        parent.resize(n);
+        iota(parent.begin(), parent.end(), 0);
+        for (auto& e : edges) unite(e[0], e[1]);
         return find(source) == find(destination);
     }
 
     // Approach B — BFS reachability
-    public boolean validPathBFS(int n, int[][] edges, int source, int destination) {
-        List<List<Integer>> adj = new ArrayList<>();
-        for (int i = 0; i < n; i++) adj.add(new ArrayList<>());
-        for (int[] e : edges) { adj.get(e[0]).add(e[1]); adj.get(e[1]).add(e[0]); }
+    bool validPathBFS(int n, vector<vector<int>>& edges, int source, int destination) {
+        vector<vector<int>> adj(n);
+        for (auto& e : edges) { adj[e[0]].push_back(e[1]); adj[e[1]].push_back(e[0]); }
 
-        boolean[] visited = new boolean[n];
-        Queue<Integer> q = new ArrayDeque<>();
-        q.offer(source);
+        vector<bool> visited(n, false);
+        queue<int> q;
+        q.push(source);
         visited[source] = true;
-        while (!q.isEmpty()) {
-            int u = q.poll();
+        while (!q.empty()) {
+            int u = q.front(); q.pop();
             if (u == destination) return true;
-            for (int v : adj.get(u)) {
-                if (!visited[v]) { visited[v] = true; q.offer(v); }
+            for (int v : adj[u]) {
+                if (!visited[v]) { visited[v] = true; q.push(v); }
             }
         }
         return false;
     }
-}
+};
 ```
 
 **Complexity:** DSU `O(V + E·α(V))`; BFS `O(V + E)`.

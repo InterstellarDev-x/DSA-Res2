@@ -11,35 +11,37 @@ A **heap** is a complete binary tree satisfying the heap property:
 - **Min-heap:** parent ≤ children → root = minimum element
 - **Max-heap:** parent ≥ children → root = maximum element
 
-Java's `PriorityQueue` is a **min-heap** by default. To get a max-heap, reverse the comparator.
+C++'s `std::priority_queue` is a **max-heap** by default. To get a min-heap, use `greater<T>` as the comparator.
 
 ---
 
-## Java PriorityQueue API
+## C++ priority_queue API
 
-```java
-// Min-heap (default)
-PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-// Max-heap
-PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Comparator.reverseOrder());
-// equivalent: new PriorityQueue<>((a, b) -> b - a)   ← UNSAFE (subtraction overflow)
-// SAFE:       new PriorityQueue<>((a, b) -> Integer.compare(b, a))
+// Min-heap
+priority_queue<int, vector<int>, greater<int>> minHeap;
 
-// Custom comparator — sort by absolute value
-PriorityQueue<Integer> pq = new PriorityQueue<>(Comparator.comparingInt(Math::abs));
+// Max-heap (default)
+priority_queue<int> maxHeap;
+
+// Custom comparator — sort by absolute value (min-heap by abs value)
+auto cmp = [](int a, int b) { return abs(a) > abs(b); };
+priority_queue<int, vector<int>, decltype(cmp)> pq(cmp);
 
 // Operations
-pq.offer(x);      // insert — O(log n)
-pq.poll();        // remove top (min or max) — O(log n); returns null if empty
-pq.peek();        // view top without removing — O(1); returns null if empty
+pq.push(x);       // insert — O(log n)
+pq.pop();         // remove top (min or max) — O(log n); undefined behavior if empty
+pq.top();         // view top without removing — O(1); undefined behavior if empty
 pq.size();        // O(1)
-pq.isEmpty();     // O(1)
-pq.contains(x);  // O(n) — linear scan; avoid in time-critical code
-pq.remove(x);    // O(n) — linear search + O(log n) heapify; expensive
+pq.empty();       // O(1)
+// contains: no direct equivalent — O(n) manual search
+// remove arbitrary element: no direct equivalent — use custom structures
 ```
 
-**Critical:** Never use subtraction `b - a` in comparators — it overflows for extreme values like `Integer.MIN_VALUE`. Always use `Integer.compare(b, a)`.
+**Critical:** In C++, `std::priority_queue` is a max-heap by default (unlike Java). Use `greater<T>` for a min-heap. Never use subtraction in comparators — it overflows for extreme values like `INT_MIN`. Always use explicit comparisons.
 
 ---
 
@@ -61,18 +63,21 @@ pq.remove(x);    // O(n) — linear search + O(log n) heapify; expensive
 
 Repeatedly smash the two heaviest stones. If equal, both destroyed; otherwise `|y - x|` remains.
 
-```java
-public int lastStoneWeight(int[] stones) {
-    PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Comparator.reverseOrder());
-    for (int s : stones) maxHeap.offer(s);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int lastStoneWeight(vector<int>& stones) {
+    priority_queue<int> maxHeap; // max-heap by default
+    for (int s : stones) maxHeap.push(s);
 
     while (maxHeap.size() > 1) {
-        int y = maxHeap.poll();   // largest
-        int x = maxHeap.poll();   // second largest
-        if (y != x) maxHeap.offer(y - x);   // remainder
+        int y = maxHeap.top(); maxHeap.pop();  // largest
+        int x = maxHeap.top(); maxHeap.pop();  // second largest
+        if (y != x) maxHeap.push(y - x);       // remainder
     }
 
-    return maxHeap.isEmpty() ? 0 : maxHeap.poll();
+    return maxHeap.empty() ? 0 : maxHeap.top();
 }
 ```
 
@@ -99,36 +104,48 @@ public int lastStoneWeight(int[] stones) {
 
 ## Heap with Custom Objects
 
-```java
-// Sort by distance, then by index for ties
-PriorityQueue<int[]> pq = new PriorityQueue<>((a, b) -> {
-    if (a[0] != b[0]) return Integer.compare(a[0], b[0]);  // primary: distance
-    return Integer.compare(a[1], b[1]);                     // tie-break: index
-});
-pq.offer(new int[]{distance, index});
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+// Sort by distance, then by index for ties (min-heap)
+auto cmp = [](const vector<int>& a, const vector<int>& b) {
+    if (a[0] != b[0]) return a[0] > b[0];  // primary: distance
+    return a[1] > b[1];                      // tie-break: index
+};
+priority_queue<vector<int>, vector<vector<int>>, decltype(cmp)> pq(cmp);
+pq.push({distance, index});
 ```
 
 **For Top K Frequent Words** (string comparison + frequency):
-```java
-PriorityQueue<Map.Entry<String, Integer>> pq = new PriorityQueue<>((a, b) -> {
-    if (!a.getValue().equals(b.getValue()))
-        return a.getValue() - b.getValue();  // fewer freq first (min-heap of freq)
-    return b.getKey().compareTo(a.getKey()); // more lexicographic first for same freq
-});
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+using Entry = pair<string, int>;
+auto cmp = [](const Entry& a, const Entry& b) {
+    if (a.second != b.second)
+        return a.second > b.second;   // fewer freq first (min-heap of freq)
+    return a.first < b.first;         // more lexicographic first for same freq
+};
+priority_queue<Entry, vector<Entry>, decltype(cmp)> pq(cmp);
 ```
 
 ---
 
 ## Heapify — Building from Array
 
-```java
-// Java: PriorityQueue constructor accepts Collection
-int[] arr = {3, 1, 4, 1, 5, 9, 2, 6};
-PriorityQueue<Integer> pq = new PriorityQueue<>();
-for (int x : arr) pq.offer(x);   // O(n log n) via repeated inserts
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-// For true O(n) heapify, use Arrays-based approach (not directly available in Java PQ)
-// In practice, the loop above is fine for interviews
+// C++: priority_queue constructor accepts iterators for O(n) heapify
+vector<int> arr = {3, 1, 4, 1, 5, 9, 2, 6};
+priority_queue<int> pq(arr.begin(), arr.end());   // O(n) heapify
+
+// Alternatively, build via repeated inserts — O(n log n)
+priority_queue<int> pq2;
+for (int x : arr) pq2.push(x);
 ```
 
 ---

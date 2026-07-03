@@ -26,30 +26,36 @@ The `'#'` is a separator **not appearing in `s`**, so a border of `combined` can
 
 Without `'#'`, the prefix-function fallback could match characters of `s` against characters of `s` (since `reverse(s)` begins with `s`'s last char), producing a border **longer than `|s|`** and a wrong answer. The separator caps every border at `|s|`. Picking a separator that *can* occur in the input is the classic bug — use a sentinel guaranteed absent (here inputs are lowercase letters, so `'#'` is safe).
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public String shortestPalindrome(String s) {
-        if (s == null || s.length() <= 1) return s;
-        String rev = new StringBuilder(s).reverse().toString();
-        String combined = s + "#" + rev;
-        int[] lps = buildLPS(combined);
+public:
+    string shortestPalindrome(string s) {
+        if (s.empty() || s.length() <= 1) return s;
+        string rev = s;
+        reverse(rev.begin(), rev.end());
+        string combined = s + "#" + rev;
+        vector<int> lps = buildLPS(combined);
         int p = lps[combined.length() - 1];      // longest palindromic prefix length
-        String toPrepend = rev.substring(0, s.length() - p);
+        string toPrepend = rev.substr(0, s.length() - p);
         return toPrepend + s;
     }
 
-    private int[] buildLPS(String s) {
+private:
+    vector<int> buildLPS(string s) {
         int n = s.length();
-        int[] lps = new int[n];
+        vector<int> lps(n);
         int len = 0, i = 1;
         while (i < n) {
-            if (s.charAt(i) == s.charAt(len)) { lps[i++] = ++len; }
+            if (s[i] == s[len]) { lps[i++] = ++len; }
             else if (len > 0) { len = lps[len - 1]; }
             else { lps[i++] = 0; }
         }
         return lps;
     }
-}
+};
 ```
 
 **Complexity:** O(n) time and space. Full LPS construction in [String Matching (KMP)](../Patterns/String%20Matching%20(KMP).md); the palindrome side in [Palindrome Algorithms](../Patterns/Palindrome%20Algorithms.md).
@@ -63,22 +69,26 @@ class Solution {
 ### Two ideas stacked
 
 1. **Monotonicity → binary search on length.** If a duplicate of length `L` exists, then so does one of length `L-1` (take any prefix of it). So `feasible(L)` is monotone, and we binary search the largest `L` in `[1, n-1]`.
-2. **Rabin-Karp for `feasible(L)`.** Hash every length-`L` window; if a hash repeats, a duplicate of length `L` likely exists. Use a `HashSet` of hashes for O(n) per check.
+2. **Rabin-Karp for `feasible(L)`.** Hash every length-`L` window; if a hash repeats, a duplicate of length `L` likely exists. Use an `std::unordered_set` of hashes for O(n) per check.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    private static final long MOD1 = 1_000_000_007L;
-    private static final long MOD2 = 998_244_353L;
-    private static final long BASE = 131L;
+    static const long long MOD1 = 1000000007LL;
+    static const long long MOD2 = 998244353LL;
+    static const long long BASE = 131LL;
 
-    public String longestDupSubstring(String s) {
+public:
+    string longestDupSubstring(string s) {
         int n = s.length();
-        long[] h1 = new long[n + 1], h2 = new long[n + 1];
-        long[] p1 = new long[n + 1], p2 = new long[n + 1];
+        vector<long long> h1(n + 1), h2(n + 1);
+        vector<long long> p1(n + 1), p2(n + 1);
         p1[0] = p2[0] = 1;
         for (int i = 0; i < n; i++) {
-            h1[i + 1] = (h1[i] * BASE + s.charAt(i)) % MOD1;
-            h2[i + 1] = (h2[i] * BASE + s.charAt(i)) % MOD2;
+            h1[i + 1] = (h1[i] * BASE + s[i]) % MOD1;
+            h2[i + 1] = (h2[i] * BASE + s[i]) % MOD2;
             p1[i + 1] = (p1[i] * BASE) % MOD1;
             p2[i + 1] = (p2[i] * BASE) % MOD2;
         }
@@ -93,22 +103,24 @@ class Solution {
                 hi = mid - 1;
             }
         }
-        return start == -1 ? "" : s.substring(start, start + bestLen);
+        return start == -1 ? "" : s.substr(start, bestLen);
     }
 
+private:
     // Returns the start index of a duplicated length-L substring, or -1.
-    private int firstDup(String s, int L, long[] h1, long[] h2, long[] p1, long[] p2) {
+    int firstDup(string& s, int L, vector<long long>& h1, vector<long long>& h2,
+                 vector<long long>& p1, vector<long long>& p2) {
         int n = s.length();
-        HashSet<Long> seen = new HashSet<>();
+        unordered_set<long long> seen;
         for (int i = 0; i + L <= n; i++) {
-            long a = ((h1[i + L] - h1[i] * p1[L]) % MOD1 + MOD1) % MOD1;
-            long b = ((h2[i + L] - h2[i] * p2[L]) % MOD2 + MOD2) % MOD2;
-            long combined = a * MOD2 + b;   // double hash packed into one long
-            if (!seen.add(combined)) return i;
+            long long a = ((h1[i + L] - h1[i] * p1[L]) % MOD1 + MOD1) % MOD1;
+            long long b = ((h2[i + L] - h2[i] * p2[L]) % MOD2 + MOD2) % MOD2;
+            long long combined = a * MOD2 + b;   // double hash packed into one long
+            if (!seen.insert(combined).second) return i;
         }
         return -1;
     }
-}
+};
 ```
 
 ### Double hashing for collisions
@@ -125,20 +137,24 @@ A **single** hash near `10^9` is provably breakable — LeetCode's hard test cas
 
 This is the prefix function **by definition** — no extra work. `lps[n-1]` is the length of the longest proper prefix of the whole string that is also a suffix.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public String longestPrefix(String s) {
+public:
+    string longestPrefix(string s) {
         int n = s.length();
-        int[] lps = new int[n];
+        vector<int> lps(n);
         int len = 0, i = 1;
         while (i < n) {
-            if (s.charAt(i) == s.charAt(len)) { lps[i++] = ++len; }
+            if (s[i] == s[len]) { lps[i++] = ++len; }
             else if (len > 0) { len = lps[len - 1]; }
             else { lps[i++] = 0; }
         }
-        return s.substring(0, lps[n - 1]);
+        return s.substr(0, lps[n - 1]);
     }
-}
+};
 ```
 
 **Complexity:** O(n) time and space. The interview signal is recognizing that "prefix that is also a suffix" *is* the LPS — candidates who reinvent it with hashing miss the elegance.

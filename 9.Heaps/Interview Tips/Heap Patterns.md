@@ -62,11 +62,11 @@ Does the problem involve repeatedly finding min/max?
 
 **Invariants:**
 - `|lo.size() - hi.size()| ≤ 1` (lo can have 1 extra)
-- `lo.peek() ≤ hi.peek()` (every lo element ≤ every hi element)
+- `lo.top() ≤ hi.top()` (every lo element ≤ every hi element)
 
 **Median extraction:**
-- Odd total: `lo.peek()`
-- Even total: `(lo.peek() + hi.peek()) / 2.0`
+- Odd total: `lo.top()`
+- Even total: `(lo.top() + hi.top()) / 2.0`
 
 **Variant — IPO (two pools, different semantics):**
 - `locked` = min-heap by capital (projects not yet affordable)
@@ -83,10 +83,13 @@ Does the problem involve repeatedly finding min/max?
 **Key check:** If max frequency > `(n+1)/2`, it's impossible to arrange without adjacent duplicates.
 
 **Template:**
-```java
-Map<T, Integer> freq = buildFreqMap(input);
-PriorityQueue<int[]> maxHeap = new PriorityQueue<>((a, b) -> b[0] - a[0]); // [freq, elem]
-for (var e : freq.entrySet()) maxHeap.offer(new int[]{e.getValue(), encode(e.getKey())});
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+unordered_map<int, int> freq = buildFreqMap(input);
+priority_queue<vector<int>> maxHeap; // max-heap by default; store {freq, elem}
+for (auto& [key, val] : freq) maxHeap.push({val, encode(key)});
 
 // Process in rounds: pick most frequent, place, decrement, put back if still needed
 // For cooldown: queue of (freq, available_at_time)
@@ -107,21 +110,28 @@ for (var e : freq.entrySet()) maxHeap.offer(new int[]{e.getValue(), encode(e.get
 
 ---
 
-## Java PriorityQueue Patterns for Custom Objects
+## C++ priority_queue Patterns for Custom Objects
 
-```java
-// Records/ints: simple comparator
-PriorityQueue<int[]> pq = new PriorityQueue<>(Comparator.comparingInt(a -> a[0]));
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+// Records/ints: simple comparator (min-heap by first element)
+auto cmp = [](const vector<int>& a, const vector<int>& b) { return a[0] > b[0]; };
+priority_queue<vector<int>, vector<vector<int>>, decltype(cmp)> pq(cmp);
 
 // Multi-key sort: primary by val, secondary by index
-PriorityQueue<int[]> pq = new PriorityQueue<>((a, b) -> 
-    a[0] != b[0] ? Integer.compare(a[0], b[0]) : Integer.compare(a[1], b[1]));
+auto cmp2 = [](const vector<int>& a, const vector<int>& b) {
+    return a[0] != b[0] ? a[0] > b[0] : a[1] > b[1];
+};
+priority_queue<vector<int>, vector<vector<int>>, decltype(cmp2)> pq2(cmp2);
 
 // String with frequency: lower freq → evict first; for equal freq, lex later → evict first
-PriorityQueue<String> pq = new PriorityQueue<>((a, b) -> {
-    int fa = freq.get(a), fb = freq.get(b);
-    return fa != fb ? fa - fb : b.compareTo(a);
-});
+auto cmp3 = [&](const string& a, const string& b) {
+    int fa = freq[a], fb = freq[b];
+    return fa != fb ? fa > fb : a < b;
+};
+priority_queue<string, vector<string>, decltype(cmp3)> pq3(cmp3);
 ```
 
 ---

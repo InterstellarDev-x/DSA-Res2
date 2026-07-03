@@ -7,12 +7,16 @@ as long as `deserialize(serialize(root))` reproduces the original tree. The two 
 encodings are **BFS (level-order)** and **DFS (preorder)** — both must explicitly mark `null`
 children so structure is recoverable.
 
-```java
-public class TreeNode {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+};
 ```
 
 > **Why null markers matter:** values alone are ambiguous. `[1, 2]` could mean 2 is the left
@@ -23,51 +27,58 @@ public class TreeNode {
 
 ## Approach 1 — DFS Preorder (recommended)
 
-Write nodes in preorder (Root, Left, Right), emitting `"#"` for `null`. To rebuild, consume
-tokens in the same preorder using an index pointer (or a `Queue`/iterator).
+Write nodes in preorder (Root, Left, Right), emitting `"#"` for `nullptr`. To rebuild, consume
+tokens in the same preorder using an index pointer (or a `queue`/iterator).
 
-```java
-public class Codec {
-    private static final String NULL = "#";
-    private static final String SEP  = ",";
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+class Codec {
+    const string NULLMARK = "#";
+    const string SEP = ",";
 
     // ---- serialize ----
-    public String serialize(TreeNode root) {
-        StringBuilder sb = new StringBuilder();
-        buildString(root, sb);
-        return sb.toString();
-    }
-
-    private void buildString(TreeNode node, StringBuilder sb) {
-        if (node == null) {
-            sb.append(NULL).append(SEP);
+    void buildString(TreeNode* node, string& sb) {
+        if (node == nullptr) {
+            sb += NULLMARK + SEP;
             return;
         }
-        sb.append(node.val).append(SEP);
-        buildString(node.left, sb);     // preorder: left then right
-        buildString(node.right, sb);
+        sb += to_string(node->val) + SEP;
+        buildString(node->left, sb);     // preorder: left then right
+        buildString(node->right, sb);
+    }
+
+public:
+    string serialize(TreeNode* root) {
+        string sb;
+        buildString(root, sb);
+        return sb;
     }
 
     // ---- deserialize ----
-    public TreeNode deserialize(String data) {
-        Queue<String> tokens = new LinkedList<>(Arrays.asList(data.split(SEP)));
-        return buildTree(tokens);
-    }
-
-    private TreeNode buildTree(Queue<String> tokens) {
-        String val = tokens.poll();          // consume in the SAME preorder
-        if (NULL.equals(val)) return null;
-        TreeNode node = new TreeNode(Integer.parseInt(val));
-        node.left  = buildTree(tokens);
-        node.right = buildTree(tokens);
+    TreeNode* buildTree(queue<string>& tokens) {
+        string val = tokens.front(); tokens.pop();  // consume in the SAME preorder
+        if (val == NULLMARK) return nullptr;
+        TreeNode* node = new TreeNode(stoi(val));
+        node->left  = buildTree(tokens);
+        node->right = buildTree(tokens);
         return node;
     }
-}
+
+    TreeNode* deserialize(string data) {
+        queue<string> tokens;
+        stringstream ss(data);
+        string token;
+        while (getline(ss, token, ',')) tokens.push(token);
+        return buildTree(tokens);
+    }
+};
 ```
 
 **Why it works:** preorder fixes the order in which nodes (and null markers) are emitted.
 Deserialization mirrors that exact order, so each recursive call consumes precisely the tokens
-that belong to its subtree. The `Queue` acts as a shared, advancing cursor across all
+that belong to its subtree. The `queue` acts as a shared, advancing cursor across all
 recursive frames.
 
 ---
@@ -78,52 +89,59 @@ Serialize level by level, writing `"#"` for null children encountered in the que
 Deserialize by reading the root, then for each non-null node, attach the next two tokens as
 its children.
 
-```java
-public class CodecBFS {
-    private static final String NULL = "#";
-    private static final String SEP  = ",";
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public String serialize(TreeNode root) {
-        if (root == null) return "";
-        StringBuilder sb = new StringBuilder();
-        Queue<TreeNode> queue = new LinkedList<>();
-        queue.offer(root);
-        while (!queue.isEmpty()) {
-            TreeNode node = queue.poll();
-            if (node == null) {
-                sb.append(NULL).append(SEP);
+class CodecBFS {
+    const string NULLMARK = "#";
+    const string SEP = ",";
+
+public:
+    string serialize(TreeNode* root) {
+        if (root == nullptr) return "";
+        string sb;
+        queue<TreeNode*> q;
+        q.push(root);
+        while (!q.empty()) {
+            TreeNode* node = q.front(); q.pop();
+            if (node == nullptr) {
+                sb += NULLMARK + SEP;
             } else {
-                sb.append(node.val).append(SEP);
-                queue.offer(node.left);     // enqueue nulls too; they'll be written as #
-                queue.offer(node.right);
+                sb += to_string(node->val) + SEP;
+                q.push(node->left);     // enqueue nulls too; they'll be written as #
+                q.push(node->right);
             }
         }
-        return sb.toString();
+        return sb;
     }
 
-    public TreeNode deserialize(String data) {
-        if (data.isEmpty()) return null;
-        String[] tokens = data.split(SEP);
-        TreeNode root = new TreeNode(Integer.parseInt(tokens[0]));
-        Queue<TreeNode> queue = new LinkedList<>();
-        queue.offer(root);
+    TreeNode* deserialize(string data) {
+        if (data.empty()) return nullptr;
+        vector<string> tokens;
+        stringstream ss(data);
+        string token;
+        while (getline(ss, token, ',')) tokens.push_back(token);
+        TreeNode* root = new TreeNode(stoi(tokens[0]));
+        queue<TreeNode*> q;
+        q.push(root);
         int i = 1;
-        while (!queue.isEmpty()) {
-            TreeNode node = queue.poll();
-            if (!NULL.equals(tokens[i])) {           // left child
-                node.left = new TreeNode(Integer.parseInt(tokens[i]));
-                queue.offer(node.left);
+        while (!q.empty()) {
+            TreeNode* node = q.front(); q.pop();
+            if (tokens[i] != NULLMARK) {           // left child
+                node->left = new TreeNode(stoi(tokens[i]));
+                q.push(node->left);
             }
             i++;
-            if (!NULL.equals(tokens[i])) {           // right child
-                node.right = new TreeNode(Integer.parseInt(tokens[i]));
-                queue.offer(node.right);
+            if (tokens[i] != NULLMARK) {           // right child
+                node->right = new TreeNode(stoi(tokens[i]));
+                q.push(node->right);
             }
             i++;
         }
         return root;
     }
-}
+};
 ```
 
 ---
@@ -135,15 +153,18 @@ A BST's structure is recoverable from preorder alone (values are unique and orde
 can drop the `"#"` markers and rebuild using an `upperBound` to decide where each value
 belongs.
 
-```java
-public TreeNode deserializeBST(Queue<Integer> q, int lower, int upper) {
-    if (q.isEmpty()) return null;
-    int val = q.peek();
-    if (val < lower || val > upper) return null;     // not in this subtree's range
-    q.poll();
-    TreeNode node = new TreeNode(val);
-    node.left  = deserializeBST(q, lower, val);
-    node.right = deserializeBST(q, val, upper);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+TreeNode* deserializeBST(queue<int>& q, int lower, int upper) {
+    if (q.empty()) return nullptr;
+    int val = q.front();
+    if (val < lower || val > upper) return nullptr;     // not in this subtree's range
+    q.pop();
+    TreeNode* node = new TreeNode(val);
+    node->left  = deserializeBST(q, lower, val);
+    node->right = deserializeBST(q, val, upper);
     return node;
 }
 ```
@@ -154,11 +175,11 @@ a general binary tree.
 Emit each node's value followed by its **child count**, then recurse over children. The count
 tells deserialization how many children to read — no per-child null markers required.
 
-```java
+```cpp
 // serialize: val + "," + children.size() + "," + ...children...
-private void encode(Node node, StringBuilder sb) {
-    sb.append(node.val).append(",").append(node.children.size()).append(",");
-    for (Node child : node.children) encode(child, sb);
+void encode(Node* node, string& sb) {
+    sb += to_string(node->val) + "," + to_string(node->children.size()) + ",";
+    for (auto& child : node->children) encode(child, sb);
 }
 ```
 

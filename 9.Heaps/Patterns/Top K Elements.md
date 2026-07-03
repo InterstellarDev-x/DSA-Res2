@@ -12,7 +12,7 @@
 **Key insight — min-heap of size k for "k largest":**
 - Maintain a min-heap of the k largest elements seen so far
 - The root of this heap = kth largest element
-- When a new element arrives: offer it; if heap size > k, poll (removes the smallest, keeping the k largest)
+- When a new element arrives: push it; if heap size > k, pop (removes the smallest, keeping the k largest)
 
 ```
 Finding k largest from [3,1,4,1,5,9,2,6], k=3:
@@ -20,22 +20,25 @@ Min-heap of size 3:
   After 3:     [3]
   After 1:     [1,3]
   After 4:     [1,3,4]
-  After 1 (4th): offer 1 → [1,1,3,4]; size>3 → poll 1 → [1,3,4]
-  After 5:     offer 5 → [1,3,4,5]; poll 1 → [3,4,5]
-  After 9:     offer 9 → [3,4,5,9]; poll 3 → [4,5,9]
-  After 2:     offer 2 → [2,4,5,9]; poll 2 → [4,5,9]
-  After 6:     offer 6 → [4,5,6,9]; poll 4 → [5,6,9]
+  After 1 (4th): push 1 → [1,1,3,4]; size>3 → pop 1 → [1,3,4]
+  After 5:     push 5 → [1,3,4,5]; pop 1 → [3,4,5]
+  After 9:     push 9 → [3,4,5,9]; pop 3 → [4,5,9]
+  After 2:     push 2 → [2,4,5,9]; pop 2 → [4,5,9]
+  After 6:     push 6 → [4,5,6,9]; pop 4 → [5,6,9]
   Root = 5 = kth largest ✓
 ```
 
 **Template:**
-```java
-PriorityQueue<Integer> minHeap = new PriorityQueue<>();  // min-heap of size k
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+priority_queue<int, vector<int>, greater<int>> minHeap;  // min-heap of size k
 for (int num : nums) {
-    minHeap.offer(num);
-    if (minHeap.size() > k) minHeap.poll();   // remove smallest; keep k largest
+    minHeap.push(num);
+    if (minHeap.size() > k) minHeap.pop();   // remove smallest; keep k largest
 }
-return minHeap.peek();  // root = kth largest
+return minHeap.top();  // root = kth largest
 ```
 
 ---
@@ -44,23 +47,24 @@ return minHeap.peek();  // root = kth largest
 
 Design class: `KthLargest(k, nums)` + `add(val)` returns current kth largest.
 
-```java
-class KthLargest {
-    private PriorityQueue<Integer> minHeap;
-    private int k;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public KthLargest(int k, int[] nums) {
-        this.k = k;
-        minHeap = new PriorityQueue<>();
+class KthLargest {
+    priority_queue<int, vector<int>, greater<int>> minHeap;
+    int k;
+public:
+    KthLargest(int k, vector<int>& nums) : k(k) {
         for (int n : nums) add(n);
     }
 
-    public int add(int val) {
-        minHeap.offer(val);
-        if (minHeap.size() > k) minHeap.poll();
-        return minHeap.peek();
+    int add(int val) {
+        minHeap.push(val);
+        if (minHeap.size() > k) minHeap.pop();
+        return minHeap.top();
     }
-}
+};
 ```
 
 **Complexity:** O(log k) per `add` — heap stays size ≤ k.
@@ -71,45 +75,47 @@ class KthLargest {
 
 **Approach 1: Min-heap of size k — O(n log k) time, O(k) space**
 
-```java
-public int findKthLargest(int[] nums, int k) {
-    PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int findKthLargest(vector<int>& nums, int k) {
+    priority_queue<int, vector<int>, greater<int>> minHeap;
     for (int n : nums) {
-        minHeap.offer(n);
-        if (minHeap.size() > k) minHeap.poll();
+        minHeap.push(n);
+        if (minHeap.size() > k) minHeap.pop();
     }
-    return minHeap.peek();
+    return minHeap.top();
 }
 ```
 
 **Approach 2: Quickselect — O(n) average, O(n²) worst, O(1) space**
 
-```java
-public int findKthLargest(int[] nums, int k) {
-    return quickselect(nums, 0, nums.length - 1, nums.length - k);
-    // kth largest = (n-k)th smallest (0-indexed)
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int partitionArr(vector<int>& nums, int left, int right) {
+    int pivot = nums[right], i = left;
+    for (int j = left; j < right; j++) {
+        if (nums[j] <= pivot) swap(nums[i++], nums[j]);
+    }
+    swap(nums[i], nums[right]);
+    return i;
 }
 
-private int quickselect(int[] nums, int left, int right, int kSmallest) {
+int quickselect(vector<int>& nums, int left, int right, int kSmallest) {
     if (left == right) return nums[left];
 
-    int pivotIdx = partition(nums, left, right);
+    int pivotIdx = partitionArr(nums, left, right);
     if (pivotIdx == kSmallest) return nums[pivotIdx];
     else if (pivotIdx < kSmallest) return quickselect(nums, pivotIdx + 1, right, kSmallest);
     else return quickselect(nums, left, pivotIdx - 1, kSmallest);
 }
 
-private int partition(int[] nums, int left, int right) {
-    int pivot = nums[right], i = left;
-    for (int j = left; j < right; j++) {
-        if (nums[j] <= pivot) swap(nums, i++, j);
-    }
-    swap(nums, i, right);
-    return i;
-}
-
-private void swap(int[] nums, int i, int j) {
-    int tmp = nums[i]; nums[i] = nums[j]; nums[j] = tmp;
+int findKthLargest(vector<int>& nums, int k) {
+    return quickselect(nums, 0, nums.size() - 1, nums.size() - k);
+    // kth largest = (n-k)th smallest (0-indexed)
 }
 ```
 
@@ -123,30 +129,42 @@ private void swap(int[] nums, int i, int j) {
 
 Distance² = x² + y² (no need to take square root — avoids floating point).
 
-```java
-public int[][] kClosest(int[][] points, int k) {
-    // Max-heap of size k — keep k smallest distances; root = kth closest
-    PriorityQueue<int[]> maxHeap = new PriorityQueue<>(
-        (a, b) -> Integer.compare(b[0]*b[0] + b[1]*b[1], a[0]*a[0] + a[1]*a[1])
-    );
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    for (int[] p : points) {
-        maxHeap.offer(p);
-        if (maxHeap.size() > k) maxHeap.poll();   // remove farthest
+vector<vector<int>> kClosest(vector<vector<int>>& points, int k) {
+    // Max-heap of size k — keep k smallest distances; root = kth closest
+    auto cmp = [](const vector<int>& a, const vector<int>& b) {
+        return a[0]*a[0] + a[1]*a[1] < b[0]*b[0] + b[1]*b[1];
+    };
+    priority_queue<vector<int>, vector<vector<int>>, decltype(cmp)> maxHeap(cmp);
+
+    for (auto& p : points) {
+        maxHeap.push(p);
+        if (maxHeap.size() > k) maxHeap.pop();   // remove farthest
     }
 
-    int[][] result = new int[k][2];
-    for (int i = k - 1; i >= 0; i--) result[i] = maxHeap.poll();
+    vector<vector<int>> result(k);
+    for (int i = k - 1; i >= 0; i--) {
+        result[i] = maxHeap.top();
+        maxHeap.pop();
+    }
     return result;
 }
 ```
 
-**Why max-heap for k smallest?** To keep the k closest, maintain a max-heap — the root is always the farthest among the k closest. When a new point is closer than the root, we replace the root (poll max, offer new). This keeps only the k closest.
+**Why max-heap for k smallest?** To keep the k closest, maintain a max-heap — the root is always the farthest among the k closest. When a new point is closer than the root, we replace the root (pop max, push new). This keeps only the k closest.
 
 **Simpler alternative — sort:**
-```java
-Arrays.sort(points, Comparator.comparingInt(p -> p[0]*p[0] + p[1]*p[1]));
-return Arrays.copyOfRange(points, 0, k);  // O(n log n) time, O(1) space
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+sort(points.begin(), points.end(), [](const vector<int>& a, const vector<int>& b) {
+    return a[0]*a[0] + a[1]*a[1] < b[0]*b[0] + b[1]*b[1];
+});
+return vector<vector<int>>(points.begin(), points.begin() + k);  // O(n log n) time, O(1) space
 ```
 
 Use heap for streaming/online variant; sort for offline.
@@ -155,22 +173,30 @@ Use heap for streaming/online variant; sort for offline.
 
 ## Problem 4: Top K Frequent Elements — LC 347
 
-```java
-public int[] topKFrequent(int[] nums, int k) {
-    Map<Integer, Integer> freq = new HashMap<>();
-    for (int n : nums) freq.merge(n, 1, Integer::sum);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> topKFrequent(vector<int>& nums, int k) {
+    unordered_map<int, int> freq;
+    for (int n : nums) freq[n]++;
 
     // Min-heap by frequency: keep k most frequent
-    PriorityQueue<Map.Entry<Integer, Integer>> minHeap =
-        new PriorityQueue<>(Comparator.comparingInt(Map.Entry::getValue));
+    auto cmp = [](const pair<int,int>& a, const pair<int,int>& b) {
+        return a.second > b.second;
+    };
+    priority_queue<pair<int,int>, vector<pair<int,int>>, decltype(cmp)> minHeap(cmp);
 
-    for (Map.Entry<Integer, Integer> e : freq.entrySet()) {
-        minHeap.offer(e);
-        if (minHeap.size() > k) minHeap.poll();   // remove least frequent
+    for (auto& [key, val] : freq) {
+        minHeap.push({key, val});
+        if (minHeap.size() > k) minHeap.pop();   // remove least frequent
     }
 
-    int[] result = new int[k];
-    for (int i = k - 1; i >= 0; i--) result[i] = minHeap.poll().getKey();
+    vector<int> result(k);
+    for (int i = k - 1; i >= 0; i--) {
+        result[i] = minHeap.top().first;
+        minHeap.pop();
+    }
     return result;
 }
 ```
@@ -178,24 +204,25 @@ public int[] topKFrequent(int[] nums, int k) {
 **O(n log k) time, O(n) space** (for freq map + heap of size k)
 
 **Alternative — Bucket Sort — O(n) time:**
-```java
-public int[] topKFrequent(int[] nums, int k) {
-    Map<Integer, Integer> freq = new HashMap<>();
-    for (int n : nums) freq.merge(n, 1, Integer::sum);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> topKFrequent(vector<int>& nums, int k) {
+    unordered_map<int, int> freq;
+    for (int n : nums) freq[n]++;
 
     // Buckets: bucket[i] = list of elements with frequency i
-    List<Integer>[] buckets = new List[nums.length + 1];
-    for (int key : freq.keySet()) {
-        int f = freq.get(key);
-        if (buckets[f] == null) buckets[f] = new ArrayList<>();
-        buckets[f].add(key);
+    vector<vector<int>> buckets(nums.size() + 1);
+    for (auto& [key, f] : freq) {
+        buckets[f].push_back(key);
     }
 
-    int[] result = new int[k];
-    int idx = 0;
-    for (int f = buckets.length - 1; f >= 0 && idx < k; f--) {
-        if (buckets[f] != null)
-            for (int n : buckets[f]) { if (idx < k) result[idx++] = n; }
+    vector<int> result;
+    for (int f = (int)buckets.size() - 1; f >= 0 && (int)result.size() < k; f--) {
+        for (int n : buckets[f]) {
+            if ((int)result.size() < k) result.push_back(n);
+        }
     }
     return result;
 }
@@ -207,30 +234,38 @@ public int[] topKFrequent(int[] nums, int k) {
 
 Same as Top K Frequent Elements but with lexicographic tie-breaking.
 
-```java
-public List<String> topKFrequent(String[] words, int k) {
-    Map<String, Integer> freq = new HashMap<>();
-    for (String w : words) freq.merge(w, 1, Integer::sum);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<string> topKFrequent(vector<string>& words, int k) {
+    unordered_map<string, int> freq;
+    for (auto& w : words) freq[w]++;
 
     // Min-heap: least frequent at top (to be evicted); lexicographically LATER breaks ties
-    PriorityQueue<String> minHeap = new PriorityQueue<>((a, b) -> {
-        int fa = freq.get(a), fb = freq.get(b);
-        if (fa != fb) return fa - fb;         // lower freq → evict first
-        return b.compareTo(a);               // lexicographically later → evict first
-    });
+    auto cmp = [&](const string& a, const string& b) {
+        int fa = freq[a], fb = freq[b];
+        if (fa != fb) return fa > fb;         // lower freq → evict first
+        return a < b;                         // lexicographically later → evict first
+    };
+    priority_queue<string, vector<string>, decltype(cmp)> minHeap(cmp);
 
-    for (String w : freq.keySet()) {
-        minHeap.offer(w);
-        if (minHeap.size() > k) minHeap.poll();
+    for (auto& [w, _] : freq) {
+        minHeap.push(w);
+        if (minHeap.size() > k) minHeap.pop();
     }
 
-    LinkedList<String> result = new LinkedList<>();
-    while (!minHeap.isEmpty()) result.addFirst(minHeap.poll());  // reverse order
+    vector<string> result;
+    while (!minHeap.empty()) {
+        result.push_back(minHeap.top());
+        minHeap.pop();
+    }
+    reverse(result.begin(), result.end());  // reverse order
     return result;
 }
 ```
 
-**Why `b.compareTo(a)` for tie-breaking?** We want lexicographically smaller words to stay (appear first in answer). The min-heap evicts the "worst" element. For ties in frequency, "worse" = lexicographically larger. So `b.compareTo(a)` means: if b > a, b comes before a in the heap (b gets evicted first).
+**Why the comparator for tie-breaking?** We want lexicographically smaller words to stay (appear first in answer). The min-heap evicts the "worst" element. For ties in frequency, "worse" = lexicographically larger. So `a < b` as the condition means: if a comes before b, a is "better" (kept); b gets evicted first.
 
 ---
 

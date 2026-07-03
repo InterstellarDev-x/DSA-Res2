@@ -72,11 +72,14 @@
 | **LeetCode** | [LC 410](https://leetcode.com/problems/split-array-largest-sum/) |
 | **Variants** | Book Allocation (GFG), Painter's Partition (GFG) — same solution |
 
-**Java solution:**
-```java
-public int splitArray(int[] nums, int k) {
-    int lo = Arrays.stream(nums).max().getAsInt();
-    int hi = Arrays.stream(nums).sum();
+**C++ solution:**
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int splitArray(vector<int>& nums, int k) {
+    int lo = *max_element(nums.begin(), nums.end());
+    int hi = accumulate(nums.begin(), nums.end(), 0);
     while (lo < hi) {
         int mid = lo + (hi - lo) / 2;
         int parts = 1, cur = 0;

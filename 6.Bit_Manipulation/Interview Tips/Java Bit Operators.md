@@ -1,4 +1,4 @@
-# Java Bit Operators Reference
+# C++ Bit Operators Reference
 
 > **Topic:** [Bit Manipulation](../README.md) · **Section:** Interview Tips
 > **Last Updated:** 2026-06-26
@@ -9,46 +9,46 @@
 
 | Method | Returns | Example |
 |--------|---------|---------|
-| `Integer.bitCount(n)` | Number of 1-bits | `bitCount(7)` = 3 |
-| `Integer.highestOneBit(n)` | `n` with only MSB kept | `highestOneBit(12)` = 8 |
-| `Integer.lowestOneBit(n)` | `n` with only LSB kept | `lowestOneBit(12)` = 4 |
-| `Integer.numberOfLeadingZeros(n)` | Leading zeros count | `nlz(8)` = 28 |
-| `Integer.numberOfTrailingZeros(n)` | Trailing zeros count | `ntz(8)` = 3 |
-| `Integer.reverse(n)` | Bits reversed | `reverse(1)` = -2147483648 |
-| `Integer.reverseBytes(n)` | Bytes reversed | byte-order swap |
-| `Integer.toBinaryString(n)` | Binary string, no padding | `"1010"` for 10 |
-| `Integer.toHexString(n)` | Hex string | `"a"` for 10 |
-| `Integer.signum(n)` | -1, 0, or 1 | sign of n |
-| `Integer.MAX_VALUE` | 2^31 - 1 = 2147483647 | |
-| `Integer.MIN_VALUE` | -2^31 = -2147483648 | |
-| `Long.bitCount(n)` | Same for `long` | |
+| `__builtin_popcount(n)` | Number of 1-bits | `__builtin_popcount(7)` = 3 |
+| `1u << (31 - __builtin_clz(n))` | `n` with only MSB kept | result for 12 = 8 |
+| `n & (-n)` | `n` with only LSB kept | result for 12 = 4 |
+| `__builtin_clz(n)` | Leading zeros count | `__builtin_clz(8)` = 28 |
+| `__builtin_ctz(n)` | Trailing zeros count | `__builtin_ctz(8)` = 3 |
+| (no standard equivalent) | Bits reversed | use manual loop or `__builtin_bitreverse32` (non-standard) |
+| `__builtin_bswap32(n)` | Bytes reversed | byte-order swap |
+| `bitset<32>(n).to_string()` | Binary string, no padding | `"1010"` for 10 |
+| `printf("%x", n)` / `stringstream` with `hex` | Hex string | `"a"` for 10 |
+| `(n > 0) - (n < 0)` | -1, 0, or 1 | sign of n |
+| `INT_MAX` | 2^31 - 1 = 2147483647 | |
+| `INT_MIN` | -2^31 = -2147483648 | |
+| `__builtin_popcountll(n)` | Number of 1-bits for `long long` | |
 
 ---
 
 ## Bitwise Assignment Operators
 
-```java
-n &= mask;   // n = n & mask
-n |= mask;   // n = n | mask
-n ^= mask;   // n = n ^ mask
-n <<= k;     // n = n << k
-n >>= k;     // n = n >> k  (arithmetic)
-n >>>= k;    // n = n >>> k (logical)
+```cpp
+n &= mask;             // n = n & mask
+n |= mask;             // n = n | mask
+n ^= mask;             // n = n ^ mask
+n <<= k;               // n = n << k
+n >>= k;               // n = n >> k  (arithmetic, sign-extends for signed types)
+n = (unsigned)n >> k;  // logical right shift (no >>>= in C++; cast to unsigned first)
 ```
 
 ---
 
 ## Bitmask Constants
 
-```java
-0xFF        // = 255, lowest 8 bits set
-0xFFFF      // = 65535, lowest 16 bits
-0xFFFFFFFF  // = -1 as int (all 32 bits set)
-0xFFFFFFFFL // = 4294967295L as long (unsigned 32-bit max)
-0x80000000  // = Integer.MIN_VALUE (only bit 31 set)
-0x7FFFFFFF  // = Integer.MAX_VALUE (bits 0-30 set)
-0xAAAAAAAA  // = bits 1,3,5,... (even positions from 0) = 2863311530
-0x55555555  // = bits 0,2,4,... (odd positions from 0) = 1431655765
+```cpp
+0xFF         // = 255, lowest 8 bits set
+0xFFFF       // = 65535, lowest 16 bits
+0xFFFFFFFF   // = -1 as int (all 32 bits set)
+0xFFFFFFFFUL // = 4294967295UL as unsigned long (unsigned 32-bit max)
+0x80000000   // = INT_MIN (only bit 31 set)
+0x7FFFFFFF   // = INT_MAX (bits 0-30 set)
+0xAAAAAAAA   // = bits 1,3,5,... (even positions from 0) = 2863311530
+0x55555555   // = bits 0,2,4,... (odd positions from 0) = 1431655765
 ```
 
 ---
@@ -58,16 +58,16 @@ n >>>= k;    // n = n >>> k (logical)
 | Shift | Symbol | Effect | Sign-extends? |
 |-------|--------|--------|--------------|
 | Left | `<<` | × 2^k | N/A — zeros fill right |
-| Arithmetic right | `>>` | ÷ 2^k (floor) | Yes — sign bit fills left |
-| Logical right | `>>>` | ÷ 2^k (unsigned) | No — zeros fill left |
+| Arithmetic right | `>>` | ÷ 2^k (floor) | Yes — sign bit fills left (for signed types) |
+| Logical right | `(unsigned)n >> k` | ÷ 2^k (unsigned) | No — zeros fill left |
 
-**Shift by ≥ 32 (int) or ≥ 64 (long):** Java takes `k % width`. So `1 << 32 == 1 << 0 == 1`.
+**Shift by ≥ 32 (int) or ≥ 64 (long long):** In C++, shifting by >= the bit width is **undefined behavior**. Always ensure `0 <= k < 32` (or 64 for `long long`). Unlike Java, C++ does NOT take `k % width` automatically.
 
 ---
 
 ## Two's Complement Quick Conversions
 
-```java
+```cpp
 -n      = ~n + 1       // negate
 ~n      = -n - 1       // bitwise NOT
 n & -n  = lowest set bit of n
@@ -78,33 +78,36 @@ n | -n  = all bits set from lowest set bit upward
 
 ## Checking Individual Bits
 
-```java
+```cpp
 // Is bit k set in n?
-boolean isSet = ((n >> k) & 1) == 1;
+bool isSet = ((n >> k) & 1) == 1;
 // OR equivalently:
-boolean isSet = (n & (1 << k)) != 0;
+bool isSet = (n & (1 << k)) != 0;
 ```
 
 ---
 
-## Java `java.util.BitSet`
+## C++ `std::bitset`
 
-```java
-BitSet bs = new BitSet(100);  // 100-bit set, all 0
-bs.set(5);           // set bit 5
-bs.clear(5);         // clear bit 5
-bs.flip(5);          // toggle bit 5
-bs.get(5);           // true if bit 5 is set
-bs.cardinality();    // number of set bits
-bs.and(other);       // AND in place
-bs.or(other);        // OR in place
-bs.xor(other);       // XOR in place
-bs.nextSetBit(from); // next set bit >= from
-bs.size();           // allocated size (rounded to 64)
-bs.length();         // index of highest set bit + 1
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bitset<100> bs;          // 100-bit set, all 0 (size must be compile-time constant)
+bs.set(5);               // set bit 5
+bs.reset(5);             // clear bit 5
+bs.flip(5);              // toggle bit 5
+bs.test(5);              // true if bit 5 is set
+bs.count();              // number of set bits
+bs &= other;             // AND in place
+bs |= other;             // OR in place
+bs ^= other;             // XOR in place
+bs._Find_next(from);     // next set bit > from (GCC extension)
+bs.size();               // fixed size (100 in this case)
+bs._Find_first();        // index of first set bit (GCC extension)
 ```
 
-**Note:** `java.util.BitSet` is dynamically sized and uses `long[]` internally.
+**Note:** `std::bitset<N>` requires a compile-time constant size and is fixed-width. For dynamic bit sets, use `vector<bool>` or a manual bitmask with `vector<uint64_t>`.
 
 ---
 
@@ -112,7 +115,7 @@ bs.length();         // index of highest set bit + 1
 
 ```
 ~  (bitwise NOT)
-<< >> >>>  (shifts)
+<< >>  (shifts)
 &  (bitwise AND)
 ^  (bitwise XOR)
 |  (bitwise OR)

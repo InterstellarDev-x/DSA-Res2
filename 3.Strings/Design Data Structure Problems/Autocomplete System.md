@@ -11,7 +11,7 @@
 1. [Problem Statement](#problem-statement)
 2. [Interview Expectations](#interview-expectations)
 3. [Approaches](#approaches)
-4. [Java Implementation](#java-implementation)
+4. [C++ Implementation](#c-implementation)
 5. [Complexity Analysis](#complexity-analysis)
 6. [Edge Cases](#edge-cases)
 7. [Similar Problems](#similar-problems)
@@ -24,8 +24,8 @@
 
 Design a search autocomplete system. Given a list of historical sentences with their times searched, implement:
 
-- `AutocompleteSystem(String[] sentences, int[] times)` — initialise
-- `List<String> input(char c)` — accepts one character at a time; returns top 3 most searched sentences matching the current prefix. `'#'` ends the current input and saves it.
+- `AutocompleteSystem(string[] sentences, int[] times)` — initialise
+- `vector<string> input(char c)` — accepts one character at a time; returns top 3 most searched sentences matching the current prefix. `'#'` ends the current input and saves it.
 
 Top 3 ranked by: **times searched descending**, then **lexicographic order ascending** for ties.
 
@@ -35,11 +35,11 @@ Top 3 ranked by: **times searched descending**, then **lexicographic order ascen
 
 | Expectation | Detail |
 |-------------|--------|
-| Core structure | Trie for prefix lookup + HashMap for frequency |
-| Ranking | Custom comparator: `(a, b) -> freqMap.get(b) != freqMap.get(a) ? freqMap.get(b) - freqMap.get(a) : a.compareTo(b)` |
+| Core structure | Trie for prefix lookup + std::unordered_map for frequency |
+| Ranking | Custom comparator: `[&](const string& a, const string& b) { int fa = freq[a], fb = freq[b]; return fa != fb ? fb > fa : a < b; }` |
 | Live typing | Accumulate typed characters into `curInput` |
 | Save on `#` | Insert `curInput` into trie with updated frequency |
-| Trade-off discussion | Trie (fast prefix) vs HashMap (simple but O(n) scan on each char) |
+| Trade-off discussion | Trie (fast prefix) vs std::unordered_map (simple but O(n) scan on each char) |
 
 ---
 
@@ -47,78 +47,87 @@ Top 3 ranked by: **times searched descending**, then **lexicographic order ascen
 
 | Approach | `input` Time | Space | Notes |
 |----------|-------------|-------|-------|
-| HashMap + scan | O(n×k) per char | O(n×k) | Scan all sentences for prefix match |
+| std::unordered_map + scan | O(n×k) per char | O(n×k) | Scan all sentences for prefix match |
 | Trie + DFS | O(p + r) per char | O(n×k) | p = prefix len, r = results |
 | Trie + top-k at each node | O(1) per char | O(n×k×3) | Pre-cache top 3 at each node |
 
 ---
 
-## Java Implementation
+## C++ Implementation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class AutocompleteSystem {
-    private final TrieNode root = new TrieNode();
-    private final Map<String, Integer> freq = new HashMap<>();
-    private TrieNode cur;
-    private final StringBuilder input = new StringBuilder();
-
-    static class TrieNode {
-        Map<Character, TrieNode> children = new HashMap<>();
+    struct TrieNode {
+        unordered_map<char, TrieNode*> children;
         // Could pre-cache top-k here for O(1) lookup
+    };
+
+    TrieNode* root = new TrieNode();
+    unordered_map<string, int> freq;
+    TrieNode* cur;
+    string inputStr;
+
+    void insert(const string& s) {
+        TrieNode* node = root;
+        for (char c : s) {
+            if (!node->children.count(c))
+                node->children[c] = new TrieNode();
+            node = node->children[c];
+        }
     }
 
-    public AutocompleteSystem(String[] sentences, int[] times) {
-        for (int i = 0; i < sentences.length; i++) {
-            freq.put(sentences[i], times[i]);
+    void dfs(TrieNode* node, string& sb, vector<string>& results) {
+        if (freq.count(sb)) results.push_back(sb);
+        for (auto& [c, child] : node->children) {
+            sb += c;
+            dfs(child, sb, results);
+            sb.pop_back();
+        }
+    }
+
+public:
+    AutocompleteSystem(vector<string>& sentences, vector<int>& times) {
+        for (int i = 0; i < (int)sentences.size(); i++) {
+            freq[sentences[i]] = times[i];
             insert(sentences[i]);
         }
         cur = root;
     }
 
-    private void insert(String s) {
-        TrieNode node = root;
-        for (char c : s.toCharArray()) {
-            node.children.putIfAbsent(c, new TrieNode());
-            node = node.children.get(c);
-        }
-    }
-
-    public List<String> input(char c) {
+    vector<string> input(char c) {
         if (c == '#') {
-            String sentence = input.toString();
-            freq.merge(sentence, 1, Integer::sum);
-            insert(sentence);
-            input.setLength(0);
+            freq[inputStr]++;
+            insert(inputStr);
+            inputStr.clear();
             cur = root;
-            return new ArrayList<>();
+            return {};
         }
 
-        input.append(c);
-        if (cur != null) cur = cur.children.get(c);
-        if (cur == null) return new ArrayList<>();
+        inputStr += c;
+        if (cur != nullptr) {
+            auto it = cur->children.find(c);
+            cur = (it != cur->children.end()) ? it->second : nullptr;
+        }
+        if (cur == nullptr) return {};
 
         // Collect all sentences under cur node via DFS
-        List<String> candidates = new ArrayList<>();
-        String prefix = input.toString();
-        dfs(cur, new StringBuilder(prefix), candidates);
+        vector<string> candidates;
+        string prefix = inputStr;
+        dfs(cur, prefix, candidates);
 
         // Sort: freq desc, then lex asc
-        candidates.sort((a, b) -> {
-            int fa = freq.getOrDefault(a, 0), fb = freq.getOrDefault(b, 0);
-            return fa != fb ? fb - fa : a.compareTo(b);
+        sort(candidates.begin(), candidates.end(), [&](const string& a, const string& b) {
+            int fa = freq.count(a) ? freq[a] : 0;
+            int fb = freq.count(b) ? freq[b] : 0;
+            return fa != fb ? fb > fa : a < b;
         });
-        return candidates.subList(0, Math.min(3, candidates.size()));
+        if (candidates.size() > 3) candidates.resize(3);
+        return candidates;
     }
-
-    private void dfs(TrieNode node, StringBuilder sb, List<String> results) {
-        if (freq.containsKey(sb.toString())) results.add(sb.toString());
-        for (Map.Entry<Character, TrieNode> e : node.children.entrySet()) {
-            sb.append(e.getKey());
-            dfs(e.getValue(), sb, results);
-            sb.deleteCharAt(sb.length() - 1);
-        }
-    }
-}
+};
 ```
 
 ---
@@ -157,8 +166,8 @@ Where: `n` = sentences, `k` = avg length, `p` = current prefix length, `r` = mat
 
 ## Follow-up Questions
 
-1. **Top 3 cached at each Trie node — how?** → Store a `PriorityQueue<String>` (size 3) at each node; update on insert. `input()` becomes O(1) per char.
-2. **Thread-safe for multiple users?** → `synchronized` on the Trie or use `ConcurrentHashMap` for `freq`; lock per prefix subtree for finer granularity.
+1. **Top 3 cached at each Trie node — how?** → Store a `priority_queue<string>` (size 3) at each node; update on insert. `input()` becomes O(1) per char.
+2. **Thread-safe for multiple users?** → Use `std::mutex` with `std::lock_guard` around the Trie and `freq` map; or use a per-prefix-subtree lock for finer granularity.
 3. **Disk-based for 10 billion sentences?** → LSM-tree or prefix-sorted file with binary search; cache hot prefixes in memory.
 4. **Handle typos / fuzzy matching?** → BK-tree or Levenshtein automaton instead of Trie.
 

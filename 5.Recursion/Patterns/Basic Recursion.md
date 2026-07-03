@@ -15,7 +15,7 @@
 
 ## Template — Recursive Framework
 
-```java
+```cpp
 returnType solve(params) {
     // 1. Base case
     if (trivial condition) return base value;
@@ -32,22 +32,25 @@ returnType solve(params) {
 
 ## Template 1 — Factorial / Fibonacci
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Factorial: n! = n × (n-1)!
-public int factorial(int n) {
+int factorial(int n) {
     if (n <= 1) return 1;
     return n * factorial(n - 1);
 }
 
 // Fibonacci: fib(n) = fib(n-1) + fib(n-2)
 // Naive: O(2^n) time — exponential due to recomputation
-public int fib(int n) {
+int fib(int n) {
     if (n <= 1) return n;
     return fib(n - 1) + fib(n - 2);
 }
 
 // Memoized: O(n) time, O(n) space
-public int fib(int n, int[] memo) {
+int fib(int n, vector<int>& memo) {
     if (n <= 1) return n;
     if (memo[n] != 0) return memo[n];
     return memo[n] = fib(n - 1, memo) + fib(n - 2, memo);
@@ -60,12 +63,12 @@ public int fib(int n, int[] memo) {
 
 Key insight: `x^n = x^(n/2) * x^(n/2)` — reduces to O(log n) multiplications.
 
-```java
-public double myPow(double x, int n) {
+```cpp
+double myPow(double x, int n) {
     if (n == 0) return 1;
     if (n < 0) {
         x = 1.0 / x;
-        n = -n; // careful: Integer.MIN_VALUE negation overflows int
+        n = -n; // careful: INT_MIN negation overflows int
     }
     return (n % 2 == 0)
         ? myPow(x * x, n / 2)
@@ -73,13 +76,16 @@ public double myPow(double x, int n) {
 }
 ```
 
-**Integer.MIN_VALUE trap:** `-n` when `n = Integer.MIN_VALUE` overflows. Use `long`:
+**INT_MIN trap:** `-n` when `n = INT_MIN` overflows. Use `long`:
 
-```java
-public double myPow(double x, int n) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+double myPow(double x, int n) {
     return power(x, (long) n);
 }
-private double power(double x, long n) {
+double power(double x, long n) {
     if (n == 0) return 1;
     if (n < 0) return power(1.0 / x, -n);
     if (n % 2 == 0) return power(x * x, n / 2);
@@ -91,14 +97,17 @@ private double power(double x, long n) {
 
 ## Template 3 — Reverse String / Array (LC 344)
 
-```java
-public void reverseString(char[] s) {
-    reverse(s, 0, s.length - 1);
-}
-private void reverse(char[] s, int lo, int hi) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void reverseHelper(vector<char>& s, int lo, int hi) {
     if (lo >= hi) return;
     char tmp = s[lo]; s[lo] = s[hi]; s[hi] = tmp;
-    reverse(s, lo + 1, hi - 1);
+    reverseHelper(s, lo + 1, hi - 1);
+}
+void reverseString(vector<char>& s) {
+    reverseHelper(s, 0, (int)s.size() - 1);
 }
 ```
 
@@ -108,22 +117,25 @@ private void reverse(char[] s, int lo, int hi) {
 
 ## Template 4 — Flood Fill (LC 733)
 
-```java
-public int[][] floodFill(int[][] image, int sr, int sc, int color) {
-    int originalColor = image[sr][sc];
-    if (originalColor == color) return image; // avoid infinite loop
-    dfs(image, sr, sc, originalColor, color);
-    return image;
-}
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-private void dfs(int[][] img, int r, int c, int orig, int newColor) {
-    if (r < 0 || r >= img.length || c < 0 || c >= img[0].length) return;
+void dfs(vector<vector<int>>& img, int r, int c, int orig, int newColor) {
+    if (r < 0 || r >= (int)img.size() || c < 0 || c >= (int)img[0].size()) return;
     if (img[r][c] != orig) return;
     img[r][c] = newColor; // mark before recursing (replaces visited set)
     dfs(img, r + 1, c, orig, newColor);
     dfs(img, r - 1, c, orig, newColor);
     dfs(img, r, c + 1, orig, newColor);
     dfs(img, r, c - 1, orig, newColor);
+}
+
+vector<vector<int>> floodFill(vector<vector<int>>& image, int sr, int sc, int color) {
+    int originalColor = image[sr][sc];
+    if (originalColor == color) return image; // avoid infinite loop
+    dfs(image, sr, sc, originalColor, color);
+    return image;
 }
 ```
 
@@ -133,24 +145,28 @@ private void dfs(int[][] img, int r, int c, int orig, int newColor) {
 
 At each position, decide: decode one digit, or two digits (if valid 10–26).
 
-```java
-public int numDecodings(String s) {
-    return decode(s, 0, new Integer[s.length()]);
-}
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-private int decode(String s, int i, Integer[] memo) {
-    if (i == s.length()) return 1;
-    if (s.charAt(i) == '0') return 0; // leading zero, invalid
-    if (memo[i] != null) return memo[i];
+int decode(const string& s, int i, vector<int>& memo) {
+    if (i == (int)s.size()) return 1;
+    if (s[i] == '0') return 0; // leading zero, invalid
+    if (memo[i] != -1) return memo[i];
 
     int ways = decode(s, i + 1, memo); // take one digit
-    if (i + 1 < s.length()) {
-        int twoDigit = Integer.parseInt(s.substring(i, i + 2));
+    if (i + 1 < (int)s.size()) {
+        int twoDigit = stoi(s.substr(i, 2));
         if (twoDigit >= 10 && twoDigit <= 26) {
             ways += decode(s, i + 2, memo); // take two digits
         }
     }
     return memo[i] = ways;
+}
+
+int numDecodings(const string& s) {
+    vector<int> memo(s.size(), -1);
+    return decode(s, 0, memo);
 }
 ```
 
@@ -189,9 +205,9 @@ Nodes: 9. With memoization, each fib(k) computed once → 5 calls total.
 | Mistake | Fix |
 |---------|-----|
 | Missing base case → StackOverflow | Always identify termination condition first |
-| `n = Integer.MIN_VALUE` negation overflow in Pow | Cast to `long` before negating |
+| `n = INT_MIN` negation overflow in Pow | Cast to `long` before negating |
 | Flood fill infinite loop (same color) | Guard `if (originalColor == color) return` |
-| Fib without memoization (exponential) | Use `Integer[]` memo or convert to DP |
+| Fib without memoization (exponential) | Use `vector<int>` memo initialized to -1, or convert to DP |
 
 ---
 

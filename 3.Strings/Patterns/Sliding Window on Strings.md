@@ -12,7 +12,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#c-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -67,24 +67,27 @@ Sliding Window on strings uses a **frequency map** (usually `int[26]` for lowerc
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Fixed Window — Find All Anagrams (LC 438)
 
-```java
-public List<Integer> findAnagrams(String s, String p) {
-    List<Integer> result = new ArrayList<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> findAnagrams(string s, string p) {
+    vector<int> result;
     if (s.length() < p.length()) return result;
 
-    int[] pFreq = new int[26];
-    int[] wFreq = new int[26];
-    for (char c : p.toCharArray()) pFreq[c - 'a']++;
+    int pFreq[26] = {};
+    int wFreq[26] = {};
+    for (char c : p) pFreq[c - 'a']++;
 
     int k = p.length();
-    for (int r = 0; r < s.length(); r++) {
-        wFreq[s.charAt(r) - 'a']++;
-        if (r >= k) wFreq[s.charAt(r - k) - 'a']--; // remove leftmost
-        if (Arrays.equals(pFreq, wFreq)) result.add(r - k + 1);
+    for (int r = 0; r < (int)s.length(); r++) {
+        wFreq[s[r] - 'a']++;
+        if (r >= k) wFreq[s[r - k] - 'a']--; // remove leftmost
+        if (equal(begin(pFreq), end(pFreq), begin(wFreq))) result.push_back(r - k + 1);
     }
     return result;
 }
@@ -93,17 +96,20 @@ public List<Integer> findAnagrams(String s, String p) {
 
 ### 2. Variable Window — Longest Substring Without Repeating Chars (LC 3)
 
-```java
-public int lengthOfLongestSubstring(String s) {
-    int[] lastSeen = new int[128]; // ASCII
-    Arrays.fill(lastSeen, -1);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int lengthOfLongestSubstring(string s) {
+    int lastSeen[128];
+    fill(lastSeen, lastSeen + 128, -1); // ASCII
     int l = 0, maxLen = 0;
 
-    for (int r = 0; r < s.length(); r++) {
-        int c = s.charAt(r);
+    for (int r = 0; r < (int)s.length(); r++) {
+        int c = s[r];
         if (lastSeen[c] >= l) l = lastSeen[c] + 1; // jump past duplicate
         lastSeen[c] = r;
-        maxLen = Math.max(maxLen, r - l + 1);
+        maxLen = max(maxLen, r - l + 1);
     }
     return maxLen;
 }
@@ -112,48 +118,54 @@ public int lengthOfLongestSubstring(String s) {
 
 ### 3. Variable Window — Minimum Window Substring (LC 76)
 
-```java
-public String minWindow(String s, String t) {
-    int[] need = new int[128];
-    for (char c : t.toCharArray()) need[c]++;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    int required = (int) t.chars().distinct().count();
+string minWindow(string s, string t) {
+    int need[128] = {};
+    for (char c : t) need[c]++;
+
+    int required = (int)unordered_set<char>(t.begin(), t.end()).size();
     int formed = 0, l = 0;
-    int[] ans = {Integer.MAX_VALUE, 0, 0}; // [len, l, r]
+    int ans[3] = {INT_MAX, 0, 0}; // [len, l, r]
 
-    int[] window = new int[128];
-    for (int r = 0; r < s.length(); r++) {
-        char rc = s.charAt(r);
+    int window[128] = {};
+    for (int r = 0; r < (int)s.length(); r++) {
+        char rc = s[r];
         window[rc]++;
         if (need[rc] > 0 && window[rc] == need[rc]) formed++;
 
         while (formed == required) {
             if (r - l + 1 < ans[0]) { ans[0] = r - l + 1; ans[1] = l; ans[2] = r; }
-            char lc = s.charAt(l++);
+            char lc = s[l++];
             window[lc]--;
             if (need[lc] > 0 && window[lc] < need[lc]) formed--;
         }
     }
-    return ans[0] == Integer.MAX_VALUE ? "" : s.substring(ans[1], ans[2] + 1);
+    return ans[0] == INT_MAX ? "" : s.substr(ans[1], ans[2] - ans[1] + 1);
 }
 // Time: O(|s| + |t|) | Space: O(1) — fixed ASCII arrays
 ```
 
 ### 4. Variable Window — Longest Substring with At Most K Distinct Chars (LC 340)
 
-```java
-public int lengthOfLongestSubstringKDistinct(String s, int k) {
-    Map<Character, Integer> freq = new HashMap<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int lengthOfLongestSubstringKDistinct(string s, int k) {
+    unordered_map<char, int> freq;
     int l = 0, maxLen = 0;
 
-    for (int r = 0; r < s.length(); r++) {
-        freq.merge(s.charAt(r), 1, Integer::sum);
-        while (freq.size() > k) {
-            char lc = s.charAt(l++);
-            freq.merge(lc, -1, Integer::sum);
-            if (freq.get(lc) == 0) freq.remove(lc);
+    for (int r = 0; r < (int)s.length(); r++) {
+        freq[s[r]]++;
+        while ((int)freq.size() > k) {
+            char lc = s[l++];
+            freq[lc]--;
+            if (freq[lc] == 0) freq.erase(lc);
         }
-        maxLen = Math.max(maxLen, r - l + 1);
+        maxLen = max(maxLen, r - l + 1);
     }
     return maxLen;
 }
@@ -162,42 +174,48 @@ public int lengthOfLongestSubstringKDistinct(String s, int k) {
 
 ### 5. Exactly K Distinct = atMost(K) − atMost(K−1)
 
-```java
-// Count subarrings with exactly K distinct chars
-public int subarraysWithKDistinct(String s, int k) {
-    return atMost(s, k) - atMost(s, k - 1);
-}
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-private int atMost(String s, int k) {
-    int[] freq = new int[26];
+// Count subarrings with exactly K distinct chars
+int atMost(string s, int k) {
+    int freq[26] = {};
     int l = 0, count = 0, distinct = 0;
-    for (int r = 0; r < s.length(); r++) {
-        if (freq[s.charAt(r) - 'a']++ == 0) distinct++;
+    for (int r = 0; r < (int)s.length(); r++) {
+        if (freq[s[r] - 'a']++ == 0) distinct++;
         while (distinct > k) {
-            if (--freq[s.charAt(l++) - 'a'] == 0) distinct--;
+            if (--freq[s[l++] - 'a'] == 0) distinct--;
         }
-        count += r - l + 1; // all substrings ending at r with ≤ k distinct
+        count += r - l + 1; // all substrings ending at r with <= k distinct
     }
     return count;
+}
+
+int subarraysWithKDistinct(string s, int k) {
+    return atMost(s, k) - atMost(s, k - 1);
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 6. Longest Repeating Character Replacement (LC 424)
 
-```java
-public int characterReplacement(String s, int k) {
-    int[] freq = new int[26];
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int characterReplacement(string s, int k) {
+    int freq[26] = {};
     int l = 0, maxFreq = 0, maxLen = 0;
 
-    for (int r = 0; r < s.length(); r++) {
-        maxFreq = Math.max(maxFreq, ++freq[s.charAt(r) - 'a']);
+    for (int r = 0; r < (int)s.length(); r++) {
+        maxFreq = max(maxFreq, ++freq[s[r] - 'a']);
         // window size - maxFreq = number of replacements needed
         while ((r - l + 1) - maxFreq > k) {
-            freq[s.charAt(l++) - 'a']--;
+            freq[s[l++] - 'a']--;
             // Note: maxFreq may be stale but never decreases incorrectly
         }
-        maxLen = Math.max(maxLen, r - l + 1);
+        maxLen = max(maxLen, r - l + 1);
     }
     return maxLen;
 }
@@ -210,10 +228,10 @@ public int characterReplacement(String s, int k) {
 
 | Mistake | Fix |
 |---------|-----|
-| `Arrays.equals(pFreq, wFreq)` is O(26) per step | For larger alphabets, use a `matches` counter instead |
-| Forgetting to remove key from map when freq hits 0 | `if (freq.get(c) == 0) freq.remove(c)` — otherwise `size()` is wrong |
+| `equal(begin(pFreq), end(pFreq), begin(wFreq))` is O(26) per step | For larger alphabets, use a `matches` counter instead |
+| Forgetting to remove key from map when freq hits 0 | `if (freq[c] == 0) freq.erase(c)` — otherwise `size()` is wrong |
 | Min window: using `>=` for `formed` increment | Only `==` needed — catches the exact moment a char becomes satisfied |
-| Fixed window: off-by-one when removing the outgoing char | Remove `s.charAt(r - k)`, not `s.charAt(r - k + 1)` |
+| Fixed window: off-by-one when removing the outgoing char | Remove `s[r - k]`, not `s[r - k + 1]` |
 | Counting `lastSeen[c] >= 0` instead of `>= l` | Without `>= l` guard, stale entries cause wrong left boundary jumps |
 
 ---

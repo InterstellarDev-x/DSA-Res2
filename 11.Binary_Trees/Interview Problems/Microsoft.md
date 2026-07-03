@@ -6,12 +6,13 @@ Microsoft binary-tree interviews lean on **reconstruction, careful index/state b
 
 Standard node definition used throughout:
 
-```java
-public class TreeNode {
+```cpp
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+};
 ```
 
 ---
@@ -30,7 +31,7 @@ Two facts power the whole reconstruction:
 So for each recursive call over `preorder[preStart..preEnd]` and `inorder[inStart..inEnd]`:
 
 - `rootVal = preorder[preStart]` — the root of this subtree.
-- `inIdx` = index of `rootVal` inside `inorder` (looked up in O(1) via a `HashMap<value, index>`).
+- `inIdx` = index of `rootVal` inside `inorder` (looked up in O(1) via a `std::unordered_map<value, index>`).
 - `leftSize = inIdx - inStart` — number of nodes in the left subtree.
 - **Left subtree** uses preorder range `preStart+1 .. preStart+leftSize` and inorder range `inStart .. inIdx-1`.
 - **Right subtree** uses preorder range `preStart+leftSize+1 .. preEnd` and inorder range `inIdx+1 .. inEnd`.
@@ -58,57 +59,59 @@ Reconstructed tree:
         15   7
 ```
 
-### Full Java Solution
+### Full C++ Solution
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    private Map<Integer, Integer> inorderIndex; // value -> index in inorder
-    private int[] preorder;
+    unordered_map<int, int> inorderIndex; // value -> index in inorder
+    vector<int> preorder;
 
-    public TreeNode buildTree(int[] preorder, int[] inorder) {
-        this.preorder = preorder;
-        this.inorderIndex = new HashMap<>();
-        for (int i = 0; i < inorder.length; i++) {
-            inorderIndex.put(inorder[i], i);
+public:
+    TreeNode* buildTree(vector<int>& preorder, vector<int>& inorder) {
+        this->preorder = preorder;
+        for (int i = 0; i < (int)inorder.size(); i++) {
+            inorderIndex[inorder[i]] = i;
         }
-        return build(0, 0, inorder.length - 1);
+        return build(0, 0, (int)inorder.size() - 1);
     }
 
+private:
     // preStart: start of this subtree in preorder
     // inStart, inEnd: bounds of this subtree in inorder
-    private TreeNode build(int preStart, int inStart, int inEnd) {
-        if (inStart > inEnd) return null; // empty segment
+    TreeNode* build(int preStart, int inStart, int inEnd) {
+        if (inStart > inEnd) return nullptr; // empty segment
 
         int rootVal = preorder[preStart];      // root is first in preorder
-        TreeNode root = new TreeNode(rootVal);
+        TreeNode* root = new TreeNode(rootVal);
 
-        int inIdx = inorderIndex.get(rootVal); // O(1) lookup
-        int leftSize = inIdx - inStart;        // nodes in left subtree
+        int inIdx = inorderIndex[rootVal]; // O(1) lookup
+        int leftSize = inIdx - inStart;    // nodes in left subtree
 
         // Left subtree:  preorder[preStart+1 .. preStart+leftSize],
         //                inorder[inStart .. inIdx-1]
-        root.left = build(preStart + 1, inStart, inIdx - 1);
+        root->left = build(preStart + 1, inStart, inIdx - 1);
 
         // Right subtree: preorder[preStart+leftSize+1 .. ],
         //                inorder[inIdx+1 .. inEnd]
-        root.right = build(preStart + leftSize + 1, inIdx + 1, inEnd);
+        root->right = build(preStart + leftSize + 1, inIdx + 1, inEnd);
 
         return root;
     }
-}
-
-// Required imports: java.util.HashMap, java.util.Map
+};
 ```
 
 ### Complexity
 
 | Metric | Value | Reason |
 | --- | --- | --- |
-| Time | O(n) | Each node built once; HashMap makes root lookup O(1). |
-| Space | O(n) | HashMap of size n + O(h) recursion stack. |
+| Time | O(n) | Each node built once; unordered_map makes root lookup O(1). |
+| Space | O(n) | unordered_map of size n + O(h) recursion stack. |
 
 ### Note
-Without the `HashMap`, finding `inIdx` by linear scan turns this into O(n²) on a skewed tree — a common follow-up is "how do you avoid the linear search?"
+Without the `std::unordered_map`, finding `inIdx` by linear scan turns this into O(n²) on a skewed tree — a common follow-up is "how do you avoid the linear search?"
 
 ---
 
@@ -120,7 +123,7 @@ Given the root of a tree and a list `to_delete` of values to remove, delete thos
 ### Intuition — Orphan Detection in Post-order
 Deleting a node can **create new roots**: its surviving children lose their parent and become roots of their own trees. So we need two pieces of information at each node during a **post-order** traversal:
 
-1. Is this node **itself** going to be deleted? (membership in a `Set<Integer>` of the to-delete values).
+1. Is this node **itself** going to be deleted? (membership in a `std::unordered_set<int>` of the to-delete values).
 2. Is this node currently a **root** of the forest — i.e., is it the original root, or did its parent just get deleted?
 
 The rule: **a surviving node becomes a new root exactly when it is a root candidate** (`isRoot == true`) — that happens when it is the original tree root, or when its parent was deleted. We pass an `isRoot` flag downward; a child is a root candidate iff the current node is being deleted.
@@ -128,48 +131,49 @@ The rule: **a surviving node becomes a new root exactly when it is a root candid
 Process post-order so children are resolved first:
 - Recurse into left and right, passing `isRoot = (this node is deleted)`.
 - The recursive call returns the (possibly null) surviving child to re-link.
-- If the current node is deleted, return `null` to its parent (severing the link); its surviving children were already collected as new roots.
+- If the current node is deleted, return `nullptr` to its parent (severing the link); its surviving children were already collected as new roots.
 - If the current node survives **and** is a root candidate, add it to the result list.
 
-### Full Java Solution
+### Full C++ Solution
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public List<TreeNode> delNodes(TreeNode root, int[] to_delete) {
-        Set<Integer> toDelete = new HashSet<>();
-        for (int v : to_delete) toDelete.add(v);
+public:
+    vector<TreeNode*> delNodes(TreeNode* root, vector<int>& to_delete) {
+        unordered_set<int> toDelete(to_delete.begin(), to_delete.end());
 
-        List<TreeNode> forest = new ArrayList<>();
+        vector<TreeNode*> forest;
         // The original root is a root candidate.
         dfs(root, true, toDelete, forest);
         return forest;
     }
 
-    // Returns the surviving node (or null if this node is deleted),
+private:
+    // Returns the surviving node (or nullptr if this node is deleted),
     // for the parent to re-link.
-    private TreeNode dfs(TreeNode node, boolean isRoot,
-                         Set<Integer> toDelete, List<TreeNode> forest) {
-        if (node == null) return null;
+    TreeNode* dfs(TreeNode* node, bool isRoot,
+                  unordered_set<int>& toDelete, vector<TreeNode*>& forest) {
+        if (node == nullptr) return nullptr;
 
-        boolean deleted = toDelete.contains(node.val);
+        bool deleted = toDelete.count(node->val) > 0;
 
         // A surviving node that is a root candidate joins the forest.
         if (!deleted && isRoot) {
-            forest.add(node);
+            forest.push_back(node);
         }
 
         // Children become root candidates iff THIS node is deleted.
-        node.left  = dfs(node.left,  deleted, toDelete, forest);
-        node.right = dfs(node.right, deleted, toDelete, forest);
+        node->left  = dfs(node->left,  deleted, toDelete, forest);
+        node->right = dfs(node->right, deleted, toDelete, forest);
 
-        // If deleted, sever from parent by returning null;
+        // If deleted, sever from parent by returning nullptr;
         // otherwise return self for re-linking.
-        return deleted ? null : node;
+        return deleted ? nullptr : node;
     }
-}
-
-// Required imports: java.util.ArrayList, java.util.HashSet, java.util.List,
-// java.util.Set
+};
 ```
 
 ### Complexity
@@ -207,17 +211,18 @@ Post-order rules at a node with children states `left` and `right`:
 
 **Root special case:** after the traversal, if the root itself comes back `NOT_COVERED`, there is no parent to cover it, so we add one final camera.
 
-### Full Java Solution
+### Full C++ Solution
 
-```java
+```cpp
 class Solution {
-    private static final int NOT_COVERED = 0;
-    private static final int HAS_CAMERA  = 1;
-    private static final int COVERED     = 2;
+    static const int NOT_COVERED = 0;
+    static const int HAS_CAMERA  = 1;
+    static const int COVERED     = 2;
 
-    private int cameras = 0; // instance var as global count
+    int cameras = 0; // instance var as global count
 
-    public int minCameraCover(TreeNode root) {
+public:
+    int minCameraCover(TreeNode* root) {
         // If the root ends up uncovered, it has no parent to cover it.
         if (dfs(root) == NOT_COVERED) {
             cameras++;
@@ -225,12 +230,13 @@ class Solution {
         return cameras;
     }
 
-    private int dfs(TreeNode node) {
+private:
+    int dfs(TreeNode* node) {
         // A null child imposes no demand -> treated as covered.
-        if (node == null) return COVERED;
+        if (node == nullptr) return COVERED;
 
-        int left  = dfs(node.left);
-        int right = dfs(node.right);
+        int left  = dfs(node->left);
+        int right = dfs(node->right);
 
         // A child needs coverage -> we must place a camera here.
         if (left == NOT_COVERED || right == NOT_COVERED) {
@@ -247,7 +253,7 @@ class Solution {
         // defer the camera to the parent.
         return NOT_COVERED;
     }
-}
+};
 ```
 
 ### Complexity

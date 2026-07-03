@@ -62,17 +62,19 @@ The answer at `i` depends on a constant number of earlier indices. *What varies:
 
 When a dimension is a **set of used items** (TSP-style, "assign jobs to people"), encode it as a bitmask integer:
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 // dp[mask] = best cost having assigned the people in `mask`
-int[] dp = new int[1 << n];
-Arrays.fill(dp, Integer.MAX_VALUE);
+vector<int> dp(1 << n);
+fill(dp.begin(), dp.end(), INT_MAX);
 dp[0] = 0;
 for (int mask = 0; mask < (1 << n); mask++) {
-    int i = Integer.bitCount(mask);          // next task index = count of set bits
+    int i = __builtin_popcount(mask);          // next task index = count of set bits
     for (int p = 0; p < n; p++) {
         if ((mask & (1 << p)) == 0) {        // person p still free
             int next = mask | (1 << p);
-            dp[next] = Math.min(dp[next], dp[mask] + cost[i][p]);
+            dp[next] = min(dp[next], dp[mask] + cost[i][p]);
         }
     }
 }

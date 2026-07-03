@@ -31,34 +31,37 @@ This is literally the Fibonacci sequence shifted by one — hence the pattern na
 
 ### Step 1 — Pure recursion (exponential, for intuition only)
 
-```java
+```cpp
 class Solution {
-    public int climbStairs(int n) {
+public:
+    int climbStairs(int n) {
         if (n <= 1) {
             return 1;
         }
         return climbStairs(n - 1) + climbStairs(n - 2);
     }
-}
+};
 ```
 
 Time `O(2^n)`, because the same sub-problems are recomputed repeatedly.
 
 ### Step 2 — Memoization (top-down)
 
-We cache results in `int[] memo` initialized with `-1` (a sentinel meaning "not yet computed"), using `Arrays.fill`.
+We cache results in `vector<int> memo` initialized with `-1` (a sentinel meaning "not yet computed").
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int climbStairs(int n) {
-        int[] memo = new int[n + 1];
-        Arrays.fill(memo, -1);
+public:
+    int climbStairs(int n) {
+        vector<int> memo(n + 1, -1);
         return solve(n, memo);
     }
 
-    private int solve(int n, int[] memo) {
+private:
+    int solve(int n, vector<int>& memo) {
         if (n <= 1) {
             return 1;
         }
@@ -68,20 +71,24 @@ class Solution {
         memo[n] = solve(n - 1, memo) + solve(n - 2, memo);
         return memo[n];
     }
-}
+};
 ```
 
 Time `O(n)`, Space `O(n)` for the memo plus `O(n)` recursion stack.
 
 ### Step 3 — Tabulation (bottom-up)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int climbStairs(int n) {
+public:
+    int climbStairs(int n) {
         if (n <= 1) {
             return 1;
         }
-        int[] dp = new int[n + 1];
+        vector<int> dp(n + 1);
         dp[0] = 1;
         dp[1] = 1;
         for (int i = 2; i <= n; i++) {
@@ -89,16 +96,17 @@ class Solution {
         }
         return dp[n];
     }
-}
+};
 ```
 
 ### Step 4 — Space-optimized O(1)
 
 Since `dp[i]` only depends on the previous two values, keep two rolling variables.
 
-```java
+```cpp
 class Solution {
-    public int climbStairs(int n) {
+public:
+    int climbStairs(int n) {
         if (n <= 1) {
             return 1;
         }
@@ -111,7 +119,7 @@ class Solution {
         }
         return prev1;
     }
-}
+};
 ```
 
 ### Dry run (`n = 5`)
@@ -150,47 +158,55 @@ Result: **8** distinct ways.
 
 ### Tabulation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int frogJump(int[] height) {
-        int n = height.length;
+public:
+    int frogJump(vector<int>& height) {
+        int n = height.size();
         if (n == 1) {
             return 0;
         }
-        int[] dp = new int[n];
+        vector<int> dp(n);
         dp[0] = 0;
-        dp[1] = Math.abs(height[1] - height[0]);
+        dp[1] = abs(height[1] - height[0]);
         for (int i = 2; i < n; i++) {
-            int oneStep = dp[i - 1] + Math.abs(height[i] - height[i - 1]);
-            int twoStep = dp[i - 2] + Math.abs(height[i] - height[i - 2]);
-            dp[i] = Math.min(oneStep, twoStep);
+            int oneStep = dp[i - 1] + abs(height[i] - height[i - 1]);
+            int twoStep = dp[i - 2] + abs(height[i] - height[i - 2]);
+            dp[i] = min(oneStep, twoStep);
         }
         return dp[n - 1];
     }
-}
+};
 ```
 
 ### Space-optimized O(1)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int frogJump(int[] height) {
-        int n = height.length;
+public:
+    int frogJump(vector<int>& height) {
+        int n = height.size();
         if (n == 1) {
             return 0;
         }
         int prev2 = 0;                                    // dp[i-2]
-        int prev1 = Math.abs(height[1] - height[0]);      // dp[i-1]
+        int prev1 = abs(height[1] - height[0]);           // dp[i-1]
         for (int i = 2; i < n; i++) {
-            int oneStep = prev1 + Math.abs(height[i] - height[i - 1]);
-            int twoStep = prev2 + Math.abs(height[i] - height[i - 2]);
-            int curr = Math.min(oneStep, twoStep);
+            int oneStep = prev1 + abs(height[i] - height[i - 1]);
+            int twoStep = prev2 + abs(height[i] - height[i - 2]);
+            int curr = min(oneStep, twoStep);
             prev2 = prev1;
             prev1 = curr;
         }
         return prev1;
     }
-}
+};
 ```
 
 ### Dry run (`height = [10, 30, 40, 20]`)
@@ -229,25 +245,29 @@ The recurrence now has an **inner loop over the `k` possible jumps**, so space o
 
 ### Tabulation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int frogJumpK(int[] height, int k) {
-        int n = height.length;
-        int[] dp = new int[n];
+public:
+    int frogJumpK(vector<int>& height, int k) {
+        int n = height.size();
+        vector<int> dp(n);
         dp[0] = 0;
         for (int i = 1; i < n; i++) {
-            int best = Integer.MAX_VALUE;
+            int best = INT_MAX;
             for (int j = 1; j <= k; j++) {
                 if (i - j >= 0) {
-                    int cost = dp[i - j] + Math.abs(height[i] - height[i - j]);
-                    best = Math.min(best, cost);
+                    int cost = dp[i - j] + abs(height[i] - height[i - j]);
+                    best = min(best, cost);
                 }
             }
             dp[i] = best;
         }
         return dp[n - 1];
     }
-}
+};
 ```
 
 ### Complexity
@@ -276,17 +296,19 @@ This is the classic **pick / not-pick** recurrence.
 
 ### Memoization (top-down)
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int rob(int[] nums) {
-        int[] memo = new int[nums.length];
-        Arrays.fill(memo, -1);
-        return solve(nums, nums.length - 1, memo);
+public:
+    int rob(vector<int>& nums) {
+        vector<int> memo(nums.size(), -1);
+        return solve(nums, nums.size() - 1, memo);
     }
 
-    private int solve(int[] nums, int i, int[] memo) {
+private:
+    int solve(vector<int>& nums, int i, vector<int>& memo) {
         if (i < 0) {
             return 0;
         }
@@ -298,50 +320,55 @@ class Solution {
         }
         int pick = nums[i] + solve(nums, i - 2, memo);
         int notPick = solve(nums, i - 1, memo);
-        memo[i] = Math.max(pick, notPick);
+        memo[i] = max(pick, notPick);
         return memo[i];
     }
-}
+};
 ```
 
 ### Tabulation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int rob(int[] nums) {
-        int n = nums.length;
+public:
+    int rob(vector<int>& nums) {
+        int n = nums.size();
         if (n == 1) {
             return nums[0];
         }
-        int[] dp = new int[n];
+        vector<int> dp(n);
         dp[0] = nums[0];
-        dp[1] = Math.max(nums[0], nums[1]);
+        dp[1] = max(nums[0], nums[1]);
         for (int i = 2; i < n; i++) {
             int pick = nums[i] + dp[i - 2];
             int notPick = dp[i - 1];
-            dp[i] = Math.max(pick, notPick);
+            dp[i] = max(pick, notPick);
         }
         return dp[n - 1];
     }
-}
+};
 ```
 
 ### Space-optimized O(1)
 
-```java
+```cpp
 class Solution {
-    public int rob(int[] nums) {
+public:
+    int rob(vector<int>& nums) {
         int prev2 = 0; // dp[i-2]
         int prev1 = 0; // dp[i-1]
-        for (int i = 0; i < nums.length; i++) {
+        for (int i = 0; i < (int)nums.size(); i++) {
             int pick = nums[i] + prev2;
-            int curr = Math.max(pick, prev1);
+            int curr = max(pick, prev1);
             prev2 = prev1;
             prev1 = curr;
         }
         return prev1;
     }
-}
+};
 ```
 
 ### Dry run (`nums = [2, 7, 9, 3, 1]`)
@@ -379,31 +406,36 @@ If we cannot rob both the first and last house, then any optimal solution falls 
 
 The answer is the maximum of the two. (Handle `n == 1` separately.)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int rob(int[] nums) {
-        int n = nums.length;
+public:
+    int rob(vector<int>& nums) {
+        int n = nums.size();
         if (n == 1) {
             return nums[0];
         }
         int excludeLast = robLinear(nums, 0, n - 2);
         int excludeFirst = robLinear(nums, 1, n - 1);
-        return Math.max(excludeLast, excludeFirst);
+        return max(excludeLast, excludeFirst);
     }
 
+private:
     // Linear House Robber over the inclusive range [start, end].
-    private int robLinear(int[] nums, int start, int end) {
+    int robLinear(vector<int>& nums, int start, int end) {
         int prev2 = 0;
         int prev1 = 0;
         for (int i = start; i <= end; i++) {
             int pick = nums[i] + prev2;
-            int curr = Math.max(pick, prev1);
+            int curr = max(pick, prev1);
             prev2 = prev1;
             prev1 = curr;
         }
         return prev1;
     }
-}
+};
 ```
 
 ### Complexity
@@ -426,20 +458,21 @@ This is **exactly House Robber** — the "no two adjacent houses" constraint is 
 | **Recurrence** | `dp[i] = max(nums[i] + dp[i-2], dp[i-1])` |
 | **Base cases** | `dp[0] = nums[0]`; `dp[1] = max(nums[0], nums[1])` |
 
-```java
+```cpp
 class Solution {
-    public int maxNonAdjacentSum(int[] nums) {
+public:
+    int maxNonAdjacentSum(vector<int>& nums) {
         int prev2 = 0; // best sum ending at or before i-2
         int prev1 = 0; // best sum ending at or before i-1
-        for (int i = 0; i < nums.length; i++) {
+        for (int i = 0; i < (int)nums.size(); i++) {
             int pick = nums[i] + prev2;
-            int curr = Math.max(pick, prev1);
+            int curr = max(pick, prev1);
             prev2 = prev1;
             prev1 = curr;
         }
         return prev1;
     }
-}
+};
 ```
 
 > **Equivalence note:** If you can solve House Robber, you have already solved this problem. Recognizing such equivalences is the single biggest accelerator in DP — many problems are the same recurrence wearing a different costume. (If negative values are allowed and the empty subset is permitted, this code already handles it correctly, since `prev1`/`prev2` start at 0 and `pick` competes against `prev1`.)
@@ -464,11 +497,15 @@ Here we look at the **1D precursor**: a single sequence of costs where, on each 
 
 This mirrors the structure of **Min Cost Climbing Stairs**: at each step you may have arrived from one of the previous one or two steps, and you want the cheapest arrival.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
+public:
     // Minimum running cost; from step i you may arrive from i-1 or i-2.
-    public int minRunningCost(int[] cost) {
-        int n = cost.length;
+    int minRunningCost(vector<int>& cost) {
+        int n = cost.size();
         if (n == 0) {
             return 0;
         }
@@ -478,23 +515,27 @@ class Solution {
         int prev2 = cost[0];
         int prev1 = cost[1];
         for (int i = 2; i < n; i++) {
-            int curr = cost[i] + Math.min(prev1, prev2);
+            int curr = cost[i] + min(prev1, prev2);
             prev2 = prev1;
             prev1 = curr;
         }
         return prev1;
     }
-}
+};
 ```
 
 ### Max variant
 
-The maximum-cost (best reward) version is identical with `Math.max` swapped in:
+The maximum-cost (best reward) version is identical with `max` swapped in:
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int maxRunningCost(int[] cost) {
-        int n = cost.length;
+public:
+    int maxRunningCost(vector<int>& cost) {
+        int n = cost.size();
         if (n == 0) {
             return 0;
         }
@@ -504,13 +545,13 @@ class Solution {
         int prev2 = cost[0];
         int prev1 = cost[1];
         for (int i = 2; i < n; i++) {
-            int curr = cost[i] + Math.max(prev1, prev2);
+            int curr = cost[i] + max(prev1, prev2);
             prev2 = prev1;
             prev1 = curr;
         }
         return prev1;
     }
-}
+};
 ```
 
 ### Complexity
@@ -541,7 +582,7 @@ class Solution {
 
 - **1D DP** problems have a state indexed by a single position; the recurrence reaches back a **fixed, small** number of indices.
 - Always progress mentally **recursion → memoization → tabulation → space optimization**, but in interviews you can often jump straight to tabulation or the `O(1)` two-variable form once you trust the recurrence.
-- **Memoization** uses `int[] memo` with `Arrays.fill(memo, -1)` as the "not computed" sentinel.
+- **Memoization** uses `vector<int> memo` initialized with `-1` as the "not computed" sentinel.
 - When `dp[i]` depends only on `dp[i-1]` and `dp[i-2]`, replace the array with `prev1` / `prev2` for **`O(1)` space**.
 - The **k-distance frog** breaks the `O(1)` trick because it reaches back up to `k` slots, giving `O(n*k)` time.
 - **House Robber**, **Max Non-Adjacent Sum**, and **House Robber II** are the same pick/not-pick recurrence; the circular variant just runs the linear solver twice.

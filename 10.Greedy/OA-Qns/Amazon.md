@@ -26,11 +26,14 @@
 3. "What is the minimum number of jumps if you can start from any index?" (→ modified BFS)
 
 **Code they want to see:**
-```java
-public int jump(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int jump(vector<int>& nums) {
     int jumps = 0, curEnd = 0, farthest = 0;
-    for (int i = 0; i < nums.length - 1; i++) {
-        farthest = Math.max(farthest, i + nums[i]);
+    for (int i = 0; i < (int)nums.size() - 1; i++) {
+        farthest = max(farthest, i + nums[i]);
         if (i == curEnd) {
             jumps++;
             curEnd = farthest;
@@ -59,10 +62,13 @@ public int jump(int[] nums) {
 3. "What if roads have varying distances?" (→ same algorithm, different cost array)
 
 **Code they want to see:**
-```java
-public int canCompleteCircuit(int[] gas, int[] cost) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
     int totalGain = 0, currentGain = 0, startStation = 0;
-    for (int i = 0; i < gas.length; i++) {
+    for (int i = 0; i < (int)gas.size(); i++) {
         int gain = gas[i] - cost[i];
         totalGain += gain;
         currentGain += gain;

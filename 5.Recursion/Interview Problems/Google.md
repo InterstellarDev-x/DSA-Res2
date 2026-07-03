@@ -23,13 +23,12 @@
 
 **Q1: Can you solve it with bitmasks? (N-Queens II for count)**
 
-```java
-public int totalNQueens(int n) {
-    return solve(n, 0, 0, 0, 0);
-}
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 // cols, diag1, diag2 are bitmasks of attacked positions
-private int solve(int n, int row, int cols, int diag1, int diag2) {
+int solve(int n, int row, int cols, int diag1, int diag2) {
     if (row == n) return 1;
     int count = 0;
     // All positions NOT attacked by cols, diag1, or diag2 in this row
@@ -42,15 +41,19 @@ private int solve(int n, int row, int cols, int diag1, int diag2) {
     }
     return count;
 }
+
+int totalNQueens(int n) {
+    return solve(n, 0, 0, 0, 0);
+}
 ```
 
 Time: O(n!) pruned, much faster in practice.
 
 **Q2: How would you reconstruct paths from the bitmask version?**
-Track which `bit` was chosen per row in an `int[] colsChosen` array, then build board from it.
+Track which `bit` was chosen per row in a `vector<int> colsChosen` array, then build board from it.
 
-**Q3: What is the runtime of the HashSet approach?**
-Each set contains/add is O(1) average. Overall O(n!) with pruning. The bitmask approach has lower constant factor due to no HashMap overhead.
+**Q3: What is the runtime of the std::unordered_set approach?**
+Each set contains/add is O(1) average. Overall O(n!) with pruning. The bitmask approach has lower constant factor due to no std::unordered_map overhead.
 
 ---
 
@@ -60,14 +63,17 @@ Each set contains/add is O(1) average. Overall O(n!) with pruning. The bitmask a
 
 Before trying all 9 digits, compute the set of valid digits for each empty cell by intersecting row/col/box constraints. This dramatically reduces branching.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Precompute valid digits for (r, c):
-Set<Integer> valid = new HashSet<>(Arrays.asList(1,2,3,4,5,6,7,8,9));
+unordered_set<int> valid = {1,2,3,4,5,6,7,8,9};
 for (int i = 0; i < 9; i++) {
-    if (board[r][i] != '.') valid.remove(board[r][i] - '0');
-    if (board[i][c] != '.') valid.remove(board[i][c] - '0');
+    if (board[r][i] != '.') valid.erase(board[r][i] - '0');
+    if (board[i][c] != '.') valid.erase(board[i][c] - '0');
     int br = 3*(r/3)+i/3, bc = 3*(c/3)+i%3;
-    if (board[br][bc] != '.') valid.remove(board[br][bc] - '0');
+    if (board[br][bc] != '.') valid.erase(board[br][bc] - '0');
 }
 ```
 

@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#c-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -73,13 +73,16 @@ isFeasible:     F  F  F  F  T  T  T  T  T
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### Master Template
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Find minimum answer m such that isFeasible(m) is true
-public int binarySearchOnAnswer(/* problem params */) {
+int binarySearchOnAnswer(/* problem params */) {
     int lo = /* minimum possible answer */;
     int hi = /* maximum possible answer */;
 
@@ -99,10 +102,20 @@ public int binarySearchOnAnswer(/* problem params */) {
 
 ### 1. Koko Eating Bananas
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Koko eats at speed k bananas/hr. Min k to finish all piles in h hours.
-public int minEatingSpeed(int[] piles, int h) {
-    int lo = 1, hi = Arrays.stream(piles).max().getAsInt();
+bool canFinish(vector<int>& piles, int h, int speed) {
+    int hours = 0;
+    for (int pile : piles)
+        hours += (pile + speed - 1) / speed; // ceil division
+    return hours <= h;
+}
+
+int minEatingSpeed(vector<int>& piles, int h) {
+    int lo = 1, hi = *max_element(piles.begin(), piles.end());
     while (lo < hi) {
         int mid = lo + (hi - lo) / 2;
         if (canFinish(piles, h, mid)) hi = mid;
@@ -110,31 +123,16 @@ public int minEatingSpeed(int[] piles, int h) {
     }
     return lo;
 }
-
-private boolean canFinish(int[] piles, int h, int speed) {
-    int hours = 0;
-    for (int pile : piles)
-        hours += (pile + speed - 1) / speed; // ceil division
-    return hours <= h;
-}
 // Time: O(n log maxPile) | Space: O(1)
 ```
 
 ### 2. Capacity to Ship Packages in D Days
 
-```java
-public int shipWithinDays(int[] weights, int days) {
-    int lo = Arrays.stream(weights).max().getAsInt(); // must carry heaviest
-    int hi = Arrays.stream(weights).sum();            // carry all in 1 day
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (canShip(weights, days, mid)) hi = mid;
-        else lo = mid + 1;
-    }
-    return lo;
-}
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-private boolean canShip(int[] weights, int days, int capacity) {
+bool canShip(vector<int>& weights, int days, int capacity) {
     int daysNeeded = 1, current = 0;
     for (int w : weights) {
         if (current + w > capacity) { daysNeeded++; current = 0; }
@@ -142,24 +140,27 @@ private boolean canShip(int[] weights, int days, int capacity) {
     }
     return daysNeeded <= days;
 }
+
+int shipWithinDays(vector<int>& weights, int days) {
+    int lo = *max_element(weights.begin(), weights.end()); // must carry heaviest
+    int hi = accumulate(weights.begin(), weights.end(), 0); // carry all in 1 day
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (canShip(weights, days, mid)) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}
 // Time: O(n log(sum-max)) | Space: O(1)
 ```
 
 ### 3. Split Array Largest Sum (= Book Allocation = Painter's Partition)
 
-```java
-public int splitArray(int[] nums, int k) {
-    int lo = Arrays.stream(nums).max().getAsInt();
-    int hi = Arrays.stream(nums).sum();
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (canSplit(nums, k, mid)) hi = mid;
-        else lo = mid + 1;
-    }
-    return lo;
-}
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-private boolean canSplit(int[] nums, int k, int maxSum) {
+bool canSplit(vector<int>& nums, int k, int maxSum) {
     int parts = 1, current = 0;
     for (int num : nums) {
         if (current + num > maxSum) { parts++; current = 0; }
@@ -167,29 +168,43 @@ private boolean canSplit(int[] nums, int k, int maxSum) {
     }
     return parts <= k;
 }
+
+int splitArray(vector<int>& nums, int k) {
+    int lo = *max_element(nums.begin(), nums.end());
+    int hi = accumulate(nums.begin(), nums.end(), 0);
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (canSplit(nums, k, mid)) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}
 // Time: O(n log(sum)) | Space: O(1)
 ```
 
 ### 4. Aggressive Cows — Maximize Minimum Distance
 
-```java
-public int aggressiveCows(int[] stalls, int k) {
-    Arrays.sort(stalls);
-    int lo = 1, hi = stalls[stalls.length - 1] - stalls[0];
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool canPlace(vector<int>& stalls, int k, int minDist) {
+    int count = 1, last = stalls[0];
+    for (int i = 1; i < (int)stalls.size(); i++) {
+        if (stalls[i] - last >= minDist) { count++; last = stalls[i]; }
+    }
+    return count >= k;
+}
+
+int aggressiveCows(vector<int>& stalls, int k) {
+    sort(stalls.begin(), stalls.end());
+    int lo = 1, hi = stalls[stalls.size() - 1] - stalls[0];
     while (lo < hi) {
         int mid = lo + (hi - lo + 1) / 2;  // upper-mid for maximize
         if (canPlace(stalls, k, mid)) lo = mid;
         else hi = mid - 1;
     }
     return lo;
-}
-
-private boolean canPlace(int[] stalls, int k, int minDist) {
-    int count = 1, last = stalls[0];
-    for (int i = 1; i < stalls.length; i++) {
-        if (stalls[i] - last >= minDist) { count++; last = stalls[i]; }
-    }
-    return count >= k;
 }
 // Time: O(n log n + n log(max-min)) | Space: O(1)
 ```
@@ -198,20 +213,11 @@ private boolean canPlace(int[] stalls, int k, int minDist) {
 
 ### 5. Minimum Days to Make M Bouquets
 
-```java
-public int minDays(int[] bloomDay, int m, int k) {
-    if ((long) m * k > bloomDay.length) return -1;
-    int lo = Arrays.stream(bloomDay).min().getAsInt();
-    int hi = Arrays.stream(bloomDay).max().getAsInt();
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (canMake(bloomDay, m, k, mid)) hi = mid;
-        else lo = mid + 1;
-    }
-    return lo;
-}
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-private boolean canMake(int[] bloomDay, int m, int k, int day) {
+bool canMake(vector<int>& bloomDay, int m, int k, int day) {
     int bouquets = 0, consecutive = 0;
     for (int d : bloomDay) {
         if (d <= day) { consecutive++; if (consecutive == k) { bouquets++; consecutive = 0; } }
@@ -219,31 +225,46 @@ private boolean canMake(int[] bloomDay, int m, int k, int day) {
     }
     return bouquets >= m;
 }
+
+int minDays(vector<int>& bloomDay, int m, int k) {
+    if ((long long) m * k > (int)bloomDay.size()) return -1;
+    int lo = *min_element(bloomDay.begin(), bloomDay.end());
+    int hi = *max_element(bloomDay.begin(), bloomDay.end());
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (canMake(bloomDay, m, k, mid)) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}
 ```
 
 ### 6. Median of Two Sorted Arrays (Hard)
 
-```java
-public double findMedianSortedArrays(int[] nums1, int[] nums2) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+double findMedianSortedArrays(vector<int>& nums1, vector<int>& nums2) {
     // Ensure nums1 is the shorter array
-    if (nums1.length > nums2.length) return findMedianSortedArrays(nums2, nums1);
-    int m = nums1.length, n = nums2.length;
+    if (nums1.size() > nums2.size()) return findMedianSortedArrays(nums2, nums1);
+    int m = nums1.size(), n = nums2.size();
     int lo = 0, hi = m;
 
     while (lo <= hi) {
         int cut1 = lo + (hi - lo) / 2;
         int cut2 = (m + n + 1) / 2 - cut1;
 
-        int l1 = (cut1 == 0) ? Integer.MIN_VALUE : nums1[cut1 - 1];
-        int l2 = (cut2 == 0) ? Integer.MIN_VALUE : nums2[cut2 - 1];
-        int r1 = (cut1 == m) ? Integer.MAX_VALUE : nums1[cut1];
-        int r2 = (cut2 == n) ? Integer.MAX_VALUE : nums2[cut2];
+        int l1 = (cut1 == 0) ? INT_MIN : nums1[cut1 - 1];
+        int l2 = (cut2 == 0) ? INT_MIN : nums2[cut2 - 1];
+        int r1 = (cut1 == m) ? INT_MAX : nums1[cut1];
+        int r2 = (cut2 == n) ? INT_MAX : nums2[cut2];
 
         if (l1 <= r2 && l2 <= r1) {
             if ((m + n) % 2 == 0)
-                return (Math.max(l1, l2) + Math.min(r1, r2)) / 2.0;
+                return (max(l1, l2) + min(r1, r2)) / 2.0;
             else
-                return Math.max(l1, l2);
+                return max(l1, l2);
         } else if (l1 > r2) hi = cut1 - 1;
         else lo = cut1 + 1;
     }

@@ -22,103 +22,120 @@ All operations O(1) except `toString()` O(n).
 
 ## Design
 
-Use a `long[]` array — each `long` holds 64 bits. Key challenge: `flip()` must be O(1), not O(n).
+Use a `vector<long long>` array — each `long long` holds 64 bits. Key challenge: `flip()` must be O(1), not O(n).
 
 **Lazy flip:** Maintain a `flipped` boolean. Flipping twice = no-op. On any read, XOR the actual bit with `flipped` to get the logical value. Maintain a separate `setCount` that adjusts on flip: `setCount = size - setCount`.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Bitset {
-    private final long[] words;
-    private final int size;
-    private boolean flipped;
-    private int setCount;
+    vector<long long> words;
+    int size;
+    bool flipped;
+    int setCount;
 
-    public Bitset(int size) {
-        this.size = size;
-        this.words = new long[(size + 63) / 64]; // ceiling division
-        this.flipped = false;
-        this.setCount = 0;
-    }
+public:
+    Bitset(int size) : size(size), words((size + 63) / 64, 0LL), flipped(false), setCount(0) {}
 
-    public void fix(int idx) {
+    void fix(int idx) {
         int wi = idx / 64, bi = idx % 64;
-        boolean isSet = ((words[wi] >> bi) & 1) == 1;
+        bool isSet = ((words[wi] >> bi) & 1) == 1;
         // Logical value = isSet XOR flipped
         if (!(isSet ^ flipped)) { // currently logically 0
             if (!flipped) {
-                words[wi] |= (1L << bi);  // set physical bit
+                words[wi] |= (1LL << bi);  // set physical bit
             } else {
-                words[wi] &= ~(1L << bi); // physical 1 means logical 0 when flipped; clear it
+                words[wi] &= ~(1LL << bi); // physical 1 means logical 0 when flipped; clear it
             }
             setCount++;
         }
     }
 
-    public void unfix(int idx) {
+    void unfix(int idx) {
         int wi = idx / 64, bi = idx % 64;
-        boolean isSet = ((words[wi] >> bi) & 1) == 1;
+        bool isSet = ((words[wi] >> bi) & 1) == 1;
         if (isSet ^ flipped) { // currently logically 1
             if (!flipped) {
-                words[wi] &= ~(1L << bi);
+                words[wi] &= ~(1LL << bi);
             } else {
-                words[wi] |= (1L << bi);
+                words[wi] |= (1LL << bi);
             }
             setCount--;
         }
     }
 
-    public void flip() {
+    void flip() {
         flipped = !flipped;
         setCount = size - setCount;
     }
 
-    public boolean all()  { return setCount == size; }
-    public boolean one()  { return setCount > 0; }
-    public int count()    { return setCount; }
+    bool all()  { return setCount == size; }
+    bool one()  { return setCount > 0; }
+    int count() { return setCount; }
 
-    public String toString() {
-        StringBuilder sb = new StringBuilder(size);
+    string toString() {
+        string result;
+        result.reserve(size);
         for (int i = 0; i < size; i++) {
             int wi = i / 64, bi = i % 64;
             int physical = (int)((words[wi] >> bi) & 1);
-            sb.append((char)('0' + (physical ^ (flipped ? 1 : 0))));
+            result += (char)('0' + (physical ^ (flipped ? 1 : 0)));
         }
-        return sb.toString();
+        return result;
     }
-}
+};
 ```
 
 ---
 
-## Simpler Implementation (Java BitSet wrapper)
+## Simpler Implementation (using vector\<bool\>)
 
-If the interviewer allows Java's built-in `java.util.BitSet`:
+If a simpler approach is acceptable, use C++'s `vector<bool>` (which is bit-packed internally):
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Bitset {
-    private final java.util.BitSet bs;
-    private final java.util.BitSet flippedBs;
-    private final int size;
+    vector<bool> bs;
+    vector<bool> flippedBs;
+    int sz;
 
-    public Bitset(int size) {
-        this.size = size;
-        bs = new java.util.BitSet(size);
-        flippedBs = new java.util.BitSet(size);
-        flippedBs.set(0, size); // flippedBs = complement
+    void xorBitsets(vector<bool>& a, const vector<bool>& b) {
+        for (int i = 0; i < (int)a.size(); i++) a[i] = a[i] ^ b[i];
     }
 
-    public void fix(int idx)   { bs.set(idx); flippedBs.clear(idx); }
-    public void unfix(int idx) { bs.clear(idx); flippedBs.set(idx); }
-    public void flip()         { java.util.BitSet tmp = (java.util.BitSet) bs.clone(); bs.xor(flippedBs); flippedBs.xor(tmp); }
-    public boolean all()       { return bs.cardinality() == size; }
-    public boolean one()       { return !bs.isEmpty(); }
-    public int count()         { return bs.cardinality(); }
-    public String toString()   {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < size; i++) sb.append(bs.get(i) ? '1' : '0');
-        return sb.toString();
+public:
+    Bitset(int size) : sz(size), bs(size, false), flippedBs(size, true) {}
+
+    void fix(int idx)   { bs[idx] = true; flippedBs[idx] = false; }
+    void unfix(int idx) { bs[idx] = false; flippedBs[idx] = true; }
+    void flip() {
+        vector<bool> tmp = bs;
+        xorBitsets(bs, flippedBs);
+        xorBitsets(flippedBs, tmp);
     }
-}
+    bool all() {
+        for (int i = 0; i < sz; i++) if (!bs[i]) return false;
+        return true;
+    }
+    bool one() {
+        for (int i = 0; i < sz; i++) if (bs[i]) return true;
+        return false;
+    }
+    int count() {
+        int cnt = 0;
+        for (int i = 0; i < sz; i++) if (bs[i]) cnt++;
+        return cnt;
+    }
+    string toString() {
+        string result;
+        for (int i = 0; i < sz; i++) result += (bs[i] ? '1' : '0');
+        return result;
+    }
+};
 ```
 
 ---
@@ -127,7 +144,7 @@ class Bitset {
 
 | Decision | Choice | Reason |
 |----------|--------|--------|
-| Storage | `long[]` or `java.util.BitSet` | Compact 64x space saving vs boolean[] |
+| Storage | `vector<long long>` or `vector<bool>` | Compact 64x space saving vs bool[] |
 | `flip()` O(1) | Lazy `flipped` flag | Avoids O(n) bit inversion |
 | `setCount` maintenance | Updated on fix/unfix/flip | O(1) `all()`/`one()`/`count()` |
 | `toString()` | O(n) always | Must read each bit |

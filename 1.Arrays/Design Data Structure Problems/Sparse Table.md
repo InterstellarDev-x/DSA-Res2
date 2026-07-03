@@ -10,7 +10,7 @@
 1. [Problem Statement](#problem-statement)
 2. [Interview Expectations](#interview-expectations)
 3. [Approaches](#approaches)
-4. [Java Implementation](#java-implementation)
+4. [C++ Implementation](#cpp-implementation)
 5. [Complexity Analysis](#complexity-analysis)
 6. [Edge Cases](#edge-cases)
 7. [Similar Problems](#similar-problems)
@@ -63,19 +63,23 @@ The two windows overlap, but since we're taking minimum (idempotent), overlap is
 
 ---
 
-## Java Implementation
+## C++ Implementation
 
-```java
-public class SparseTable {
-    private final int[][] table;
-    private final int[] log2;
-    private final int n;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public SparseTable(int[] arr) {
-        n = arr.length;
-        int maxLog = (int)(Math.log(n) / Math.log(2)) + 1;
-        table = new int[n][maxLog];
-        log2 = new int[n + 1];
+class SparseTable {
+    vector<vector<int>> table;
+    vector<int> log2;
+    int n;
+
+public:
+    SparseTable(vector<int>& arr) {
+        n = arr.size();
+        int maxLog = (int)(log2f(n)) + 1;
+        table.assign(n, vector<int>(maxLog));
+        log2.resize(n + 1);
 
         // Precompute log2 floor values
         log2[1] = 0;
@@ -89,27 +93,27 @@ public class SparseTable {
         // Fill for lengths 2, 4, 8, ...
         for (int j = 1; (1 << j) <= n; j++) {
             for (int i = 0; i + (1 << j) - 1 < n; i++) {
-                table[i][j] = Math.min(table[i][j - 1],
-                                       table[i + (1 << (j - 1))][j - 1]);
+                table[i][j] = min(table[i][j - 1],
+                                  table[i + (1 << (j - 1))][j - 1]);
             }
         }
     }
 
     // O(1) query: minimum of arr[l..r] (inclusive, 0-indexed)
-    public int queryMin(int l, int r) {
+    int queryMin(int l, int r) {
         int k = log2[r - l + 1];
-        return Math.min(table[l][k], table[r - (1 << k) + 1][k]);
+        return min(table[l][k], table[r - (1 << k) + 1][k]);
     }
-}
+};
 ```
 
 ### Maximum Query Variant
 
-```java
-// Replace Math.min with Math.max — works because max is also idempotent
-public int queryMax(int l, int r) {
+```cpp
+// Replace min with max — works because max is also idempotent
+int queryMax(int l, int r) {
     int k = log2[r - l + 1];
-    return Math.max(table[l][k], table[r - (1 << k) + 1][k]);
+    return max(table[l][k], table[r - (1 << k) + 1][k]);
 }
 ```
 

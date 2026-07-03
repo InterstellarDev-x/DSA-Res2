@@ -22,28 +22,28 @@
 ### Q: Walk me through the O(1) LRU Cache design.
 
 **Answer framework:**
-1. We need O(1) `get` and O(1) `put`. HashMap gives O(1) lookup; we need O(1) eviction.
+1. We need O(1) `get` and O(1) `put`. std::unordered_map gives O(1) lookup; we need O(1) eviction.
 2. Eviction must always remove the "least recently used" — this is inherently ordered. A doubly linked list maintains this order.
-3. But iterating the list to find a key is O(n). So we combine: HashMap for O(1) key→node lookup, DLL for O(1) front-insertion and back-removal.
+3. But iterating the list to find a key is O(n). So we combine: std::unordered_map for O(1) key→node lookup, DLL for O(1) front-insertion and back-removal.
 4. Sentinel head/tail nodes avoid special-casing empty list and boundary nodes.
 
-```java
+```cpp
 // The 4 key operations on the DLL:
-void remove(Node node) {
-    node.prev.next = node.next;
-    node.next.prev = node.prev;
+void remove(Node* node) {
+    node->prev->next = node->next;
+    node->next->prev = node->prev;
 }
 
-void insertFront(Node node) {
-    node.next = head.next;
-    node.prev = head;
-    head.next.prev = node;
-    head.next = node;
+void insertFront(Node* node) {
+    node->next = head->next;
+    node->prev = head;
+    head->next->prev = node;
+    head->next = node;
 }
 ```
 
 **On `get`:** find node in map → remove from current position → insertFront → return val.
-**On `put`:** if key exists, remove old; if at capacity, evict `tail.prev` (LRU) and remove from map; create new node → insertFront → put in map.
+**On `put`:** if key exists, remove old; if at capacity, evict `tail->prev` (LRU) and remove from map; create new node → insertFront → put in map.
 
 ---
 
@@ -51,58 +51,60 @@ void insertFront(Node node) {
 
 ### Two Approaches
 
-**Approach 1 — HashMap (O(n) space):**
-```java
-public Node copyRandomList(Node head) {
-    Map<Node, Node> map = new HashMap<>();
-    Node curr = head;
-    while (curr != null) { map.put(curr, new Node(curr.val)); curr = curr.next; }
+**Approach 1 — std::unordered_map (O(n) space):**
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+Node* copyRandomList(Node* head) {
+    unordered_map<Node*, Node*> mp;
+    Node* curr = head;
+    while (curr != nullptr) { mp[curr] = new Node(curr->val); curr = curr->next; }
     curr = head;
-    while (curr != null) {
-        map.get(curr).next = map.get(curr.next);
-        map.get(curr).random = map.get(curr.random);
-        curr = curr.next;
+    while (curr != nullptr) {
+        mp[curr]->next = mp[curr->next];
+        mp[curr]->random = mp[curr->random];
+        curr = curr->next;
     }
-    return map.get(head);
+    return mp[head];
 }
 ```
 
 **Approach 2 — Interleaving (O(1) space):**
 
-```java
-public Node copyRandomList(Node head) {
-    if (head == null) return null;
+```cpp
+Node* copyRandomList(Node* head) {
+    if (head == nullptr) return nullptr;
 
     // Step 1: Interleave clones — 1 → 1' → 2 → 2' → 3 → 3' → ...
-    Node curr = head;
-    while (curr != null) {
-        Node clone = new Node(curr.val);
-        clone.next = curr.next;
-        curr.next = clone;
-        curr = clone.next;
+    Node* curr = head;
+    while (curr != nullptr) {
+        Node* clone = new Node(curr->val);
+        clone->next = curr->next;
+        curr->next = clone;
+        curr = clone->next;
     }
 
-    // Step 2: Set random pointers — curr.next.random = curr.random.next (the clone of random)
+    // Step 2: Set random pointers — curr->next->random = curr->random->next (the clone of random)
     curr = head;
-    while (curr != null) {
-        if (curr.random != null) curr.next.random = curr.random.next;
-        curr = curr.next.next;
+    while (curr != nullptr) {
+        if (curr->random != nullptr) curr->next->random = curr->random->next;
+        curr = curr->next->next;
     }
 
     // Step 3: Separate lists
-    Node cloneHead = head.next;
+    Node* cloneHead = head->next;
     curr = head;
-    while (curr != null) {
-        Node clone = curr.next;
-        curr.next = clone.next;
-        clone.next = (clone.next != null) ? clone.next.next : null;
-        curr = curr.next;
+    while (curr != nullptr) {
+        Node* clone = curr->next;
+        curr->next = clone->next;
+        clone->next = (clone->next != nullptr) ? clone->next->next : nullptr;
+        curr = curr->next;
     }
     return cloneHead;
 }
 ```
 
-**Key insight in step 2:** `curr.random.next` is the clone of `curr.random` because we interleaved all clones in step 1.
+**Key insight in step 2:** `curr->random->next` is the clone of `curr->random` because we interleaved all clones in step 1.
 
 ---
 

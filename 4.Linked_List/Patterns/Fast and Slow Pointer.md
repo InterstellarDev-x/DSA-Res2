@@ -9,7 +9,7 @@
 
 Two pointers start at `head`. Slow moves 1 step; fast moves 2 steps.
 
-- **No cycle:** Fast hits `null`. Slow is at middle.
+- **No cycle:** Fast hits `nullptr`. Slow is at middle.
 - **Cycle present:** They meet inside the cycle.
 
 ```
@@ -21,22 +21,27 @@ fast: head → 2 → 4 → 6  (6 steps, wraps if cycle)
 
 ## Template 1 — Find Middle
 
-```java
-public ListNode middleNode(ListNode head) {
-    ListNode slow = head, fast = head;
-    while (fast != null && fast.next != null) {
-        slow = slow.next;
-        fast = fast.next.next;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct ListNode { int val; ListNode* next; ListNode(int x): val(x), next(nullptr){} };
+
+ListNode* middleNode(ListNode* head) {
+    ListNode* slow = head, *fast = head;
+    while (fast != nullptr && fast->next != nullptr) {
+        slow = slow->next;
+        fast = fast->next->next;
     }
     return slow; // for even length, returns SECOND middle
 }
 ```
 
 **Variant — first middle (for palindrome check):**
-```java
+```cpp
 // Advance fast one step before the loop to bias toward first middle
-ListNode slow = head, fast = head.next;
-while (fast != null && fast.next != null) { ... }
+ListNode* slow = head, *fast = head->next;
+while (fast != nullptr && fast->next != nullptr) { ... }
 // slow is now the last node of first half — split here
 ```
 
@@ -44,12 +49,15 @@ while (fast != null && fast.next != null) { ... }
 
 ## Template 2 — Detect Cycle (LC 141)
 
-```java
-public boolean hasCycle(ListNode head) {
-    ListNode slow = head, fast = head;
-    while (fast != null && fast.next != null) {
-        slow = slow.next;
-        fast = fast.next.next;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool hasCycle(ListNode* head) {
+    ListNode* slow = head, *fast = head;
+    while (fast != nullptr && fast->next != nullptr) {
+        slow = slow->next;
+        fast = fast->next->next;
         if (slow == fast) return true;
     }
     return false;
@@ -62,22 +70,25 @@ public boolean hasCycle(ListNode head) {
 
 ## Template 3 — Cycle Entry Point (LC 142)
 
-```java
-public ListNode detectCycle(ListNode head) {
-    ListNode slow = head, fast = head;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+ListNode* detectCycle(ListNode* head) {
+    ListNode* slow = head, *fast = head;
     // Phase 1: find meeting point
-    while (fast != null && fast.next != null) {
-        slow = slow.next;
-        fast = fast.next.next;
+    while (fast != nullptr && fast->next != nullptr) {
+        slow = slow->next;
+        fast = fast->next->next;
         if (slow == fast) break;
     }
-    if (fast == null || fast.next == null) return null; // no cycle
+    if (fast == nullptr || fast->next == nullptr) return nullptr; // no cycle
 
     // Phase 2: find entry — reset one pointer to head
     slow = head;
     while (slow != fast) {
-        slow = slow.next;
-        fast = fast.next; // both move at 1x now
+        slow = slow->next;
+        fast = fast->next; // both move at 1x now
     }
     return slow; // entry node
 }
@@ -93,17 +104,11 @@ public ListNode detectCycle(ListNode head) {
 
 ## Template 4 — Happy Number (LC 202)
 
-```java
-public boolean isHappy(int n) {
-    int slow = n, fast = sumOfSquares(n);
-    while (fast != 1 && slow != fast) {
-        slow = sumOfSquares(slow);
-        fast = sumOfSquares(sumOfSquares(fast));
-    }
-    return fast == 1;
-}
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-private int sumOfSquares(int n) {
+int sumOfSquares(int n) {
     int sum = 0;
     while (n > 0) {
         int d = n % 10;
@@ -111,6 +116,15 @@ private int sumOfSquares(int n) {
         n /= 10;
     }
     return sum;
+}
+
+bool isHappy(int n) {
+    int slow = n, fast = sumOfSquares(n);
+    while (fast != 1 && slow != fast) {
+        slow = sumOfSquares(slow);
+        fast = sumOfSquares(sumOfSquares(fast));
+    }
+    return fast == 1;
 }
 ```
 
@@ -120,33 +134,36 @@ private int sumOfSquares(int n) {
 
 Uses fast/slow to split, then reverse second half, then merge:
 
-```java
-public void reorderList(ListNode head) {
-    if (head == null || head.next == null) return;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void reorderList(ListNode* head) {
+    if (head == nullptr || head->next == nullptr) return;
 
     // Step 1: find mid
-    ListNode slow = head, fast = head;
-    while (fast.next != null && fast.next.next != null) {
-        slow = slow.next;
-        fast = fast.next.next;
+    ListNode* slow = head, *fast = head;
+    while (fast->next != nullptr && fast->next->next != nullptr) {
+        slow = slow->next;
+        fast = fast->next->next;
     }
 
     // Step 2: reverse second half
-    ListNode prev = null, curr = slow.next;
-    slow.next = null; // cut
-    while (curr != null) {
-        ListNode nxt = curr.next;
-        curr.next = prev;
+    ListNode* prev = nullptr, *curr = slow->next;
+    slow->next = nullptr; // cut
+    while (curr != nullptr) {
+        ListNode* nxt = curr->next;
+        curr->next = prev;
         prev = curr;
         curr = nxt;
     }
 
     // Step 3: merge alternating
-    ListNode l1 = head, l2 = prev;
-    while (l2 != null) {
-        ListNode tmp1 = l1.next, tmp2 = l2.next;
-        l1.next = l2;
-        l2.next = tmp1;
+    ListNode* l1 = head, *l2 = prev;
+    while (l2 != nullptr) {
+        ListNode* tmp1 = l1->next, *tmp2 = l2->next;
+        l1->next = l2;
+        l2->next = tmp1;
         l1 = tmp1;
         l2 = tmp2;
     }
@@ -159,10 +176,10 @@ public void reorderList(ListNode head) {
 
 | Mistake | Fix |
 |---------|-----|
-| `while (fast != null)` only — misses single-node lists | Always check `fast != null && fast.next != null` |
+| `while (fast != nullptr)` only — misses single-node lists | Always check `fast != nullptr && fast->next != nullptr` |
 | Not breaking after meeting in cycle detection | Break when `slow == fast`, then run phase 2 |
 | Resetting only `slow` in phase 2 — fast stays at meeting | Reset `slow = head`; fast stays at meeting point, both move 1x |
-| Even-length middle bias: first vs second | Use `fast = head.next` init for "first" middle |
+| Even-length middle bias: first vs second | Use `fast = head->next` init for "first" middle |
 
 ---
 

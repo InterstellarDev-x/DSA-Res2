@@ -8,22 +8,26 @@
 
 **LC 295** · Hard
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class MedianFinder {
-    private PriorityQueue<Integer> lo = new PriorityQueue<>(Comparator.reverseOrder());
-    private PriorityQueue<Integer> hi = new PriorityQueue<>();
+    priority_queue<int> lo; // max-heap
+    priority_queue<int, vector<int>, greater<int>> hi; // min-heap
 
-    public void addNum(int num) {
-        if (lo.isEmpty() || num <= lo.peek()) lo.offer(num);
-        else hi.offer(num);
-        if (lo.size() > hi.size() + 1) hi.offer(lo.poll());
-        else if (hi.size() > lo.size()) lo.offer(hi.poll());
+public:
+    void addNum(int num) {
+        if (lo.empty() || num <= lo.top()) lo.push(num);
+        else hi.push(num);
+        if (lo.size() > hi.size() + 1) { hi.push(lo.top()); lo.pop(); }
+        else if (hi.size() > lo.size()) { lo.push(hi.top()); hi.pop(); }
     }
 
-    public double findMedian() {
-        return lo.size() > hi.size() ? lo.peek() : (lo.peek() + hi.peek()) / 2.0;
+    double findMedian() {
+        return lo.size() > hi.size() ? lo.top() : (lo.top() + hi.top()) / 2.0;
     }
-}
+};
 ```
 
 **Q: What if the stream only contains integers in [0, 100]?**
@@ -33,7 +37,7 @@ A: Use a frequency array of size 101. Track total count. For `findMedian`, walk 
 A: Hybrid approach: bucket array for [0..100], two small heaps for outliers. Median calculation walks the appropriate structure based on total count.
 
 **Q: What is the invariant that guarantees correctness?**
-A: Two invariants: (1) Size: `|lo.size - hi.size| ≤ 1`. (2) Order: `lo.peek() ≤ hi.peek()`. If both hold, the median is either `lo.peek()` (odd total) or `(lo.peek() + hi.peek()) / 2` (even total).
+A: Two invariants: (1) Size: `|lo.size - hi.size| ≤ 1`. (2) Order: `lo.top() ≤ hi.top()`. If both hold, the median is either `lo.top()` (odd total) or `(lo.top() + hi.top()) / 2` (even total).
 
 ---
 
@@ -41,19 +45,27 @@ A: Two invariants: (1) Size: `|lo.size - hi.size| ≤ 1`. (2) Order: `lo.peek() 
 
 **LC 502** · Hard
 
-```java
-public int findMaximizedCapital(int k, int w, int[] profits, int[] capital) {
-    int n = profits.length;
-    PriorityQueue<int[]> locked    = new PriorityQueue<>(Comparator.comparingInt(a -> a[0]));
-    PriorityQueue<int[]> available = new PriorityQueue<>((a, b) -> b[1] - a[1]);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    for (int i = 0; i < n; i++) locked.offer(new int[]{capital[i], profits[i]});
+int findMaximizedCapital(int k, int w, vector<int>& profits, vector<int>& capital) {
+    int n = profits.size();
+    // min-heap by capital: {capital, profit}
+    priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> locked;
+    // max-heap by profit: {profit, capital}
+    priority_queue<pair<int,int>> available;
+
+    for (int i = 0; i < n; i++) locked.push({capital[i], profits[i]});
 
     for (int i = 0; i < k; i++) {
-        while (!locked.isEmpty() && locked.peek()[0] <= w)
-            available.offer(locked.poll());
-        if (available.isEmpty()) break;
-        w += available.poll()[1];
+        while (!locked.empty() && locked.top().first <= w) {
+            auto [cap, prof] = locked.top(); locked.pop();
+            available.push({prof, cap});
+        }
+        if (available.empty()) break;
+        w += available.top().first;
+        available.pop();
     }
     return w;
 }
@@ -74,28 +86,33 @@ A: Once `available` is empty (can't afford anything more), break early. With `k 
 
 **LC 632** · Hard
 
-```java
-public int[] smallestRange(List<List<Integer>> nums) {
-    PriorityQueue<int[]> heap = new PriorityQueue<>(Comparator.comparingInt(a -> a[0]));
-    int maxVal = Integer.MIN_VALUE;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    for (int i = 0; i < nums.size(); i++) {
-        heap.offer(new int[]{nums.get(i).get(0), i, 0});
-        maxVal = Math.max(maxVal, nums.get(i).get(0));
+vector<int> smallestRange(vector<vector<int>>& nums) {
+    // min-heap: {value, listIdx, elemIdx}
+    using T = tuple<int,int,int>;
+    priority_queue<T, vector<T>, greater<T>> heap;
+    int maxVal = INT_MIN;
+
+    for (int i = 0; i < (int)nums.size(); i++) {
+        heap.push({nums[i][0], i, 0});
+        maxVal = max(maxVal, nums[i][0]);
     }
 
-    int[] result = {heap.peek()[0], maxVal};
+    vector<int> result = {get<0>(heap.top()), maxVal};
 
     while (true) {
-        int[] curr = heap.poll();
-        int listIdx = curr[1], elemIdx = curr[2];
-        if (elemIdx + 1 == nums.get(listIdx).size()) break;
+        auto [val, listIdx, elemIdx] = heap.top(); heap.pop();
+        if (elemIdx + 1 == (int)nums[listIdx].size()) break;
 
-        int next = nums.get(listIdx).get(elemIdx + 1);
-        heap.offer(new int[]{next, listIdx, elemIdx + 1});
-        maxVal = Math.max(maxVal, next);
-        if (maxVal - heap.peek()[0] < result[1] - result[0]) {
-            result[0] = heap.peek()[0]; result[1] = maxVal;
+        int next = nums[listIdx][elemIdx + 1];
+        heap.push({next, listIdx, elemIdx + 1});
+        maxVal = max(maxVal, next);
+        if (maxVal - get<0>(heap.top()) < result[1] - result[0]) {
+            result[0] = get<0>(heap.top());
+            result[1] = maxVal;
         }
     }
     return result;
@@ -103,7 +120,7 @@ public int[] smallestRange(List<List<Integer>> nums) {
 ```
 
 **Q: Why does `maxVal` only increase?**
-A: We only add elements from lists, and each list is sorted ascending. When we advance to the next element of a list, the new value is ≥ the old value. So `maxVal` is non-decreasing. The minimum of the heap (= `heap.peek()[0]`) is the range's lower bound; we minimize the range by advancing the minimum.
+A: We only add elements from lists, and each list is sorted ascending. When we advance to the next element of a list, the new value is ≥ the old value. So `maxVal` is non-decreasing. The minimum of the heap (= `heap.top()`) is the range's lower bound; we minimize the range by advancing the minimum.
 
 **Q: Why stop when a list is exhausted?**
 A: We need exactly one element from each list. If list `i` is exhausted, the range's minimum is now determined by the second-smallest across lists. We can't include list `i` anymore — there's no valid range.

@@ -8,12 +8,16 @@ detect/repair swapped nodes, accumulate suffix sums (greater tree), and answer r
 two workhorse tools are (a) the **(low, high) bounds** that an ancestor imposes on a subtree, and
 (b) an explicit **stack-driven inorder** that can stop early.
 
-```java
-public class TreeNode {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
+};
 ```
 
 > **Recognition signals:** "is this a valid BST", "k-th smallest/largest", "two nodes swapped /
@@ -27,39 +31,45 @@ The classic trap: it is **not enough** to check `left < node < right` against th
 *Every* node must lie within the bounds set by **all** its ancestors. Pass an open interval
 `(low, high)` downward and tighten it as you descend.
 
-Use `long` for the bounds so a node with value `Integer.MIN_VALUE` or `Integer.MAX_VALUE` does not
+Use `long` for the bounds so a node with value `INT_MIN` or `INT_MAX` does not
 produce a false negative at the boundary.
 
-```java
-public boolean isValidBST(TreeNode root) {
-    return valid(root, Long.MIN_VALUE, Long.MAX_VALUE);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool valid(TreeNode* node, long low, long high) {
+    if (node == nullptr) return true;
+    if (node->val <= low || node->val >= high) return false;     // strict: no duplicates allowed
+    return valid(node->left,  low, node->val)
+        && valid(node->right, node->val, high);
 }
 
-private boolean valid(TreeNode node, long low, long high) {
-    if (node == null) return true;
-    if (node.val <= low || node.val >= high) return false;     // strict: no duplicates allowed
-    return valid(node.left,  low, node.val)
-        && valid(node.right, node.val, high);
+bool isValidBST(TreeNode* root) {
+    return valid(root, LONG_MIN, LONG_MAX);
 }
 ```
 
 **Alternative — strictly-increasing inorder.** Equivalent and avoids the `long` choice by storing
 the previous node reference:
 
-```java
-private TreeNode prev = null;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public boolean isValidBSTInorder(TreeNode root) {
-    prev = null;
-    return inorder(root);
+TreeNode* prev = nullptr;
+
+bool inorder(TreeNode* node) {
+    if (node == nullptr) return true;
+    if (!inorder(node->left)) return false;
+    if (prev != nullptr && node->val <= prev->val) return false;    // must be strictly increasing
+    prev = node;
+    return inorder(node->right);
 }
 
-private boolean inorder(TreeNode node) {
-    if (node == null) return true;
-    if (!inorder(node.left)) return false;
-    if (prev != null && node.val <= prev.val) return false;    // must be strictly increasing
-    prev = node;
-    return inorder(node.right);
+bool isValidBSTInorder(TreeNode* root) {
+    prev = nullptr;
+    return inorder(root);
 }
 ```
 
@@ -73,18 +83,21 @@ Inorder visits keys in ascending order, so the k-th visited node is the answer. 
 stack** version is preferred: it stops as soon as the count reaches `k` (early exit) instead of
 traversing the whole tree.
 
-```java
-public int kthSmallest(TreeNode root, int k) {
-    Deque<TreeNode> stack = new ArrayDeque<>();
-    TreeNode cur = root;
-    while (cur != null || !stack.isEmpty()) {
-        while (cur != null) {            // dive to the leftmost
-            stack.push(cur);
-            cur = cur.left;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int kthSmallest(TreeNode* root, int k) {
+    stack<TreeNode*> st;
+    TreeNode* cur = root;
+    while (cur != nullptr || !st.empty()) {
+        while (cur != nullptr) {            // dive to the leftmost
+            st.push(cur);
+            cur = cur->left;
         }
-        cur = stack.pop();               // visit in sorted order
-        if (--k == 0) return cur.val;    // k-th smallest reached → stop
-        cur = cur.right;
+        cur = st.top(); st.pop();           // visit in sorted order
+        if (--k == 0) return cur->val;      // k-th smallest reached → stop
+        cur = cur->right;
     }
     return -1;   // k out of range
 }
@@ -101,41 +114,48 @@ public int kthSmallest(TreeNode root, int k) {
 
 Two clean approaches.
 
-**(a) HashSet during any traversal** — O(n) time, O(n) space, does not exploit ordering:
+**(a) `std::unordered_set` during any traversal** — O(n) time, O(n) space, does not exploit ordering:
 
-```java
-public boolean findTarget(TreeNode root, int k) {
-    return dfs(root, k, new HashSet<>());
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool dfs(TreeNode* node, int k, unordered_set<int>& seen) {
+    if (node == nullptr) return false;
+    if (seen.count(k - node->val)) return true;
+    seen.insert(node->val);
+    return dfs(node->left, k, seen) || dfs(node->right, k, seen);
 }
 
-private boolean dfs(TreeNode node, int k, Set<Integer> seen) {
-    if (node == null) return false;
-    if (seen.contains(k - node.val)) return true;
-    seen.add(node.val);
-    return dfs(node.left, k, seen) || dfs(node.right, k, seen);
+bool findTarget(TreeNode* root, int k) {
+    unordered_set<int> seen;
+    return dfs(root, k, seen);
 }
 ```
 
 **(b) Inorder to sorted list + two pointers** — exploits sortedness; O(n) time, O(n) for the list:
 
-```java
-public boolean findTargetTwoPtr(TreeNode root, int k) {
-    List<Integer> sorted = new ArrayList<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void inorder(TreeNode* n, vector<int>& out) {
+    if (n == nullptr) return;
+    inorder(n->left, out);
+    out.push_back(n->val);
+    inorder(n->right, out);
+}
+
+bool findTargetTwoPtr(TreeNode* root, int k) {
+    vector<int> sorted;
     inorder(root, sorted);
-    int lo = 0, hi = sorted.size() - 1;
+    int lo = 0, hi = (int)sorted.size() - 1;
     while (lo < hi) {
-        int sum = sorted.get(lo) + sorted.get(hi);
+        int sum = sorted[lo] + sorted[hi];
         if (sum == k) return true;
         if (sum < k) lo++; else hi--;
     }
     return false;
-}
-
-private void inorder(TreeNode n, List<Integer> out) {
-    if (n == null) return;
-    inorder(n.left, out);
-    out.add(n.val);
-    inorder(n.right, out);
 }
 ```
 
@@ -144,7 +164,7 @@ private void inorder(TreeNode n, List<Integer> out) {
 ## 4. Recover Binary Search Tree (LC 99) — Hard
 
 Exactly **two** nodes of a valid BST were swapped. In the inorder sequence this shows up as one or
-two "descents" (a place where `prev.val > cur.val`):
+two "descents" (a place where `prev->val > cur->val`):
 
 - **First descent** → record `first = prev` (the larger, earlier node).
 - Record `second = cur` at **every** descent (the smaller, later node), so it ends up at the
@@ -155,24 +175,29 @@ If the two swapped nodes are **adjacent** in inorder there is only **one** desce
 Tracking `first` only on the first descent and `second` on every descent handles both cases. Swap
 the two values at the end.
 
-```java
-private TreeNode first, second, prev;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public void recoverTree(TreeNode root) {
-    first = second = prev = null;
-    inorder(root);
-    int tmp = first.val; first.val = second.val; second.val = tmp;  // swap values back
+TreeNode* first_node;
+TreeNode* second_node;
+TreeNode* prev_node;
+
+void inorder(TreeNode* node) {
+    if (node == nullptr) return;
+    inorder(node->left);
+    if (prev_node != nullptr && prev_node->val > node->val) {   // a descent (violation)
+        if (first_node == nullptr) first_node = prev_node;      // first violation: take the larger (prev)
+        second_node = node;                                     // always update: take the smaller (cur)
+    }
+    prev_node = node;
+    inorder(node->right);
 }
 
-private void inorder(TreeNode node) {
-    if (node == null) return;
-    inorder(node.left);
-    if (prev != null && prev.val > node.val) {   // a descent (violation)
-        if (first == null) first = prev;         // first violation: take the larger (prev)
-        second = node;                           // always update: take the smaller (cur)
-    }
-    prev = node;
-    inorder(node.right);
+void recoverTree(TreeNode* root) {
+    first_node = second_node = prev_node = nullptr;
+    inorder(root);
+    swap(first_node->val, second_node->val);  // swap values back
 }
 ```
 
@@ -186,21 +211,24 @@ private void inorder(TreeNode node) {
 Each node's new value = its old value + sum of all keys **greater** than it. Process keys in
 **descending** order via a **reverse inorder** (right → node → left) and carry a running sum.
 
-```java
-private int runningSum = 0;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public TreeNode convertBST(TreeNode root) {
+int runningSum = 0;
+
+void reverseInorder(TreeNode* node) {
+    if (node == nullptr) return;
+    reverseInorder(node->right);          // larger keys first
+    runningSum += node->val;
+    node->val = runningSum;               // node + everything greater
+    reverseInorder(node->left);
+}
+
+TreeNode* convertBST(TreeNode* root) {
     runningSum = 0;
     reverseInorder(root);
     return root;
-}
-
-private void reverseInorder(TreeNode node) {
-    if (node == null) return;
-    reverseInorder(node.right);          // larger keys first
-    runningSum += node.val;
-    node.val = runningSum;               // node + everything greater
-    reverseInorder(node.left);
 }
 ```
 
@@ -210,17 +238,20 @@ private void reverseInorder(TreeNode node) {
 
 ## 6. Range Sum of BST (LC 938) — Easy
 
-Sum keys in `[low, high]`. Use the BST property to **prune**: if `node.val < low` the entire left
-subtree is out of range (skip it); if `node.val > high` the entire right subtree is out of range.
+Sum keys in `[low, high]`. Use the BST property to **prune**: if `node->val < low` the entire left
+subtree is out of range (skip it); if `node->val > high` the entire right subtree is out of range.
 
-```java
-public int rangeSumBST(TreeNode root, int low, int high) {
-    if (root == null) return 0;
-    if (root.val < low)  return rangeSumBST(root.right, low, high);  // prune left
-    if (root.val > high) return rangeSumBST(root.left,  low, high);  // prune right
-    return root.val
-         + rangeSumBST(root.left,  low, high)
-         + rangeSumBST(root.right, low, high);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int rangeSumBST(TreeNode* root, int low, int high) {
+    if (root == nullptr) return 0;
+    if (root->val < low)  return rangeSumBST(root->right, low, high);  // prune left
+    if (root->val > high) return rangeSumBST(root->left,  low, high);  // prune right
+    return root->val
+         + rangeSumBST(root->left,  low, high)
+         + rangeSumBST(root->right, low, high);
 }
 ```
 
@@ -250,7 +281,7 @@ End: `first = 5`, `second = 2`. Swap their values → inorder becomes `1 2 3 4 5
 |---|---|---|---|
 | Validate BST (98) | (low, high) bounds with `long`, or strict inorder | O(n) | O(h) |
 | Kth Smallest (230) | iterative inorder, early stop | O(h + k) | O(h) |
-| Two Sum IV (653) | HashSet, or inorder + two pointers | O(n) | O(n) |
+| Two Sum IV (653) | `std::unordered_set`, or inorder + two pointers | O(n) | O(n) |
 | Recover BST (99) | inorder finds 2 swapped nodes | O(n) | O(h) / O(1) Morris |
 | Greater Tree (538) | reverse inorder + running sum | O(n) | O(h) |
 | Range Sum (938) | prune by BST property | O(n) | O(h) |

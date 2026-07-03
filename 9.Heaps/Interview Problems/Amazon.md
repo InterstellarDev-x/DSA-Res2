@@ -11,44 +11,49 @@
 ### Two Approaches
 
 **Approach 1: Min-heap of size k — O(n log k)**
-```java
-public int[] topKFrequent(int[] nums, int k) {
-    Map<Integer, Integer> freq = new HashMap<>();
-    for (int n : nums) freq.merge(n, 1, Integer::sum);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    PriorityQueue<Map.Entry<Integer, Integer>> minHeap =
-        new PriorityQueue<>(Comparator.comparingInt(Map.Entry::getValue));
+vector<int> topKFrequent(vector<int>& nums, int k) {
+    unordered_map<int,int> freq;
+    for (int n : nums) freq[n]++;
 
-    for (Map.Entry<Integer, Integer> e : freq.entrySet()) {
-        minHeap.offer(e);
-        if (minHeap.size() > k) minHeap.poll();
+    // min-heap by frequency: pair<freq, num>
+    priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> minHeap;
+
+    for (auto& [num, f] : freq) {
+        minHeap.push({f, num});
+        if ((int)minHeap.size() > k) minHeap.pop();
     }
 
-    int[] result = new int[k];
-    for (int i = k - 1; i >= 0; i--) result[i] = minHeap.poll().getKey();
+    vector<int> result(k);
+    for (int i = k - 1; i >= 0; i--) {
+        result[i] = minHeap.top().second;
+        minHeap.pop();
+    }
     return result;
 }
 ```
 
 **Approach 2: Bucket sort — O(n)**
-```java
-public int[] topKFrequent(int[] nums, int k) {
-    Map<Integer, Integer> freq = new HashMap<>();
-    for (int n : nums) freq.merge(n, 1, Integer::sum);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    @SuppressWarnings("unchecked")
-    List<Integer>[] buckets = new List[nums.length + 1];
-    for (int key : freq.keySet()) {
-        int f = freq.get(key);
-        if (buckets[f] == null) buckets[f] = new ArrayList<>();
-        buckets[f].add(key);
+vector<int> topKFrequent(vector<int>& nums, int k) {
+    unordered_map<int,int> freq;
+    for (int n : nums) freq[n]++;
+
+    vector<vector<int>> buckets(nums.size() + 1);
+    for (auto& [num, f] : freq) {
+        buckets[f].push_back(num);
     }
 
-    int[] result = new int[k];
-    int idx = 0;
-    for (int f = buckets.length - 1; f >= 0 && idx < k; f--)
-        if (buckets[f] != null)
-            for (int n : buckets[f]) if (idx < k) result[idx++] = n;
+    vector<int> result;
+    for (int f = (int)buckets.size() - 1; f >= 0 && (int)result.size() < k; f--)
+        for (int n : buckets[f])
+            if ((int)result.size() < k) result.push_back(n);
     return result;
 }
 ```
@@ -67,21 +72,24 @@ A: Add a second comparator condition: for equal frequencies, lexicographically l
 
 **Both approaches must be known:**
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Formula — O(26 log 26) = O(1) effectively
-public int leastInterval(char[] tasks, int n) {
-    int[] freq = new int[26];
+int leastInterval(vector<char>& tasks, int n) {
+    vector<int> freq(26, 0);
     for (char t : tasks) freq[t - 'A']++;
-    Arrays.sort(freq);
+    sort(freq.begin(), freq.end());
     int maxFreq = freq[25];
     int maxCount = 0;
     for (int f : freq) if (f == maxFreq) maxCount++;
-    return Math.max((maxFreq - 1) * (n + 1) + maxCount, tasks.length);
+    return max((maxFreq - 1) * (n + 1) + maxCount, (int)tasks.size());
 }
 ```
 
 **Q: Explain the formula.**
-A: Build "frames" of size `n+1`. The most frequent task (`maxFreq`) anchors each frame. There are `maxFreq - 1` full frames, each of size `n+1`. The final slot holds all tasks with max frequency (`maxCount`). Total = `(maxFreq-1)*(n+1) + maxCount`. But if tasks fill all slots with no idle time, the answer is just `tasks.length`.
+A: Build "frames" of size `n+1`. The most frequent task (`maxFreq`) anchors each frame. There are `maxFreq - 1` full frames, each of size `n+1`. The final slot holds all tasks with max frequency (`maxCount`). Total = `(maxFreq-1)*(n+1) + maxCount`. But if tasks fill all slots with no idle time, the answer is just `tasks.size()`.
 
 **Q: Amazon variant — what if n is very large?**
 A: For large n, idle time dominates. The formula still handles this correctly — `(maxFreq-1)*(n+1) + maxCount` grows with n.
@@ -95,18 +103,27 @@ A: The heap simulation approach generalizes to this. The cooldown queue can trac
 
 **LC 23** · Hard · O(n log k)
 
-```java
-public ListNode mergeKLists(ListNode[] lists) {
-    PriorityQueue<ListNode> heap = new PriorityQueue<>(
-        (a, b) -> Integer.compare(a.val, b.val)
-    );
-    for (ListNode node : lists) if (node != null) heap.offer(node);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    ListNode dummy = new ListNode(0), tail = dummy;
-    while (!heap.isEmpty()) {
-        tail.next = heap.poll();
-        tail = tail.next;
-        if (tail.next != null) heap.offer(tail.next);
+struct ListNode {
+    int val;
+    ListNode* next;
+    ListNode(int x): val(x), next(nullptr){}
+};
+
+ListNode* mergeKLists(vector<ListNode*>& lists) {
+    auto cmp = [](ListNode* a, ListNode* b) { return a->val > b->val; };
+    priority_queue<ListNode*, vector<ListNode*>, decltype(cmp)> heap(cmp);
+    for (ListNode* node : lists) if (node != nullptr) heap.push(node);
+
+    ListNode dummy(0);
+    ListNode* tail = &dummy;
+    while (!heap.empty()) {
+        tail->next = heap.top(); heap.pop();
+        tail = tail->next;
+        if (tail->next != nullptr) heap.push(tail->next);
     }
     return dummy.next;
 }

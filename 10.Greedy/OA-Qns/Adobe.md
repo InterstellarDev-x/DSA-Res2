@@ -19,21 +19,24 @@
 **Adobe-specific framing:** "You are parsing a document where each character belongs to a segment. Segment all characters such that each character type appears in exactly one segment. Return segment lengths."
 
 **Adobe follow-up questions:**
-1. "What if the string has Unicode characters?" → Use `HashMap<Character, Integer>` instead of `int[26]`
+1. "What if the string has Unicode characters?" → Use `std::unordered_map<char, int>` instead of `int[26]`
 2. "What if each segment must be at most K characters long?" → Greedy + constraint (force split at K)
 3. "What if segments can overlap but you want minimum total overlap?" → Interval DP
 
 **Code they want to see:**
-```java
-public List<Integer> partitionLabels(String s) {
-    int[] last = new int[26];
-    for (int i = 0; i < s.length(); i++) last[s.charAt(i) - 'a'] = i;
-    List<Integer> result = new ArrayList<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> partitionLabels(string s) {
+    int last[26] = {};
+    for (int i = 0; i < (int)s.size(); i++) last[s[i] - 'a'] = i;
+    vector<int> result;
     int start = 0, end = 0;
-    for (int i = 0; i < s.length(); i++) {
-        end = Math.max(end, last[s.charAt(i) - 'a']);
+    for (int i = 0; i < (int)s.size(); i++) {
+        end = max(end, last[s[i] - 'a']);
         if (i == end) {
-            result.add(end - start + 1);
+            result.push_back(end - start + 1);
             start = i + 1;
         }
     }
@@ -52,12 +55,15 @@ public List<Integer> partitionLabels(String s) {
 **Key insight:** Sort both arrays. Try to satisfy smallest unsatisfied user with smallest sufficient license.
 
 **Code they want to see:**
-```java
-public int findContentChildren(int[] g, int[] s) {
-    Arrays.sort(g);
-    Arrays.sort(s);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int findContentChildren(vector<int>& g, vector<int>& s) {
+    sort(g.begin(), g.end());
+    sort(s.begin(), s.end());
     int child = 0, cookie = 0;
-    while (child < g.length && cookie < s.length) {
+    while (child < (int)g.size() && cookie < (int)s.size()) {
         if (s[cookie] >= g[child]) child++;
         cookie++;
     }

@@ -40,11 +40,14 @@
 | **Optimal solution** | O(n) time, O(1) extra space |
 | **LeetCode** | [LC 238](https://leetcode.com/problems/product-of-array-except-self/) |
 
-**Java Solution:**
-```java
-public int[] productExceptSelf(int[] nums) {
-    int n = nums.length;
-    int[] result = new int[n];
+**C++ Solution:**
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> productExceptSelf(vector<int>& nums) {
+    int n = nums.size();
+    vector<int> result(n);
     result[0] = 1;
     // Left pass: result[i] = product of all nums[0..i-1]
     for (int i = 1; i < n; i++) result[i] = result[i - 1] * nums[i - 1];
@@ -88,20 +91,22 @@ public int[] productExceptSelf(int[] nums) {
 |-------|--------|
 | **Difficulty** | Medium |
 | **Round** | Phone, Round 1 |
-| **Skill tested** | HashSet, O(n) without sorting |
-| **Optimal solution** | HashSet, only extend sequences from their start |
+| **Skill tested** | unordered_set, O(n) without sorting |
+| **Optimal solution** | unordered_set, only extend sequences from their start |
 | **LeetCode** | [LC 128](https://leetcode.com/problems/longest-consecutive-sequence/) |
 
-```java
-public int longestConsecutive(int[] nums) {
-    Set<Integer> set = new HashSet<>();
-    for (int n : nums) set.add(n);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int longestConsecutive(vector<int>& nums) {
+    unordered_set<int> set(nums.begin(), nums.end());
     int maxLen = 0;
-    for (int n : set) {
-        if (!set.contains(n - 1)) { // start of a sequence
+    for (auto& n : set) {
+        if (set.find(n - 1) == set.end()) { // start of a sequence
             int cur = n, len = 1;
-            while (set.contains(cur + 1)) { cur++; len++; }
-            maxLen = Math.max(maxLen, len);
+            while (set.count(cur + 1)) { cur++; len++; }
+            maxLen = max(maxLen, len);
         }
     }
     return maxLen;

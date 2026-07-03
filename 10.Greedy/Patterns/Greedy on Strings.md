@@ -51,39 +51,42 @@ $10 bills can only be used as partial change for $20 bills — they have exactly
 
 This is the greedy-choice property: using a $10+$5 now cannot be worse than using $5+$5+$5, because the $10 bill saved is useless unless a future $20 arrives (and then we still have the $5 available).
 
-```java
-public class LemonadeChange {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public boolean lemonadeChange(int[] bills) {
-        int five = 0, ten = 0;
-        for (int bill : bills) {
-            if (bill == 5) {
-                five++;
-            } else if (bill == 10) {
-                if (five == 0) return false;
+bool lemonadeChange(vector<int>& bills) {
+    int five = 0, ten = 0;
+    for (int bill : bills) {
+        if (bill == 5) {
+            five++;
+        } else if (bill == 10) {
+            if (five == 0) return false;
+            five--;
+            ten++;
+        } else {
+            // bill == 20: need to give $15 change
+            if (ten > 0 && five > 0) {
+                ten--;
                 five--;
-                ten++;
+            } else if (five >= 3) {
+                five -= 3;
             } else {
-                // bill == 20: need to give $15 change
-                if (ten > 0 && five > 0) {
-                    ten--;
-                    five--;
-                } else if (five >= 3) {
-                    five -= 3;
-                } else {
-                    return false;
-                }
+                return false;
             }
         }
-        return true;
     }
+    return true;
+}
 
-    public static void main(String[] args) {
-        LemonadeChange sol = new LemonadeChange();
-        System.out.println(sol.lemonadeChange(new int[]{5, 5, 5, 10, 20})); // true
-        System.out.println(sol.lemonadeChange(new int[]{5, 5, 10, 10, 20})); // false
-        System.out.println(sol.lemonadeChange(new int[]{5, 5, 10, 20, 5, 5, 5, 5, 5, 5, 5, 5, 5, 10, 5, 5, 20, 5, 20, 5})); // true
-    }
+int main() {
+    vector<int> bills1 = {5, 5, 5, 10, 20};
+    cout << lemonadeChange(bills1) << "\n"; // true
+    vector<int> bills2 = {5, 5, 10, 10, 20};
+    cout << lemonadeChange(bills2) << "\n"; // false
+    vector<int> bills3 = {5, 5, 10, 20, 5, 5, 5, 5, 5, 5, 5, 5, 5, 10, 5, 5, 20, 5, 20, 5};
+    cout << lemonadeChange(bills3) << "\n"; // true
+    return 0;
 }
 ```
 
@@ -129,37 +132,37 @@ At the end, if `lo == 0`, there is a valid assignment of `*` that gives zero unc
 
 **Why lo/hi works:** `lo` represents the most pessimistic assignment of wildcards (every `*` tries to close or disappear), and `hi` represents the most optimistic (every `*` opens). Any integer in `[lo, hi]` is achievable. We need 0 to be achievable at the end.
 
-```java
-public class ValidParenthesisString {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public boolean checkValidString(String s) {
-        int lo = 0, hi = 0;
-        for (char c : s.toCharArray()) {
-            if (c == '(') {
-                lo++;
-                hi++;
-            } else if (c == ')') {
-                lo--;
-                hi--;
-            } else {
-                // '*' acts as ')' for lo (most pessimistic), '(' for hi (most optimistic)
-                lo--;
-                hi++;
-            }
-            if (hi < 0) return false;  // too many ')' even with all '*' as '('
-            lo = Math.max(lo, 0);       // balance can't go below 0
+bool checkValidString(string s) {
+    int lo = 0, hi = 0;
+    for (char c : s) {
+        if (c == '(') {
+            lo++;
+            hi++;
+        } else if (c == ')') {
+            lo--;
+            hi--;
+        } else {
+            // '*' acts as ')' for lo (most pessimistic), '(' for hi (most optimistic)
+            lo--;
+            hi++;
         }
-        return lo == 0;
+        if (hi < 0) return false;  // too many ')' even with all '*' as '('
+        lo = max(lo, 0);           // balance can't go below 0
     }
+    return lo == 0;
+}
 
-    public static void main(String[] args) {
-        ValidParenthesisString sol = new ValidParenthesisString();
-        System.out.println(sol.checkValidString("()"));    // true
-        System.out.println(sol.checkValidString("(*)"));   // true
-        System.out.println(sol.checkValidString("(*))"));  // true
-        System.out.println(sol.checkValidString("((*)"));  // true
-        System.out.println(sol.checkValidString("((*)")); // true
-    }
+int main() {
+    cout << checkValidString("()") << "\n";    // true
+    cout << checkValidString("(*)") << "\n";   // true
+    cout << checkValidString("(*))") << "\n";  // true
+    cout << checkValidString("((*)") << "\n";  // true
+    cout << checkValidString("((*)") << "\n";  // true
+    return 0;
 }
 ```
 
@@ -198,39 +201,36 @@ c=')': lo=-1, hi=-1
 
 Among the remaining (valid) triplets, take the component-wise maximum. If that maximum equals `target`, return true; otherwise false.
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class MergeTriplets {
-
-    public boolean mergeTriplets(int[][] triplets, int[] target) {
-        int[] result = new int[3];
-        for (int[] t : triplets) {
-            if (t[0] <= target[0] && t[1] <= target[1] && t[2] <= target[2]) {
-                result[0] = Math.max(result[0], t[0]);
-                result[1] = Math.max(result[1], t[1]);
-                result[2] = Math.max(result[2], t[2]);
-            }
+bool mergeTriplets(vector<vector<int>>& triplets, vector<int>& target) {
+    vector<int> result(3, 0);
+    for (auto& t : triplets) {
+        if (t[0] <= target[0] && t[1] <= target[1] && t[2] <= target[2]) {
+            result[0] = max(result[0], t[0]);
+            result[1] = max(result[1], t[1]);
+            result[2] = max(result[2], t[2]);
         }
-        return Arrays.equals(result, target);
     }
+    return result == target;
+}
 
-    public static void main(String[] args) {
-        MergeTriplets sol = new MergeTriplets();
+int main() {
+    // target = [5,5,5], triplets include [5,5,5] directly
+    vector<vector<int>> t1 = {{2,5,3},{1,8,4},{1,7,5}};
+    vector<int> target1 = {5, 5, 5};
+    cout << mergeTriplets(t1, target1) << "\n"; // false (no valid triplet has first=5 without exceeding second)
 
-        // target = [5,5,5], triplets include [5,5,5] directly
-        System.out.println(sol.mergeTriplets(
-            new int[][]{{2,5,3},{1,8,4},{1,7,5}},
-            new int[]{5, 5, 5})); // false (no valid triplet has first=5 without exceeding second)
+    vector<vector<int>> t2 = {{3,4,5},{4,5,6}};
+    vector<int> target2 = {3, 2, 5};
+    cout << mergeTriplets(t2, target2) << "\n"; // false
 
-        System.out.println(sol.mergeTriplets(
-            new int[][]{{3,4,5},{4,5,6}},
-            new int[]{3, 2, 5})); // false
-
-        System.out.println(sol.mergeTriplets(
-            new int[][]{{2,5,3},{2,3,4},{1,2,5}},
-            new int[]{2, 5, 5})); // true ([2,5,3] and [1,2,5] merge to [2,5,5])
-    }
+    vector<vector<int>> t3 = {{2,5,3},{2,3,4},{1,2,5}};
+    vector<int> target3 = {2, 5, 5};
+    cout << mergeTriplets(t3, target3) << "\n"; // true ([2,5,3] and [1,2,5] merge to [2,5,5])
+    return 0;
 }
 ```
 
@@ -246,7 +246,7 @@ t=[2,5,3]: 2<=2, 5<=5, 3<=5  valid  result=max([0,0,0],[2,5,3])=[2,5,3]
 t=[2,3,4]: 2<=2, 3<=5, 4<=5  valid  result=max([2,5,3],[2,3,4])=[2,5,4]
 t=[1,2,5]: 1<=2, 2<=5, 5<=5  valid  result=max([2,5,4],[1,2,5])=[2,5,5]
 
-Arrays.equals([2,5,5],[2,5,5])  return true
+result == target  →  [2,5,5] == [2,5,5]  return true
 ```
 
 ---
@@ -265,39 +265,39 @@ The two-pass strategy:
 
 The max operation is crucial: taking the max preserves both directional constraints simultaneously.
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class Candy {
+int candy(vector<int>& ratings) {
+    int n = ratings.size();
+    vector<int> candies(n, 1);
 
-    public int candy(int[] ratings) {
-        int n = ratings.length;
-        int[] candies = new int[n];
-        Arrays.fill(candies, 1);
-
-        // Left to right: higher than left neighbor gets one more
-        for (int i = 1; i < n; i++) {
-            if (ratings[i] > ratings[i - 1]) candies[i] = candies[i - 1] + 1;
-        }
-
-        // Right to left: higher than right neighbor gets at least one more than right
-        for (int i = n - 2; i >= 0; i--) {
-            if (ratings[i] > ratings[i + 1]) {
-                candies[i] = Math.max(candies[i], candies[i + 1] + 1);
-            }
-        }
-
-        int total = 0;
-        for (int c : candies) total += c;
-        return total;
+    // Left to right: higher than left neighbor gets one more
+    for (int i = 1; i < n; i++) {
+        if (ratings[i] > ratings[i - 1]) candies[i] = candies[i - 1] + 1;
     }
 
-    public static void main(String[] args) {
-        Candy sol = new Candy();
-        System.out.println(sol.candy(new int[]{1, 0, 2})); // 5
-        System.out.println(sol.candy(new int[]{1, 2, 2})); // 4
-        System.out.println(sol.candy(new int[]{3, 2, 1})); // 6
+    // Right to left: higher than right neighbor gets at least one more than right
+    for (int i = n - 2; i >= 0; i--) {
+        if (ratings[i] > ratings[i + 1]) {
+            candies[i] = max(candies[i], candies[i + 1] + 1);
+        }
     }
+
+    int total = 0;
+    for (int c : candies) total += c;
+    return total;
+}
+
+int main() {
+    vector<int> r1 = {1, 0, 2};
+    cout << candy(r1) << "\n"; // 5
+    vector<int> r2 = {1, 2, 2};
+    cout << candy(r2) << "\n"; // 4
+    vector<int> r3 = {3, 2, 1};
+    cout << candy(r3) << "\n"; // 6
+    return 0;
 }
 ```
 

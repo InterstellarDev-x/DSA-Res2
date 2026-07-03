@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#cpp-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -58,7 +58,7 @@ update answer
 | "longest subarray / substring with ..." | Variable window (maximize) |
 | "smallest subarray with sum ≥ k" | Variable window (minimize) |
 | "at most k distinct characters / elements" | Variable window + frequency map |
-| "no repeating characters" | Variable window + HashSet |
+| "no repeating characters" | Variable window + unordered_set |
 
 ---
 
@@ -67,24 +67,27 @@ update answer
 | Variant | Time | Space |
 |---------|------|-------|
 | Fixed window (sum) | O(n) | O(1) |
-| Variable window (HashSet) | O(n) | O(n) |
+| Variable window (unordered_set) | O(n) | O(n) |
 | Variable window (freq map) | O(n) | O(26) / O(n) |
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Fixed Window — Maximum Sum of Size K
 
-```java
-public int maxSumSubarray(int[] arr, int k) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int maxSumSubarray(vector<int>& arr, int k) {
     int windowSum = 0;
     for (int i = 0; i < k; i++) windowSum += arr[i]; // first window
 
     int maxSum = windowSum;
-    for (int i = k; i < arr.length; i++) {
+    for (int i = k; i < (int)arr.size(); i++) {
         windowSum += arr[i] - arr[i - k]; // slide: add new, remove old
-        maxSum = Math.max(maxSum, windowSum);
+        maxSum = max(maxSum, windowSum);
     }
     return maxSum;
 }
@@ -93,13 +96,16 @@ public int maxSumSubarray(int[] arr, int k) {
 
 ### 2. Variable Window — Longest Subarray with Sum ≤ K (Non-negative values)
 
-```java
-public int longestSubarrayWithSumK(int[] arr, int k) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int longestSubarrayWithSumK(vector<int>& arr, int k) {
     int l = 0, sum = 0, maxLen = 0;
-    for (int r = 0; r < arr.length; r++) {
+    for (int r = 0; r < (int)arr.size(); r++) {
         sum += arr[r];
         while (sum > k) sum -= arr[l++]; // shrink from left
-        maxLen = Math.max(maxLen, r - l + 1);
+        maxLen = max(maxLen, r - l + 1);
     }
     return maxLen;
 }
@@ -109,17 +115,20 @@ public int longestSubarrayWithSumK(int[] arr, int k) {
 
 ### 3. Variable Window — Longest Substring Without Repeating Characters
 
-```java
-public int lengthOfLongestSubstring(String s) {
-    Map<Character, Integer> lastSeen = new HashMap<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int lengthOfLongestSubstring(string s) {
+    unordered_map<char, int> lastSeen;
     int l = 0, maxLen = 0;
-    for (int r = 0; r < s.length(); r++) {
-        char c = s.charAt(r);
-        if (lastSeen.containsKey(c) && lastSeen.get(c) >= l) {
-            l = lastSeen.get(c) + 1; // jump l past the duplicate
+    for (int r = 0; r < (int)s.length(); r++) {
+        char c = s[r];
+        if (lastSeen.count(c) && lastSeen[c] >= l) {
+            l = lastSeen[c] + 1; // jump l past the duplicate
         }
-        lastSeen.put(c, r);
-        maxLen = Math.max(maxLen, r - l + 1);
+        lastSeen[c] = r;
+        maxLen = max(maxLen, r - l + 1);
     }
     return maxLen;
 }
@@ -128,18 +137,21 @@ public int lengthOfLongestSubstring(String s) {
 
 ### 4. Variable Window — At Most K Distinct Characters
 
-```java
-public int longestSubstringKDistinct(String s, int k) {
-    Map<Character, Integer> freq = new HashMap<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int longestSubstringKDistinct(string s, int k) {
+    unordered_map<char, int> freq;
     int l = 0, maxLen = 0;
-    for (int r = 0; r < s.length(); r++) {
-        freq.merge(s.charAt(r), 1, Integer::sum);
-        while (freq.size() > k) {
-            char left = s.charAt(l++);
-            freq.merge(left, -1, Integer::sum);
-            if (freq.get(left) == 0) freq.remove(left);
+    for (int r = 0; r < (int)s.length(); r++) {
+        freq[s[r]]++;
+        while ((int)freq.size() > k) {
+            char left = s[l++];
+            freq[left]--;
+            if (freq[left] == 0) freq.erase(left);
         }
-        maxLen = Math.max(maxLen, r - l + 1);
+        maxLen = max(maxLen, r - l + 1);
     }
     return maxLen;
 }
@@ -148,31 +160,34 @@ public int longestSubstringKDistinct(String s, int k) {
 
 ### 5. Minimum Window Substring (Hard)
 
-```java
-public String minWindow(String s, String t) {
-    if (s.isEmpty() || t.isEmpty()) return "";
-    Map<Character, Integer> need = new HashMap<>();
-    for (char c : t.toCharArray()) need.merge(c, 1, Integer::sum);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    int l = 0, formed = 0, required = need.size();
-    Map<Character, Integer> window = new HashMap<>();
-    int[] ans = {-1, 0, 0}; // [length, l, r]
+string minWindow(string s, string t) {
+    if (s.empty() || t.empty()) return "";
+    unordered_map<char, int> need;
+    for (char c : t) need[c]++;
 
-    for (int r = 0; r < s.length(); r++) {
-        char c = s.charAt(r);
-        window.merge(c, 1, Integer::sum);
-        if (need.containsKey(c) && window.get(c).equals(need.get(c))) formed++;
+    int l = 0, formed = 0, required = (int)need.size();
+    unordered_map<char, int> window;
+    int ansLen = -1, ansL = 0, ansR = 0; // [length, l, r]
+
+    for (int r = 0; r < (int)s.length(); r++) {
+        char c = s[r];
+        window[c]++;
+        if (need.count(c) && window[c] == need[c]) formed++;
 
         while (formed == required) {
-            if (ans[0] == -1 || r - l + 1 < ans[0]) {
-                ans[0] = r - l + 1; ans[1] = l; ans[2] = r;
+            if (ansLen == -1 || r - l + 1 < ansLen) {
+                ansLen = r - l + 1; ansL = l; ansR = r;
             }
-            char lc = s.charAt(l++);
-            window.merge(lc, -1, Integer::sum);
-            if (need.containsKey(lc) && window.get(lc) < need.get(lc)) formed--;
+            char lc = s[l++];
+            window[lc]--;
+            if (need.count(lc) && window[lc] < need[lc]) formed--;
         }
     }
-    return ans[0] == -1 ? "" : s.substring(ans[1], ans[2] + 1);
+    return ansLen == -1 ? "" : s.substr(ansL, ansLen);
 }
 // Time: O(|s| + |t|) | Space: O(|s| + |t|)
 ```
@@ -184,7 +199,7 @@ public String minWindow(String s, String t) {
 | Mistake | Fix |
 |---------|-----|
 | Using sliding window when values can be negative | Switch to Prefix Sum + HashMap |
-| Not removing key from map when frequency → 0 | Always `map.remove(key)` when count hits 0 |
+| Not removing key from map when frequency → 0 | Always `map.erase(key)` when count hits 0 |
 | Fixed window: off-by-one when removing old element | Remove `arr[i - k]`, not `arr[i - k + 1]` |
 | Variable window: over-shrinking | `while` condition, not `if` |
 | Counting `formed` with `>=` instead of `==` | Only increment `formed` when count matches exactly |

@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#c-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -30,7 +30,7 @@ Frequency Count reduces string comparison problems to **counting character occur
 | `int[26]` | 26 | Only lowercase letters `a–z` |
 | `int[128]` | 128 | All ASCII characters |
 | `int[256]` | 256 | Extended ASCII |
-| `HashMap<Character, Integer>` | Dynamic | Unicode or unknown charset |
+| `unordered_map<char, int>` | Dynamic | Unicode or unknown charset |
 
 ---
 
@@ -63,20 +63,23 @@ Frequency Count reduces string comparison problems to **counting character occur
 | Build frequency array | O(n) | O(1) — `int[26]` |
 | Compare two frequency arrays | O(26) = O(1) | O(1) |
 | Group anagrams (n strings, avg len k) | O(n × k) | O(n × k) |
-| `Arrays.equals` on `int[26]` | O(26) = O(1) | O(1) |
+| `std::equal` on `int[26]` | O(26) = O(1) | O(1) |
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Valid Anagram (LC 242)
 
-```java
-public boolean isAnagram(String s, String t) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool isAnagram(string s, string t) {
     if (s.length() != t.length()) return false;
-    int[] freq = new int[26];
-    for (char c : s.toCharArray()) freq[c - 'a']++;
-    for (char c : t.toCharArray()) freq[c - 'a']--;
+    int freq[26] = {};
+    for (char c : s) freq[c - 'a']++;
+    for (char c : t) freq[c - 'a']--;
     for (int f : freq) if (f != 0) return false;
     return true;
 }
@@ -85,45 +88,57 @@ public boolean isAnagram(String s, String t) {
 
 ### 2. Group Anagrams (LC 49) — Sorted Key
 
-```java
-public List<List<String>> groupAnagrams(String[] strs) {
-    Map<String, List<String>> map = new HashMap<>();
-    for (String s : strs) {
-        char[] chars = s.toCharArray();
-        Arrays.sort(chars);
-        String key = new String(chars);
-        map.computeIfAbsent(key, k -> new ArrayList<>()).add(s);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<string>> groupAnagrams(vector<string>& strs) {
+    unordered_map<string, vector<string>> map;
+    for (auto& s : strs) {
+        string key = s;
+        sort(key.begin(), key.end());
+        map[key].push_back(s);
     }
-    return new ArrayList<>(map.values());
+    vector<vector<string>> result;
+    for (auto& [k, v] : map) result.push_back(v);
+    return result;
 }
 // Time: O(n × k log k) | Space: O(n × k)
 ```
 
 ### 3. Group Anagrams — Frequency Key (No Sort, O(n×k))
 
-```java
-public List<List<String>> groupAnagrams(String[] strs) {
-    Map<String, List<String>> map = new HashMap<>();
-    for (String s : strs) {
-        int[] freq = new int[26];
-        for (char c : s.toCharArray()) freq[c - 'a']++;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<string>> groupAnagrams(vector<string>& strs) {
+    unordered_map<string, vector<string>> map;
+    for (auto& s : strs) {
+        int freq[26] = {};
+        for (char c : s) freq[c - 'a']++;
         // Build canonical key: "#2#0#1#..."
-        StringBuilder key = new StringBuilder();
-        for (int f : freq) key.append('#').append(f);
-        map.computeIfAbsent(key.toString(), k -> new ArrayList<>()).add(s);
+        string key;
+        for (int f : freq) key += '#' + to_string(f);
+        map[key].push_back(s);
     }
-    return new ArrayList<>(map.values());
+    vector<vector<string>> result;
+    for (auto& [k, v] : map) result.push_back(v);
+    return result;
 }
 // Time: O(n × k) | Space: O(n × k)
 ```
 
 ### 4. Ransom Note (LC 383)
 
-```java
-public boolean canConstruct(String ransomNote, String magazine) {
-    int[] freq = new int[26];
-    for (char c : magazine.toCharArray()) freq[c - 'a']++;
-    for (char c : ransomNote.toCharArray()) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool canConstruct(string ransomNote, string magazine) {
+    int freq[26] = {};
+    for (char c : magazine) freq[c - 'a']++;
+    for (char c : ransomNote) {
         if (--freq[c - 'a'] < 0) return false;
     }
     return true;
@@ -133,12 +148,15 @@ public boolean canConstruct(String ransomNote, String magazine) {
 
 ### 5. First Unique Character (LC 387)
 
-```java
-public int firstUniqChar(String s) {
-    int[] freq = new int[26];
-    for (char c : s.toCharArray()) freq[c - 'a']++;
-    for (int i = 0; i < s.length(); i++)
-        if (freq[s.charAt(i) - 'a'] == 1) return i;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int firstUniqChar(string s) {
+    int freq[26] = {};
+    for (char c : s) freq[c - 'a']++;
+    for (int i = 0; i < (int)s.length(); i++)
+        if (freq[s[i] - 'a'] == 1) return i;
     return -1;
 }
 // Time: O(n) | Space: O(1)
@@ -146,11 +164,14 @@ public int firstUniqChar(String s) {
 
 ### 6. Minimum Steps to Make Two Strings Anagram (LC 1347)
 
-```java
-public int minSteps(String s, String t) {
-    int[] freq = new int[26];
-    for (char c : s.toCharArray()) freq[c - 'a']++;
-    for (char c : t.toCharArray()) freq[c - 'a']--;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int minSteps(string s, string t) {
+    int freq[26] = {};
+    for (char c : s) freq[c - 'a']++;
+    for (char c : t) freq[c - 'a']--;
     int steps = 0;
     for (int f : freq) if (f > 0) steps += f; // count chars s has in excess
     return steps;
@@ -160,32 +181,40 @@ public int minSteps(String s, String t) {
 
 ### 7. Sort Characters By Frequency (LC 451)
 
-```java
-public String frequencySort(String s) {
-    int[] freq = new int[128];
-    for (char c : s.toCharArray()) freq[c]++;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+string frequencySort(string s) {
+    int freq[128] = {};
+    for (char c : s) freq[(int)c]++;
 
     // Sort characters by frequency descending
-    List<Character> chars = new ArrayList<>();
-    for (int i = 0; i < 128; i++) if (freq[i] > 0) chars.add((char) i);
-    chars.sort((a, b) -> freq[b] - freq[a]);
+    vector<char> chars;
+    for (int i = 0; i < 128; i++) if (freq[i] > 0) chars.push_back((char)i);
+    sort(chars.begin(), chars.end(), [&](char a, char b) {
+        return freq[(int)b] < freq[(int)a];
+    });
 
-    StringBuilder sb = new StringBuilder();
+    string sb;
     for (char c : chars) {
-        for (int i = 0; i < freq[c]; i++) sb.append(c);
+        for (int i = 0; i < freq[(int)c]; i++) sb += c;
     }
-    return sb.toString();
+    return sb;
 }
 // Time: O(n + 128 log 128) = O(n) | Space: O(n)
 ```
 
 ### 8. Isomorphic Strings (LC 205)
 
-```java
-public boolean isIsomorphic(String s, String t) {
-    int[] sToT = new int[256], tToS = new int[256];
-    for (int i = 0; i < s.length(); i++) {
-        int sc = s.charAt(i), tc = t.charAt(i);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool isIsomorphic(string s, string t) {
+    int sToT[256] = {}, tToS[256] = {};
+    for (int i = 0; i < (int)s.length(); i++) {
+        int sc = s[i], tc = t[i];
         if (sToT[sc] == 0 && tToS[tc] == 0) {
             sToT[sc] = tc; tToS[tc] = sc;
         } else if (sToT[sc] != tc || tToS[tc] != sc) return false;
@@ -202,10 +231,10 @@ public boolean isIsomorphic(String s, String t) {
 | Mistake | Fix |
 |---------|-----|
 | Only checking one direction for isomorphic | Check both `s→t` and `t→s` mappings |
-| Group anagrams: using `Arrays.toString(freq)` as key | `[1,0,0...]` has spaces; use `#` separator to distinguish `[12,0]` from `[1,20]` |
+| Group anagrams: using array-to-string as key without separator | Use `#` separator to distinguish `[12,0]` from `[1,20]` |
 | Not checking length before anagram check | Early return if `s.length() != t.length()` |
-| Using `HashMap` when `int[26]` suffices | 26x faster; always prefer for lowercase-only problems |
-| `c - 'a'` on uppercase or non-alpha chars | Guard with `Character.isLowerCase(c)` or use `int[128]` |
+| Using `unordered_map` when `int[26]` suffices | 26x faster; always prefer for lowercase-only problems |
+| `c - 'a'` on uppercase or non-alpha chars | Guard with `islower(c)` or use `int[128]` |
 
 ---
 
@@ -216,7 +245,7 @@ public boolean isIsomorphic(String s, String t) {
 | Scramble string | Frequency check + recursion |
 | Check if subset anagram | All freqs of s ≤ freqs of t |
 | Minimum window anagram | See [Sliding Window on Strings](./Sliding%20Window%20on%20Strings.md) |
-| Word pattern (LC 290) | Two-way HashMap mapping |
+| Word pattern (LC 290) | Two-way `unordered_map` mapping |
 
 ---
 

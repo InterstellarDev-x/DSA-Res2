@@ -11,8 +11,8 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [KMP — Java Implementation](#kmp--java-implementation)
-6. [Z-Algorithm — Java Implementation](#z-algorithm--java-implementation)
+5. [KMP — C++ Implementation](#kmp--c-implementation)
+6. [Z-Algorithm — C++ Implementation](#z-algorithm--c-implementation)
 7. [Common Mistakes](#common-mistakes)
 8. [Applications](#applications)
 9. [Practice Problems](#practice-problems)
@@ -69,20 +69,23 @@ Z:    z[i]   = length of longest string starting from s[i] matching a prefix of 
 
 ---
 
-## KMP — Java Implementation
+## KMP — C++ Implementation
 
 ### Step 1: Build LPS (Failure Function)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // lps[i] = length of longest proper prefix of p[0..i] that is also a suffix
-private int[] buildLPS(String pattern) {
+vector<int> buildLPS(const string& pattern) {
     int m = pattern.length();
-    int[] lps = new int[m];
+    vector<int> lps(m);
     int len = 0; // length of previous longest prefix suffix
     int i = 1;
 
     while (i < m) {
-        if (pattern.charAt(i) == pattern.charAt(len)) {
+        if (pattern[i] == pattern[len]) {
             lps[i++] = ++len;
         } else if (len > 0) {
             len = lps[len - 1]; // don't increment i — try shorter prefix
@@ -96,23 +99,23 @@ private int[] buildLPS(String pattern) {
 
 ### Step 2: KMP Search
 
-```java
-public List<Integer> kmpSearch(String text, String pattern) {
-    List<Integer> indices = new ArrayList<>();
+```cpp
+vector<int> kmpSearch(const string& text, const string& pattern) {
+    vector<int> indices;
     int n = text.length(), m = pattern.length();
     if (m == 0) return indices;
 
-    int[] lps = buildLPS(pattern);
+    vector<int> lps = buildLPS(pattern);
     int i = 0, j = 0; // i = text index, j = pattern index
 
     while (i < n) {
-        if (text.charAt(i) == pattern.charAt(j)) {
+        if (text[i] == pattern[j]) {
             i++; j++;
         }
         if (j == m) {
-            indices.add(i - j); // found at i - m
+            indices.push_back(i - j); // found at i - m
             j = lps[j - 1];    // continue with partial match
-        } else if (i < n && text.charAt(i) != pattern.charAt(j)) {
+        } else if (i < n && text[i] != pattern[j]) {
             if (j > 0) j = lps[j - 1]; // use LPS to skip
             else i++;
         }
@@ -124,10 +127,10 @@ public List<Integer> kmpSearch(String text, String pattern) {
 
 ### Application 1: Repeated Substring Pattern (LC 459)
 
-```java
-public boolean repeatedSubstringPattern(String s) {
+```cpp
+bool repeatedSubstringPattern(const string& s) {
     int n = s.length();
-    int[] lps = buildLPS(s);
+    vector<int> lps = buildLPS(s);
     int len = lps[n - 1];
     // If len > 0 and n is divisible by (n - len), s is built from a repeating unit
     return len > 0 && n % (n - len) == 0;
@@ -137,45 +140,49 @@ public boolean repeatedSubstringPattern(String s) {
 
 ### Application 2: Shortest Palindrome by Prepending (LC 214)
 
-```java
-public String shortestPalindrome(String s) {
+```cpp
+string shortestPalindrome(const string& s) {
     // Find longest palindromic prefix using KMP
-    String rev = new StringBuilder(s).reverse().toString();
-    String combined = s + "#" + rev; // '#' prevents overlap
-    int[] lps = buildLPS(combined);
+    string rev = s;
+    reverse(rev.begin(), rev.end());
+    string combined = s + "#" + rev; // '#' prevents overlap
+    vector<int> lps = buildLPS(combined);
     int longestPalinPrefix = lps[combined.length() - 1];
-    return rev.substring(0, s.length() - longestPalinPrefix) + s;
+    return rev.substr(0, s.length() - longestPalinPrefix) + s;
 }
 // Time: O(n) | Space: O(n)
 ```
 
 ### Application 3: Is Rotation? (LC 796)
 
-```java
-public boolean isRotation(String s, String goal) {
+```cpp
+bool isRotation(const string& s, const string& goal) {
     if (s.length() != goal.length()) return false;
-    return !kmpSearch(s + s, goal).isEmpty();
+    return !kmpSearch(s + s, goal).empty();
 }
 // Time: O(n) | Space: O(n)
 ```
 
 ---
 
-## Z-Algorithm — Java Implementation
+## Z-Algorithm — C++ Implementation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // z[i] = length of longest substring starting at s[i] that matches a prefix of s
 // z[0] = 0 by convention (or n, depending on definition)
-private int[] zFunction(String s) {
+vector<int> zFunction(const string& s) {
     int n = s.length();
-    int[] z = new int[n];
+    vector<int> z(n);
     int l = 0, r = 0;
 
     for (int i = 1; i < n; i++) {
         if (i < r) {
-            z[i] = Math.min(r - i, z[i - l]);
+            z[i] = min(r - i, z[i - l]);
         }
-        while (i + z[i] < n && s.charAt(z[i]) == s.charAt(i + z[i])) {
+        while (i + z[i] < n && s[z[i]] == s[i + z[i]]) {
             z[i]++;
         }
         if (i + z[i] > r) { l = i; r = i + z[i]; }
@@ -186,14 +193,14 @@ private int[] zFunction(String s) {
 
 ### Z-Algorithm Pattern Search
 
-```java
-public List<Integer> zSearch(String text, String pattern) {
-    String combined = pattern + "$" + text; // '$' not in alphabet
-    int[] z = zFunction(combined);
-    List<Integer> result = new ArrayList<>();
+```cpp
+vector<int> zSearch(const string& text, const string& pattern) {
+    string combined = pattern + "$" + text; // '$' not in alphabet
+    vector<int> z = zFunction(combined);
+    vector<int> result;
     int m = pattern.length();
-    for (int i = m + 1; i < combined.length(); i++) {
-        if (z[i] == m) result.add(i - m - 1); // offset in text
+    for (int i = m + 1; i < (int)combined.length(); i++) {
+        if (z[i] == m) result.push_back(i - m - 1); // offset in text
     }
     return result;
 }

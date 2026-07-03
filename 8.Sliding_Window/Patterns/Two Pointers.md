@@ -20,8 +20,11 @@ Two-pointer problems use two indices that move toward each other or in the same 
 
 ## Template 1: Opposite Ends
 
-```java
-int left = 0, right = nums.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int left = 0, right = (int)nums.size() - 1;
 while (left < right) {
     if (condition) {
         // process or record answer
@@ -36,9 +39,12 @@ while (left < right) {
 
 ## Template 2: Same Direction (Fast/Slow)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 int slow = 0;
-for (int fast = 0; fast < nums.length; fast++) {
+for (int fast = 0; fast < (int)nums.size(); fast++) {
     if (shouldKeep(nums[fast])) {
         nums[slow++] = nums[fast];
     }
@@ -52,14 +58,17 @@ for (int fast = 0; fast < nums.length; fast++) {
 
 Find two lines forming a container that holds the most water.
 
-```java
-public int maxArea(int[] height) {
-    int left = 0, right = height.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int maxArea(vector<int>& height) {
+    int left = 0, right = (int)height.size() - 1;
     int maxWater = 0;
 
     while (left < right) {
-        int water = Math.min(height[left], height[right]) * (right - left);
-        maxWater = Math.max(maxWater, water);
+        int water = min(height[left], height[right]) * (right - left);
+        maxWater = max(maxWater, water);
 
         // Move the shorter line — moving the taller one can only decrease width
         // and can't increase the bounded height (still limited by the shorter)
@@ -80,19 +89,22 @@ public int maxArea(int[] height) {
 
 Find all unique triplets summing to zero.
 
-```java
-public List<List<Integer>> threeSum(int[] nums) {
-    Arrays.sort(nums);   // sort first!
-    List<List<Integer>> result = new ArrayList<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    for (int i = 0; i < nums.length - 2; i++) {
+vector<vector<int>> threeSum(vector<int>& nums) {
+    sort(nums.begin(), nums.end());   // sort first!
+    vector<vector<int>> result;
+
+    for (int i = 0; i < (int)nums.size() - 2; i++) {
         if (i > 0 && nums[i] == nums[i-1]) continue;  // skip duplicate i
 
-        int left = i + 1, right = nums.length - 1;
+        int left = i + 1, right = (int)nums.size() - 1;
         while (left < right) {
             int sum = nums[i] + nums[left] + nums[right];
             if (sum == 0) {
-                result.add(Arrays.asList(nums[i], nums[left], nums[right]));
+                result.push_back({nums[i], nums[left], nums[right]});
                 while (left < right && nums[left] == nums[left+1]) left++;   // skip dup left
                 while (left < right && nums[right] == nums[right-1]) right--; // skip dup right
                 left++; right--;
@@ -119,26 +131,32 @@ public List<List<Integer>> threeSum(int[] nums) {
 
 Move all zeroes to the end while maintaining order of non-zero elements.
 
-```java
-public void moveZeroes(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void moveZeroes(vector<int>& nums) {
     int slow = 0;   // position to write next non-zero
-    for (int fast = 0; fast < nums.length; fast++) {
+    for (int fast = 0; fast < (int)nums.size(); fast++) {
         if (nums[fast] != 0) {
             nums[slow++] = nums[fast];
         }
     }
     // Fill rest with zeroes
-    while (slow < nums.length) nums[slow++] = 0;
+    while (slow < (int)nums.size()) nums[slow++] = 0;
 }
 ```
 
 **In-place swap variant (fewer writes):**
-```java
-public void moveZeroes(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void moveZeroes(vector<int>& nums) {
     int slow = 0;
-    for (int fast = 0; fast < nums.length; fast++) {
+    for (int fast = 0; fast < (int)nums.size(); fast++) {
         if (nums[fast] != 0) {
-            int tmp = nums[slow]; nums[slow] = nums[fast]; nums[fast] = tmp;
+            swap(nums[slow], nums[fast]);
             slow++;
         }
     }
@@ -151,24 +169,23 @@ public void moveZeroes(int[] nums) {
 
 Sort array of 0s, 1s, 2s in one pass.
 
-```java
-public void sortColors(int[] nums) {
-    int low = 0, mid = 0, high = nums.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void sortColors(vector<int>& nums) {
+    int low = 0, mid = 0, high = (int)nums.size() - 1;
 
     while (mid <= high) {
         if (nums[mid] == 0) {
-            swap(nums, low++, mid++);
+            swap(nums[low++], nums[mid++]);
         } else if (nums[mid] == 1) {
             mid++;
         } else {  // nums[mid] == 2
-            swap(nums, mid, high--);
+            swap(nums[mid], nums[high--]);
             // Don't increment mid — swapped element needs to be examined
         }
     }
-}
-
-private void swap(int[] nums, int i, int j) {
-    int tmp = nums[i]; nums[i] = nums[j]; nums[j] = tmp;
 }
 ```
 
@@ -180,11 +197,14 @@ private void swap(int[] nums, int i, int j) {
 
 ## Problem 5: Remove Duplicates from Sorted Array — LC 26
 
-```java
-public int removeDuplicates(int[] nums) {
-    if (nums.length == 0) return 0;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int removeDuplicates(vector<int>& nums) {
+    if (nums.empty()) return 0;
     int slow = 1;
-    for (int fast = 1; fast < nums.length; fast++) {
+    for (int fast = 1; fast < (int)nums.size(); fast++) {
         if (nums[fast] != nums[fast - 1]) {
             nums[slow++] = nums[fast];
         }
@@ -194,10 +214,13 @@ public int removeDuplicates(int[] nums) {
 ```
 
 **Variant — keep at most 2 duplicates (LC 80):**
-```java
-public int removeDuplicates(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int removeDuplicates(vector<int>& nums) {
     int slow = 2;
-    for (int fast = 2; fast < nums.length; fast++) {
+    for (int fast = 2; fast < (int)nums.size(); fast++) {
         if (nums[fast] != nums[slow - 2]) {  // compare with position 2 back
             nums[slow++] = nums[fast];
         }
@@ -212,11 +235,14 @@ public int removeDuplicates(int[] nums) {
 
 Extension of 3Sum — add an outer loop.
 
-```java
-public List<List<Integer>> fourSum(int[] nums, int target) {
-    Arrays.sort(nums);
-    List<List<Integer>> result = new ArrayList<>();
-    int n = nums.length;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> fourSum(vector<int>& nums, int target) {
+    sort(nums.begin(), nums.end());
+    vector<vector<int>> result;
+    int n = nums.size();
 
     for (int i = 0; i < n - 3; i++) {
         if (i > 0 && nums[i] == nums[i-1]) continue;
@@ -226,7 +252,7 @@ public List<List<Integer>> fourSum(int[] nums, int target) {
             while (left < right) {
                 long sum = (long)nums[i] + nums[j] + nums[left] + nums[right];
                 if (sum == target) {
-                    result.add(Arrays.asList(nums[i], nums[j], nums[left], nums[right]));
+                    result.push_back({nums[i], nums[j], nums[left], nums[right]});
                     while (left < right && nums[left] == nums[left+1]) left++;
                     while (left < right && nums[right] == nums[right-1]) right--;
                     left++; right--;

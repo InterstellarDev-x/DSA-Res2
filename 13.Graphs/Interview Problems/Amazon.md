@@ -22,25 +22,28 @@ The key shared idea: **mark visited in place** by setting `grid[r][c] = '0'`, wh
 
 ### BFS solution
 
-```java
-public int numIslands(char[][] grid) {
-    if (grid == null || grid.length == 0) return 0;
-    int m = grid.length, n = grid[0].length, count = 0;
-    int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
-    Queue<int[]> queue = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int numIslands(vector<vector<char>>& grid) {
+    if (grid.empty() || grid[0].empty()) return 0;
+    int m = grid.size(), n = grid[0].size(), count = 0;
+    vector<vector<int>> dirs = {{1,0},{-1,0},{0,1},{0,-1}};
+    queue<pair<int,int>> q;
     for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
             if (grid[i][j] != '1') continue;
             count++;
             grid[i][j] = '0';                 // mark at enqueue
-            queue.offer(new int[]{i, j});
-            while (!queue.isEmpty()) {
-                int[] cell = queue.poll();
-                for (int[] d : dirs) {
-                    int r = cell[0] + d[0], c = cell[1] + d[1];
+            q.push({i, j});
+            while (!q.empty()) {
+                auto [r0, c0] = q.front(); q.pop();
+                for (auto& d : dirs) {
+                    int r = r0 + d[0], c = c0 + d[1];
                     if (r < 0 || r >= m || c < 0 || c >= n || grid[r][c] != '1') continue;
                     grid[r][c] = '0';         // mark BEFORE enqueue → no duplicates
-                    queue.offer(new int[]{r, c});
+                    q.push({r, c});
                 }
             }
         }
@@ -71,28 +74,31 @@ Each minute every rotten orange (`2`) rots 4-adjacent fresh (`1`). Minutes until
 
 This is **multi-source BFS**. All rotten oranges rot their neighbors *simultaneously* each minute. If you BFS from one source at a time, you'd compute the wrong (sequential) timing. Seeding the queue with **every** rotten cell at time 0 makes each BFS level == one minute, so they spread in lockstep.
 
-```java
-public int orangesRotting(int[][] grid) {
-    int m = grid.length, n = grid[0].length, fresh = 0, minutes = 0;
-    Queue<int[]> queue = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int orangesRotting(vector<vector<int>>& grid) {
+    int m = grid.size(), n = grid[0].size(), fresh = 0, minutes = 0;
+    queue<pair<int,int>> q;
     for (int i = 0; i < m; i++)
         for (int j = 0; j < n; j++) {
-            if (grid[i][j] == 2) queue.offer(new int[]{i, j});
+            if (grid[i][j] == 2) q.push({i, j});
             else if (grid[i][j] == 1) fresh++;
         }
     if (fresh == 0) return 0;                  // edge case: nothing to rot
-    int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
-    while (!queue.isEmpty() && fresh > 0) {
+    vector<vector<int>> dirs = {{1,0},{-1,0},{0,1},{0,-1}};
+    while (!q.empty() && fresh > 0) {
         minutes++;
-        int size = queue.size();
+        int size = q.size();
         for (int s = 0; s < size; s++) {       // process exactly one level
-            int[] cell = queue.poll();
-            for (int[] d : dirs) {
-                int r = cell[0] + d[0], c = cell[1] + d[1];
+            auto [r0, c0] = q.front(); q.pop();
+            for (auto& d : dirs) {
+                int r = r0 + d[0], c = c0 + d[1];
                 if (r < 0 || r >= m || c < 0 || c >= n || grid[r][c] != 1) continue;
                 grid[r][c] = 2;
                 fresh--;
-                queue.offer(new int[]{r, c});
+                q.push({r, c});
             }
         }
     }
@@ -103,7 +109,7 @@ public int orangesRotting(int[][] grid) {
 ### Edge cases
 - No fresh oranges at start → `0` (don't return 1).
 - A fresh orange with no path to any rotten → `-1` (tracked via `fresh` counter).
-- Processing one level at a time with `size = queue.size()` is essential to count minutes.
+- Processing one level at a time with `size = q.size()` is essential to count minutes.
 
 ### Follow-ups
 - **01 Matrix / Walls and Gates** — identical multi-source seeding.
@@ -125,27 +131,28 @@ Return a valid course order, or `[]` if a cycle exists.
 
 Kahn's is usually cleaner for returning the order:
 
-```java
-public int[] findOrder(int numCourses, int[][] prerequisites) {
-    List<List<Integer>> adj = new ArrayList<>();
-    for (int i = 0; i < numCourses; i++) adj.add(new ArrayList<>());
-    int[] indegree = new int[numCourses];
-    for (int[] p : prerequisites) {        // edge prereq p[1] -> course p[0]
-        adj.get(p[1]).add(p[0]);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> findOrder(int numCourses, vector<vector<int>>& prerequisites) {
+    vector<vector<int>> adj(numCourses);
+    vector<int> indegree(numCourses, 0);
+    for (auto& p : prerequisites) {        // edge prereq p[1] -> course p[0]
+        adj[p[1]].push_back(p[0]);
         indegree[p[0]]++;
     }
-    Queue<Integer> queue = new ArrayDeque<>();
+    queue<int> q;
     for (int i = 0; i < numCourses; i++)
-        if (indegree[i] == 0) queue.offer(i);
-    int[] order = new int[numCourses];
-    int idx = 0;
-    while (!queue.isEmpty()) {
-        int node = queue.poll();
-        order[idx++] = node;
-        for (int next : adj.get(node))
-            if (--indegree[next] == 0) queue.offer(next);
+        if (indegree[i] == 0) q.push(i);
+    vector<int> order;
+    while (!q.empty()) {
+        int node = q.front(); q.pop();
+        order.push_back(node);
+        for (int next : adj[node])
+            if (--indegree[next] == 0) q.push(next);
     }
-    return idx == numCourses ? order : new int[0];   // cycle ⇒ not all processed
+    return (int)order.size() == numCourses ? order : vector<int>{};   // cycle ⇒ not all processed
 }
 ```
 
@@ -169,30 +176,38 @@ Shortest transformation length from `beginWord` to `endWord`.
 
 Naively, generating neighbors of a word means trying all 26 letters at each of L positions and checking membership — fine, but pairwise comparison across the list is O(N²·L). Instead **bucket by wildcard pattern**: `hot → *ot, h*t, ho*`. Words sharing a bucket differ by exactly one letter, giving O(N·L) adjacency.
 
-```java
-public int ladderLength(String beginWord, String endWord, List<String> wordList) {
-    Set<String> dict = new HashSet<>(wordList);
-    if (!dict.contains(endWord)) return 0;
-    Map<String, List<String>> buckets = new HashMap<>();
-    for (String w : dict)
-        for (int i = 0; i < w.length(); i++) {
-            String pattern = w.substring(0, i) + "*" + w.substring(i + 1);
-            buckets.computeIfAbsent(pattern, k -> new ArrayList<>()).add(w);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int ladderLength(string beginWord, string endWord, vector<string>& wordList) {
+    unordered_set<string> dict(wordList.begin(), wordList.end());
+    if (!dict.count(endWord)) return 0;
+    unordered_map<string, vector<string>> buckets;
+    for (auto& w : dict)
+        for (int i = 0; i < (int)w.length(); i++) {
+            string pattern = w.substr(0, i) + "*" + w.substr(i + 1);
+            buckets[pattern].push_back(w);
         }
-    Queue<String> queue = new ArrayDeque<>();
-    Set<String> visited = new HashSet<>();
-    queue.offer(beginWord);
-    visited.add(beginWord);
+    queue<string> q;
+    unordered_set<string> visited;
+    q.push(beginWord);
+    visited.insert(beginWord);
     int steps = 1;
-    while (!queue.isEmpty()) {
-        int size = queue.size();
+    while (!q.empty()) {
+        int size = q.size();
         for (int s = 0; s < size; s++) {
-            String word = queue.poll();
-            if (word.equals(endWord)) return steps;
-            for (int i = 0; i < word.length(); i++) {
-                String pattern = word.substring(0, i) + "*" + word.substring(i + 1);
-                for (String next : buckets.getOrDefault(pattern, List.of())) {
-                    if (visited.add(next)) queue.offer(next);   // visited at enqueue
+            string word = q.front(); q.pop();
+            if (word == endWord) return steps;
+            for (int i = 0; i < (int)word.length(); i++) {
+                string pattern = word.substr(0, i) + "*" + word.substr(i + 1);
+                auto it = buckets.find(pattern);
+                if (it == buckets.end()) continue;
+                for (auto& next : it->second) {
+                    if (!visited.count(next)) {
+                        visited.insert(next);
+                        q.push(next);   // visited at enqueue
+                    }
                 }
             }
         }

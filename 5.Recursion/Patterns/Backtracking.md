@@ -9,13 +9,16 @@
 
 **Try → Recurse → Undo.** At each decision point, make a choice, recurse to explore that branch, then undo the choice to restore state before trying the next option.
 
-```java
-void backtrack(state, choices) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void backtrack(State& state, vector<Choice>& choices) {
     if (goalReached(state)) {
-        results.add(copy of state);
+        results.push_back(copy of state);
         return;
     }
-    for (choice : choices) {
+    for (auto& choice : choices) {
         if (isValid(choice, state)) {
             makeChoice(choice, state);    // Try
             backtrack(nextState, ...);    // Recurse
@@ -33,69 +36,74 @@ void backtrack(state, choices) {
 
 Constraint: `open ≤ n`, `close ≤ open`.
 
-```java
-public List<String> generateParenthesis(int n) {
-    List<String> result = new ArrayList<>();
-    backtrack(result, new StringBuilder(), 0, 0, n);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<string> generateParenthesis(int n) {
+    vector<string> result;
+    string sb;
+    backtrack(result, sb, 0, 0, n);
     return result;
 }
 
-private void backtrack(List<String> res, StringBuilder sb, int open, int close, int n) {
-    if (sb.length() == 2 * n) { res.add(sb.toString()); return; }
+void backtrack(vector<string>& res, string& sb, int open, int close, int n) {
+    if (sb.length() == 2 * n) { res.push_back(sb); return; }
 
     if (open < n) {
-        sb.append('(');
+        sb += '(';
         backtrack(res, sb, open + 1, close, n);
-        sb.deleteCharAt(sb.length() - 1); // undo
+        sb.pop_back(); // undo
     }
     if (close < open) {
-        sb.append(')');
+        sb += ')';
         backtrack(res, sb, open, close + 1, n);
-        sb.deleteCharAt(sb.length() - 1); // undo
+        sb.pop_back(); // undo
     }
 }
 ```
 
-**Note:** Use `StringBuilder` — `String` concatenation creates a new object at every call (O(n) per concat vs O(1) append/deleteCharAt).
+**Note:** Use `string` with `+=` and `pop_back()` — `string` concatenation with `+` creates a new object at every call (O(n) per concat vs O(1) `+=`/`pop_back()`).
 
 ---
 
 ## Template 2 — N-Queens (LC 51)
 
-```java
-public List<List<String>> solveNQueens(int n) {
-    List<List<String>> result = new ArrayList<>();
-    int[] queens = new int[n]; // queens[row] = column
-    Arrays.fill(queens, -1);
-    Set<Integer> cols = new HashSet<>(), diag1 = new HashSet<>(), diag2 = new HashSet<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<string>> solveNQueens(int n) {
+    vector<vector<string>> result;
+    vector<int> queens(n, -1); // queens[row] = column
+    unordered_set<int> cols, diag1, diag2;
     backtrack(result, queens, n, 0, cols, diag1, diag2);
     return result;
 }
 
-private void backtrack(List<List<String>> res, int[] queens, int n, int row,
-                        Set<Integer> cols, Set<Integer> diag1, Set<Integer> diag2) {
+void backtrack(vector<vector<string>>& res, vector<int>& queens, int n, int row,
+               unordered_set<int>& cols, unordered_set<int>& diag1, unordered_set<int>& diag2) {
     if (row == n) {
-        res.add(buildBoard(queens, n));
+        res.push_back(buildBoard(queens, n));
         return;
     }
     for (int col = 0; col < n; col++) {
-        if (cols.contains(col) || diag1.contains(row - col) || diag2.contains(row + col))
+        if (cols.count(col) || diag1.count(row - col) || diag2.count(row + col))
             continue;
         queens[row] = col;
-        cols.add(col); diag1.add(row - col); diag2.add(row + col);
+        cols.insert(col); diag1.insert(row - col); diag2.insert(row + col);
         backtrack(res, queens, n, row + 1, cols, diag1, diag2);
         queens[row] = -1;
-        cols.remove(col); diag1.remove(row - col); diag2.remove(row + col);
+        cols.erase(col); diag1.erase(row - col); diag2.erase(row + col);
     }
 }
 
-private List<String> buildBoard(int[] queens, int n) {
-    List<String> board = new ArrayList<>();
+vector<string> buildBoard(vector<int>& queens, int n) {
+    vector<string> board;
     for (int row = 0; row < n; row++) {
-        char[] rowArr = new char[n];
-        Arrays.fill(rowArr, '.');
-        rowArr[queens[row]] = 'Q';
-        board.add(new String(rowArr));
+        string rowStr(n, '.');
+        rowStr[queens[row]] = 'Q';
+        board.push_back(rowStr);
     }
     return board;
 }
@@ -107,11 +115,14 @@ private List<String> buildBoard(int[] queens, int n) {
 
 **Bit manipulation version for N-Queens II (count only):**
 
-```java
-public int totalNQueens(int n) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int totalNQueens(int n) {
     return solve(n, 0, 0, 0, 0);
 }
-private int solve(int n, int row, int cols, int diag1, int diag2) {
+int solve(int n, int row, int cols, int diag1, int diag2) {
     if (row == n) return 1;
     int count = 0;
     int availableMask = ((1 << n) - 1) & ~(cols | diag1 | diag2);
@@ -128,12 +139,15 @@ private int solve(int n, int row, int cols, int diag1, int diag2) {
 
 ## Template 3 — Sudoku Solver (LC 37)
 
-```java
-public void solveSudoku(char[][] board) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void solveSudoku(vector<vector<char>>& board) {
     solve(board);
 }
 
-private boolean solve(char[][] board) {
+bool solve(vector<vector<char>>& board) {
     for (int r = 0; r < 9; r++) {
         for (int c = 0; c < 9; c++) {
             if (board[r][c] != '.') continue;
@@ -150,7 +164,7 @@ private boolean solve(char[][] board) {
     return true; // all cells filled
 }
 
-private boolean isValid(char[][] board, int r, int c, char ch) {
+bool isValid(vector<vector<char>>& board, int r, int c, char ch) {
     for (int i = 0; i < 9; i++) {
         if (board[r][i] == ch) return false;             // same row
         if (board[i][c] == ch) return false;             // same col
@@ -166,26 +180,29 @@ private boolean isValid(char[][] board, int r, int c, char ch) {
 
 ## Template 4 — Word Search (LC 79)
 
-```java
-public boolean exist(char[][] board, String word) {
-    int m = board.length, n = board[0].length;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool exist(vector<vector<char>>& board, string word) {
+    int m = board.size(), n = board[0].size();
     for (int r = 0; r < m; r++)
         for (int c = 0; c < n; c++)
             if (dfs(board, r, c, word, 0)) return true;
     return false;
 }
 
-private boolean dfs(char[][] board, int r, int c, String word, int k) {
-    if (k == word.length()) return true;
-    if (r < 0 || r >= board.length || c < 0 || c >= board[0].length) return false;
-    if (board[r][c] != word.charAt(k)) return false;
+bool dfs(vector<vector<char>>& board, int r, int c, string& word, int k) {
+    if (k == (int)word.length()) return true;
+    if (r < 0 || r >= (int)board.size() || c < 0 || c >= (int)board[0].size()) return false;
+    if (board[r][c] != word[k]) return false;
 
     char tmp = board[r][c];
     board[r][c] = '#';  // mark visited in-place (no extra array)
-    boolean found = dfs(board, r+1, c, word, k+1) ||
-                    dfs(board, r-1, c, word, k+1) ||
-                    dfs(board, r, c+1, word, k+1) ||
-                    dfs(board, r, c-1, word, k+1);
+    bool found = dfs(board, r+1, c, word, k+1) ||
+                 dfs(board, r-1, c, word, k+1) ||
+                 dfs(board, r, c+1, word, k+1) ||
+                 dfs(board, r, c-1, word, k+1);
     board[r][c] = tmp;  // restore
     return found;
 }
@@ -195,26 +212,30 @@ private boolean dfs(char[][] board, int r, int c, String word, int k) {
 
 ## Template 5 — Palindrome Partitioning (LC 131)
 
-```java
-public List<List<String>> partition(String s) {
-    List<List<String>> result = new ArrayList<>();
-    backtrack(s, 0, new ArrayList<>(), result);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<string>> partition(string s) {
+    vector<vector<string>> result;
+    vector<string> path;
+    backtrack(s, 0, path, result);
     return result;
 }
 
-private void backtrack(String s, int start, List<String> path, List<List<String>> res) {
-    if (start == s.length()) { res.add(new ArrayList<>(path)); return; }
-    for (int end = start + 1; end <= s.length(); end++) {
+void backtrack(string& s, int start, vector<string>& path, vector<vector<string>>& res) {
+    if (start == (int)s.length()) { res.push_back(path); return; }
+    for (int end = start + 1; end <= (int)s.length(); end++) {
         if (isPalin(s, start, end - 1)) {
-            path.add(s.substring(start, end));
+            path.push_back(s.substr(start, end - start));
             backtrack(s, end, path, res);
-            path.remove(path.size() - 1); // undo
+            path.pop_back(); // undo
         }
     }
 }
 
-private boolean isPalin(String s, int lo, int hi) {
-    while (lo < hi) if (s.charAt(lo++) != s.charAt(hi--)) return false;
+bool isPalin(string& s, int lo, int hi) {
+    while (lo < hi) if (s[lo++] != s[hi--]) return false;
     return true;
 }
 ```
@@ -240,8 +261,8 @@ private boolean isPalin(String s, int lo, int hi) {
 | Mistake | Fix |
 |---------|-----|
 | Not undoing — state leaks into sibling branches | Mirror every make step with an undo step |
-| Storing reference to `path` instead of copy | `new ArrayList<>(path)` when adding to results |
-| String concat in inner loop | Use `StringBuilder` with `append`/`deleteCharAt` |
+| Forgetting to copy `path` when adding to results | `res.push_back(path)` copies by value in C++ |
+| String concat in inner loop | Use `string` with `+=` and `pop_back()` |
 | Marking visited but not restoring — loses cells | Restore `board[r][c] = tmp` after DFS |
 | N-Queens diag: using only one diagonal set | Need two sets: `row - col` AND `row + col` |
 

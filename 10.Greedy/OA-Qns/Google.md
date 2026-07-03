@@ -23,16 +23,19 @@
 3. "Can you do it in one pass?" (→ No — you need last-occurrence info before scanning)
 
 **Code they want to see:**
-```java
-public List<Integer> partitionLabels(String s) {
-    int[] last = new int[26];
-    for (int i = 0; i < s.length(); i++) last[s.charAt(i) - 'a'] = i;
-    List<Integer> result = new ArrayList<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> partitionLabels(string s) {
+    int last[26] = {};
+    for (int i = 0; i < (int)s.length(); i++) last[s[i] - 'a'] = i;
+    vector<int> result;
     int start = 0, end = 0;
-    for (int i = 0; i < s.length(); i++) {
-        end = Math.max(end, last[s.charAt(i) - 'a']);
+    for (int i = 0; i < (int)s.length(); i++) {
+        end = max(end, last[s[i] - 'a']);
         if (i == end) {
-            result.add(end - start + 1);
+            result.push_back(end - start + 1);
             start = i + 1;
         }
     }
@@ -52,21 +55,23 @@ public List<Integer> partitionLabels(String s) {
 **Why Google loves it:** Tests data structure selection (why min-heap over max-heap or sorted array), amortized analysis, and clean abstraction.
 
 **Google-specific follow-up questions:**
-1. "What is the amortized complexity of each insert?" → O(log n) for heap offer/poll
+1. "What is the amortized complexity of each insert?" → O(log n) for heap push/pop
 2. "How would you solve this with a sweep line instead?" → event-based +1/-1 count
 3. "What if meetings have priorities and high-priority meetings can't share rooms?" → modified assignment
 
 **Sweep line alternative** (Google sometimes asks for this):
-```java
-public int minMeetingRoomsSweep(int[][] intervals) {
-    int[] starts = new int[intervals.length];
-    int[] ends = new int[intervals.length];
-    for (int i = 0; i < intervals.length; i++) {
-        starts[i] = intervals[i][0];
-        ends[i] = intervals[i][1];
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int minMeetingRoomsSweep(vector<vector<int>>& intervals) {
+    vector<int> starts, ends;
+    for (auto& interval : intervals) {
+        starts.push_back(interval[0]);
+        ends.push_back(interval[1]);
     }
-    Arrays.sort(starts);
-    Arrays.sort(ends);
+    sort(starts.begin(), starts.end());
+    sort(ends.begin(), ends.end());
     int rooms = 0, endPtr = 0;
     for (int start : starts) {
         if (start < ends[endPtr]) rooms++;

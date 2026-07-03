@@ -17,14 +17,17 @@ If starting from station `s` leads to a deficit at station `t`, then no station 
 
 **Why:** If we fail at `t` starting from `s`, then the partial sums from `s+1`, `s+2`, ..., `t-1` are all less than the partial sum from `s` (because `gain[s] >= 0` is required to start). So they would also fail at `t`.
 
-### Full Java Solution
-```java
-public int canCompleteCircuit(int[] gas, int[] cost) {
+### Full C++ Solution
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
     int totalGain = 0;    // Sum of all gains — determines feasibility
     int currentGain = 0;  // Running gain from current candidate start
     int startStation = 0; // Current candidate for starting station
 
-    for (int i = 0; i < gas.length; i++) {
+    for (int i = 0; i < (int)gas.size(); i++) {
         int gain = gas[i] - cost[i]; // Net gain at station i
         totalGain += gain;
         currentGain += gain;
@@ -84,16 +87,19 @@ Think of the array as a BFS graph:
 
 When `i == curEnd`, we've exhausted the current level → increment jumps, expand to next level.
 
-### Full Java Solution
-```java
-public int jump(int[] nums) {
+### Full C++ Solution
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int jump(vector<int>& nums) {
     int jumps = 0;    // BFS depth (number of jumps)
     int curEnd = 0;   // Right boundary of current BFS level
     int farthest = 0; // Farthest reach of any node in current level
 
-    // We stop at nums.length - 2 because we don't need to jump FROM the last index
-    for (int i = 0; i < nums.length - 1; i++) {
-        farthest = Math.max(farthest, i + nums[i]);
+    // We stop at nums.size() - 2 because we don't need to jump FROM the last index
+    for (int i = 0; i < (int)nums.size() - 1; i++) {
+        farthest = max(farthest, i + nums[i]);
         if (i == curEnd) {    // End of current BFS level
             jumps++;           // Move to next level
             curEnd = farthest; // Expand to next level boundary

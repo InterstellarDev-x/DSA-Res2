@@ -24,12 +24,14 @@ Microsoft commonly asks which approach you prefer and why:
 
 **Swap approach:** Preferred when O(1) extra space matters. Can be surprising to trace if interviewer is unfamiliar — explain it clearly.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 // At position `start`, try placing each unplaced element
-for (int i = start; i < nums.length; i++) {
-    swap(nums, start, i);         // element i is now at position start
+for (int i = start; i < (int)nums.size(); i++) {
+    swap(nums[start], nums[i]);         // element i is now at position start
     permuteHelper(nums, start+1); // fix positions start+1 ... n-1
-    swap(nums, start, i);         // restore — element i back to its original spot
+    swap(nums[start], nums[i]);         // restore — element i back to its original spot
 }
 ```
 

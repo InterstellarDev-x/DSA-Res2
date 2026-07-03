@@ -23,12 +23,15 @@ Difference: exactly k subarrays have exactly k of P
 
 ## `atMost(k)` Counting Template
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // How many subarrays have AT MOST k of some property?
-private int atMost(int[] nums, int k) {
+int atMost(vector<int>& nums, int k) {
     int left = 0, count = 0, result = 0;
 
-    for (int right = 0; right < nums.length; right++) {
+    for (int right = 0; right < (int)nums.size(); right++) {
         count += contribution(nums[right]);     // add right element
 
         while (count > k) {                     // too many → shrink
@@ -51,15 +54,18 @@ private int atMost(int[] nums, int k) {
 
 Count subarrays with sum = goal (array of 0s and 1s).
 
-```java
-public int numSubarraysWithSum(int[] nums, int goal) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int numSubarraysWithSum(vector<int>& nums, int goal) {
     return atMost(nums, goal) - atMost(nums, goal - 1);
 }
 
-private int atMost(int[] nums, int goal) {
+int atMost(vector<int>& nums, int goal) {
     if (goal < 0) return 0;    // edge case: goal-1 when goal=0
     int left = 0, sum = 0, result = 0;
-    for (int right = 0; right < nums.length; right++) {
+    for (int right = 0; right < (int)nums.size(); right++) {
         sum += nums[right];
         while (sum > goal) {
             sum -= nums[left++];
@@ -72,7 +78,7 @@ private int atMost(int[] nums, int goal) {
 
 **Why `if (goal < 0) return 0`?** When `goal = 0`, we call `atMost(nums, -1)`. A sum can never be ≤ -1 (array has non-negative values), so 0 is correct.
 
-**Alternative — Prefix Sum + HashMap:** `prefix[i] - prefix[j] = goal` → `count[prefix[j]] = count[prefix[i] - goal]`. Both O(n) but the sliding window is O(1) space.
+**Alternative — Prefix Sum + std::unordered_map:** `prefix[i] - prefix[j] = goal` → `count[prefix[j]] = count[prefix[i] - goal]`. Both O(n) but the sliding window is O(1) space.
 
 ---
 
@@ -80,14 +86,17 @@ private int atMost(int[] nums, int goal) {
 
 Count subarrays with exactly k odd numbers.
 
-```java
-public int numberOfSubarrays(int[] nums, int k) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int numberOfSubarrays(vector<int>& nums, int k) {
     return atMost(nums, k) - atMost(nums, k - 1);
 }
 
-private int atMost(int[] nums, int k) {
+int atMost(vector<int>& nums, int k) {
     int left = 0, odds = 0, result = 0;
-    for (int right = 0; right < nums.length; right++) {
+    for (int right = 0; right < (int)nums.size(); right++) {
         if (nums[right] % 2 == 1) odds++;
         while (odds > k) {
             if (nums[left] % 2 == 1) odds--;
@@ -107,12 +116,15 @@ private int atMost(int[] nums, int k) {
 
 Count subarrays where product is **strictly less than** k.
 
-```java
-public int numSubarrayProductLessThanK(int[] nums, int k) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int numSubarrayProductLessThanK(vector<int>& nums, int k) {
     if (k <= 1) return 0;    // product ≥ 1 for positive arrays; nothing < 1 possible
     int left = 0, product = 1, result = 0;
 
-    for (int right = 0; right < nums.length; right++) {
+    for (int right = 0; right < (int)nums.size(); right++) {
         product *= nums[right];
 
         while (product >= k) {     // product too large → shrink
@@ -156,18 +168,21 @@ Some problems already have "less than k" or "at most k" in the constraint:
 
 ## Prefix Sum Alternative for Exact-Count Problems
 
-For binary arrays (0s and 1s), prefix sum + HashMap is equivalent and handles the "exactly k" case directly:
+For binary arrays (0s and 1s), prefix sum + std::unordered_map is equivalent and handles the "exactly k" case directly:
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Binary Subarrays With Sum — prefix sum approach
-public int numSubarraysWithSum(int[] nums, int goal) {
-    Map<Integer, Integer> prefixCount = new HashMap<>();
-    prefixCount.put(0, 1);   // empty prefix
+int numSubarraysWithSum(vector<int>& nums, int goal) {
+    unordered_map<int, int> prefixCount;
+    prefixCount[0] = 1;   // empty prefix
     int sum = 0, result = 0;
-    for (int num : nums) {
+    for (auto& num : nums) {
         sum += num;
-        result += prefixCount.getOrDefault(sum - goal, 0);
-        prefixCount.merge(sum, 1, Integer::sum);
+        result += (prefixCount.count(sum - goal) ? prefixCount[sum - goal] : 0);
+        prefixCount[sum]++;
     }
     return result;
 }

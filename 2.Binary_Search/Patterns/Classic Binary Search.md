@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#c-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -67,13 +67,16 @@ Three template styles exist — each handles the invariant slightly differently:
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Classic — Find Exact Target (Inclusive)
 
-```java
-public int binarySearch(int[] nums, int target) {
-    int lo = 0, hi = nums.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int binarySearch(vector<int>& nums, int target) {
+    int lo = 0, hi = nums.size() - 1;
     while (lo <= hi) {
         int mid = lo + (hi - lo) / 2; // avoids integer overflow vs (lo+hi)/2
         if (nums[mid] == target) return mid;
@@ -87,9 +90,12 @@ public int binarySearch(int[] nums, int target) {
 
 ### 2. Search in Rotated Sorted Array I (no duplicates)
 
-```java
-public int search(int[] nums, int target) {
-    int lo = 0, hi = nums.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int search(vector<int>& nums, int target) {
+    int lo = 0, hi = nums.size() - 1;
     while (lo <= hi) {
         int mid = lo + (hi - lo) / 2;
         if (nums[mid] == target) return mid;
@@ -114,9 +120,12 @@ public int search(int[] nums, int target) {
 
 ### 3. Search in Rotated Sorted Array II (with duplicates)
 
-```java
-public boolean search(int[] nums, int target) {
-    int lo = 0, hi = nums.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool search(vector<int>& nums, int target) {
+    int lo = 0, hi = nums.size() - 1;
     while (lo <= hi) {
         int mid = lo + (hi - lo) / 2;
         if (nums[mid] == target) return true;
@@ -141,9 +150,12 @@ public boolean search(int[] nums, int target) {
 
 ### 4. Find Minimum in Rotated Sorted Array
 
-```java
-public int findMin(int[] nums) {
-    int lo = 0, hi = nums.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int findMin(vector<int>& nums) {
+    int lo = 0, hi = nums.size() - 1;
     while (lo < hi) {
         int mid = lo + (hi - lo) / 2;
         if (nums[mid] > nums[hi])
@@ -158,10 +170,13 @@ public int findMin(int[] nums) {
 
 ### 5. Single Element in Sorted Array
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // All elements appear twice except one; find the single element.
-public int singleNonDuplicate(int[] nums) {
-    int lo = 0, hi = nums.length - 1;
+int singleNonDuplicate(vector<int>& nums) {
+    int lo = 0, hi = nums.size() - 1;
     while (lo < hi) {
         int mid = lo + (hi - lo) / 2;
         if (mid % 2 == 1) mid--;               // ensure mid is even index
@@ -177,10 +192,13 @@ public int singleNonDuplicate(int[] nums) {
 
 ### 6. Count Rotations (How Many Times Rotated)
 
-```java
-public int countRotations(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int countRotations(vector<int>& nums) {
     // Index of minimum = number of rotations
-    int lo = 0, hi = nums.length - 1;
+    int lo = 0, hi = nums.size() - 1;
     while (lo < hi) {
         int mid = lo + (hi - lo) / 2;
         if (nums[mid] > nums[hi]) lo = mid + 1;

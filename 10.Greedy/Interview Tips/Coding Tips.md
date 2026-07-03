@@ -14,25 +14,27 @@ The most important habit in greedy: **sort before you greedily scan**.
 | Meeting Rooms II | Start time ascending | Process meetings in chronological order |
 | Minimum Arrows | End time ascending | Arrow at end of first balloon pops maximum overlapping |
 
-**Java idiom:**
-```java
+**C++ idiom:**
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 // Sort by end time (interval scheduling)
-Arrays.sort(intervals, Comparator.comparingInt(a -> a[1]));
+sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b) { return a[1] < b[1]; });
 
 // Sort by start time (merge intervals)
-Arrays.sort(intervals, Comparator.comparingInt(a -> a[0]));
+sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b) { return a[0] < b[0]; });
 
 // Sort 2D array by first column ascending, break ties by second column descending
-Arrays.sort(intervals, (a, b) -> a[0] != b[0] 
-    ? Integer.compare(a[0], b[0]) 
-    : Integer.compare(b[1], a[1]));
+sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b) {
+    return a[0] != b[0] ? a[0] < b[0] : b[1] < a[1];
+});
 
 // Sort two arrays together (Assign Cookies)
-Arrays.sort(g);
-Arrays.sort(s);
+sort(g.begin(), g.end());
+sort(s.begin(), s.end());
 ```
 
-**Never use `a - b` as a comparator** — it overflows for large negative values. Always use `Integer.compare(a, b)`.
+**Never use `a - b` as a comparator** — it overflows for large negative values. Always use explicit comparison lambdas.
 
 ---
 
@@ -57,10 +59,11 @@ When asked "why does greedy work?", use this template:
 
 When a constraint depends on **both neighbors**, a single pass is insufficient. Use two passes:
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 // Generic two-pass template
-int[] result = new int[n];
-Arrays.fill(result, 1); // Initialize minimum
+vector<int> result(n, 1); // Initialize minimum
 
 // Pass 1: Left → Right (satisfy left-neighbor constraint)
 for (int i = 1; i < n; i++) {
@@ -72,12 +75,12 @@ for (int i = 1; i < n; i++) {
 // Pass 2: Right → Left (satisfy right-neighbor constraint)
 for (int i = n - 2; i >= 0; i--) {
     if (condition(i, i + 1)) {
-        result[i] = Math.max(result[i], result[i + 1] + 1);
+        result[i] = max(result[i], result[i + 1] + 1);
     }
 }
 ```
 
-**Key:** Use `Math.max` in Pass 2 — do NOT overwrite Pass 1 results. Each position must satisfy BOTH passes.
+**Key:** Use `max` in Pass 2 — do NOT overwrite Pass 1 results. Each position must satisfy BOTH passes.
 
 **Why single-pass fails:** Consider [3, 2, 1]. Left-to-right pass gives [1, 1, 1] (each rating is lower → stays at 1). But we need [3, 2, 1] because each person must have fewer candies than their left neighbor (who has a higher rating). The single pass in either direction cannot enforce both constraints simultaneously.
 
@@ -87,17 +90,19 @@ for (int i = n - 2; i >= 0; i--) {
 
 When a character can represent multiple states (like `*` = `(`, `)`, or empty), track the **range of possible valid states**:
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 int lo = 0; // Minimum open-paren count (treating '*' as ')' or '')
 int hi = 0; // Maximum open-paren count (treating '*' as '(')
 
-for (char c : s.toCharArray()) {
+for (char c : s) {
     if (c == '(')      { lo++; hi++; }
     else if (c == ')') { lo--; hi--; }
     else               { lo--; hi++; } // '*' decrements min, increments max
 
     if (hi < 0) return false;  // Even optimistically, too many ')'
-    lo = Math.max(lo, 0);      // lo can't be negative (can't have negative open parens)
+    lo = max(lo, 0);           // lo can't be negative (can't have negative open parens)
 }
 return lo == 0; // Minimum open count must reach 0 (all closed)
 ```
@@ -107,33 +112,35 @@ return lo == 0; // Minimum open count must reach 0 (all closed)
 
 ---
 
-## Tip 5: TreeMap for Greedy with Ordering
+## Tip 5: std::map for Greedy with Ordering
 
-When greedy requires processing in sorted order AND dynamic insertion/deletion, use `TreeMap`:
+When greedy requires processing in sorted order AND dynamic insertion/deletion, use `std::map`:
 
-```java
-TreeMap<Integer, Integer> count = new TreeMap<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+map<int, int> count;
 
 // Insert / increment
-for (int card : hand) count.merge(card, 1, Integer::sum);
+for (int card : hand) count[card]++;
 
 // Process smallest key first (greedy order)
-while (!count.isEmpty()) {
-    int first = count.firstKey(); // O(log n)
+while (!count.empty()) {
+    int first = count.begin()->first; // O(log n)
     for (int i = first; i < first + groupSize; i++) {
-        if (!count.containsKey(i)) return false;
-        count.merge(i, -1, Integer::sum);
-        if (count.get(i) == 0) count.remove(i); // Clean up zeros
+        if (count.count(i) == 0) return false;
+        count[i]--;
+        if (count[i] == 0) count.erase(i); // Clean up zeros
     }
 }
 ```
 
-**When to use TreeMap vs PriorityQueue:**
-| Feature | TreeMap | PriorityQueue |
-|---------|---------|---------------|
-| Access by value | ✓ `get(key)` | ✗ |
-| Access min/max | ✓ `firstKey()`/`lastKey()` | ✓ `peek()` |
-| Range queries | ✓ `subMap()` | ✗ |
+**When to use std::map vs std::priority_queue:**
+| Feature | std::map | std::priority_queue |
+|---------|----------|---------------------|
+| Access by value | ✓ `[key]` | ✗ |
+| Access min/max | ✓ `begin()->first`/`rbegin()->first` | ✓ `top()` |
+| Range queries | ✓ `lower_bound()`/`upper_bound()` | ✗ |
 | Duplicates | Via value field | ✓ naturally |
 | Use when | Need both lookup + ordering | Need min/max only |
 
@@ -153,18 +160,20 @@ Before writing greedy code, answer these questions:
 
 ## Tip 7: Common Greedy Code Patterns
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 // Pattern A: Two-pointer greedy (Assign Cookies)
 int i = 0, j = 0;
-while (i < a.length && j < b.length) {
+while (i < (int)a.size() && j < (int)b.size()) {
     if (b[j] >= a[i]) i++; // match found
     j++;                    // always advance the "resource" pointer
 }
 
 // Pattern B: Interval keep/remove (Non-overlapping, Min Arrows)
-int prevEnd = Integer.MIN_VALUE; // or first interval's end
+int prevEnd = INT_MIN; // or first interval's end
 int kept = 0;
-for (int[] interval : sortedIntervals) {
+for (auto& interval : sortedIntervals) {
     if (interval[0] >= prevEnd) { // no overlap
         kept++;
         prevEnd = interval[1];
@@ -174,14 +183,14 @@ for (int[] interval : sortedIntervals) {
 // Pattern C: Window stretching (Partition Labels)
 int start = 0, end = 0;
 for (int i = 0; i < n; i++) {
-    end = Math.max(end, last[element(i)]);
+    end = max(end, last[element(i)]);
     if (i == end) { recordPartition(); start = i + 1; }
 }
 
 // Pattern D: BFS-level greedy (Jump Game II)
 int jumps = 0, curEnd = 0, farthest = 0;
 for (int i = 0; i < n - 1; i++) {
-    farthest = Math.max(farthest, reach(i));
+    farthest = max(farthest, reach(i));
     if (i == curEnd) { jumps++; curEnd = farthest; }
 }
 ```

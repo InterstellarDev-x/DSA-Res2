@@ -24,7 +24,7 @@
 2. **Identify the bottleneck** — is it the nested loop? The sort? The space?
 3. **Ask: what extra information can I precompute?** — prefix sums, frequency maps
 4. **Ask: can I avoid recomputation?** — sliding window, DP
-5. **Ask: can I trade space for time?** — HashMap / HashSet
+5. **Ask: can I trade space for time?** — `std::unordered_map` / `std::unordered_set`
 6. **Ask: can I eliminate space?** — in-place manipulation, cyclic sort
 
 ---
@@ -33,8 +33,8 @@
 
 | From | To | Technique | Example |
 |------|----|-----------|---------|
-| O(n²) pair check | O(n) | HashMap | Two Sum |
-| O(n²) subarray sum | O(n) | [Prefix Sum + HashMap](../Patterns/Prefix%20Sum.md) | Subarray Sum = K |
+| O(n²) pair check | O(n) | `std::unordered_map` | Two Sum |
+| O(n²) subarray sum | O(n) | [Prefix Sum + `std::unordered_map`](../Patterns/Prefix%20Sum.md) | Subarray Sum = K |
 | O(n²) window check | O(n) | [Sliding Window](../Patterns/Sliding%20Window.md) | Longest substring |
 | O(n² log n) 3Sum naive | O(n²) | Sort + [Two Pointers](../Patterns/Two%20Pointers.md) | 3Sum |
 | O(n log n) merge-find | O(n) | [Cyclic Sort](../Patterns/Cyclic%20Sort.md) | Missing number |
@@ -55,9 +55,12 @@
 
 ### Set Matrix Zeroes — O(1) Space Optimization
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Use first row and first column as markers
-boolean firstRowZero = false, firstColZero = false;
+bool firstRowZero = false, firstColZero = false;
 // Check if first row/col have zeros originally
 for (int j = 0; j < cols; j++) if (matrix[0][j] == 0) firstRowZero = true;
 for (int i = 0; i < rows; i++) if (matrix[i][0] == 0) firstColZero = true;
@@ -70,7 +73,7 @@ for (int i = 1; i < rows; i++)
     for (int j = 1; j < cols; j++)
         if (matrix[i][0] == 0 || matrix[0][j] == 0) matrix[i][j] = 0;
 // Handle first row and col
-if (firstRowZero) Arrays.fill(matrix[0], 0);
+if (firstRowZero) fill(matrix[0].begin(), matrix[0].end(), 0);
 if (firstColZero) for (int i = 0; i < rows; i++) matrix[i][0] = 0;
 ```
 
@@ -82,36 +85,42 @@ if (firstColZero) for (int i = 0; i < rows; i++) matrix[i][0] = 0;
 
 Instead of scanning left or right at each step, precompute:
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Suffix maximum for Trapping Rain Water
-int[] rightMax = new int[n];
+vector<int> rightMax(n);
 rightMax[n-1] = height[n-1];
-for (int i = n - 2; i >= 0; i--) rightMax[i] = Math.max(height[i], rightMax[i+1]);
+for (int i = n - 2; i >= 0; i--) rightMax[i] = max(height[i], rightMax[i+1]);
 ```
 
-### 2. Use Complement in HashMap
+### 2. Use Complement in `std::unordered_map`
 
 Instead of "find pair that sums to target", store "what I've seen" and check "target - current":
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // O(n) instead of O(n²)
-Map<Integer, Integer> seen = new HashMap<>();
-for (int i = 0; i < nums.length; i++) {
+unordered_map<int, int> seen;
+for (int i = 0; i < (int)nums.size(); i++) {
     int complement = target - nums[i];
-    if (seen.containsKey(complement)) return new int[]{seen.get(complement), i};
-    seen.put(nums[i], i);
+    if (seen.count(complement)) return {seen[complement], i};
+    seen[nums[i]] = i;
 }
 ```
 
-### 3. Eliminate Sort with HashSet
+### 3. Eliminate Sort with `std::unordered_set`
 
 For "Longest Consecutive Sequence":
 - Naive: sort then scan → O(n log n)
-- Optimal: HashSet + only extend from sequence start → O(n)
+- Optimal: `std::unordered_set` + only extend from sequence start → O(n)
 
 ### 4. Early Termination
 
-```java
+```cpp
 // If max so far is already at theoretical maximum, stop
 if (maxLen == n) return maxLen;
 // In sorted array, if current element > target/3, no valid triplet possible

@@ -6,7 +6,7 @@ Grid DP is the natural next step after [1D DP (Fibonacci Style)](./1D%20DP%20(Fi
 
 The defining trait of this pattern is that the **state is a coordinate** (a `(row, col)` pair, sometimes augmented with a second coordinate or a small categorical variable). Because every cell only looks at the previous row (and possibly the current row to its left), almost every grid problem collapses from `O(m·n)` memory to `O(n)` using a **rolling row** — replacing the full `dp[m][n]` table with one or two 1D arrays. This space optimization is the recurring theme below, and you should reach for it instinctively once the tabulation is correct.
 
-This document covers problems **8–14** in the DP catalogue. Each problem is presented with its state definition, recurrence, base cases, complexity, and at least one dry-run for the representative cases. All code is full, compilable Java.
+This document covers problems **8–14** in the DP catalogue. Each problem is presented with its state definition, recurrence, base cases, complexity, and at least one dry-run for the representative cases. All code is full, compilable C++.
 
 ---
 
@@ -26,33 +26,37 @@ Any path consists of exactly `(m-1)` down-moves and `(n-1)` right-moves, in some
 
 > **C(m + n − 2, m − 1)**
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class UniquePathsMath {
+public:
     // Choose (m-1) down moves out of (m+n-2) total moves.
     // Compute C(m+n-2, m-1) iteratively to avoid overflow / factorials.
-    public int uniquePaths(int m, int n) {
+    int uniquePaths(int m, int n) {
         int total = m + n - 2;   // total moves
         int k = m - 1;           // pick the smaller for fewer iterations
-        long result = 1;
+        long long result = 1;
         for (int i = 1; i <= k; i++) {
             // result *= (total - k + i) / i ; done in this order to stay integral
             result = result * (total - k + i) / i;
         }
         return (int) result;
     }
-}
+};
 ```
 
 ### DP grid (`O(m·n)` time, `O(m·n)` space)
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class UniquePathsGrid {
-    public int uniquePaths(int m, int n) {
-        int[][] dp = new int[m][n];
+public:
+    int uniquePaths(int m, int n) {
+        vector<vector<int>> dp(m, vector<int>(n));
 
         // Base cases: first column and first row each have exactly one path.
         for (int i = 0; i < m; i++) dp[i][0] = 1;
@@ -65,20 +69,21 @@ class UniquePathsGrid {
         }
         return dp[m - 1][n - 1];
     }
-}
+};
 ```
 
 ### Space optimization: rolling row (`O(n)` space)
 
 Row `i` only needs row `i-1`. Process left to right within a single array: at the moment we read `dp[j]` it still holds the value from the *previous* row (the cell above), and `dp[j-1]` already holds the *current* row (the cell to the left).
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class UniquePathsRolling {
-    public int uniquePaths(int m, int n) {
-        int[] dp = new int[n];
-        Arrays.fill(dp, 1);          // first row is all 1s
+public:
+    int uniquePaths(int m, int n) {
+        vector<int> dp(n, 1);          // first row is all 1s
 
         for (int i = 1; i < m; i++) {
             // dp[0] stays 1 (first column). Start from j = 1.
@@ -90,7 +95,7 @@ class UniquePathsRolling {
         }
         return dp[n - 1];
     }
-}
+};
 ```
 
 | Approach            | Time       | Space      |
@@ -115,14 +120,16 @@ Same setup as Unique Paths, but some cells contain obstacles (`grid[i][j] == 1`)
 
 ### Rolling-row solution (`O(n)` space)
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class UniquePathsII {
-    public int uniquePathsWithObstacles(int[][] obstacleGrid) {
-        int m = obstacleGrid.length;
-        int n = obstacleGrid[0].length;
-        int[] dp = new int[n];
+public:
+    int uniquePathsWithObstacles(vector<vector<int>>& obstacleGrid) {
+        int m = obstacleGrid.size();
+        int n = obstacleGrid[0].size();
+        vector<int> dp(n);
 
         // Start cell: 1 path if it is open, else 0 (and answer is 0).
         dp[0] = (obstacleGrid[0][0] == 1) ? 0 : 1;
@@ -139,7 +146,7 @@ class UniquePathsII {
         }
         return dp[n - 1];
     }
-}
+};
 ```
 
 | Approach    | Time     | Space  |
@@ -160,97 +167,110 @@ Given an `m × n` grid of non-negative numbers, find a path from top-left to bot
 
 ### Step 1 — Recursion (top-down, exponential)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class MinPathSumRecursion {
-    public int minPathSum(int[][] grid) {
-        return solve(grid, grid.length - 1, grid[0].length - 1);
+public:
+    int minPathSum(vector<vector<int>>& grid) {
+        return solve(grid, grid.size() - 1, grid[0].size() - 1);
     }
 
     // f(i, j) = min cost to reach (i, j) from (0, 0)
-    private int solve(int[][] grid, int i, int j) {
+    int solve(vector<vector<int>>& grid, int i, int j) {
         if (i == 0 && j == 0) return grid[0][0];
-        if (i < 0 || j < 0) return Integer.MAX_VALUE; // out of bounds = invalid
+        if (i < 0 || j < 0) return INT_MAX; // out of bounds = invalid
 
         int up = solve(grid, i - 1, j);
         int left = solve(grid, i, j - 1);
-        return grid[i][j] + Math.min(up, left);
+        return grid[i][j] + min(up, left);
     }
-}
+};
 ```
 
-### Step 2 — Memoization (`int[][] memo`, `Arrays.fill(memo[i], -1)`)
+### Step 2 — Memoization (`vector<vector<int>> memo`, initialized to `-1`)
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class MinPathSumMemo {
-    public int minPathSum(int[][] grid) {
-        int m = grid.length, n = grid[0].length;
-        int[][] memo = new int[m][n];
-        for (int i = 0; i < m; i++) Arrays.fill(memo[i], -1);
+public:
+    int minPathSum(vector<vector<int>>& grid) {
+        int m = grid.size(), n = grid[0].size();
+        vector<vector<int>> memo(m, vector<int>(n, -1));
         return solve(grid, m - 1, n - 1, memo);
     }
 
-    private int solve(int[][] grid, int i, int j, int[][] memo) {
+    int solve(vector<vector<int>>& grid, int i, int j, vector<vector<int>>& memo) {
         if (i == 0 && j == 0) return grid[0][0];
-        if (i < 0 || j < 0) return Integer.MAX_VALUE;
+        if (i < 0 || j < 0) return INT_MAX;
         if (memo[i][j] != -1) return memo[i][j];
 
         int up = solve(grid, i - 1, j, memo);
         int left = solve(grid, i, j - 1, memo);
-        return memo[i][j] = grid[i][j] + Math.min(up, left);
+        return memo[i][j] = grid[i][j] + min(up, left);
     }
-}
+};
 ```
 
 ### Step 3 — Tabulation (`O(m·n)` space)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class MinPathSumTab {
-    public int minPathSum(int[][] grid) {
-        int m = grid.length, n = grid[0].length;
-        int[][] dp = new int[m][n];
+public:
+    int minPathSum(vector<vector<int>>& grid) {
+        int m = grid.size(), n = grid[0].size();
+        vector<vector<int>> dp(m, vector<int>(n));
 
         for (int i = 0; i < m; i++) {
             for (int j = 0; j < n; j++) {
                 if (i == 0 && j == 0) {
                     dp[i][j] = grid[i][j];
                 } else {
-                    int up   = (i > 0) ? dp[i - 1][j] : Integer.MAX_VALUE;
-                    int left = (j > 0) ? dp[i][j - 1] : Integer.MAX_VALUE;
-                    dp[i][j] = grid[i][j] + Math.min(up, left);
+                    int up   = (i > 0) ? dp[i - 1][j] : INT_MAX;
+                    int left = (j > 0) ? dp[i][j - 1] : INT_MAX;
+                    dp[i][j] = grid[i][j] + min(up, left);
                 }
             }
         }
         return dp[m - 1][n - 1];
     }
-}
+};
 ```
 
 ### Step 4 — Rolling-row space optimization (`O(n)` space)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class MinPathSumRolling {
-    public int minPathSum(int[][] grid) {
-        int m = grid.length, n = grid[0].length;
-        int[] prev = new int[n];
+public:
+    int minPathSum(vector<vector<int>>& grid) {
+        int m = grid.size(), n = grid[0].size();
+        vector<int> prev(n);
 
         for (int i = 0; i < m; i++) {
-            int[] curr = new int[n];
+            vector<int> curr(n);
             for (int j = 0; j < n; j++) {
                 if (i == 0 && j == 0) {
                     curr[j] = grid[i][j];
                 } else {
-                    int up   = (i > 0) ? prev[j]     : Integer.MAX_VALUE;
-                    int left = (j > 0) ? curr[j - 1] : Integer.MAX_VALUE;
-                    curr[j] = grid[i][j] + Math.min(up, left);
+                    int up   = (i > 0) ? prev[j]     : INT_MAX;
+                    int left = (j > 0) ? curr[j - 1] : INT_MAX;
+                    curr[j] = grid[i][j] + min(up, left);
                 }
             }
             prev = curr;
         }
         return prev[n - 1];
     }
-}
+};
 ```
 
 ### Dry-run
@@ -300,27 +320,29 @@ Processing bottom-up lets us reuse a single 1D array (`O(n)`), and the answer is
 
 ### `O(n)` space, in-place over a 1D array
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class TriangleMinPath {
-    public int minimumTotal(List<List<Integer>> triangle) {
+public:
+    int minimumTotal(vector<vector<int>>& triangle) {
         int n = triangle.size();
         // Initialize dp with the last row.
-        int[] dp = new int[n];
-        List<Integer> last = triangle.get(n - 1);
-        for (int j = 0; j < n; j++) dp[j] = last.get(j);
+        vector<int> dp(n);
+        auto& last = triangle[n - 1];
+        for (int j = 0; j < n; j++) dp[j] = last[j];
 
         // Move upward, collapsing each row into dp.
         for (int i = n - 2; i >= 0; i--) {
-            List<Integer> row = triangle.get(i);
+            auto& row = triangle[i];
             for (int j = 0; j <= i; j++) {
-                dp[j] = row.get(j) + Math.min(dp[j], dp[j + 1]);
+                dp[j] = row[j] + min(dp[j], dp[j + 1]);
             }
         }
         return dp[0];
     }
-}
+};
 ```
 
 ### Dry-run
@@ -359,32 +381,34 @@ Given an `n × n` matrix, a falling path starts at any cell in row 0 and chooses
 
 ### Rolling-row solution (`O(n)` space)
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class MinFallingPathSum {
-    public int minFallingPathSum(int[][] matrix) {
-        int n = matrix.length;
-        int[] prev = new int[n];
+public:
+    int minFallingPathSum(vector<vector<int>>& matrix) {
+        int n = matrix.size();
+        vector<int> prev(n);
         for (int j = 0; j < n; j++) prev[j] = matrix[0][j]; // base: first row
 
         for (int i = 1; i < n; i++) {
-            int[] curr = new int[n];
+            vector<int> curr(n);
             for (int j = 0; j < n; j++) {
                 int up        = prev[j];
-                int upLeft    = (j > 0)     ? prev[j - 1] : Integer.MAX_VALUE;
-                int upRight   = (j < n - 1) ? prev[j + 1] : Integer.MAX_VALUE;
-                int best = Math.min(up, Math.min(upLeft, upRight));
+                int upLeft    = (j > 0)     ? prev[j - 1] : INT_MAX;
+                int upRight   = (j < n - 1) ? prev[j + 1] : INT_MAX;
+                int best = min(up, min(upLeft, upRight));
                 curr[j] = matrix[i][j] + best;
             }
             prev = curr;
         }
 
-        int answer = Integer.MAX_VALUE;
-        for (int j = 0; j < n; j++) answer = Math.min(answer, prev[j]);
+        int answer = INT_MAX;
+        for (int j = 0; j < n; j++) answer = min(answer, prev[j]);
         return answer;
     }
-}
+};
 ```
 
 | Approach    | Time     | Space  |
@@ -406,20 +430,21 @@ A ninja trains over `n` days. Each day offers three activities with point values
 
 **Base case.** Past the last day there are no more points: `f(n, last) = 0`.
 
-### Recursion + memoization (`int[][] memo`, `Arrays.fill(memo[i], -1)`)
+### Recursion + memoization (`vector<vector<int>> memo`, initialized to `-1`)
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class NinjaTrainingMemo {
-    public int maximumPoints(int[][] points, int n) {
+public:
+    int maximumPoints(vector<vector<int>>& points, int n) {
         // last in {0,1,2} = activity done previous day; 3 = none (day 0)
-        int[][] memo = new int[n][4];
-        for (int i = 0; i < n; i++) Arrays.fill(memo[i], -1);
+        vector<vector<int>> memo(n, vector<int>(4, -1));
         return solve(0, 3, points, n, memo);
     }
 
-    private int solve(int day, int last, int[][] points, int n, int[][] memo) {
+    int solve(int day, int last, vector<vector<int>>& points, int n, vector<vector<int>>& memo) {
         if (day == n) return 0;
         if (memo[day][last] != -1) return memo[day][last];
 
@@ -427,19 +452,23 @@ class NinjaTrainingMemo {
         for (int task = 0; task < 3; task++) {
             if (task == last) continue;
             int pointsToday = points[day][task] + solve(day + 1, task, points, n, memo);
-            best = Math.max(best, pointsToday);
+            best = max(best, pointsToday);
         }
         return memo[day][last] = best;
     }
-}
+};
 ```
 
 ### Tabulation (`O(n)` rows, `O(n·4)` space)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class NinjaTrainingTab {
-    public int maximumPoints(int[][] points, int n) {
-        int[][] dp = new int[n + 1][4];
+public:
+    int maximumPoints(vector<vector<int>>& points, int n) {
+        vector<vector<int>> dp(n + 1, vector<int>(4, 0));
         // dp[n][*] = 0 (base case, already zero-initialized)
 
         for (int day = n - 1; day >= 0; day--) {
@@ -447,32 +476,36 @@ class NinjaTrainingTab {
                 int best = 0;
                 for (int task = 0; task < 3; task++) {
                     if (task == last) continue;
-                    best = Math.max(best, points[day][task] + dp[day + 1][task]);
+                    best = max(best, points[day][task] + dp[day + 1][task]);
                 }
                 dp[day][last] = best;
             }
         }
         return dp[0][3];
     }
-}
+};
 ```
 
 ### Space optimization to two rows (`O(1)` extra, just 4 ints)
 
 Since `dp[day]` depends only on `dp[day+1]`, we keep a single `next[4]` array (the "two rows" being `next` and the `curr` we build).
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class NinjaTrainingSpaceOpt {
-    public int maximumPoints(int[][] points, int n) {
-        int[] next = new int[4]; // dp for day+1, base = all zeros
+public:
+    int maximumPoints(vector<vector<int>>& points, int n) {
+        vector<int> next(4, 0); // dp for day+1, base = all zeros
 
         for (int day = n - 1; day >= 0; day--) {
-            int[] curr = new int[4];
+            vector<int> curr(4);
             for (int last = 0; last < 4; last++) {
                 int best = 0;
                 for (int task = 0; task < 3; task++) {
                     if (task == last) continue;
-                    best = Math.max(best, points[day][task] + next[task]);
+                    best = max(best, points[day][task] + next[task]);
                 }
                 curr[last] = best;
             }
@@ -480,7 +513,7 @@ class NinjaTrainingSpaceOpt {
         }
         return next[3]; // started with last = 3 (no restriction)
     }
-}
+};
 ```
 
 ### Dry-run
@@ -529,25 +562,24 @@ where `cherries(row, c1, c2) = grid[row][c1] + (c1 == c2 ? 0 : grid[row][c2])`.
 
 **Initial answer.** `f(0, 0, cols-1)`.
 
-### Memoization — 3D (`int[][][] memo`, init to a sentinel)
+### Memoization — 3D (`vector<vector<vector<int>>> memo`, init to a sentinel)
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class CherryPickupIIMemo {
-    public int cherryPickup(int[][] grid) {
-        int rows = grid.length, cols = grid[0].length;
-        int[][][] memo = new int[rows][cols][cols];
-        for (int[][] plane : memo)
-            for (int[] line : plane)
-                Arrays.fill(line, -1);
+public:
+    int cherryPickup(vector<vector<int>>& grid) {
+        int rows = grid.size(), cols = grid[0].size();
+        vector<vector<vector<int>>> memo(rows, vector<vector<int>>(cols, vector<int>(cols, -1)));
         return solve(0, 0, cols - 1, grid, rows, cols, memo);
     }
 
-    private int solve(int row, int c1, int c2, int[][] grid,
-                      int rows, int cols, int[][][] memo) {
+    int solve(int row, int c1, int c2, vector<vector<int>>& grid,
+              int rows, int cols, vector<vector<vector<int>>>& memo) {
         // Out of bounds is invalid -> treat as impossible.
-        if (c1 < 0 || c1 >= cols || c2 < 0 || c2 >= cols) return Integer.MIN_VALUE;
+        if (c1 < 0 || c1 >= cols || c2 < 0 || c2 >= cols) return INT_MIN;
         if (memo[row][c1][c2] != -1) return memo[row][c1][c2];
 
         // Cherries on the current row (count shared cell once).
@@ -557,25 +589,29 @@ class CherryPickupIIMemo {
         if (row == rows - 1) return memo[row][c1][c2] = collected;
 
         // Explore all 9 (d1, d2) combinations for the next row.
-        int best = Integer.MIN_VALUE;
+        int best = INT_MIN;
         for (int d1 = -1; d1 <= 1; d1++) {
             for (int d2 = -1; d2 <= 1; d2++) {
-                int next = solve(row + 1, c1 + d1, c2 + d2, grid, rows, cols, memo);
-                best = Math.max(best, next);
+                int nxt = solve(row + 1, c1 + d1, c2 + d2, grid, rows, cols, memo);
+                best = max(best, nxt);
             }
         }
         return memo[row][c1][c2] = collected + best;
     }
-}
+};
 ```
 
 ### Tabulation (full 3D table)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class CherryPickupIITab {
-    public int cherryPickup(int[][] grid) {
-        int rows = grid.length, cols = grid[0].length;
-        int[][][] dp = new int[rows][cols][cols];
+public:
+    int cherryPickup(vector<vector<int>>& grid) {
+        int rows = grid.size(), cols = grid[0].size();
+        vector<vector<vector<int>>> dp(rows, vector<vector<int>>(cols, vector<int>(cols)));
 
         // Base row: last row.
         for (int c1 = 0; c1 < cols; c1++) {
@@ -587,12 +623,12 @@ class CherryPickupIITab {
         for (int row = rows - 2; row >= 0; row--) {
             for (int c1 = 0; c1 < cols; c1++) {
                 for (int c2 = 0; c2 < cols; c2++) {
-                    int best = Integer.MIN_VALUE;
+                    int best = INT_MIN;
                     for (int d1 = -1; d1 <= 1; d1++) {
                         for (int d2 = -1; d2 <= 1; d2++) {
                             int n1 = c1 + d1, n2 = c2 + d2;
                             if (n1 < 0 || n1 >= cols || n2 < 0 || n2 >= cols) continue;
-                            best = Math.max(best, dp[row + 1][n1][n2]);
+                            best = max(best, dp[row + 1][n1][n2]);
                         }
                     }
                     dp[row][c1][c2] = cherries(grid, row, c1, c2) + best;
@@ -602,21 +638,25 @@ class CherryPickupIITab {
         return dp[0][0][cols - 1];
     }
 
-    private int cherries(int[][] grid, int row, int c1, int c2) {
+    int cherries(vector<vector<int>>& grid, int row, int c1, int c2) {
         return (c1 == c2) ? grid[row][c1] : grid[row][c1] + grid[row][c2];
     }
-}
+};
 ```
 
 ### Space optimization to two 2D layers (`O(cols²)` space)
 
 `dp[row]` depends only on `dp[row+1]`, so we keep one `next` 2D layer (`cols × cols`) and build the current layer from it — the "two layers" of the optimization.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class CherryPickupIISpaceOpt {
-    public int cherryPickup(int[][] grid) {
-        int rows = grid.length, cols = grid[0].length;
-        int[][] next = new int[cols][cols];
+public:
+    int cherryPickup(vector<vector<int>>& grid) {
+        int rows = grid.size(), cols = grid[0].size();
+        vector<vector<int>> next(cols, vector<int>(cols));
 
         // Base: last row.
         for (int c1 = 0; c1 < cols; c1++)
@@ -624,15 +664,15 @@ class CherryPickupIISpaceOpt {
                 next[c1][c2] = cherries(grid, rows - 1, c1, c2);
 
         for (int row = rows - 2; row >= 0; row--) {
-            int[][] curr = new int[cols][cols];
+            vector<vector<int>> curr(cols, vector<int>(cols));
             for (int c1 = 0; c1 < cols; c1++) {
                 for (int c2 = 0; c2 < cols; c2++) {
-                    int best = Integer.MIN_VALUE;
+                    int best = INT_MIN;
                     for (int d1 = -1; d1 <= 1; d1++) {
                         for (int d2 = -1; d2 <= 1; d2++) {
                             int n1 = c1 + d1, n2 = c2 + d2;
                             if (n1 < 0 || n1 >= cols || n2 < 0 || n2 >= cols) continue;
-                            best = Math.max(best, next[n1][n2]);
+                            best = max(best, next[n1][n2]);
                         }
                     }
                     curr[c1][c2] = cherries(grid, row, c1, c2) + best;
@@ -643,10 +683,10 @@ class CherryPickupIISpaceOpt {
         return next[0][cols - 1];
     }
 
-    private int cherries(int[][] grid, int row, int c1, int c2) {
+    int cherries(vector<vector<int>>& grid, int row, int c1, int c2) {
         return (c1 == c2) ? grid[row][c1] : grid[row][c1] + grid[row][c2];
     }
-}
+};
 ```
 
 | Approach            | Time              | Space        |
@@ -677,7 +717,7 @@ class CherryPickupIISpaceOpt {
 - **Core idea.** Grid DP indexes state by coordinates. The recurrence aggregates a `min`/`max`/`sum` over a fixed, small set of neighbour cells (above, left, the three diagonals below, or — for two-agent problems — a pair of columns).
 - **Direction of fill.** Path-count and min-path problems usually fill top-left → bottom-right; triangle, falling-path, ninja, and cherry-pickup are cleanest bottom-up. Pick whichever direction makes the base case a single boundary row.
 - **Always look for the rolling row.** Whenever `dp[i]` depends only on `dp[i-1]` (and possibly already-computed cells of row `i`), you can drop a whole dimension: `O(m·n) → O(n)`, or for Cherry Pickup II, `O(rows·cols²) → O(cols²)` using two 2D layers. This is the highest-value optimization in this pattern and interviewers expect it.
-- **Java hygiene.** Declare tables as `int[][] dp`; initialize memo tables with `Arrays.fill(memo[i], -1)` (or a 3D loop); use `Math.min` / `Math.max`; guard out-of-range neighbours with `Integer.MAX_VALUE` / `Integer.MIN_VALUE` sentinels rather than special-casing; prefer `Integer.compare` over subtraction for comparisons to avoid overflow.
+- **C++ hygiene.** Declare tables as `vector<vector<int>> dp`; initialize memo tables with `-1` using nested vector constructors (or a 3D loop); use `min` / `max`; guard out-of-range neighbours with `INT_MAX` / `INT_MIN` sentinels rather than special-casing; prefer explicit comparison over subtraction for comparisons to avoid overflow.
 - **Multi-agent state.** Cherry Pickup II generalizes the pattern: the two robots descend row-synchronously, which collapses what could be two time axes into a single shared `row` index, keeping the state at three dimensions.
 
 See also: [1D DP (Fibonacci Style)](./1D%20DP%20(Fibonacci%20Style).md).

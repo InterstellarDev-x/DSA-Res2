@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#c-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -68,18 +68,21 @@ This is a **greedy-DP hybrid**: greedy in the extension decision, DP in state tr
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Classic Kadane — Maximum Sum
 
-```java
-public int maxSubArray(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int maxSubArray(vector<int>& nums) {
     int maxSoFar = nums[0];
     int maxEndingHere = nums[0];
 
-    for (int i = 1; i < nums.length; i++) {
-        maxEndingHere = Math.max(nums[i], maxEndingHere + nums[i]);
-        maxSoFar = Math.max(maxSoFar, maxEndingHere);
+    for (int i = 1; i < nums.size(); i++) {
+        maxEndingHere = max(nums[i], maxEndingHere + nums[i]);
+        maxSoFar = max(maxSoFar, maxEndingHere);
     }
     return maxSoFar;
 }
@@ -88,12 +91,15 @@ public int maxSubArray(int[] nums) {
 
 ### 2. Kadane with Subarray Indices
 
-```java
-public int[] maxSubArrayWithIndices(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> maxSubArrayWithIndices(vector<int>& nums) {
     int maxSum = nums[0], curSum = nums[0];
     int start = 0, end = 0, tempStart = 0;
 
-    for (int i = 1; i < nums.length; i++) {
+    for (int i = 1; i < nums.size(); i++) {
         if (curSum + nums[i] < nums[i]) {
             curSum = nums[i];
             tempStart = i;
@@ -106,23 +112,26 @@ public int[] maxSubArrayWithIndices(int[] nums) {
             end = i;
         }
     }
-    return new int[]{maxSum, start, end};
+    return vector<int>{maxSum, start, end};
 }
 // Returns [maxSum, startIndex, endIndex]
 ```
 
 ### 3. Maximum Product Subarray
 
-```java
-public int maxProduct(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int maxProduct(vector<int>& nums) {
     int maxProd = nums[0];
     int curMax = nums[0], curMin = nums[0]; // track both: negatives flip sign
 
-    for (int i = 1; i < nums.length; i++) {
+    for (int i = 1; i < nums.size(); i++) {
         int temp = curMax;
-        curMax = Math.max(nums[i], Math.max(curMax * nums[i], curMin * nums[i]));
-        curMin = Math.min(nums[i], Math.min(temp * nums[i], curMin * nums[i]));
-        maxProd = Math.max(maxProd, curMax);
+        curMax = max(nums[i], max(curMax * nums[i], curMin * nums[i]));
+        curMin = min(nums[i], min(temp * nums[i], curMin * nums[i]));
+        maxProd = max(maxProd, curMax);
     }
     return maxProd;
 }
@@ -131,37 +140,43 @@ public int maxProduct(int[] nums) {
 
 ### 4. Maximum Sum Circular Subarray
 
-```java
-public int maxSubarraySumCircular(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int maxSubarraySumCircular(vector<int>& nums) {
     int totalSum = 0;
     int maxSum = nums[0], curMax = 0;
     int minSum = nums[0], curMin = 0;
 
-    for (int num : nums) {
-        curMax = Math.max(curMax + num, num);
-        maxSum = Math.max(maxSum, curMax);
+    for (auto& num : nums) {
+        curMax = max(curMax + num, num);
+        maxSum = max(maxSum, curMax);
 
-        curMin = Math.min(curMin + num, num);
-        minSum = Math.min(minSum, curMin);
+        curMin = min(curMin + num, num);
+        minSum = min(minSum, curMin);
 
         totalSum += num;
     }
     // If all negative, totalSum - minSum wraps entire array → invalid
-    return maxSum > 0 ? Math.max(maxSum, totalSum - minSum) : maxSum;
+    return maxSum > 0 ? max(maxSum, totalSum - minSum) : maxSum;
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 5. Minimum Sum Subarray (Kadane Inverted)
 
-```java
-public int minSubArray(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int minSubArray(vector<int>& nums) {
     int minSoFar = nums[0];
     int minEndingHere = nums[0];
 
-    for (int i = 1; i < nums.length; i++) {
-        minEndingHere = Math.min(nums[i], minEndingHere + nums[i]);
-        minSoFar = Math.min(minSoFar, minEndingHere);
+    for (int i = 1; i < nums.size(); i++) {
+        minEndingHere = min(nums[i], minEndingHere + nums[i]);
+        minSoFar = min(minSoFar, minEndingHere);
     }
     return minSoFar;
 }

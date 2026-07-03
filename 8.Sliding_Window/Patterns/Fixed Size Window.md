@@ -22,8 +22,11 @@ Array:  [2, 3, 4, 1, 5]   k = 3
 
 ## Template
 
-```java
-public double findMaxAverage(int[] nums, int k) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+double findMaxAverage(vector<int>& nums, int k) {
     // Step 1: Build initial window of size k
     double windowSum = 0;
     for (int i = 0; i < k; i++) windowSum += nums[i];
@@ -31,9 +34,9 @@ public double findMaxAverage(int[] nums, int k) {
     double maxSum = windowSum;
 
     // Step 2: Slide window — remove left, add right
-    for (int right = k; right < nums.length; right++) {
+    for (int right = k; right < (int)nums.size(); right++) {
         windowSum += nums[right] - nums[right - k];  // right - k = outgoing element
-        maxSum = Math.max(maxSum, windowSum);
+        maxSum = max(maxSum, windowSum);
     }
 
     return maxSum / k;
@@ -48,14 +51,17 @@ public double findMaxAverage(int[] nums, int k) {
 
 **Input:** `nums = [1,12,-5,-6,50,3]`, `k = 4` → `12.75` (window `[12,-5,-6,50]`)
 
-```java
-public double findMaxAverage(int[] nums, int k) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+double findMaxAverage(vector<int>& nums, int k) {
     double sum = 0;
     for (int i = 0; i < k; i++) sum += nums[i];
     double maxSum = sum;
-    for (int right = k; right < nums.length; right++) {
+    for (int right = k; right < (int)nums.size(); right++) {
         sum += nums[right] - nums[right - k];
-        maxSum = Math.max(maxSum, sum);
+        maxSum = max(maxSum, sum);
     }
     return maxSum / k;
 }
@@ -63,20 +69,23 @@ public double findMaxAverage(int[] nums, int k) {
 
 **Complexity:** O(n) time, O(1) space
 
-**Edge case:** Single window (`nums.length == k`) — loop body never executes; initial window is the answer.
+**Edge case:** Single window (`nums.size() == k`) — loop body never executes; initial window is the answer.
 
 ---
 
 ## Problem 2: Maximum Sum of Exactly K Elements (Variant)
 
-```java
-public int maxSum(int[] arr, int k) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int maxSum(vector<int>& arr, int k) {
     int windowSum = 0;
     for (int i = 0; i < k; i++) windowSum += arr[i];
     int maxSum = windowSum;
-    for (int right = k; right < arr.length; right++) {
+    for (int right = k; right < (int)arr.size(); right++) {
         windowSum += arr[right] - arr[right - k];
-        maxSum = Math.max(maxSum, windowSum);
+        maxSum = max(maxSum, windowSum);
     }
     return maxSum;
 }
@@ -88,60 +97,65 @@ public int maxSum(int[] arr, int k) {
 
 Fixed window of size `p.length()`. Use frequency arrays to compare.
 
-```java
-public List<Integer> findAnagrams(String s, String p) {
-    List<Integer> result = new ArrayList<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> findAnagrams(string s, string p) {
+    vector<int> result;
     if (s.length() < p.length()) return result;
 
-    int[] pFreq = new int[26];
-    int[] wFreq = new int[26];
-    for (char c : p.toCharArray()) pFreq[c - 'a']++;
+    int pFreq[26] = {}, wFreq[26] = {};
+    for (auto& c : p) pFreq[c - 'a']++;
 
     int k = p.length();
-    for (int i = 0; i < k; i++) wFreq[s.charAt(i) - 'a']++;
-    if (Arrays.equals(pFreq, wFreq)) result.add(0);
+    for (int i = 0; i < k; i++) wFreq[s[i] - 'a']++;
+    if (equal(pFreq, pFreq + 26, wFreq)) result.push_back(0);
 
-    for (int right = k; right < s.length(); right++) {
-        wFreq[s.charAt(right) - 'a']++;           // add incoming
-        wFreq[s.charAt(right - k) - 'a']--;       // remove outgoing
-        if (Arrays.equals(pFreq, wFreq)) result.add(right - k + 1);
+    for (int right = k; right < (int)s.length(); right++) {
+        wFreq[s[right] - 'a']++;           // add incoming
+        wFreq[s[right - k] - 'a']--;       // remove outgoing
+        if (equal(pFreq, pFreq + 26, wFreq)) result.push_back(right - k + 1);
     }
     return result;
 }
 ```
 
-**Optimization:** Track `matches` count instead of calling `Arrays.equals` every iteration (O(26) → O(1) check).
+**Optimization:** Track `matches` count instead of calling `equal()` every iteration (O(26) → O(1) check).
 
-```java
-public List<Integer> findAnagrams(String s, String p) {
-    List<Integer> result = new ArrayList<>();
-    int[] freq = new int[26];
-    for (char c : p.toCharArray()) freq[c - 'a']++;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> findAnagrams(string s, string p) {
+    vector<int> result;
+    int freq[26] = {};
+    for (auto& c : p) freq[c - 'a']++;
 
     int k = p.length(), matches = 0;
     // Count how many chars have freq 0 (already matched) — initially all non-p chars
-    int required = (int) Arrays.stream(freq).filter(f -> f != 0).count();
+    int required = count_if(freq, freq + 26, [](int f){ return f != 0; });
     // Actually, simpler: track 'have' == 'need'
     // Use the count-of-satisfied approach:
     int left = 0;
-    for (int right = 0; right < s.length(); right++) {
-        int c = s.charAt(right) - 'a';
+    for (int right = 0; right < (int)s.length(); right++) {
+        int c = s[right] - 'a';
         freq[c]--;
         if (freq[c] == 0) matches++;   // this char's count is now satisfied
 
         if (right >= k) {
-            int l = s.charAt(left++) - 'a';
+            int l = s[left++] - 'a';
             if (freq[l] == 0) matches--;   // removing a satisfied char
             freq[l]++;
         }
-        if (matches == required) result.add(left - 1);  // wait, need re-check
+        if (matches == required) result.push_back(left - 1);  // wait, need re-check
     }
     // Cleaner: use pFreq and wFreq with 'need' tracker
     return result;
 }
 ```
 
-The `Arrays.equals` version is cleaner for interviews — only 26 comparisons.
+The `equal()` version is cleaner for interviews — only 26 comparisons.
 
 ---
 
@@ -149,21 +163,24 @@ The `Arrays.equals` version is cleaner for interviews — only 26 comparisons.
 
 Same as Find Anagrams but return `true`/`false`.
 
-```java
-public boolean checkInclusion(String s1, String s2) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool checkInclusion(string s1, string s2) {
     if (s1.length() > s2.length()) return false;
-    int[] freq = new int[26];
-    for (char c : s1.toCharArray()) freq[c - 'a']++;
+    int freq[26] = {};
+    for (auto& c : s1) freq[c - 'a']++;
 
     int k = s1.length();
-    int[] window = new int[26];
-    for (int i = 0; i < k; i++) window[s2.charAt(i) - 'a']++;
-    if (Arrays.equals(freq, window)) return true;
+    int window[26] = {};
+    for (int i = 0; i < k; i++) window[s2[i] - 'a']++;
+    if (equal(freq, freq + 26, window)) return true;
 
-    for (int right = k; right < s2.length(); right++) {
-        window[s2.charAt(right) - 'a']++;
-        window[s2.charAt(right - k) - 'a']--;
-        if (Arrays.equals(freq, window)) return true;
+    for (int right = k; right < (int)s2.length(); right++) {
+        window[s2[right] - 'a']++;
+        window[s2[right - k] - 'a']--;
+        if (equal(freq, freq + 26, window)) return true;
     }
     return false;
 }

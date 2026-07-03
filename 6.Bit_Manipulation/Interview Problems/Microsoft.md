@@ -21,15 +21,18 @@
 ### Key Considerations
 
 1. **No `*`, `/`, `%`** — use bit shifts
-2. **Overflow:** `Integer.MIN_VALUE / -1 = 2^31` — exceeds `Integer.MAX_VALUE`, return `MAX_VALUE`
+2. **Overflow:** `INT_MIN / -1 = 2^31` — exceeds `INT_MAX`, return `INT_MAX`
 3. **Signs:** Compute absolute values; apply sign at end
-4. **Use `long`** — `Math.abs(Integer.MIN_VALUE)` overflows `int`
+4. **Use `long`** — `abs(INT_MIN)` overflows `int`
 
-```java
-public int divide(int dividend, int divisor) {
-    if (dividend == Integer.MIN_VALUE && divisor == -1) return Integer.MAX_VALUE;
-    long dvd = Math.abs((long) dividend);
-    long dvs = Math.abs((long) divisor);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int divide(int dividend, int divisor) {
+    if (dividend == INT_MIN && divisor == -1) return INT_MAX;
+    long dvd = abs((long) dividend);
+    long dvs = abs((long) divisor);
     int sign = (dividend > 0) == (divisor > 0) ? 1 : -1;
     long result = 0;
 
@@ -50,7 +53,7 @@ public int divide(int dividend, int divisor) {
 **Q: What if you could only use shifts, not multiplication in the inner loop check?**
 `tmp << 1` IS a shift — this is already compliant.
 
-**Q: Handle when dvd = Long.MAX_VALUE?**
+**Q: Handle when dvd = LONG_MAX?**
 `tmp << 1` could overflow `long`. Guard: `dvd >= (tmp << 1) && (tmp << 1) > 0`.
 
 ---

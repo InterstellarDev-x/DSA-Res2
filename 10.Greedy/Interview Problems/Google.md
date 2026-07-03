@@ -40,22 +40,25 @@ i=23: → i == end! Partition [16,23] → size = 8
 
 **Result: [9, 7, 8]** ✓
 
-### Full Java Solution
-```java
-public List<Integer> partitionLabels(String s) {
+### Full C++ Solution
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> partitionLabels(string s) {
     // Phase 1: Build last-occurrence map
-    int[] last = new int[26];
-    for (int i = 0; i < s.length(); i++) {
-        last[s.charAt(i) - 'a'] = i;
+    int last[26] = {};
+    for (int i = 0; i < (int)s.length(); i++) {
+        last[s[i] - 'a'] = i;
     }
 
     // Phase 2: Greedy window stretching
-    List<Integer> result = new ArrayList<>();
+    vector<int> result;
     int start = 0, end = 0;
-    for (int i = 0; i < s.length(); i++) {
-        end = Math.max(end, last[s.charAt(i) - 'a']); // stretch window
+    for (int i = 0; i < (int)s.length(); i++) {
+        end = max(end, last[s[i] - 'a']); // stretch window
         if (i == end) { // window complete
-            result.add(end - start + 1);
+            result.push_back(end - start + 1);
             start = i + 1;
         }
     }
@@ -78,28 +81,31 @@ Given an array of meeting time intervals `[start, end]`, find the minimum number
 ### Why Min-Heap?
 We need to know: "Is there a room that becomes free by the time this meeting starts?"
 - A **min-heap of end times** lets us check the earliest-ending room in O(1).
-- If `heap.peek() <= newStart`: that room is free — reuse it (pop old end, push new end).
+- If `heap.top() <= newStart`: that room is free — reuse it (pop old end, push new end).
 - Else: all rooms are busy — need a new room (just push new end).
 - **Heap size at the end = number of rooms.**
 
-### Full Java Solution
-```java
-public int minMeetingRooms(int[][] intervals) {
+### Full C++ Solution
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int minMeetingRooms(vector<vector<int>>& intervals) {
     // Sort by start time to process meetings chronologically
-    Arrays.sort(intervals, Comparator.comparingInt(a -> a[0]));
+    sort(intervals.begin(), intervals.end(), [](auto& a, auto& b){ return a[0] < b[0]; });
 
-    // Min-heap of end times — peek() gives earliest-ending meeting
-    PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+    // Min-heap of end times — top() gives earliest-ending meeting
+    priority_queue<int, vector<int>, greater<int>> minHeap;
 
-    for (int[] interval : intervals) {
+    for (auto& interval : intervals) {
         // If the earliest-ending room is free before this meeting starts, reuse it
-        if (!minHeap.isEmpty() && minHeap.peek() <= interval[0]) {
-            minHeap.poll(); // Free up the room
+        if (!minHeap.empty() && minHeap.top() <= interval[0]) {
+            minHeap.pop(); // Free up the room
         }
-        minHeap.offer(interval[1]); // Assign this meeting a room (new or reused)
+        minHeap.push(interval[1]); // Assign this meeting a room (new or reused)
     }
 
-    return minHeap.size(); // Active rooms = total rooms needed
+    return (int)minHeap.size(); // Active rooms = total rooms needed
 }
 ```
 
@@ -107,9 +113,9 @@ public int minMeetingRooms(int[][] intervals) {
 
 | Operation | Frequency | Cost | Total |
 |-----------|-----------|------|-------|
-| `offer(end)` | n times | O(log n) | O(n log n) |
-| `poll()` | ≤ n times | O(log n) | O(n log n) |
-| `peek()` | n times | O(1) | O(n) |
+| `push(end)` | n times | O(log n) | O(n log n) |
+| `pop()` | ≤ n times | O(log n) | O(n log n) |
+| `top()` | n times | O(1) | O(n) |
 | `sort` | once | O(n log n) | O(n log n) |
 | **Total** | | | **O(n log n)** |
 

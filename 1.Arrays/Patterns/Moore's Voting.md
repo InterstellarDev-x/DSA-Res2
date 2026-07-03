@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#c-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -68,15 +68,18 @@ Count actual occurrences of `candidate` and confirm `> n/2`.
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Majority Element (> n/2) — Guaranteed to Exist
 
-```java
-public int majorityElement(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int majorityElement(vector<int>& nums) {
     int candidate = nums[0], count = 1;
 
-    for (int i = 1; i < nums.length; i++) {
+    for (int i = 1; i < (int)nums.size(); i++) {
         if (count == 0) {
             candidate = nums[i];
             count = 1;
@@ -93,28 +96,34 @@ public int majorityElement(int[] nums) {
 
 ### 2. Majority Element (> n/2) — Not Guaranteed (with Verification)
 
-```java
-public int majorityElement(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int majorityElement(vector<int>& nums) {
     int candidate = nums[0], count = 1;
-    for (int i = 1; i < nums.length; i++) {
+    for (int i = 1; i < (int)nums.size(); i++) {
         if (count == 0) { candidate = nums[i]; count = 1; }
         else if (nums[i] == candidate) count++;
         else count--;
     }
     // Verify
     int freq = 0;
-    for (int num : nums) if (num == candidate) freq++;
-    return freq > nums.length / 2 ? candidate : -1;
+    for (auto& num : nums) if (num == candidate) freq++;
+    return freq > (int)nums.size() / 2 ? candidate : -1;
 }
 ```
 
 ### 3. Majority Element II (> n/3) — At Most 2 Candidates
 
-```java
-public List<Integer> majorityElement(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> majorityElement(vector<int>& nums) {
     int cand1 = 0, cand2 = 0, count1 = 0, count2 = 0;
 
-    for (int num : nums) {
+    for (auto& num : nums) {
         if (num == cand1) {
             count1++;
         } else if (num == cand2) {
@@ -130,15 +139,15 @@ public List<Integer> majorityElement(int[] nums) {
 
     // Verify both candidates
     count1 = 0; count2 = 0;
-    for (int num : nums) {
+    for (auto& num : nums) {
         if (num == cand1) count1++;
         else if (num == cand2) count2++;
     }
 
-    List<Integer> result = new ArrayList<>();
-    int threshold = nums.length / 3;
-    if (count1 > threshold) result.add(cand1);
-    if (count2 > threshold) result.add(cand2);
+    vector<int> result;
+    int threshold = (int)nums.size() / 3;
+    if (count1 > threshold) result.push_back(cand1);
+    if (count2 > threshold) result.push_back(cand2);
     return result;
 }
 // Time: O(n) | Space: O(1)
@@ -146,27 +155,35 @@ public List<Integer> majorityElement(int[] nums) {
 
 ### 4. General: Majority > n/k
 
-```java
-public List<Integer> majorityElementK(int[] nums, int k) {
-    // At most (k-1) candidates can have frequency > n/k
-    Map<Integer, Integer> candidates = new HashMap<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    for (int num : nums) {
-        candidates.merge(num, 1, Integer::sum);
-        if (candidates.size() == k) {
-            candidates.replaceAll((key, val) -> val - 1);
-            candidates.values().removeIf(v -> v == 0);
+vector<int> majorityElementK(vector<int>& nums, int k) {
+    // At most (k-1) candidates can have frequency > n/k
+    unordered_map<int, int> candidates;
+
+    for (auto& num : nums) {
+        candidates[num]++;
+        if ((int)candidates.size() == k) {
+            for (auto it = candidates.begin(); it != candidates.end(); ) {
+                it->second--;
+                if (it->second == 0) it = candidates.erase(it);
+                else ++it;
+            }
         }
     }
     // Verify
-    candidates.replaceAll((key, val) -> 0);
-    for (int num : nums) {
-        if (candidates.containsKey(num))
-            candidates.merge(num, 1, Integer::sum);
+    for (auto& [key, val] : candidates) val = 0;
+    for (auto& num : nums) {
+        if (candidates.count(num))
+            candidates[num]++;
     }
-    int threshold = nums.length / k;
-    List<Integer> result = new ArrayList<>();
-    candidates.forEach((key, val) -> { if (val > threshold) result.add(key); });
+    int threshold = (int)nums.size() / k;
+    vector<int> result;
+    for (auto& [key, val] : candidates) {
+        if (val > threshold) result.push_back(key);
+    }
     return result;
 }
 ```
@@ -190,7 +207,7 @@ public List<Integer> majorityElementK(int[] nums, int k) {
 | Variation | Description |
 |-----------|-------------|
 | Check if majority exists | Run Phase 1, then count — return -1 if not found |
-| Find all elements with freq > n/k | Use HashMap of k-1 candidates |
+| Find all elements with freq > n/k | Use `std::unordered_map` of k-1 candidates |
 | Majority in stream | Classic Moore's — O(1) memory even for infinite streams |
 | Weighted majority | Adjust count by weight |
 

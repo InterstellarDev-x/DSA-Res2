@@ -12,33 +12,41 @@ Amazon's string bar is about **clean, correct, well-explained** solutions that m
 
 ### Naive scan
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int strStrNaive(String haystack, String needle) {
+public:
+    int strStrNaive(string haystack, string needle) {
         int n = haystack.length(), m = needle.length();
         if (m == 0) return 0;
         for (int i = 0; i + m <= n; i++) {
             int j = 0;
-            while (j < m && haystack.charAt(i + j) == needle.charAt(j)) j++;
+            while (j < m && haystack[i + j] == needle[j]) j++;
             if (j == m) return i;
         }
         return -1;
     }
-}
+};
 ```
 
 O(nm) worst case — consider `haystack = "aaaa...a"`, `needle = "aaa...b"`: each of the `n` start positions re-scans almost all of `needle`. For most real inputs it is fine, but Amazon will probe the worst case.
 
 ### KMP — O(n+m)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int strStr(String haystack, String needle) {
-        if (needle.isEmpty()) return 0;
-        int[] lps = buildLPS(needle);
+public:
+    int strStr(string haystack, string needle) {
+        if (needle.empty()) return 0;
+        vector<int> lps = buildLPS(needle);
         int i = 0, j = 0, n = haystack.length(), m = needle.length();
         while (i < n) {
-            if (haystack.charAt(i) == needle.charAt(j)) {
+            if (haystack[i] == needle[j]) {
                 i++; j++;
                 if (j == m) return i - j;
             } else if (j > 0) {
@@ -50,21 +58,22 @@ class Solution {
         return -1;
     }
 
-    private int[] buildLPS(String s) {
+private:
+    vector<int> buildLPS(string s) {
         int n = s.length();
-        int[] lps = new int[n];
+        vector<int> lps(n);
         int len = 0, i = 1;
         while (i < n) {
-            if (s.charAt(i) == s.charAt(len)) { lps[i++] = ++len; }
+            if (s[i] == s[len]) { lps[i++] = ++len; }
             else if (len > 0) { len = lps[len - 1]; }
             else { lps[i++] = 0; }
         }
         return lps;
     }
-}
+};
 ```
 
-**When does KMP matter?** Only when (a) library calls are forbidden, (b) the interviewer asks for guaranteed worst-case linear, or (c) you will search the *same* needle in many haystacks (precompute `lps` once). Otherwise `haystack.indexOf(needle)` is the honest answer — say so, then offer KMP. See the full LPS derivation in [String Matching (KMP)](../Patterns/String%20Matching%20(KMP).md).
+**When does KMP matter?** Only when (a) library calls are forbidden, (b) the interviewer asks for guaranteed worst-case linear, or (c) you will search the *same* needle in many haystacks (precompute `lps` once). Otherwise `s.find(needle)` is the honest answer — say so, then offer KMP. See the full LPS derivation in [String Matching (KMP)](../Patterns/String%20Matching%20(KMP).md).
 
 ---
 
@@ -74,31 +83,36 @@ class Solution {
 
 Expand-around-center is the **interview-preferred** solution: it is short, obviously correct, and O(1) space. Every palindrome has a center — a single character (odd length) or a gap between two characters (even length) — giving `2n-1` centers. Expand outward from each.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public String longestPalindrome(String s) {
-        if (s == null || s.length() < 1) return "";
+public:
+    string longestPalindrome(string s) {
+        if (s.empty()) return "";
         int start = 0, end = 0;
-        for (int i = 0; i < s.length(); i++) {
+        for (int i = 0; i < (int)s.length(); i++) {
             int odd = expand(s, i, i);       // odd-length center at i
             int even = expand(s, i, i + 1);  // even-length center between i and i+1
-            int len = Math.max(odd, even);
+            int len = max(odd, even);
             if (len > end - start + 1) {
                 start = i - (len - 1) / 2;
                 end = i + len / 2;
             }
         }
-        return s.substring(start, end + 1);
+        return s.substr(start, end - start + 1);
     }
 
+private:
     // Returns the length of the palindrome that expands from (l, r).
-    private int expand(String s, int l, int r) {
-        while (l >= 0 && r < s.length() && s.charAt(l) == s.charAt(r)) {
+    int expand(string& s, int l, int r) {
+        while (l >= 0 && r < (int)s.length() && s[l] == s[r]) {
             l--; r++;
         }
         return r - l - 1; // characters strictly between the failed bounds
     }
-}
+};
 ```
 
 **Complexity:** O(n²) time, O(1) space.
@@ -120,32 +134,35 @@ Bring up **Manacher's algorithm** only when the interviewer explicitly asks for 
 
 This is a **fixed-size sliding window** of length `p.length()` over a 26-letter frequency array. Maintain a running count of how many letters currently have the correct frequency, so each shift is O(1).
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public List<Integer> findAnagrams(String s, String p) {
-        List<Integer> res = new ArrayList<>();
+public:
+    vector<int> findAnagrams(string s, string p) {
+        vector<int> res;
         int n = s.length(), m = p.length();
         if (n < m) return res;
 
-        int[] need = new int[26];
-        int[] win = new int[26];
+        vector<int> need(26), win(26);
         for (int i = 0; i < m; i++) {
-            need[p.charAt(i) - 'a']++;
-            win[s.charAt(i) - 'a']++;
+            need[p[i] - 'a']++;
+            win[s[i] - 'a']++;
         }
-        if (Arrays.equals(need, win)) res.add(0);
+        if (need == win) res.push_back(0);
 
         for (int i = m; i < n; i++) {
-            win[s.charAt(i) - 'a']++;         // add the entering char
-            win[s.charAt(i - m) - 'a']--;     // remove the leaving char
-            if (Arrays.equals(need, win)) res.add(i - m + 1);
+            win[s[i] - 'a']++;         // add the entering char
+            win[s[i - m] - 'a']--;     // remove the leaving char
+            if (need == win) res.push_back(i - m + 1);
         }
         return res;
     }
-}
+};
 ```
 
-**Complexity:** O(n · 26) = O(n) time, O(26) = O(1) space. The `Arrays.equals` over 26 entries is constant; for a stricter O(1)-per-step, track a `matches` counter that increments/decrements as individual letter counts hit/leave equality. Window basis: [Fixed Size Window](../../8.Sliding_Window/Patterns/Fixed%20Size%20Window.md).
+**Complexity:** O(n · 26) = O(n) time, O(26) = O(1) space. The vector `==` comparison over 26 entries is constant; for a stricter O(1)-per-step, track a `matches` counter that increments/decrements as individual letter counts hit/leave equality. Window basis: [Fixed Size Window](../../8.Sliding_Window/Patterns/Fixed%20Size%20Window.md).
 
 ### Edge cases
 - `p` longer than `s` → empty list (the `n < m` guard).

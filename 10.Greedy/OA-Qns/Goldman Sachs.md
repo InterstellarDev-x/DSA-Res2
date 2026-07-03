@@ -24,10 +24,13 @@
 3. "What if there are multiple valid starting points?" → Return the lexicographically smallest (first valid)
 
 **Code they want to see:**
-```java
-public int canCompleteCircuit(int[] gas, int[] cost) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
     int totalGain = 0, currentGain = 0, startStation = 0;
-    for (int i = 0; i < gas.length; i++) {
+    for (int i = 0; i < (int)gas.size(); i++) {
         int gain = gas[i] - cost[i];
         totalGain += gain;
         currentGain += gain;
@@ -58,21 +61,23 @@ public int canCompleteCircuit(int[] gas, int[] cost) {
 3. "What is the minimum bonus if we allow circular arrangement?" → Circular candy problem — NP-hard variant
 
 **Code they want to see:**
-```java
-public int candy(int[] ratings) {
-    int n = ratings.length;
-    int[] candies = new int[n];
-    Arrays.fill(candies, 1);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int candy(vector<int>& ratings) {
+    int n = ratings.size();
+    vector<int> candies(n, 1);
     for (int i = 1; i < n; i++) {
         if (ratings[i] > ratings[i - 1]) candies[i] = candies[i - 1] + 1;
     }
     for (int i = n - 2; i >= 0; i--) {
         if (ratings[i] > ratings[i + 1]) {
-            candies[i] = Math.max(candies[i], candies[i + 1] + 1);
+            candies[i] = max(candies[i], candies[i + 1] + 1);
         }
     }
     int total = 0;
-    for (int c : candies) total += c;
+    for (auto& c : candies) total += c;
     return total;
 }
 ```

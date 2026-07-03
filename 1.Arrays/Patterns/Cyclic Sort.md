@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#cpp-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -71,17 +71,20 @@ After sorting, scan for anomalies (missing index, duplicate value).
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Cyclic Sort — Sort Numbers [1, n]
 
-```java
-public void cyclicSort(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void cyclicSort(vector<int>& nums) {
     int i = 0;
-    while (i < nums.length) {
+    while (i < (int)nums.size()) {
         int correct = nums[i] - 1; // nums[i] belongs at index correct
         if (nums[i] != nums[correct]) {
-            int tmp = nums[i]; nums[i] = nums[correct]; nums[correct] = tmp;
+            swap(nums[i], nums[correct]);
         } else {
             i++;
         }
@@ -92,37 +95,43 @@ public void cyclicSort(int[] nums) {
 
 ### 2. Find the Missing Number [0, n]
 
-```java
-public int missingNumber(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int missingNumber(vector<int>& nums) {
     int i = 0;
-    while (i < nums.length) {
+    while (i < (int)nums.size()) {
         int correct = nums[i];
         // nums[i] should be at index nums[i], range [0, n]
-        if (nums[i] < nums.length && nums[i] != nums[correct]) {
-            int tmp = nums[i]; nums[i] = nums[correct]; nums[correct] = tmp;
+        if (nums[i] < (int)nums.size() && nums[i] != nums[correct]) {
+            swap(nums[i], nums[correct]);
         } else {
             i++;
         }
     }
     // Scan for mismatch
-    for (int j = 0; j < nums.length; j++) {
+    for (int j = 0; j < (int)nums.size(); j++) {
         if (nums[j] != j) return j;
     }
-    return nums.length; // n is missing
+    return nums.size(); // n is missing
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 3. Find the Duplicate Number [1, n] (One Duplicate)
 
-```java
-public int findDuplicate(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int findDuplicate(vector<int>& nums) {
     int i = 0;
-    while (i < nums.length) {
+    while (i < (int)nums.size()) {
         int correct = nums[i] - 1;
         if (nums[i] != i + 1) {
             if (nums[i] != nums[correct]) {
-                int tmp = nums[i]; nums[i] = nums[correct]; nums[correct] = tmp;
+                swap(nums[i], nums[correct]);
             } else {
                 return nums[i]; // duplicate found
             }
@@ -137,20 +146,23 @@ public int findDuplicate(int[] nums) {
 
 ### 4. Find All Missing Numbers [1, n]
 
-```java
-public List<Integer> findDisappearedNumbers(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> findDisappearedNumbers(vector<int>& nums) {
     int i = 0;
-    while (i < nums.length) {
+    while (i < (int)nums.size()) {
         int correct = nums[i] - 1;
         if (nums[i] != nums[correct]) {
-            int tmp = nums[i]; nums[i] = nums[correct]; nums[correct] = tmp;
+            swap(nums[i], nums[correct]);
         } else {
             i++;
         }
     }
-    List<Integer> missing = new ArrayList<>();
-    for (int j = 0; j < nums.length; j++) {
-        if (nums[j] != j + 1) missing.add(j + 1);
+    vector<int> missing;
+    for (int j = 0; j < (int)nums.size(); j++) {
+        if (nums[j] != j + 1) missing.push_back(j + 1);
     }
     return missing;
 }
@@ -159,20 +171,23 @@ public List<Integer> findDisappearedNumbers(int[] nums) {
 
 ### 5. Find All Duplicates [1, n]
 
-```java
-public List<Integer> findAllDuplicates(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> findAllDuplicates(vector<int>& nums) {
     int i = 0;
-    while (i < nums.length) {
+    while (i < (int)nums.size()) {
         int correct = nums[i] - 1;
         if (nums[i] != nums[correct]) {
-            int tmp = nums[i]; nums[i] = nums[correct]; nums[correct] = tmp;
+            swap(nums[i], nums[correct]);
         } else {
             i++;
         }
     }
-    List<Integer> duplicates = new ArrayList<>();
-    for (int j = 0; j < nums.length; j++) {
-        if (nums[j] != j + 1) duplicates.add(nums[j]);
+    vector<int> duplicates;
+    for (int j = 0; j < (int)nums.size(); j++) {
+        if (nums[j] != j + 1) duplicates.push_back(nums[j]);
     }
     return duplicates;
 }
@@ -180,13 +195,16 @@ public List<Integer> findAllDuplicates(int[] nums) {
 
 ### 6. First Missing Positive (Cyclic Sort Variant)
 
-```java
-public int firstMissingPositive(int[] nums) {
-    int n = nums.length, i = 0;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int firstMissingPositive(vector<int>& nums) {
+    int n = nums.size(), i = 0;
     while (i < n) {
         int correct = nums[i] - 1;
         if (nums[i] > 0 && nums[i] <= n && nums[i] != nums[correct]) {
-            int tmp = nums[i]; nums[i] = nums[correct]; nums[correct] = tmp;
+            swap(nums[i], nums[correct]);
         } else {
             i++;
         }

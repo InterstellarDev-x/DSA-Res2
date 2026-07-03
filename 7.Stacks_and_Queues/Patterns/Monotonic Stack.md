@@ -17,20 +17,23 @@ A **monotonic stack** maintains elements in a strictly increasing or decreasing 
 
 ## Template 1: Next Greater Element (NGE)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // For each element, find the first element to its RIGHT that is greater
-public int[] nextGreaterElements(int[] nums) {
-    int n = nums.length;
-    int[] result = new int[n];
-    Arrays.fill(result, -1);          // default: no NGE found
-    Deque<Integer> stack = new ArrayDeque<>();  // stores INDICES
+vector<int> nextGreaterElements(vector<int>& nums) {
+    int n = nums.size();
+    vector<int> result(n, -1);          // default: no NGE found
+    stack<int> stk;  // stores INDICES
 
     for (int i = 0; i < n; i++) {
         // Pop all elements smaller than nums[i] — nums[i] is their NGE
-        while (!stack.isEmpty() && nums[stack.peek()] < nums[i]) {
-            result[stack.pop()] = nums[i];
+        while (!stk.empty() && nums[stk.top()] < nums[i]) {
+            result[stk.top()] = nums[i];
+            stk.pop();
         }
-        stack.push(i);
+        stk.push(i);
     }
     return result;
     // Remaining indices in stack have no NGE → stay -1
@@ -45,21 +48,25 @@ public int[] nextGreaterElements(int[] nums) {
 
 Two arrays: find NGE of each element of `nums1` within `nums2`.
 
-```java
-public int[] nextGreaterElement(int[] nums1, int[] nums2) {
-    Map<Integer, Integer> nge = new HashMap<>();
-    Deque<Integer> stack = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> nextGreaterElement(vector<int>& nums1, vector<int>& nums2) {
+    unordered_map<int, int> nge;
+    stack<int> stk;
 
     for (int val : nums2) {
-        while (!stack.isEmpty() && stack.peek() < val) {
-            nge.put(stack.pop(), val);   // store value→NGE mapping
+        while (!stk.empty() && stk.top() < val) {
+            nge[stk.top()] = val;   // store value→NGE mapping
+            stk.pop();
         }
-        stack.push(val);
+        stk.push(val);
     }
 
-    int[] result = new int[nums1.length];
-    for (int i = 0; i < nums1.length; i++) {
-        result[i] = nge.getOrDefault(nums1[i], -1);
+    vector<int> result(nums1.size());
+    for (int i = 0; i < (int)nums1.size(); i++) {
+        result[i] = (nge.count(nums1[i]) ? nge[nums1[i]] : -1);
     }
     return result;
 }
@@ -73,18 +80,22 @@ public int[] nextGreaterElement(int[] nums1, int[] nums2) {
 
 Find, for each day, how many days until a warmer temperature.
 
-```java
-public int[] dailyTemperatures(int[] temperatures) {
-    int n = temperatures.length;
-    int[] result = new int[n];
-    Deque<Integer> stack = new ArrayDeque<>();  // indices
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> dailyTemperatures(vector<int>& temperatures) {
+    int n = temperatures.size();
+    vector<int> result(n);
+    stack<int> stk;  // indices
 
     for (int i = 0; i < n; i++) {
-        while (!stack.isEmpty() && temperatures[stack.peek()] < temperatures[i]) {
-            int prevIdx = stack.pop();
+        while (!stk.empty() && temperatures[stk.top()] < temperatures[i]) {
+            int prevIdx = stk.top();
+            stk.pop();
             result[prevIdx] = i - prevIdx;   // days to wait = index difference
         }
-        stack.push(i);
+        stk.push(i);
     }
     return result;
 }
@@ -98,20 +109,23 @@ public int[] dailyTemperatures(int[] temperatures) {
 
 Array is circular — wrap around once.
 
-```java
-public int[] nextGreaterElements(int[] nums) {
-    int n = nums.length;
-    int[] result = new int[n];
-    Arrays.fill(result, -1);
-    Deque<Integer> stack = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> nextGreaterElements(vector<int>& nums) {
+    int n = nums.size();
+    vector<int> result(n, -1);
+    stack<int> stk;
 
     // Loop twice to simulate circular array
     for (int i = 0; i < 2 * n; i++) {
         int idx = i % n;
-        while (!stack.isEmpty() && nums[stack.peek()] < nums[idx]) {
-            result[stack.pop()] = nums[idx];
+        while (!stk.empty() && nums[stk.top()] < nums[idx]) {
+            result[stk.top()] = nums[idx];
+            stk.pop();
         }
-        if (i < n) stack.push(idx);   // only push indices from first pass
+        if (i < n) stk.push(idx);   // only push indices from first pass
     }
     return result;
 }
@@ -125,21 +139,26 @@ public int[] nextGreaterElements(int[] nums) {
 
 Design: `next(price)` returns the number of consecutive days (including today) for which today's price ≥ the price on those days.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class StockSpanner {
     // Stack stores (price, span) pairs
-    private Deque<int[]> stack = new ArrayDeque<>();
+    stack<pair<int,int>> stk;
 
-    public int next(int price) {
+public:
+    int next(int price) {
         int span = 1;
         // Absorb all previous days where price was ≤ current price
-        while (!stack.isEmpty() && stack.peek()[0] <= price) {
-            span += stack.pop()[1];
+        while (!stk.empty() && stk.top().first <= price) {
+            span += stk.top().second;
+            stk.pop();
         }
-        stack.push(new int[]{price, span});
+        stk.push({price, span});
         return span;
     }
-}
+};
 ```
 
 **Key trick:** Store cumulative span. When absorbing a previous day, we don't need to re-examine what it absorbed — its stored span already accounts for those days. This achieves O(1) amortized.
@@ -165,18 +184,22 @@ Find i < j < k such that `nums[i] < nums[k] < nums[j]`.
 - `third` = the best candidate for `nums[k]` (largest value seen below a "mountain top")
 - Stack maintains potential `nums[j]` values (decreasing)
 
-```java
-public boolean find132pattern(int[] nums) {
-    int n = nums.length;
-    int third = Integer.MIN_VALUE;       // best candidate for nums[k]
-    Deque<Integer> stack = new ArrayDeque<>();  // candidates for nums[j]
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool find132pattern(vector<int>& nums) {
+    int n = nums.size();
+    int third = INT_MIN;       // best candidate for nums[k]
+    stack<int> stk;  // candidates for nums[j]
 
     for (int i = n - 1; i >= 0; i--) {
         if (nums[i] < third) return true;    // nums[i] is nums[1] (smallest)
-        while (!stack.isEmpty() && stack.peek() < nums[i]) {
-            third = stack.pop();   // this is nums[k] — it was below nums[j]=nums[i]
+        while (!stk.empty() && stk.top() < nums[i]) {
+            third = stk.top();   // this is nums[k] — it was below nums[j]=nums[i]
+            stk.pop();
         }
-        stack.push(nums[i]);
+        stk.push(nums[i]);
     }
     return false;
 }
@@ -190,33 +213,39 @@ public boolean find132pattern(int[] nums) {
 
 Asteroids: positive = moving right, negative = moving left. Collision: right-moving hits left-moving. Larger absolute value survives; equal sizes both explode.
 
-```java
-public int[] asteroidCollision(int[] asteroids) {
-    Deque<Integer> stack = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> asteroidCollision(vector<int>& asteroids) {
+    stack<int> stk;
     for (int a : asteroids) {
-        boolean exploded = false;
-        while (!stack.isEmpty() && a < 0 && stack.peek() > 0) {
-            if (stack.peek() < -a) {
-                stack.pop();   // right-moving asteroid explodes
+        bool exploded = false;
+        while (!stk.empty() && a < 0 && stk.top() > 0) {
+            if (stk.top() < -a) {
+                stk.pop();   // right-moving asteroid explodes
                 continue;
-            } else if (stack.peek() == -a) {
-                stack.pop();   // both explode
+            } else if (stk.top() == -a) {
+                stk.pop();   // both explode
             }
-            // stack.peek() > -a: new asteroid explodes
+            // stk.top() > -a: new asteroid explodes
             exploded = true;
             break;
         }
-        if (!exploded) stack.push(a);
+        if (!exploded) stk.push(a);
     }
 
-    // Convert stack to array (stack is in reverse order)
-    int[] result = new int[stack.size()];
-    for (int i = result.length - 1; i >= 0; i--) result[i] = stack.pop();
+    // Convert stack to vector (stack is in reverse order)
+    vector<int> result(stk.size());
+    for (int i = result.size() - 1; i >= 0; i--) {
+        result[i] = stk.top();
+        stk.pop();
+    }
     return result;
 }
 ```
 
-**Collision only when:** current asteroid is negative (`a < 0`) AND stack top is positive (`stack.peek() > 0`). Same direction = no collision.
+**Collision only when:** current asteroid is negative (`a < 0`) AND stack top is positive (`stk.top() > 0`). Same direction = no collision.
 
 ---
 
@@ -226,33 +255,32 @@ Remove `k` digits from `num` string to get the smallest possible number.
 
 **Greedy with monotonic stack:** maintain an increasing stack. Whenever we see a digit smaller than the top, pop (that digit is a larger digit we should remove).
 
-```java
-public String removeKdigits(String num, int k) {
-    Deque<Character> stack = new ArrayDeque<>();
-    for (char c : num.toCharArray()) {
-        while (k > 0 && !stack.isEmpty() && stack.peek() > c) {
-            stack.pop();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+string removeKdigits(string num, int k) {
+    string stk;
+    for (char c : num) {
+        while (k > 0 && !stk.empty() && stk.back() > c) {
+            stk.pop_back();
             k--;
         }
-        stack.push(c);
+        stk.push_back(c);
     }
     // If k > 0, remove from the end (digits are already in increasing order)
-    while (k-- > 0) stack.pop();
+    while (k-- > 0) stk.pop_back();
 
     // Build result, skipping leading zeros
-    StringBuilder sb = new StringBuilder();
-    boolean leadingZero = true;
-    // Stack has most recent on top — need to iterate in insertion order
-    // Use iteration from bottom of stack
-    Deque<Character> temp = new ArrayDeque<>();
-    while (!stack.isEmpty()) temp.push(stack.pop());  // reverse
-    while (!temp.isEmpty()) {
-        char c = temp.pop();
+    string result;
+    bool leadingZero = true;
+    // stk is already in insertion order
+    for (char c : stk) {
         if (leadingZero && c == '0') continue;
         leadingZero = false;
-        sb.append(c);
+        result += c;
     }
-    return sb.length() == 0 ? "0" : sb.toString();
+    return result.empty() ? "0" : result;
 }
 ```
 
@@ -266,21 +294,25 @@ public String removeKdigits(String num, int k) {
 
 ### Monotonic Stack Approach — O(n) time, O(n) space
 
-```java
-public int trap(int[] height) {
-    Deque<Integer> stack = new ArrayDeque<>();  // decreasing stack of indices
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int trap(vector<int>& height) {
+    stack<int> stk;  // decreasing stack of indices
     int water = 0;
 
-    for (int i = 0; i < height.length; i++) {
-        while (!stack.isEmpty() && height[stack.peek()] < height[i]) {
-            int bottom = stack.pop();
-            if (stack.isEmpty()) break;
-            int left = stack.peek();
+    for (int i = 0; i < (int)height.size(); i++) {
+        while (!stk.empty() && height[stk.top()] < height[i]) {
+            int bottom = stk.top();
+            stk.pop();
+            if (stk.empty()) break;
+            int left = stk.top();
             int width = i - left - 1;
-            int boundedHeight = Math.min(height[left], height[i]) - height[bottom];
+            int boundedHeight = min(height[left], height[i]) - height[bottom];
             water += width * boundedHeight;
         }
-        stack.push(i);
+        stk.push(i);
     }
     return water;
 }
@@ -290,9 +322,12 @@ public int trap(int[] height) {
 
 ### Two-Pointer Approach — O(n) time, O(1) space
 
-```java
-public int trap(int[] height) {
-    int left = 0, right = height.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int trap(vector<int>& height) {
+    int left = 0, right = height.size() - 1;
     int maxLeft = 0, maxRight = 0, water = 0;
     while (left < right) {
         if (height[left] <= height[right]) {
@@ -321,27 +356,30 @@ For each subarray, find its minimum and sum all minimums. Answer modulo 10^9 + 7
 - `left[i]` = number of subarrays ending at `i` where `A[i]` is minimum (distance to previous smaller element)
 - `right[i]` = number of subarrays starting at `i` where `A[i]` is minimum (distance to next smaller or equal element)
 
-```java
-public int sumSubarrayMins(int[] arr) {
-    int MOD = 1_000_000_007;
-    int n = arr.length;
-    int[] left = new int[n];    // left[i] = # subarrays where arr[i] is min, ending at i
-    int[] right = new int[n];   // right[i] = # subarrays where arr[i] is min, starting at i
-    Deque<Integer> stack = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int sumSubarrayMins(vector<int>& arr) {
+    int MOD = 1'000'000'007;
+    int n = arr.size();
+    vector<int> left(n);    // left[i] = # subarrays where arr[i] is min, ending at i
+    vector<int> right(n);   // right[i] = # subarrays where arr[i] is min, starting at i
+    stack<int> stk;
 
     // Compute left[i]: distance to previous STRICTLY smaller element
     for (int i = 0; i < n; i++) {
-        while (!stack.isEmpty() && arr[stack.peek()] >= arr[i]) stack.pop();
-        left[i] = stack.isEmpty() ? i + 1 : i - stack.peek();
-        stack.push(i);
+        while (!stk.empty() && arr[stk.top()] >= arr[i]) stk.pop();
+        left[i] = stk.empty() ? i + 1 : i - stk.top();
+        stk.push(i);
     }
-    stack.clear();
+    while (!stk.empty()) stk.pop();
     // Compute right[i]: distance to next SMALLER OR EQUAL element
     // Use <= for right to avoid double-counting equal elements
     for (int i = n - 1; i >= 0; i--) {
-        while (!stack.isEmpty() && arr[stack.peek()] > arr[i]) stack.pop();
-        right[i] = stack.isEmpty() ? n - i : stack.peek() - i;
-        stack.push(i);
+        while (!stk.empty() && arr[stk.top()] > arr[i]) stk.pop();
+        right[i] = stk.empty() ? n - i : stk.top() - i;
+        stk.push(i);
     }
 
     long ans = 0;
@@ -360,28 +398,28 @@ public int sumSubarrayMins(int[] arr) {
 
 Return the smallest lexicographic subsequence containing all unique characters exactly once.
 
-```java
-public String removeDuplicateLetters(String s) {
-    int[] count = new int[26];
-    boolean[] inStack = new boolean[26];
-    for (char c : s.toCharArray()) count[c - 'a']++;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    Deque<Character> stack = new ArrayDeque<>();
-    for (char c : s.toCharArray()) {
+string removeDuplicateLetters(string s) {
+    int count[26] = {};
+    bool inStack[26] = {};
+    for (char c : s) count[c - 'a']++;
+
+    string stk;
+    for (char c : s) {
         count[c - 'a']--;
         if (inStack[c - 'a']) continue;    // already in result
         // Pop if current char is smaller AND the top char appears later
-        while (!stack.isEmpty() && stack.peek() > c && count[stack.peek() - 'a'] > 0) {
-            inStack[stack.pop() - 'a'] = false;
+        while (!stk.empty() && stk.back() > c && count[stk.back() - 'a'] > 0) {
+            inStack[stk.back() - 'a'] = false;
+            stk.pop_back();
         }
-        stack.push(c);
+        stk.push_back(c);
         inStack[c - 'a'] = true;
     }
-    StringBuilder sb = new StringBuilder();
-    Deque<Character> tmp = new ArrayDeque<>();
-    while (!stack.isEmpty()) tmp.push(stack.pop());
-    while (!tmp.isEmpty()) sb.append(tmp.pop());
-    return sb.toString();
+    return stk;
 }
 ```
 

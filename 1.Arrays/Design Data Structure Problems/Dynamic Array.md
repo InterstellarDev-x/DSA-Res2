@@ -11,7 +11,7 @@
 2. [Interview Expectations](#interview-expectations)
 3. [Brute Force Approach](#brute-force-approach)
 4. [Optimal Approach](#optimal-approach)
-5. [Java Implementation](#java-implementation)
+5. [C++ Implementation](#c-implementation)
 6. [Complexity Analysis](#complexity-analysis)
 7. [Edge Cases](#edge-cases)
 8. [Similar Problems](#similar-problems)
@@ -22,7 +22,7 @@
 
 ## Problem Statement
 
-Design a dynamic array (similar to Java's `ArrayList`) that supports:
+Design a dynamic array (similar to `std::vector`) that supports:
 
 - `void add(int val)` — append element; resize if needed
 - `int get(int index)` — return element at index
@@ -67,57 +67,67 @@ So amortized cost per insertion = O(1).
 
 ---
 
-## Java Implementation
+## C++ Implementation
 
-```java
-public class DynamicArray {
-    private int[] data;
-    private int size;
-    private int capacity;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public DynamicArray() {
+class DynamicArray {
+    int* data;
+    int sz;
+    int capacity;
+
+public:
+    DynamicArray() {
         capacity = 2;
         data = new int[capacity];
-        size = 0;
+        sz = 0;
     }
 
-    public void add(int val) {
-        if (size == capacity) resize(capacity * 2);
-        data[size++] = val;
+    ~DynamicArray() {
+        delete[] data;
     }
 
-    public int get(int index) {
+    void add(int val) {
+        if (sz == capacity) resize(capacity * 2);
+        data[sz++] = val;
+    }
+
+    int get(int index) {
         checkBounds(index);
         return data[index];
     }
 
-    public void set(int index, int val) {
+    void set(int index, int val) {
         checkBounds(index);
         data[index] = val;
     }
 
-    public void remove(int index) {
+    void remove(int index) {
         checkBounds(index);
-        System.arraycopy(data, index + 1, data, index, size - index - 1);
-        size--;
+        copy(data + index + 1, data + sz, data + index);
+        sz--;
         // Shrink if using less than 25% capacity (avoid thrash: don't shrink at 50%)
-        if (size > 0 && size == capacity / 4) resize(capacity / 2);
+        if (sz > 0 && sz == capacity / 4) resize(capacity / 2);
     }
 
-    public int size() { return size; }
+    int size() { return sz; }
 
-    private void resize(int newCapacity) {
-        int[] newData = new int[newCapacity];
-        System.arraycopy(data, 0, newData, 0, size);
+private:
+    void resize(int newCapacity) {
+        int* newData = new int[newCapacity];
+        copy(data, data + sz, newData);
+        delete[] data;
         data = newData;
         capacity = newCapacity;
     }
 
-    private void checkBounds(int index) {
-        if (index < 0 || index >= size)
-            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
+    void checkBounds(int index) {
+        if (index < 0 || index >= sz)
+            throw out_of_range("Index: " + to_string(index) + ", Size: " + to_string(sz));
     }
-}
+};
 ```
 
 ---
@@ -137,8 +147,8 @@ public class DynamicArray {
 
 ## Edge Cases
 
-- `get(-1)` or `get(size)` → must throw `IndexOutOfBoundsException`
-- Remove last element → no shift needed, just `size--`
+- `get(-1)` or `get(size)` → must throw `std::out_of_range`
+- Remove last element → no shift needed, just `sz--`
 - Repeated remove → verify shrinking doesn't go below capacity 1
 - Add after remove → reuse existing space correctly
 - Capacity can never go below 1 (guard the shrink)
@@ -158,10 +168,10 @@ public class DynamicArray {
 ## Follow-up Questions
 
 1. **Why shrink at 25% and not 50%?** — 50% causes thrashing: add one element (resize up), remove one (resize down), repeat. 25% gives a hysteresis buffer.
-2. **How does Java's `ArrayList` differ?** — It grows by 50% (`capacity + capacity/2`), never shrinks automatically.
-3. **Thread safety?** — Need `synchronized` or `CopyOnWriteArrayList` for concurrent access.
-4. **Generic version?** — Replace `int[]` with `Object[]`, use unchecked casts, store type via `Class<T>`.
-5. **Memory fragmentation?** — Each resize allocates a new contiguous block; old block is GC'd.
+2. **How does `std::vector` differ?** — It grows by a factor (typically 1.5x or 2x depending on the implementation), never shrinks automatically; use `shrink_to_fit()` explicitly.
+3. **Thread safety?** — Need a mutex or use `std::atomic` operations for concurrent access.
+4. **Generic version?** — Use a template class `template<typename T>` with `T*` as the internal array type.
+5. **Memory fragmentation?** — Each resize allocates a new contiguous block; old block is freed with `delete[]`.
 
 ---
 

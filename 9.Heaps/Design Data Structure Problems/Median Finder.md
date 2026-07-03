@@ -17,29 +17,33 @@ All operations must be efficient.
 
 ## Solution: Two Heaps
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class MedianFinder {
     // lo: max-heap, holds lower half
-    private PriorityQueue<Integer> lo = new PriorityQueue<>(Comparator.reverseOrder());
+    priority_queue<int> lo;
     // hi: min-heap, holds upper half
-    private PriorityQueue<Integer> hi = new PriorityQueue<>();
+    priority_queue<int, vector<int>, greater<int>> hi;
 
-    public void addNum(int num) {
+public:
+    void addNum(int num) {
         // 1. Route to correct half
-        if (lo.isEmpty() || num <= lo.peek()) lo.offer(num);
-        else hi.offer(num);
+        if (lo.empty() || num <= lo.top()) lo.push(num);
+        else hi.push(num);
 
         // 2. Rebalance: lo can have at most 1 more than hi
-        if (lo.size() > hi.size() + 1) hi.offer(lo.poll());
-        else if (hi.size() > lo.size()) lo.offer(hi.poll());
+        if (lo.size() > hi.size() + 1) { hi.push(lo.top()); lo.pop(); }
+        else if (hi.size() > lo.size()) { lo.push(hi.top()); hi.pop(); }
     }
 
-    public double findMedian() {
+    double findMedian() {
         return lo.size() > hi.size()
-            ? lo.peek()
-            : (lo.peek() + hi.peek()) / 2.0;
+            ? lo.top()
+            : (lo.top() + hi.top()) / 2.0;
     }
-}
+};
 ```
 
 **Complexity:** `addNum` O(log n), `findMedian` O(1), space O(n)
@@ -65,10 +69,10 @@ addNum(5): 5>2 → hi.offer(5) → lo=[2,1], hi=[3,4,5]. hi.size=3>lo.size=2 →
 
 ## Follow-up 1: Handle Large Even Counts — Integer Overflow in Median
 
-```java
-public double findMedian() {
-    if (lo.size() > hi.size()) return lo.peek();
-    return lo.peek() / 2.0 + hi.peek() / 2.0;  // avoids overflow vs (a+b)/2
+```cpp
+double findMedian() {
+    if (lo.size() > hi.size()) return lo.top();
+    return lo.top() / 2.0 + hi.top() / 2.0;  // avoids overflow vs (a+b)/2
 }
 ```
 
@@ -78,7 +82,7 @@ public double findMedian() {
 
 **"99% of all numbers are in range [0, 100]"** — Use a bucket array for common values, heap for outliers.
 
-```java
+```cpp
 // Optimization: O(1) amortized via bucket counts for [0..100]
 // Heap only for values outside that range
 // findMedian: walk bucket array from 0, counting until median position
@@ -88,32 +92,33 @@ public double findMedian() {
 
 ## Follow-up 3: Thread Safety
 
-```java
+```cpp
+#include <bits/stdc++.h>
+#include <shared_mutex>
+using namespace std;
+
 class ThreadSafeMedianFinder {
-    private final PriorityQueue<Integer> lo = new PriorityQueue<>(Comparator.reverseOrder());
-    private final PriorityQueue<Integer> hi = new PriorityQueue<>();
-    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    priority_queue<int> lo;
+    priority_queue<int, vector<int>, greater<int>> hi;
+    mutable shared_mutex mtx;
 
-    public void addNum(int num) {
-        lock.writeLock().lock();
-        try {
-            if (lo.isEmpty() || num <= lo.peek()) lo.offer(num);
-            else hi.offer(num);
-            if (lo.size() > hi.size() + 1) hi.offer(lo.poll());
-            else if (hi.size() > lo.size()) lo.offer(hi.poll());
-        } finally { lock.writeLock().unlock(); }
+public:
+    void addNum(int num) {
+        unique_lock<shared_mutex> lk(mtx);
+        if (lo.empty() || num <= lo.top()) lo.push(num);
+        else hi.push(num);
+        if (lo.size() > hi.size() + 1) { hi.push(lo.top()); lo.pop(); }
+        else if (hi.size() > lo.size()) { lo.push(hi.top()); hi.pop(); }
     }
 
-    public double findMedian() {
-        lock.readLock().lock();
-        try {
-            return lo.size() > hi.size() ? lo.peek() : (lo.peek() + hi.peek()) / 2.0;
-        } finally { lock.readLock().unlock(); }
+    double findMedian() const {
+        shared_lock<shared_mutex> lk(mtx);
+        return lo.size() > hi.size() ? lo.top() : (lo.top() + hi.top()) / 2.0;
     }
-}
+};
 ```
 
-**ReadWriteLock:** Multiple concurrent `findMedian` readers allowed; only one `addNum` writer at a time.
+**`shared_mutex`:** Multiple concurrent `findMedian` readers allowed (`shared_lock`); only one `addNum` writer at a time (`unique_lock`).
 
 ---
 
@@ -121,8 +126,8 @@ class ThreadSafeMedianFinder {
 
 | Decision | Choice | Reason |
 |----------|--------|--------|
-| Which heap holds extra element? | `lo` (max-heap) | `lo.peek()` is the median for odd count |
-| How to route new element? | Route to `lo` first if ≤ lo.peek, else to `hi` | Maintains order property |
+| Which heap holds extra element? | `lo` (max-heap) | `lo.top()` is the median for odd count |
+| How to route new element? | Route to `lo` first if ≤ lo.top(), else to `hi` | Maintains order property |
 | Rebalance direction? | Balance so `lo.size ≤ hi.size + 1` | `lo` is allowed 1 extra |
 | Integer arithmetic in findMedian? | Use `/2.0` division | Avoids integer truncation |
 

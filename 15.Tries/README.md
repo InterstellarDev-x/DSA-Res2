@@ -61,11 +61,11 @@ Every trie is built from a single node type. The two design choices that matter 
 
 ### The TrieNode
 
-```java
-class TrieNode {
-    TrieNode[] children = new TrieNode[26]; // one slot per lowercase letter
-    boolean isEnd = false;                  // true if a word ends here
-}
+```cpp
+struct TrieNode {
+    TrieNode* children[26] = {}; // one slot per lowercase letter
+    bool isEnd = false;          // true if a word ends here
+};
 ```
 
 - **`children` (array of 26):** index a child by `c - 'a'`. O(1) lookup, no hashing overhead, cache-friendly. Costs 26 references per node even when most are `null`.
@@ -73,19 +73,19 @@ class TrieNode {
 
 ### children: array[26] vs HashMap
 
-| Aspect | `TrieNode[] children = new TrieNode[26]` | `Map<Character, TrieNode> children` |
-|--------|------------------------------------------|--------------------------------------|
+| Aspect | `TrieNode* children[26]` | `unordered_map<char, TrieNode*> children` |
+|--------|--------------------------|-------------------------------------------|
 | Lookup | O(1), array index `c - 'a'` | O(1) amortized, but with hashing constant |
-| Memory per node | 26 refs always allocated (sparse waste) | only allocates entries that exist |
+| Memory per node | 26 pointers always allocated (sparse waste) | only allocates entries that exist |
 | Alphabet | fixed, small (lowercase a–z) | arbitrary / Unicode / large alphabets |
 | Iteration | fixed 0..25 order (lexicographic) | needs sorting for ordered traversal |
-| Constant factor | smallest (best for `Word Search II` hot loop) | larger, GC pressure from boxing `Character` |
+| Constant factor | smallest (best for `Word Search II` hot loop) | larger overhead per node |
 
-**Rule of thumb:** use the **array** when the alphabet is a known small fixed set (the LeetCode default of 26 lowercase letters), and use the **HashMap** when the alphabet is large, sparse, or unknown (Unicode, full ASCII, mixed case, words with separators).
+**Rule of thumb:** use the **array** when the alphabet is a known small fixed set (the LeetCode default of 26 lowercase letters), and use `std::unordered_map` when the alphabet is large, sparse, or unknown (Unicode, full ASCII, mixed case, words with separators).
 
 ### When a Trie beats the alternatives
 
-A trie shines whenever a problem mentions **prefixes**: "starts with", autocomplete, dictionary lookups, common prefixes, or running *many* string queries against a shared set. For pure membership with no prefix needs, a `HashSet<String>` is simpler. See [When to Use a Trie](Interview%20Tips/When%20to%20Use%20a%20Trie.md).
+A trie shines whenever a problem mentions **prefixes**: "starts with", autocomplete, dictionary lookups, common prefixes, or running *many* string queries against a shared set. For pure membership with no prefix needs, an `std::unordered_set<string>` is simpler. See [When to Use a Trie](Interview%20Tips/When%20to%20Use%20a%20Trie.md).
 
 ---
 
@@ -97,7 +97,7 @@ A trie shines whenever a problem mentions **prefixes**: "starts with", autocompl
 
 ## Directory Map
 
-- **[Patterns/](Patterns/)** — the three core patterns with full Java and dry-runs.
+- **[Patterns/](Patterns/)** — the three core patterns with full C++ and dry-runs.
 - **[Design Data Structure Problems/](Design%20Data%20Structure%20Problems/)** — Implement Trie and Word Dictionary as design questions.
 - **[OA-Qns/](OA-Qns/)** — online-assessment frequency by company.
 - **[Interview Problems/](Interview%20Problems/)** — deep dives with follow-ups by company.

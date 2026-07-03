@@ -10,7 +10,7 @@
 1. [Problem Statement](#problem-statement)
 2. [Interview Expectations](#interview-expectations)
 3. [Core Operations](#core-operations)
-4. [Java Implementation](#java-implementation)
+4. [C++ Implementation](#c-implementation)
 5. [Complexity Analysis](#complexity-analysis)
 6. [Edge Cases](#edge-cases)
 7. [Similar Problems](#similar-problems)
@@ -24,8 +24,8 @@
 Design and implement a Binary Search Tree supporting:
 
 - `void insert(int val)` — insert a value
-- `boolean search(int val)` — return true if value exists
-- `void delete(int val)` — remove a value
+- `bool search(int val)` — return true if value exists
+- `void deleteVal(int val)` — remove a value
 - `int floor(int val)` — largest value ≤ val
 - `int ceil(int val)` — smallest value ≥ val
 - `int kthSmallest(int k)` — kth smallest element
@@ -64,106 +64,120 @@ For every node N:
 
 ---
 
-## Java Implementation
+## C++ Implementation
 
-```java
-public class BST {
-    private TreeNode root;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    static class TreeNode {
-        int val, size; // size for kth-smallest augmentation
-        TreeNode left, right;
-        TreeNode(int val) { this.val = val; this.size = 1; }
-    }
+struct TreeNode {
+    int val, size; // size for kth-smallest augmentation
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int val) : val(val), size(1), left(nullptr), right(nullptr) {}
+};
+
+class BST {
+private:
+    TreeNode* root;
 
     // ---------- INSERT ----------
-    public void insert(int val) { root = insert(root, val); }
-
-    private TreeNode insert(TreeNode node, int val) {
-        if (node == null) return new TreeNode(val);
-        if (val < node.val)       node.left  = insert(node.left, val);
-        else if (val > node.val)  node.right = insert(node.right, val);
-        // if val == node.val: duplicate, ignore (or count)
-        node.size = 1 + size(node.left) + size(node.right);
+    TreeNode* insert(TreeNode* node, int val) {
+        if (node == nullptr) return new TreeNode(val);
+        if (val < node->val)       node->left  = insert(node->left, val);
+        else if (val > node->val)  node->right = insert(node->right, val);
+        // if val == node->val: duplicate, ignore (or count)
+        node->size = 1 + size(node->left) + size(node->right);
         return node;
     }
 
     // ---------- SEARCH ----------
-    public boolean search(int val) { return search(root, val); }
-
-    private boolean search(TreeNode node, int val) {
-        if (node == null) return false;
-        if (val == node.val) return true;
-        return val < node.val ? search(node.left, val) : search(node.right, val);
+    bool searchNode(TreeNode* node, int val) {
+        if (node == nullptr) return false;
+        if (val == node->val) return true;
+        return val < node->val ? searchNode(node->left, val) : searchNode(node->right, val);
     }
 
     // ---------- DELETE ----------
-    public void delete(int val) { root = delete(root, val); }
-
-    private TreeNode delete(TreeNode node, int val) {
-        if (node == null) return null;
-        if (val < node.val) {
-            node.left = delete(node.left, val);
-        } else if (val > node.val) {
-            node.right = delete(node.right, val);
+    TreeNode* deleteNode(TreeNode* node, int val) {
+        if (node == nullptr) return nullptr;
+        if (val < node->val) {
+            node->left = deleteNode(node->left, val);
+        } else if (val > node->val) {
+            node->right = deleteNode(node->right, val);
         } else {
             // Case 1 & 2: leaf or one child
-            if (node.left == null)  return node.right;
-            if (node.right == null) return node.left;
+            if (node->left == nullptr)  return node->right;
+            if (node->right == nullptr) return node->left;
             // Case 3: two children — replace with in-order successor
-            TreeNode successor = leftmost(node.right);
-            node.val = successor.val;
-            node.right = delete(node.right, successor.val);
+            TreeNode* successor = leftmost(node->right);
+            node->val = successor->val;
+            node->right = deleteNode(node->right, successor->val);
         }
-        node.size = 1 + size(node.left) + size(node.right);
+        node->size = 1 + size(node->left) + size(node->right);
         return node;
     }
 
-    private TreeNode leftmost(TreeNode node) {
-        while (node.left != null) node = node.left;
+    TreeNode* leftmost(TreeNode* node) {
+        while (node->left != nullptr) node = node->left;
         return node;
     }
 
     // ---------- FLOOR ----------
-    public int floor(int val) {
-        TreeNode res = floor(root, val);
-        return res == null ? -1 : res.val;
-    }
-
-    private TreeNode floor(TreeNode node, int val) {
-        if (node == null) return null;
-        if (node.val == val) return node;
-        if (node.val > val)  return floor(node.left, val);
-        TreeNode right = floor(node.right, val);
-        return right != null ? right : node;
+    TreeNode* floorNode(TreeNode* node, int val) {
+        if (node == nullptr) return nullptr;
+        if (node->val == val) return node;
+        if (node->val > val)  return floorNode(node->left, val);
+        TreeNode* right = floorNode(node->right, val);
+        return right != nullptr ? right : node;
     }
 
     // ---------- CEIL ----------
-    public int ceil(int val) {
-        TreeNode res = ceil(root, val);
-        return res == null ? -1 : res.val;
-    }
-
-    private TreeNode ceil(TreeNode node, int val) {
-        if (node == null) return null;
-        if (node.val == val) return node;
-        if (node.val < val)  return ceil(node.right, val);
-        TreeNode left = ceil(node.left, val);
-        return left != null ? left : node;
+    TreeNode* ceilNode(TreeNode* node, int val) {
+        if (node == nullptr) return nullptr;
+        if (node->val == val) return node;
+        if (node->val < val)  return ceilNode(node->right, val);
+        TreeNode* left = ceilNode(node->left, val);
+        return left != nullptr ? left : node;
     }
 
     // ---------- KTH SMALLEST (augmented) ----------
-    public int kthSmallest(int k) { return kthSmallest(root, k); }
-
-    private int kthSmallest(TreeNode node, int k) {
-        int leftSize = size(node.left);
-        if (k == leftSize + 1) return node.val;
-        if (k <= leftSize)     return kthSmallest(node.left, k);
-        return kthSmallest(node.right, k - leftSize - 1);
+    int kthSmallestNode(TreeNode* node, int k) {
+        int leftSize = size(node->left);
+        if (k == leftSize + 1) return node->val;
+        if (k <= leftSize)     return kthSmallestNode(node->left, k);
+        return kthSmallestNode(node->right, k - leftSize - 1);
     }
 
-    private int size(TreeNode node) { return node == null ? 0 : node.size; }
-}
+    int size(TreeNode* node) { return node == nullptr ? 0 : node->size; }
+
+public:
+    BST() : root(nullptr) {}
+
+    // ---------- INSERT ----------
+    void insert(int val) { root = insert(root, val); }
+
+    // ---------- SEARCH ----------
+    bool search(int val) { return searchNode(root, val); }
+
+    // ---------- DELETE ----------
+    void deleteVal(int val) { root = deleteNode(root, val); }
+
+    // ---------- FLOOR ----------
+    int floor(int val) {
+        TreeNode* res = floorNode(root, val);
+        return res == nullptr ? -1 : res->val;
+    }
+
+    // ---------- CEIL ----------
+    int ceil(int val) {
+        TreeNode* res = ceilNode(root, val);
+        return res == nullptr ? -1 : res->val;
+    }
+
+    // ---------- KTH SMALLEST (augmented) ----------
+    int kthSmallest(int k) { return kthSmallestNode(root, k); }
+};
 ```
 
 ---
@@ -186,7 +200,7 @@ public class BST {
 ## Edge Cases
 
 - Deleting a node that doesn't exist → do nothing (no crash)
-- `kthSmallest(0)` or `k > size` → throw `IllegalArgumentException`
+- `kthSmallest(0)` or `k > size` → throw `std::invalid_argument`
 - Inserting duplicate values → define behaviour (ignore, count, allow)
 - Floor/Ceil on empty tree → return -1 or throw
 - Tree with a single node → deletion returns null root
@@ -207,10 +221,10 @@ public class BST {
 
 ## Follow-up Questions
 
-1. **BST degrades to O(n) — how do you fix it?** → Self-balancing: AVL (strict height balance), Red-Black (relaxed, used in Java `TreeMap`)
-2. **Java `TreeMap` vs BST?** → `TreeMap` is a Red-Black tree. `get/put/remove` all O(log n) guaranteed.
+1. **BST degrades to O(n) — how do you fix it?** → Self-balancing: AVL (strict height balance), Red-Black (relaxed, used in `std::map`)
+2. **`std::map` vs BST?** → `std::map` is a Red-Black tree. `find/insert/erase` all O(log n) guaranteed.
 3. **How does augmentation with `size` help?** → kth smallest in O(log n) vs O(n) with in-order traversal
-4. **Thread-safe BST?** → Use `ConcurrentSkipListMap` in Java for concurrent sorted access
+4. **Thread-safe BST?** → Use concurrent data structures or protect with `std::mutex` for thread-safe sorted access
 
 ---
 

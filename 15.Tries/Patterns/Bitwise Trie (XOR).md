@@ -18,53 +18,54 @@ This is the same structure documented in the Bit Manipulation topic — see [Bit
 
 Given `nums`, find `max(nums[i] XOR nums[j])`. Constraints fit in 32-bit ints; for LeetCode's range we use **31 bits** (`0 .. 2^31 - 1`, so bit indices `30 .. 0`). Using 32 bits also works as long as you're consistent.
 
-```java
-class Solution {
-    static class TrieNode {
-        TrieNode[] children = new TrieNode[2];   // child[0] = bit 0, child[1] = bit 1
-    }
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    private static final int HIGH_BIT = 30;       // 31-bit numbers: MSB index 30
+struct TrieNode {
+    TrieNode* children[2] = {nullptr, nullptr};  // child[0] = bit 0, child[1] = bit 1
+};
 
-    public int findMaximumXOR(int[] nums) {
-        TrieNode root = new TrieNode();
-        for (int num : nums) insert(root, num);
+const int HIGH_BIT = 30;       // 31-bit numbers: MSB index 30
 
-        int best = 0;
-        for (int num : nums) {
-            best = Math.max(best, maxXorWith(root, num));
+// Insert a number MSB-first as a path of 31 bits.
+void insert(TrieNode* root, int num) {
+    TrieNode* node = root;
+    for (int i = HIGH_BIT; i >= 0; i--) {
+        int bit = (num >> i) & 1;            // extract bit i
+        if (node->children[bit] == nullptr) {
+            node->children[bit] = new TrieNode();
         }
-        return best;
+        node = node->children[bit];
     }
+}
 
-    // Insert a number MSB-first as a path of 31 bits.
-    private void insert(TrieNode root, int num) {
-        TrieNode node = root;
-        for (int i = HIGH_BIT; i >= 0; i--) {
-            int bit = (num >> i) & 1;            // extract bit i
-            if (node.children[bit] == null) {
-                node.children[bit] = new TrieNode();
-            }
-            node = node.children[bit];
+// For `num`, greedily prefer the opposite bit at each level to maximize XOR.
+int maxXorWith(TrieNode* root, int num) {
+    TrieNode* node = root;
+    int xor_val = 0;
+    for (int i = HIGH_BIT; i >= 0; i--) {
+        int bit = (num >> i) & 1;
+        int want = bit ^ 1;                  // we want the opposite bit
+        if (node->children[want] != nullptr) {
+            xor_val |= (1 << i);             // this bit of XOR is 1
+            node = node->children[want];
+        } else {
+            node = node->children[bit];      // forced to take the same bit
         }
     }
+    return xor_val;
+}
 
-    // For `num`, greedily prefer the opposite bit at each level to maximize XOR.
-    private int maxXorWith(TrieNode root, int num) {
-        TrieNode node = root;
-        int xor = 0;
-        for (int i = HIGH_BIT; i >= 0; i--) {
-            int bit = (num >> i) & 1;
-            int want = bit ^ 1;                  // we want the opposite bit
-            if (node.children[want] != null) {
-                xor |= (1 << i);                 // this bit of XOR is 1
-                node = node.children[want];
-            } else {
-                node = node.children[bit];       // forced to take the same bit
-            }
-        }
-        return xor;
+int findMaximumXOR(vector<int>& nums) {
+    TrieNode* root = new TrieNode();
+    for (auto& num : nums) insert(root, num);
+
+    int best = 0;
+    for (auto& num : nums) {
+        best = max(best, maxXorWith(root, num));
     }
+    return best;
 }
 ```
 

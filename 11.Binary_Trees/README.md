@@ -4,14 +4,18 @@
 
 A production-quality, interview-focused reference for **Binary Trees**: 38 problems organized
 into 5 reusable patterns, plus a design problem, company question banks, interview deep dives,
-and tips. Every solution is full Java — no pseudocode.
+and tips. Every solution is full C++ — no pseudocode.
 
-```java
-public class TreeNode {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+};
 ```
 
 ---
@@ -84,8 +88,8 @@ public class TreeNode {
 
 | Pattern | Problems | Core Idea |
 |---|---|---|
-| [Tree Traversals](Patterns/Tree%20Traversals.md) | 94, 144, 145, 102, 103, 429, 987, 101, 100, 226 | Pre/in/post & level orders; recursive 3-liners, stack-based iteration, Morris O(1), zigzag, vertical TreeMap. |
-| [Tree Construction](Patterns/Tree%20Construction.md) | 105, 106, 889, 662, 114, 116, 222 | Root identification + index splitting (HashMap lookup); in-place rewrites; indexed BFS with overflow normalization. |
+| [Tree Traversals](Patterns/Tree%20Traversals.md) | 94, 144, 145, 102, 103, 429, 987, 101, 100, 226 | Pre/in/post & level orders; recursive 3-liners, stack-based iteration, Morris O(1), zigzag, vertical std::map. |
+| [Tree Construction](Patterns/Tree%20Construction.md) | 105, 106, 889, 662, 114, 116, 222 | Root identification + index splitting (std::unordered_map lookup); in-place rewrites; indexed BFS with overflow normalization. |
 | [Path Problems](Patterns/Path%20Problems.md) | 112, 113, 124, 129, 257, 543, 104, 110 | Leaf-base-case checks; backtracking for collection; "return depth, update global" for diameter/max-path-sum. |
 | [Level Order](Patterns/Level%20Order.md) | 102, 199, 637, 515, 107, 429, 117, 111 | One BFS skeleton with a size snapshot; per-level aggregation; dummy-head for next pointers. |
 | [Tree DP / Advanced](Patterns/Tree%20DP.md) | 337, 968, 979, 236, 1123, 1110, 863 | Post-order DFS returning subtree summaries; global result; greedy DP states; parent-map + BFS. |

@@ -65,27 +65,26 @@ Since greedy never runs out of choices before OPT does, `k >= m`. Because OPT is
 
 **Why it works:** Giving a large cookie to a mildly greedy child wastes a resource that could have satisfied a more demanding child later — wait, actually the opposite: giving a large cookie to an easy child wastes it. We want the smallest cookie that is still sufficient for the least-greedy child, which is exactly what this algorithm does.
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class AssignCookies {
-
-    public int findContentChildren(int[] g, int[] s) {
-        Arrays.sort(g);
-        Arrays.sort(s);
-        int child = 0, cookie = 0;
-        while (child < g.length && cookie < s.length) {
-            if (s[cookie] >= g[child]) child++;
-            cookie++;
-        }
-        return child;
+int findContentChildren(vector<int>& g, vector<int>& s) {
+    sort(g.begin(), g.end());
+    sort(s.begin(), s.end());
+    int child = 0, cookie = 0;
+    while (child < (int)g.size() && cookie < (int)s.size()) {
+        if (s[cookie] >= g[child]) child++;
+        cookie++;
     }
+    return child;
+}
 
-    public static void main(String[] args) {
-        AssignCookies sol = new AssignCookies();
-        System.out.println(sol.findContentChildren(new int[]{1, 2, 3}, new int[]{1, 1})); // 1
-        System.out.println(sol.findContentChildren(new int[]{1, 2}, new int[]{1, 2, 3})); // 2
-    }
+int main() {
+    vector<int> g1 = {1, 2, 3}, s1 = {1, 1};
+    cout << findContentChildren(g1, s1) << "\n"; // 1
+    vector<int> g2 = {1, 2}, s2 = {1, 2, 3};
+    cout << findContentChildren(g2, s2) << "\n"; // 2
 }
 ```
 
@@ -117,30 +116,29 @@ Result: child = 1
 
 This single pass simultaneously checks existence and identifies the unique valid start.
 
-```java
-public class GasStation {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int canCompleteCircuit(int[] gas, int[] cost) {
-        int totalGain = 0, currentGain = 0, startStation = 0;
-        for (int i = 0; i < gas.length; i++) {
-            int gain = gas[i] - cost[i];
-            totalGain += gain;
-            currentGain += gain;
-            if (currentGain < 0) {
-                startStation = i + 1;
-                currentGain = 0;
-            }
+int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
+    int totalGain = 0, currentGain = 0, startStation = 0;
+    for (int i = 0; i < (int)gas.size(); i++) {
+        int gain = gas[i] - cost[i];
+        totalGain += gain;
+        currentGain += gain;
+        if (currentGain < 0) {
+            startStation = i + 1;
+            currentGain = 0;
         }
-        return totalGain >= 0 ? startStation : -1;
     }
+    return totalGain >= 0 ? startStation : -1;
+}
 
-    public static void main(String[] args) {
-        GasStation sol = new GasStation();
-        System.out.println(sol.canCompleteCircuit(
-            new int[]{1, 2, 3, 4, 5}, new int[]{3, 4, 5, 1, 2})); // 3
-        System.out.println(sol.canCompleteCircuit(
-            new int[]{2, 3, 4}, new int[]{3, 4, 3})); // -1
-    }
+int main() {
+    vector<int> gas1 = {1, 2, 3, 4, 5}, cost1 = {3, 4, 5, 1, 2};
+    cout << canCompleteCircuit(gas1, cost1) << "\n"; // 3
+    vector<int> gas2 = {2, 3, 4}, cost2 = {3, 4, 3};
+    cout << canCompleteCircuit(gas2, cost2) << "\n"; // -1
 }
 ```
 
@@ -171,30 +169,29 @@ totalGain=0 >= 0  return startStation = 3
 
 **Key Insight:** Minimizing removals is equivalent to maximizing the number of intervals we **keep**. By the Activity Selection theorem, we maximize kept intervals by sorting by end time and greedily selecting each compatible interval (one whose start is >= current end). The answer is `total - kept`.
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class NonOverlappingIntervals {
-
-    public int eraseOverlapIntervals(int[][] intervals) {
-        Arrays.sort(intervals, Comparator.comparingInt(a -> a[1]));
-        int count = 0, end = Integer.MIN_VALUE;
-        for (int[] interval : intervals) {
-            if (interval[0] >= end) {
-                end = interval[1];
-                count++;
-            }
+int eraseOverlapIntervals(vector<vector<int>>& intervals) {
+    sort(intervals.begin(), intervals.end(), [](const vector<int>& a, const vector<int>& b) {
+        return a[1] < b[1];
+    });
+    int count = 0, end = INT_MIN;
+    for (auto& interval : intervals) {
+        if (interval[0] >= end) {
+            end = interval[1];
+            count++;
         }
-        return intervals.length - count;
     }
+    return (int)intervals.size() - count;
+}
 
-    public static void main(String[] args) {
-        NonOverlappingIntervals sol = new NonOverlappingIntervals();
-        System.out.println(sol.eraseOverlapIntervals(
-            new int[][]{{1,2},{2,3},{3,4},{1,3}})); // 1
-        System.out.println(sol.eraseOverlapIntervals(
-            new int[][]{{1,2},{1,2},{1,2}})); // 2
-    }
+int main() {
+    vector<vector<int>> iv1 = {{1,2},{2,3},{3,4},{1,3}};
+    cout << eraseOverlapIntervals(iv1) << "\n"; // 1
+    vector<vector<int>> iv2 = {{1,2},{1,2},{1,2}};
+    cout << eraseOverlapIntervals(iv2) << "\n"; // 2
 }
 ```
 
@@ -206,12 +203,12 @@ public class NonOverlappingIntervals {
 ```
 Sorted by end: [[1,2],[2,3],[1,3],[3,4]]
 
-end = Integer.MIN_VALUE, count = 0
+end = INT_MIN, count = 0
 
-[1,2]: 1 >= MIN_VALUE  keep, end=2, count=1
-[2,3]: 2 >= 2          keep, end=3, count=2
-[1,3]: 1 < 3           skip (overlaps)
-[3,4]: 3 >= 3          keep, end=4, count=3
+[1,2]: 1 >= INT_MIN  keep, end=2, count=1
+[2,3]: 2 >= 2        keep, end=3, count=2
+[1,3]: 1 < 3         skip (overlaps)
+[3,4]: 3 >= 3        keep, end=4, count=3
 
 kept=3, total=4  remove = 4 - 3 = 1
 ```
@@ -224,32 +221,30 @@ kept=3, total=4  remove = 4 - 3 = 1
 
 **Key Insight:** For each character, record its **last occurrence** index. As we scan left-to-right, maintain a window `[start, end]`. Extend `end` to `max(end, last[s[i]])` at each character. When `i == end`, the window is "closed" — every character in `[start, end]` has its last occurrence within this window, so it is a valid partition.
 
-```java
-import java.util.ArrayList;
-import java.util.List;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class PartitionLabels {
-
-    public List<Integer> partitionLabels(String s) {
-        int[] last = new int[26];
-        for (int i = 0; i < s.length(); i++) last[s.charAt(i) - 'a'] = i;
-        List<Integer> result = new ArrayList<>();
-        int start = 0, end = 0;
-        for (int i = 0; i < s.length(); i++) {
-            end = Math.max(end, last[s.charAt(i) - 'a']);
-            if (i == end) {
-                result.add(end - start + 1);
-                start = i + 1;
-            }
+vector<int> partitionLabels(string s) {
+    int last[26] = {};
+    for (int i = 0; i < (int)s.size(); i++) last[s[i] - 'a'] = i;
+    vector<int> result;
+    int start = 0, end = 0;
+    for (int i = 0; i < (int)s.size(); i++) {
+        end = max(end, last[s[i] - 'a']);
+        if (i == end) {
+            result.push_back(end - start + 1);
+            start = i + 1;
         }
-        return result;
     }
+    return result;
+}
 
-    public static void main(String[] args) {
-        PartitionLabels sol = new PartitionLabels();
-        System.out.println(sol.partitionLabels("ababcbacadefegdehijhklij")); // [9, 7, 8]
-        System.out.println(sol.partitionLabels("eccbbbbdec")); // [10]
-    }
+int main() {
+    auto r1 = partitionLabels("ababcbacadefegdehijhklij");
+    for (auto x : r1) cout << x << " "; cout << "\n"; // 9 7 8
+    auto r2 = partitionLabels("eccbbbbdec");
+    for (auto x : r2) cout << x << " "; cout << "\n"; // 10
 }
 ```
 
@@ -335,47 +330,43 @@ Final result: [9, 7, 8]
 2. **Overlap zone:** Merge all intervals that overlap with `newInterval` by expanding its bounds.
 3. **After overlap:** Add all remaining intervals as-is.
 
-```java
-import java.util.ArrayList;
-import java.util.List;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class InsertInterval {
+vector<vector<int>> insert(vector<vector<int>>& intervals, vector<int> newInterval) {
+    vector<vector<int>> result;
+    int i = 0, n = (int)intervals.size();
 
-    public int[][] insert(int[][] intervals, int[] newInterval) {
-        List<int[]> result = new ArrayList<>();
-        int i = 0, n = intervals.length;
+    // Phase 1: intervals ending before newInterval starts
+    while (i < n && intervals[i][1] < newInterval[0]) result.push_back(intervals[i++]);
 
-        // Phase 1: intervals ending before newInterval starts
-        while (i < n && intervals[i][1] < newInterval[0]) result.add(intervals[i++]);
-
-        // Phase 2: overlapping intervals — merge into newInterval
-        while (i < n && intervals[i][0] <= newInterval[1]) {
-            newInterval[0] = Math.min(newInterval[0], intervals[i][0]);
-            newInterval[1] = Math.max(newInterval[1], intervals[i][1]);
-            i++;
-        }
-        result.add(newInterval);
-
-        // Phase 3: intervals starting after newInterval ends
-        while (i < n) result.add(intervals[i++]);
-
-        return result.toArray(new int[0][]);
+    // Phase 2: overlapping intervals — merge into newInterval
+    while (i < n && intervals[i][0] <= newInterval[1]) {
+        newInterval[0] = min(newInterval[0], intervals[i][0]);
+        newInterval[1] = max(newInterval[1], intervals[i][1]);
+        i++;
     }
+    result.push_back(newInterval);
 
-    public static void main(String[] args) {
-        InsertInterval sol = new InsertInterval();
+    // Phase 3: intervals starting after newInterval ends
+    while (i < n) result.push_back(intervals[i++]);
 
-        int[][] res1 = sol.insert(new int[][]{{1,3},{6,9}}, new int[]{2,5});
-        for (int[] r : res1) System.out.println("[" + r[0] + "," + r[1] + "]");
-        // [1,5]  [6,9]
+    return result;
+}
 
-        System.out.println("---");
+int main() {
+    vector<vector<int>> iv1 = {{1,3},{6,9}};
+    auto res1 = insert(iv1, {2,5});
+    for (auto& r : res1) cout << "[" << r[0] << "," << r[1] << "]\n";
+    // [1,5]  [6,9]
 
-        int[][] res2 = sol.insert(
-            new int[][]{{1,2},{3,5},{6,7},{8,10},{12,16}}, new int[]{4,8});
-        for (int[] r : res2) System.out.println("[" + r[0] + "," + r[1] + "]");
-        // [1,2]  [3,10]  [12,16]
-    }
+    cout << "---\n";
+
+    vector<vector<int>> iv2 = {{1,2},{3,5},{6,7},{8,10},{12,16}};
+    auto res2 = insert(iv2, {4,8});
+    for (auto& r : res2) cout << "[" << r[0] << "," << r[1] << "]\n";
+    // [1,2]  [3,10]  [12,16]
 }
 ```
 
@@ -411,31 +402,30 @@ Result: [[1,2],[3,10],[12,16]]
 
 Note: Unlike Non-overlapping Intervals, touching endpoints ARE hit by the same arrow. Hence the condition for a new arrow is `balloon[0] > arrowPos` (strictly greater), not `>=`.
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class MinimumArrows {
-
-    public int findMinArrowShots(int[][] points) {
-        Arrays.sort(points, Comparator.comparingInt(a -> a[1]));
-        int arrows = 1;
-        int arrowPos = points[0][1];
-        for (int[] balloon : points) {
-            if (balloon[0] > arrowPos) {
-                arrows++;
-                arrowPos = balloon[1];
-            }
+int findMinArrowShots(vector<vector<int>>& points) {
+    sort(points.begin(), points.end(), [](const vector<int>& a, const vector<int>& b) {
+        return a[1] < b[1];
+    });
+    int arrows = 1;
+    int arrowPos = points[0][1];
+    for (auto& balloon : points) {
+        if (balloon[0] > arrowPos) {
+            arrows++;
+            arrowPos = balloon[1];
         }
-        return arrows;
     }
+    return arrows;
+}
 
-    public static void main(String[] args) {
-        MinimumArrows sol = new MinimumArrows();
-        System.out.println(sol.findMinArrowShots(
-            new int[][]{{10,16},{2,8},{1,6},{7,12}})); // 2
-        System.out.println(sol.findMinArrowShots(
-            new int[][]{{1,2},{3,4},{5,6},{7,8}})); // 4
-    }
+int main() {
+    vector<vector<int>> p1 = {{10,16},{2,8},{1,6},{7,12}};
+    cout << findMinArrowShots(p1) << "\n"; // 2
+    vector<vector<int>> p2 = {{1,2},{3,4},{5,6},{7,8}};
+    cout << findMinArrowShots(p2) << "\n"; // 4
 }
 ```
 

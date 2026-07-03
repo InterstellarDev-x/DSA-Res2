@@ -17,26 +17,30 @@ The challenge: standard stacks don't track minimums. After a `pop`, the minimum 
 
 Maintain a second stack (`minStack`) that tracks the running minimum at each level.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class MinStack {
-    private Deque<Integer> stack    = new ArrayDeque<>();
-    private Deque<Integer> minStack = new ArrayDeque<>();
+    stack<int> stk;
+    stack<int> minStk;
 
-    public void push(int val) {
-        stack.push(val);
-        // Push to minStack if it's the new minimum (or minStack is empty)
-        int min = minStack.isEmpty() ? val : Math.min(val, minStack.peek());
-        minStack.push(min);
+public:
+    void push(int val) {
+        stk.push(val);
+        // Push to minStk if it's the new minimum (or minStk is empty)
+        int mn = minStk.empty() ? val : min(val, minStk.top());
+        minStk.push(mn);
     }
 
-    public void pop() {
-        stack.pop();
-        minStack.pop();    // always pop both together
+    void pop() {
+        stk.pop();
+        minStk.pop();    // always pop both together
     }
 
-    public int top()    { return stack.peek(); }
-    public int getMin() { return minStack.peek(); }
-}
+    int top()    { return stk.top(); }
+    int getMin() { return minStk.top(); }
+};
 ```
 
 **Why push min every time (not only when it changes)?** Because `pop()` must always pop both stacks together. If we only pushed to `minStack` when value decreases, the two stacks would have different sizes and fall out of sync.
@@ -60,19 +64,23 @@ getMin()=3 ✓
 
 Store `(value, minAtThisPoint)` as a pair in each stack entry. Uses one structure instead of two.
 
-```java
-class MinStack {
-    private Deque<int[]> stack = new ArrayDeque<>();  // [val, minSoFar]
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public void push(int val) {
-        int min = stack.isEmpty() ? val : Math.min(val, stack.peek()[1]);
-        stack.push(new int[]{val, min});
+class MinStack {
+    stack<pair<int,int>> stk;  // {val, minSoFar}
+
+public:
+    void push(int val) {
+        int mn = stk.empty() ? val : min(val, stk.top().second);
+        stk.push({val, mn});
     }
 
-    public void pop()    { stack.pop(); }
-    public int top()     { return stack.peek()[0]; }
-    public int getMin()  { return stack.peek()[1]; }
-}
+    void pop()    { stk.pop(); }
+    int top()     { return stk.top().first; }
+    int getMin()  { return stk.top().second; }
+};
 ```
 
 **Trade-off:** Slightly more memory per entry (two ints), but one data structure. The pair approach is cleaner in code.
@@ -83,33 +91,37 @@ class MinStack {
 
 Store the difference `(val - currentMin)` in the stack. When difference is negative, we know `val` was a new minimum.
 
-```java
-class MinStack {
-    private Deque<Long> stack = new ArrayDeque<>();
-    private long min = Long.MAX_VALUE;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public void push(int val) {
-        if (stack.isEmpty()) {
-            stack.push(0L);
-            min = val;
+class MinStack {
+    stack<long> stk;
+    long mn = LONG_MAX;
+
+public:
+    void push(int val) {
+        if (stk.empty()) {
+            stk.push(0L);
+            mn = val;
         } else {
-            stack.push((long) val - min);
-            if (val < min) min = val;
+            stk.push((long) val - mn);
+            if (val < mn) mn = val;
         }
     }
 
-    public void pop() {
-        long diff = stack.pop();
-        if (diff < 0) min = min - diff;   // restore previous min
+    void pop() {
+        long diff = stk.top(); stk.pop();
+        if (diff < 0) mn = mn - diff;   // restore previous min
     }
 
-    public int top() {
-        long diff = stack.peek();
-        return diff < 0 ? (int) min : (int)(min + diff);
+    int top() {
+        long diff = stk.top();
+        return diff < 0 ? (int) mn : (int)(mn + diff);
     }
 
-    public int getMin() { return (int) min; }
-}
+    int getMin() { return (int) mn; }
+};
 ```
 
 **Why `long`?** `val - min` can overflow `int` if `val` is large positive and `min` is large negative (or vice versa).
@@ -124,36 +136,37 @@ class MinStack {
 
 ### Array-based Circular Buffer
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class MyCircularQueue {
-    private int[] data;
-    private int head, tail, size, capacity;
+    vector<int> data;
+    int head, tail, sz, capacity;
 
-    public MyCircularQueue(int k) {
-        data = new int[k];
-        head = 0; tail = -1; size = 0; capacity = k;
-    }
+public:
+    MyCircularQueue(int k) : data(k), head(0), tail(-1), sz(0), capacity(k) {}
 
-    public boolean enQueue(int value) {
+    bool enQueue(int value) {
         if (isFull()) return false;
         tail = (tail + 1) % capacity;
         data[tail] = value;
-        size++;
+        sz++;
         return true;
     }
 
-    public boolean deQueue() {
+    bool deQueue() {
         if (isEmpty()) return false;
         head = (head + 1) % capacity;
-        size--;
+        sz--;
         return true;
     }
 
-    public int Front() { return isEmpty() ? -1 : data[head]; }
-    public int Rear()  { return isEmpty() ? -1 : data[tail]; }
-    public boolean isEmpty() { return size == 0; }
-    public boolean isFull()  { return size == capacity; }
-}
+    int Front() { return isEmpty() ? -1 : data[head]; }
+    int Rear()  { return isEmpty() ? -1 : data[tail]; }
+    bool isEmpty() { return sz == 0; }
+    bool isFull()  { return sz == capacity; }
+};
 ```
 
 **Why track `size` separately?** Avoids the "one slot wasted" trick (reserving one empty slot to distinguish full from empty based on head/tail positions).
@@ -190,11 +203,11 @@ Option 1 is cleanest for interviews.
 A: The pair/two-stack approaches are O(n) by necessity — we must remember the minimum at each stack level in case pops reveal a new minimum. The encoding trick reduces constant factor but is still O(n). Fundamental lower bound: O(n) space for a stack supporting getMin in O(1).
 
 **Q: Thread safety?**
-A: Wrap `synchronized` on methods or use `java.util.concurrent.locks.ReentrantLock`. The two-stack approach has a window where stack has been popped but minStack hasn't — this is a critical section.
+A: Wrap methods with `std::mutex` and `std::lock_guard` (or `std::unique_lock`). The two-stack approach has a window where stack has been popped but minStack hasn't — this is a critical section.
 
 ### Circular Queue
-**Q: Why circular instead of LinkedList?**
-A: Array has O(1) index access and better cache locality. LinkedList has pointer overhead per node. For a fixed-size bounded queue, circular array is standard.
+**Q: Why circular instead of `std::list`?**
+A: Array has O(1) index access and better cache locality. Linked list has pointer overhead per node. For a fixed-size bounded queue, circular array is standard.
 
 **Q: How to implement a circular DEQUE?**
 A: Same structure but add `enqueueFront` and `dequeueRear`:

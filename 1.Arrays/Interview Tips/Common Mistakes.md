@@ -8,7 +8,7 @@
 ## Table of Contents
 
 1. [Algorithm Mistakes](#algorithm-mistakes)
-2. [Java Implementation Mistakes](#java-implementation-mistakes)
+2. [C++ Implementation Mistakes](#c-implementation-mistakes)
 3. [Edge Case Blindspots](#edge-case-blindspots)
 4. [Communication Mistakes](#communication-mistakes)
 5. [Pattern-Specific Mistakes](#pattern-specific-mistakes)
@@ -20,25 +20,25 @@
 
 | Mistake | Example | Fix |
 |---------|---------|-----|
-| Initializing max/min to 0 | `int max = 0` fails for all-negative | Use `Integer.MIN_VALUE` or `nums[0]` |
-| Applying sliding window to arrays with negative values | Sum can grow and shrink unpredictably | Use [Prefix Sum + HashMap](../Patterns/Prefix%20Sum.md) instead |
-| Sorting when problem requires O(n) | Adds unnecessary O(n log n) | Check if HashSet / HashMap can achieve O(n) |
-| Two pointer on unsorted array | Wrong pairs found | Sort first OR use HashMap |
-| Not considering that sorting changes indices | Two Sum wants original indices | If indices matter, don't sort — use HashMap |
+| Initializing max/min to 0 | `int max = 0` fails for all-negative | Use `INT_MIN` or `nums[0]` |
+| Applying sliding window to arrays with negative values | Sum can grow and shrink unpredictably | Use [Prefix Sum + unordered_map](../Patterns/Prefix%20Sum.md) instead |
+| Sorting when problem requires O(n) | Adds unnecessary O(n log n) | Check if `unordered_set` / `unordered_map` can achieve O(n) |
+| Two pointer on unsorted array | Wrong pairs found | Sort first OR use `unordered_map` |
+| Not considering that sorting changes indices | Two Sum wants original indices | If indices matter, don't sort — use `unordered_map` |
 | Missing the "verify" step in Moore's Voting | Returns wrong candidate | Always verify when majority not guaranteed |
 
 ---
 
-## Java Implementation Mistakes
+## C++ Implementation Mistakes
 
 | Mistake | Bad Code | Fix |
 |---------|----------|-----|
-| Integer overflow | `int sum = a + b` where a, b ≈ 10^9 | Use `long sum = (long)a + b` |
+| Integer overflow | `int sum = a + b` where a, b ≈ 10^9 | Use `long long sum = (long long)a + b` |
 | Off-by-one in prefix sum | `prefix[i] = arr[0..i]` | Use 1-indexed: `prefix[0]=0, prefix[i]=prefix[i-1]+arr[i-1]` |
-| Modifying array during iteration | Remove while iterating ArrayList | Use iterator.remove() or collect separately |
-| Comparing Integer objects with == | `if (a == b)` where a, b are Integer | Use `a.equals(b)` or `.intValue()` |
-| Not initializing `long` accumulator | `int sum` overflows | `long sum = 0L` |
-| `Arrays.sort` on `int[]` with comparator | Compile error | Convert to `Integer[]` first |
+| Modifying array during iteration | Remove while iterating `std::vector` | Use index-based loop or collect separately |
+| Comparing integers with wrong operator | `if (a == b)` where a, b are objects | In C++, `==` works directly for `int` |
+| Not initializing `long long` accumulator | `int sum` overflows | `long long sum = 0` |
+| `sort()` on `vector<int>` with comparator | Wrong comparator signature | Use lambda: `sort(v.begin(), v.end(), [](int a, int b){ return a > b; })` |
 
 ---
 
@@ -46,14 +46,14 @@
 
 | Edge Case | Why It Breaks | How to Test |
 |-----------|--------------|-------------|
-| Empty array `[]` | NullPointerException or wrong answer | Guard: `if (arr.length == 0) return ...` |
+| Empty array `[]` | Out-of-bounds or wrong answer | Guard: `if (arr.empty()) return ...` |
 | Single element `[x]` | Two-pointer loop never runs | Trace with n=1 |
 | All same elements `[2,2,2,2]` | Duplicate handling off | Verify cyclic sort, 3Sum de-dup logic |
 | All negative `[-3,-1,-2]` | Max initialized to 0 is wrong | Initialize to `nums[0]` |
 | Array of zeros `[0,0,0]` | Division by zero in product array | Handle zeros separately |
 | K = 0 (window size) | Division by zero or empty window | Guard: `if (k == 0) return` |
 | K > array length | Out of bounds | Guard: `if (k > n) k %= n` |
-| Integers at boundary | `Integer.MIN_VALUE - 1` overflow | Use Math.abs carefully |
+| Integers at boundary | `INT_MIN - 1` overflow | Use `abs` carefully |
 
 ---
 
@@ -73,12 +73,14 @@
 
 ### Sliding Window
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 // WRONG: Forgetting to shrink window
 for (int r = 0; r < n; r++) {
     window += arr[r];
     // forgot: while (window > k) window -= arr[l++];
-    max = Math.max(max, r - l + 1);
+    max_len = max(max_len, r - l + 1);
 }
 
 // WRONG: Using 'if' instead of 'while' to shrink
@@ -87,31 +89,33 @@ if (window > k) window -= arr[l++]; // misses multiple shrinks needed
 
 ### Prefix Sum
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 // WRONG: Missing seed
-Map<Integer, Integer> map = new HashMap<>();
-// forgot: map.put(0, 1); — misses subarrays starting at index 0
+unordered_map<int, int> freq;
+// forgot: freq[0] = 1; — misses subarrays starting at index 0
 int sum = 0;
-for (int num : nums) { sum += num; count += map.getOrDefault(sum - k, 0); map.merge(sum, 1, Integer::sum); }
+for (auto& num : nums) { sum += num; count += (freq.count(sum - k) ? freq[sum - k] : 0); freq[sum]++; }
 ```
 
 ### Cyclic Sort
 
-```java
+```cpp
 // WRONG: Advancing i after every swap
 while (i < n) {
     int c = nums[i] - 1;
-    if (nums[i] != nums[c]) swap(nums, i, c);
+    if (nums[i] != nums[c]) swap(nums[i], nums[c]);
     i++; // BUG: should only advance when nums[i] == i+1
 }
 ```
 
 ### Dutch National Flag
 
-```java
+```cpp
 // WRONG: Advancing mid when swapping with hi
 } else { // nums[mid] == 2
-    swap(nums, mid++, hi--); // BUG: don't advance mid here
+    swap(nums[mid++], nums[hi--]); // BUG: don't advance mid here
 }
 ```
 

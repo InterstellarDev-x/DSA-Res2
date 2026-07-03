@@ -2,7 +2,7 @@
 
 # Microsoft — DP Interview Deep Dives
 
-Microsoft favors classic DP with a production framing — decoding, grid counting, diff tools, and the maximal-square subproblem behind image/region detection. These four deep dives carry the full state/recurrence/base/Java/complexity treatment plus the edge cases Microsoft hidden tests love.
+Microsoft favors classic DP with a production framing — decoding, grid counting, diff tools, and the maximal-square subproblem behind image/region detection. These four deep dives carry the full state/recurrence/base/C++/complexity treatment plus the edge cases Microsoft hidden tests love.
 
 See also: [OA-Qns → Microsoft](../OA-Qns/Microsoft.md) · [Interview Problems → Amazon](./Amazon.md) · [Interview Problems → Google](./Google.md) · [Topic README](../README.md)
 
@@ -27,16 +27,19 @@ See also: [OA-Qns → Microsoft](../OA-Qns/Microsoft.md) · [Interview Problems 
 - `"30"` → 0 ways (`30` is out of `10..26`, and standalone `'0'` is invalid).
 - `"100"` → 0 ways (the trailing `'0'` has no valid partner).
 
-```java
-public int numDecodings(String s) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int numDecodings(string s) {
     int n = s.length();
-    if (n == 0 || s.charAt(0) == '0') return 0;
-    int[] dp = new int[n + 1];
+    if (n == 0 || s[0] == '0') return 0;
+    vector<int> dp(n + 1);
     dp[0] = 1;
     dp[1] = 1;                              // s[0] != '0' guaranteed above
     for (int i = 2; i <= n; i++) {
-        char one = s.charAt(i - 1);
-        char ten = s.charAt(i - 2);
+        char one = s[i - 1];
+        char ten = s[i - 2];
         if (one != '0') {                   // valid single digit
             dp[i] += dp[i - 1];
         }
@@ -68,10 +71,12 @@ Time `O(n)`, space `O(n)` (trivially reducible to O(1) with two variables). The 
 - **Base:** first row and first column are all `1` (only one straight-line way).
 - **Recurrence:** `dp[i][j] = dp[i-1][j] + dp[i][j-1]`.
 
-```java
-public int uniquePaths(int m, int n) {
-    int[] dp = new int[n];
-    Arrays.fill(dp, 1);                     // first row
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int uniquePaths(int m, int n) {
+    vector<int> dp(n, 1);                    // first row
     for (int i = 1; i < m; i++) {
         for (int j = 1; j < n; j++) {
             dp[j] += dp[j - 1];             // dp[j] (old=up) + dp[j-1] (left)
@@ -87,9 +92,12 @@ Time `O(m·n)`, space `O(n)` (rolling row).
 
 The robot makes exactly `(m-1)` downs and `(n-1)` rights in some order → choose positions: `C(m+n-2, m-1)`. Compute it incrementally to avoid overflow:
 
-```java
-public int uniquePaths(int m, int n) {
-    long result = 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int uniquePaths(int m, int n) {
+    long long result = 1;
     for (int i = 1; i <= m - 1; i++) {
         result = result * (n - 1 + i) / i;  // build C(m+n-2, m-1) step by step
     }
@@ -115,19 +123,22 @@ public int uniquePaths(int m, int n) {
 - Match → `dp[i-1][j-1]`; else `1 + min(delete dp[i-1][j], insert dp[i][j-1], replace dp[i-1][j-1])`.
 - Base: `dp[i][0]=i`, `dp[0][j]=j` (cost of building from / down to empty).
 
-```java
-public int minDistance(String word1, String word2) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int minDistance(string word1, string word2) {
     int m = word1.length(), n = word2.length();
-    int[][] dp = new int[m + 1][n + 1];
+    vector<vector<int>> dp(m + 1, vector<int>(n + 1));
     for (int i = 0; i <= m; i++) dp[i][0] = i;
     for (int j = 0; j <= n; j++) dp[0][j] = j;
     for (int i = 1; i <= m; i++) {
         for (int j = 1; j <= n; j++) {
-            if (word1.charAt(i - 1) == word2.charAt(j - 1)) {
+            if (word1[i - 1] == word2[j - 1]) {
                 dp[i][j] = dp[i - 1][j - 1];
             } else {
-                dp[i][j] = 1 + Math.min(dp[i - 1][j - 1],
-                              Math.min(dp[i - 1][j], dp[i][j - 1]));
+                dp[i][j] = 1 + min(dp[i - 1][j - 1],
+                              min(dp[i - 1][j], dp[i][j - 1]));
             }
         }
     }
@@ -159,17 +170,20 @@ public int minDistance(String word1, String word2) {
 - **Why `min` of three neighbors:** a square of side `s` ending at `(i,j)` requires squares of side `s-1` ending at the cell above, the cell to the left, and the diagonal — the smallest of those three caps how far you can extend.
 - **Base:** first row/column equal the cell value (square of side 1 if it's a `1`).
 
-```java
-public int maximalSquare(char[][] matrix) {
-    int m = matrix.length, n = matrix[0].length;
-    int[][] dp = new int[m + 1][n + 1];     // 1-indexed → no boundary checks
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int maximalSquare(vector<vector<char>>& matrix) {
+    int m = matrix.size(), n = matrix[0].size();
+    vector<vector<int>> dp(m + 1, vector<int>(n + 1));     // 1-indexed → no boundary checks
     int maxSide = 0;
     for (int i = 1; i <= m; i++) {
         for (int j = 1; j <= n; j++) {
             if (matrix[i - 1][j - 1] == '1') {
-                dp[i][j] = 1 + Math.min(dp[i - 1][j - 1],
-                               Math.min(dp[i - 1][j], dp[i][j - 1]));
-                maxSide = Math.max(maxSide, dp[i][j]);
+                dp[i][j] = 1 + min(dp[i - 1][j - 1],
+                               min(dp[i - 1][j], dp[i][j - 1]));
+                maxSide = max(maxSide, dp[i][j]);
             }
         }
     }

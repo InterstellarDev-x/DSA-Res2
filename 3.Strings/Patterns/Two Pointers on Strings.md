@@ -12,7 +12,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#c-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -22,7 +22,7 @@
 
 ## Pattern Overview
 
-Two Pointers on strings applies the same opposite-ends or same-direction pointer logic as on arrays, with one key difference: **Java strings are immutable**, so in-place operations require converting to `char[]`.
+Two Pointers on strings applies the same opposite-ends or same-direction pointer logic as on arrays, with one key difference: **C++ strings are mutable**, so in-place operations can be performed directly on `std::string`.
 
 **Three sub-styles:**
 
@@ -60,25 +60,27 @@ Two Pointers on strings applies the same opposite-ends or same-direction pointer
 
 | Operation | Time | Space |
 |-----------|------|-------|
-| Palindrome check | O(n) | O(1) if on `char[]`; O(n) if `toCharArray()` |
+| Palindrome check | O(n) | O(1) in-place on `std::string` |
 | Reverse string | O(n) | O(1) in-place |
-| Reverse words | O(n) | O(n) Java (immutable string) |
+| Reverse words | O(n) | O(n) — copy required |
 | Two-string compare | O(m+n) | O(1) |
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Valid Palindrome (Ignore Non-Alphanumeric, LC 125)
 
-```java
-public boolean isPalindrome(String s) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool isPalindrome(string s) {
     int l = 0, r = s.length() - 1;
     while (l < r) {
-        while (l < r && !Character.isLetterOrDigit(s.charAt(l))) l++;
-        while (l < r && !Character.isLetterOrDigit(s.charAt(r))) r--;
-        if (Character.toLowerCase(s.charAt(l)) !=
-            Character.toLowerCase(s.charAt(r))) return false;
+        while (l < r && !isalnum(s[l])) l++;
+        while (l < r && !isalnum(s[r])) r--;
+        if (tolower(s[l]) != tolower(s[r])) return false;
         l++; r--;
     }
     return true;
@@ -88,20 +90,23 @@ public boolean isPalindrome(String s) {
 
 ### 2. Valid Palindrome II — At Most One Deletion (LC 680)
 
-```java
-public boolean validPalindrome(String s) {
-    int l = 0, r = s.length() - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool isPalin(string& s, int l, int r) {
     while (l < r) {
-        if (s.charAt(l) != s.charAt(r))
-            return isPalin(s, l + 1, r) || isPalin(s, l, r - 1);
-        l++; r--;
+        if (s[l++] != s[r--]) return false;
     }
     return true;
 }
 
-private boolean isPalin(String s, int l, int r) {
+bool validPalindrome(string s) {
+    int l = 0, r = s.length() - 1;
     while (l < r) {
-        if (s.charAt(l++) != s.charAt(r--)) return false;
+        if (s[l] != s[r])
+            return isPalin(s, l + 1, r) || isPalin(s, l, r - 1);
+        l++; r--;
     }
     return true;
 }
@@ -110,9 +115,12 @@ private boolean isPalin(String s, int l, int r) {
 
 ### 3. Reverse String In-Place (LC 344)
 
-```java
-public void reverseString(char[] s) {
-    int l = 0, r = s.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void reverseString(vector<char>& s) {
+    int l = 0, r = s.size() - 1;
     while (l < r) {
         char tmp = s[l]; s[l++] = s[r]; s[r--] = tmp;
     }
@@ -122,37 +130,54 @@ public void reverseString(char[] s) {
 
 ### 4. Reverse Words in a String (LC 151)
 
-```java
-public String reverseWords(String s) {
-    // Trim, split on whitespace, reverse word order
-    String[] words = s.trim().split("\\s+");
-    int l = 0, r = words.length - 1;
-    while (l < r) { String tmp = words[l]; words[l++] = words[r]; words[r--] = tmp; }
-    return String.join(" ", words);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+string reverseWords(string s) {
+    // Split on whitespace, reverse word order
+    vector<string> words;
+    istringstream iss(s);
+    string word;
+    while (iss >> word) words.push_back(word);
+    int l = 0, r = words.size() - 1;
+    while (l < r) { swap(words[l++], words[r--]); }
+    string result;
+    for (int i = 0; i < (int)words.size(); i++) {
+        if (i > 0) result += " ";
+        result += words[i];
+    }
+    return result;
 }
-// Time: O(n) | Space: O(n) — Java string immutability forces copy
+// Time: O(n) | Space: O(n) — copy required
 ```
 
 ### 5. Rotate String — Three-Reverse Trick (LC 796)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Check if s can become goal by rotation
-public boolean rotateString(String s, String goal) {
-    return s.length() == goal.length() && (s + s).contains(goal);
+bool rotateString(string s, string goal) {
+    return s.length() == goal.length() && (s + s).find(goal) != string::npos;
     // Alternative: KMP search in doubled string
 }
-// Time: O(n²) with contains; O(n) with KMP
+// Time: O(n²) with find; O(n) with KMP
 ```
 
 ### 6. Compare Version Numbers (LC 165)
 
-```java
-public int compareVersion(String version1, String version2) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int compareVersion(string version1, string version2) {
     int i = 0, j = 0;
-    while (i < version1.length() || j < version2.length()) {
+    while (i < (int)version1.length() || j < (int)version2.length()) {
         int v1 = 0, v2 = 0;
-        while (i < version1.length() && version1.charAt(i) != '.') v1 = v1 * 10 + (version1.charAt(i++) - '0');
-        while (j < version2.length() && version2.charAt(j) != '.') v2 = v2 * 10 + (version2.charAt(j++) - '0');
+        while (i < (int)version1.length() && version1[i] != '.') v1 = v1 * 10 + (version1[i++] - '0');
+        while (j < (int)version2.length() && version2[j] != '.') v2 = v2 * 10 + (version2[j++] - '0');
         if (v1 != v2) return v1 > v2 ? 1 : -1;
         i++; j++; // skip '.'
     }
@@ -163,15 +188,18 @@ public int compareVersion(String version1, String version2) {
 
 ### 7. Long Pressed Name (LC 925)
 
-```java
-public boolean isLongPressedName(String name, String typed) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool isLongPressedName(string name, string typed) {
     int i = 0, j = 0;
-    while (j < typed.length()) {
-        if (i < name.length() && name.charAt(i) == typed.charAt(j)) { i++; j++; }
-        else if (j > 0 && typed.charAt(j) == typed.charAt(j - 1)) j++;
+    while (j < (int)typed.length()) {
+        if (i < (int)name.length() && name[i] == typed[j]) { i++; j++; }
+        else if (j > 0 && typed[j] == typed[j - 1]) j++;
         else return false;
     }
-    return i == name.length();
+    return i == (int)name.length();
 }
 // Time: O(m+n) | Space: O(1)
 ```
@@ -182,10 +210,10 @@ public boolean isLongPressedName(String name, String typed) {
 
 | Mistake | Fix |
 |---------|-----|
-| Palindrome: not converting to lowercase | `Character.toLowerCase()` both chars before comparing |
-| Palindrome: not skipping non-alphanumeric | Use `Character.isLetterOrDigit()` guard inside while |
-| Reverse words: using `split(" ")` | Use `split("\\s+")` then `.trim()` to handle multiple spaces |
-| In-place reverse on `String` | Must convert to `char[]` first; Java strings are immutable |
+| Palindrome: not converting to lowercase | `tolower()` both chars before comparing |
+| Palindrome: not skipping non-alphanumeric | Use `isalnum()` guard inside while |
+| Reverse words: splitting on single space only | Use `istringstream` to handle multiple spaces automatically |
+| In-place reverse: unnecessary copy | Can modify `std::string` directly in C++ |
 | Two-string pointer: forgetting to advance both `i` and `j` | After a match, both pointers advance |
 
 ---
@@ -194,7 +222,7 @@ public boolean isLongPressedName(String name, String typed) {
 
 | Variation | Description |
 |-----------|-------------|
-| Palindrome with ignored chars | Two pointer + `Character.isLetterOrDigit()` filter |
+| Palindrome with ignored chars | Two pointer + `isalnum()` filter |
 | Palindrome after at most k deletions | DP for k > 1; greedy for k = 1 |
 | Merge alternately | Two pointer, append from each |
 | Backspace string compare (LC 844) | Simulate with stack or reverse pointer |

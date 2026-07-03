@@ -20,32 +20,38 @@
 
 ### Approach 1: Binary Trie (O(n) time, O(n) space)
 
-```java
-public int findMaximumXOR(int[] nums) {
-    TrieNode root = new TrieNode();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int findMaximumXOR(vector<int>& nums) {
+    TrieNode* root = new TrieNode();
     for (int n : nums) insert(root, n);
-    int max = 0;
-    for (int n : nums) max = Math.max(max, maxXOR(root, n));
-    return max;
+    int maxVal = 0;
+    for (int n : nums) maxVal = max(maxVal, maxXOR(root, n));
+    return maxVal;
 }
 ```
 
-### Approach 2: Greedy with HashSet (O(n) time, O(n) space, simpler)
+### Approach 2: Greedy with `std::unordered_set` (O(n) time, O(n) space, simpler)
 
-```java
-public int findMaximumXOR(int[] nums) {
-    int max = 0, mask = 0;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int findMaximumXOR(vector<int>& nums) {
+    int maxXor = 0, mask = 0;
     for (int bit = 31; bit >= 0; bit--) {
         mask |= (1 << bit);
-        Set<Integer> prefixes = new HashSet<>();
-        for (int n : nums) prefixes.add(n & mask);
+        unordered_set<int> prefixes;
+        for (int n : nums) prefixes.insert(n & mask);
 
-        int candidate = max | (1 << bit);
+        int candidate = maxXor | (1 << bit);
         for (int p : prefixes) {
-            if (prefixes.contains(candidate ^ p)) { max = candidate; break; }
+            if (prefixes.count(candidate ^ p)) { maxXor = candidate; break; }
         }
     }
-    return max;
+    return maxXor;
 }
 ```
 
@@ -68,9 +74,12 @@ Sort + offline processing. See [Bit Search & Trie](../Patterns/Bit%20Search%20an
 Pairwise hamming distance = for each bit position, count pairs that differ.
 If `k` numbers have bit `i` set: those `k` pair with the `n-k` that don't → `k × (n-k)` differing pairs.
 
-```java
-public int totalHammingDistance(int[] nums) {
-    int total = 0, n = nums.length;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int totalHammingDistance(vector<int>& nums) {
+    int total = 0, n = nums.size();
     for (int bit = 0; bit < 32; bit++) {
         int ones = 0;
         for (int num : nums) ones += (num >> bit) & 1;

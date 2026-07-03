@@ -29,12 +29,13 @@ This means: starting from the **meeting point** and **head** simultaneously, bot
 
 ## Template 1 — Detect Cycle (LC 141)
 
-```java
-public boolean hasCycle(ListNode head) {
-    ListNode slow = head, fast = head;
-    while (fast != null && fast.next != null) {
-        slow = slow.next;
-        fast = fast.next.next;
+```cpp
+bool hasCycle(ListNode* head) {
+    ListNode* slow = head;
+    ListNode* fast = head;
+    while (fast != nullptr && fast->next != nullptr) {
+        slow = slow->next;
+        fast = fast->next->next;
         if (slow == fast) return true;
     }
     return false;
@@ -45,25 +46,26 @@ public boolean hasCycle(ListNode head) {
 
 ## Template 2 — Find Cycle Entry (LC 142)
 
-```java
-public ListNode detectCycle(ListNode head) {
-    ListNode slow = head, fast = head;
+```cpp
+ListNode* detectCycle(ListNode* head) {
+    ListNode* slow = head;
+    ListNode* fast = head;
 
     // Phase 1: find meeting point inside cycle
-    while (fast != null && fast.next != null) {
-        slow = slow.next;
-        fast = fast.next.next;
+    while (fast != nullptr && fast->next != nullptr) {
+        slow = slow->next;
+        fast = fast->next->next;
         if (slow == fast) break;
     }
 
     // No cycle
-    if (fast == null || fast.next == null) return null;
+    if (fast == nullptr || fast->next == nullptr) return nullptr;
 
     // Phase 2: slow resets to head, fast stays at meeting; both move 1x
     slow = head;
     while (slow != fast) {
-        slow = slow.next;
-        fast = fast.next;
+        slow = slow->next;
+        fast = fast->next;
     }
     return slow;
 }
@@ -75,8 +77,8 @@ public ListNode detectCycle(ListNode head) {
 
 The key insight: treat array values as "next pointers". Index `i` points to `nums[i]`. A duplicate value means **two indices point to the same next** — creating a cycle.
 
-```java
-public int findDuplicate(int[] nums) {
+```cpp
+int findDuplicate(vector<int>& nums) {
     // Phase 1: find meeting point
     int slow = nums[0], fast = nums[nums[0]];
     while (slow != fast) {
@@ -102,17 +104,18 @@ public int findDuplicate(int[] nums) {
 
 After detecting a meeting point, count steps before they meet again:
 
-```java
-int cycleLength(ListNode head) {
-    ListNode slow = head, fast = head;
-    while (fast != null && fast.next != null) {
-        slow = slow.next;
-        fast = fast.next.next;
+```cpp
+int cycleLength(ListNode* head) {
+    ListNode* slow = head;
+    ListNode* fast = head;
+    while (fast != nullptr && fast->next != nullptr) {
+        slow = slow->next;
+        fast = fast->next->next;
         if (slow == fast) {
             // Count cycle length from meeting point
             int length = 1;
-            ListNode curr = slow.next;
-            while (curr != slow) { curr = curr.next; length++; }
+            ListNode* curr = slow->next;
+            while (curr != slow) { curr = curr->next; length++; }
             return length;
         }
     }
@@ -122,11 +125,11 @@ int cycleLength(ListNode head) {
 
 ---
 
-## Comparison: Floyd's vs HashSet
+## Comparison: Floyd's vs unordered_set
 
 | Approach | Time | Space | When to Use |
 |----------|------|-------|-------------|
-| HashSet `visited` | O(n) | O(n) | Clarity in non-constrained problems |
+| `unordered_set` `visited` | O(n) | O(n) | Clarity in non-constrained problems |
 | Floyd's | O(n) | O(1) | Memory-constrained or interview requirement |
 | Floyd's + entry | O(n) | O(1) | When cycle start needed |
 

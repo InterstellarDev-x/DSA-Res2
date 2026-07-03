@@ -19,9 +19,12 @@ Before writing a single line of code, answer these three questions:
 
 ---
 
-## Java Checklist
+## C++ Checklist
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // ✅ Always use this mid formula (prevents integer overflow)
 int mid = lo + (hi - lo) / 2;
 
@@ -29,28 +32,31 @@ int mid = lo + (hi - lo) / 2;
 int mid = lo + (hi - lo + 1) / 2;
 
 // ✅ Prefer hi = n (not n-1) for lower/upper bound templates
-int hi = nums.length; // allows returning "not found" = n
+int hi = nums.size(); // allows returning "not found" = n
 
 // ✅ Verify target exists after lower bound
 int lb = lowerBound(nums, target);
-if (lb == nums.length || nums[lb] != target) return -1;
+if (lb == (int)nums.size() || nums[lb] != target) return -1;
 
 // ✅ Ceil division for feasibility checks
-int hoursNeeded = (pile + speed - 1) / speed; // equivalent to Math.ceil(pile / speed)
+int hoursNeeded = (pile + speed - 1) / speed; // equivalent to ceil(pile / speed)
 
 // ✅ Use long for sums that may overflow
 long hi = 0;
-for (int w : weights) hi += w; // int sum of int[] can overflow
+for (int w : weights) hi += w; // int sum of vector<int> can overflow
 ```
 
 ---
 
-## Common Java Patterns
+## Common C++ Patterns
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Lower bound (first index where arr[i] >= target)
-private int lowerBound(int[] arr, int target) {
-    int lo = 0, hi = arr.length;
+int lowerBound(vector<int>& arr, int target) {
+    int lo = 0, hi = arr.size();
     while (lo < hi) {
         int mid = lo + (hi - lo) / 2;
         if (arr[mid] < target) lo = mid + 1;
@@ -60,8 +66,8 @@ private int lowerBound(int[] arr, int target) {
 }
 
 // Upper bound (first index where arr[i] > target)
-private int upperBound(int[] arr, int target) {
-    int lo = 0, hi = arr.length;
+int upperBound(vector<int>& arr, int target) {
+    int lo = 0, hi = arr.size();
     while (lo < hi) {
         int mid = lo + (hi - lo) / 2;
         if (arr[mid] <= target) lo = mid + 1;
@@ -71,7 +77,7 @@ private int upperBound(int[] arr, int target) {
 }
 
 // Binary search on answer (minimize)
-private int bsOnAnswer(int lo, int hi) {
+int bsOnAnswer(int lo, int hi) {
     while (lo < hi) {
         int mid = lo + (hi - lo) / 2;
         if (isFeasible(mid)) hi = mid;

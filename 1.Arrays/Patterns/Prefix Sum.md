@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Template](#java-template)
+5. [C++ Template](#cpp-template)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -32,7 +32,7 @@ sum(l, r) = prefix[r+1] - prefix[l]
 
 The key insight: instead of summing `arr[l..r]` every query, store prefix sums and subtract.
 
-For **subarray sum = K** problems, pair it with a HashMap tracking `count of prefix sums seen so far`. If `prefix[j] - K` was seen, the subarray ending at `j` has sum `K`.
+For **subarray sum = K** problems, pair it with a `std::unordered_map` tracking `count of prefix sums seen so far`. If `prefix[j] - K` was seen, the subarray ending at `j` has sum `K`.
 
 ---
 
@@ -49,7 +49,7 @@ For **subarray sum = K** problems, pair it with a HashMap tracking `count of pre
 
 | Cue in Problem | Pattern |
 |----------------|---------|
-| "subarray sum equals K" | Prefix Sum + HashMap |
+| "subarray sum equals K" | Prefix Sum + `std::unordered_map` |
 | "number of subarrays with sum ≤ K" | Prefix Sum + Binary Search or sliding window |
 | "range sum query, immutable" | Classic Prefix Sum |
 | "how many subarrays have even/odd sum" | Prefix Sum parity |
@@ -63,19 +63,22 @@ For **subarray sum = K** problems, pair it with a HashMap tracking `count of pre
 |-----------|------|-------|
 | Build prefix array | O(n) | O(n) |
 | Single range query | O(1) | — |
-| Count subarrays (with HashMap) | O(n) | O(n) |
+| Count subarrays (with `std::unordered_map`) | O(n) | O(n) |
 | 2D prefix sum build | O(m×n) | O(m×n) |
 
 ---
 
-## Java Template
+## C++ Template
 
 ### 1. Classic Prefix Sum (Range Query)
 
-```java
-public int[] buildPrefix(int[] arr) {
-    int n = arr.length;
-    int[] prefix = new int[n + 1]; // prefix[0] = 0
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> buildPrefix(vector<int>& arr) {
+    int n = arr.size();
+    vector<int> prefix(n + 1, 0); // prefix[0] = 0
     for (int i = 0; i < n; i++) {
         prefix[i + 1] = prefix[i] + arr[i];
     }
@@ -83,24 +86,27 @@ public int[] buildPrefix(int[] arr) {
 }
 
 // Sum of arr[l..r] (0-indexed, inclusive)
-public int rangeSum(int[] prefix, int l, int r) {
+int rangeSum(vector<int>& prefix, int l, int r) {
     return prefix[r + 1] - prefix[l];
 }
 ```
 
 ### 2. Count Subarrays with Sum = K
 
-```java
-public int subarraySum(int[] nums, int k) {
-    Map<Integer, Integer> prefixCount = new HashMap<>();
-    prefixCount.put(0, 1); // empty prefix
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int subarraySum(vector<int>& nums, int k) {
+    unordered_map<int, int> prefixCount;
+    prefixCount[0] = 1; // empty prefix
     int sum = 0, count = 0;
 
-    for (int num : nums) {
+    for (auto& num : nums) {
         sum += num;
         // If (sum - k) was seen, those subarrays sum to k
-        count += prefixCount.getOrDefault(sum - k, 0);
-        prefixCount.merge(sum, 1, Integer::sum);
+        count += (prefixCount.count(sum - k) ? prefixCount[sum - k] : 0);
+        prefixCount[sum]++;
     }
     return count;
 }
@@ -109,18 +115,21 @@ public int subarraySum(int[] nums, int k) {
 
 ### 3. Largest Subarray with Sum 0
 
-```java
-public int largestSubarrayWithZeroSum(int[] arr) {
-    Map<Integer, Integer> firstSeen = new HashMap<>();
-    firstSeen.put(0, -1);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int largestSubarrayWithZeroSum(vector<int>& arr) {
+    unordered_map<int, int> firstSeen;
+    firstSeen[0] = -1;
     int sum = 0, maxLen = 0;
 
-    for (int i = 0; i < arr.length; i++) {
+    for (int i = 0; i < (int)arr.size(); i++) {
         sum += arr[i];
-        if (firstSeen.containsKey(sum)) {
-            maxLen = Math.max(maxLen, i - firstSeen.get(sum));
+        if (firstSeen.count(sum)) {
+            maxLen = max(maxLen, i - firstSeen[sum]);
         } else {
-            firstSeen.put(sum, i);
+            firstSeen[sum] = i;
         }
     }
     return maxLen;
@@ -130,10 +139,13 @@ public int largestSubarrayWithZeroSum(int[] arr) {
 
 ### 4. 2D Prefix Sum
 
-```java
-public int[][] build2DPrefix(int[][] matrix) {
-    int m = matrix.length, n = matrix[0].length;
-    int[][] p = new int[m + 1][n + 1];
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> build2DPrefix(vector<vector<int>>& matrix) {
+    int m = matrix.size(), n = matrix[0].size();
+    vector<vector<int>> p(m + 1, vector<int>(n + 1, 0));
     for (int i = 1; i <= m; i++)
         for (int j = 1; j <= n; j++)
             p[i][j] = matrix[i-1][j-1] + p[i-1][j] + p[i][j-1] - p[i-1][j-1];
@@ -141,7 +153,7 @@ public int[][] build2DPrefix(int[][] matrix) {
 }
 
 // Sum of submatrix (r1,c1) to (r2,c2) — 0-indexed
-public int query2D(int[][] p, int r1, int c1, int r2, int c2) {
+int query2D(vector<vector<int>>& p, int r1, int c1, int r2, int c2) {
     return p[r2+1][c2+1] - p[r1][c2+1] - p[r2+1][c1] + p[r1][c1];
 }
 // Time: O(1) per query after O(m*n) build
@@ -154,7 +166,7 @@ public int query2D(int[][] p, int r1, int c1, int r2, int c2) {
 | Mistake | Fix |
 |---------|-----|
 | Off-by-one: `prefix[i] = arr[0..i]` vs `arr[0..i-1]` | Use 1-indexed prefix: `prefix[0]=0`, `prefix[i]=prefix[i-1]+arr[i-1]` |
-| Forgetting to seed `prefixCount.put(0, 1)` | Always insert the empty prefix before the loop |
+| Forgetting to seed `prefixCount[0] = 1` | Always insert the empty prefix before the loop |
 | Integer overflow on large arrays | Use `long` for sum accumulation |
 | Modifying prefix array while answering queries | Prefix is read-only after build |
 | 2D prefix: forgetting the inclusion-exclusion formula | `p[r2+1][c2+1] - p[r1][c2+1] - p[r2+1][c1] + p[r1][c1]` |
@@ -168,20 +180,23 @@ public int query2D(int[][] p, int r1, int c1, int r2, int c2) {
 | XOR Prefix | `prefix[i] = arr[0] XOR ... XOR arr[i-1]` | Replace `+` with `^` |
 | Product Prefix | Prefix products for range product queries | Divide instead of subtract |
 | Difference Array | Range increment/decrement in O(1) | Inverse of prefix sum |
-| Running Maximum | Track max prefix so far | Use `Math.max` instead of `+` |
-| Subarray with sum divisible by K | Prefix mod K + HashMap | Store `sum % k` |
+| Running Maximum | Track max prefix so far | Use `max` instead of `+` |
+| Subarray with sum divisible by K | Prefix mod K + `std::unordered_map` | Store `sum % k` |
 
 ### Subarray Sum Divisible by K
 
-```java
-public int subarraysDivByK(int[] nums, int k) {
-    Map<Integer, Integer> modCount = new HashMap<>();
-    modCount.put(0, 1);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int subarraysDivByK(vector<int>& nums, int k) {
+    unordered_map<int, int> modCount;
+    modCount[0] = 1;
     int sum = 0, count = 0;
-    for (int num : nums) {
+    for (auto& num : nums) {
         sum = ((sum + num) % k + k) % k; // handle negatives
-        count += modCount.getOrDefault(sum, 0);
-        modCount.merge(sum, 1, Integer::sum);
+        count += (modCount.count(sum) ? modCount[sum] : 0);
+        modCount[sum]++;
     }
     return count;
 }
@@ -194,7 +209,7 @@ public int subarraysDivByK(int[] nums, int k) {
 | Problem | Difficulty | LeetCode | Pattern |
 |---------|-----------|----------|---------|
 | [Range Sum Query - Immutable](https://leetcode.com/problems/range-sum-query-immutable/) | Easy | LC 303 | Classic Prefix |
-| [Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/) | Medium | LC 560 | Prefix + HashMap |
+| [Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/) | Medium | LC 560 | Prefix + `std::unordered_map` |
 | [Contiguous Array](https://leetcode.com/problems/contiguous-array/) | Medium | LC 525 | Prefix (0→-1 trick) |
 | [Subarray Sums Divisible by K](https://leetcode.com/problems/subarray-sums-divisible-by-k/) | Medium | LC 974 | Prefix mod |
 | [Count Number of Nice Subarrays](https://leetcode.com/problems/count-number-of-nice-subarrays/) | Medium | LC 1248 | Prefix (odd→1) |
@@ -213,6 +228,6 @@ public int subarraysDivByK(int[] nums, int k) {
 
 ---
 
-> **Interview Tip:** When a problem says "count subarrays with property X", immediately think Prefix Sum + HashMap. The map stores seen prefix values; the check is `prefix[j] - target` already in map.
+> **Interview Tip:** When a problem says "count subarrays with property X", immediately think Prefix Sum + `std::unordered_map`. The map stores seen prefix values; the check is `prefix[j] - target` already in map.
 
 > **Last Updated:** 2026-06-26

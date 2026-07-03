@@ -13,13 +13,15 @@ A stack is LIFO (Last-In-First-Out). It naturally handles:
 - **Path resolution**: directory traversal with `.` and `..`
 - **DFS state**: explicit stack instead of call stack
 
-```java
-// Always use ArrayDeque — not Stack<> (legacy, synchronized, slow)
-Deque<Character> stack = new ArrayDeque<>();
-stack.push(c);          // push to top
-stack.pop();            // remove from top
-stack.peek();           // view top without removing
-stack.isEmpty();        // check empty
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+// Always use stack<> from STL
+stack<char> stk;
+stk.push(c);          // push to top
+stk.pop();            // remove from top
+stk.top();            // view top without removing
+stk.empty();          // check empty
 ```
 
 ---
@@ -28,21 +30,23 @@ stack.isEmpty();        // check empty
 
 **Template:**
 
-```java
-Map<Character, Character> map = Map.of(')', '(', ']', '[', '}', '{');
-Deque<Character> stack = new ArrayDeque<>();
-for (char c : s.toCharArray()) {
-    if (!map.containsKey(c)) {        // opening bracket
-        stack.push(c);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+unordered_map<char, char> map = {{')', '('}, {']', '['}, {'}', '{'}};
+stack<char> stk;
+for (auto& c : s) {
+    if (!map.count(c)) {              // opening bracket
+        stk.push(c);
     } else {                          // closing bracket
-        if (stack.isEmpty() || stack.peek() != map.get(c)) return false;
-        stack.pop();
+        if (stk.empty() || stk.top() != map[c]) return false;
+        stk.pop();
     }
 }
-return stack.isEmpty();
+return stk.empty();
 ```
 
-**Why `stack.isEmpty()` at end?** Unclosed `((` would leave items in stack — must be empty for valid.
+**Why `stk.empty()` at end?** Unclosed `((` would leave items in stack — must be empty for valid.
 
 ---
 
@@ -50,21 +54,23 @@ return stack.isEmpty();
 
 **Input:** `s = "()[]{}"` → `true`; `s = "([)]"` → `false`
 
-```java
-public boolean isValid(String s) {
-    Deque<Character> stack = new ArrayDeque<>();
-    for (char c : s.toCharArray()) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+bool isValid(string s) {
+    stack<char> stk;
+    for (auto& c : s) {
         if (c == '(' || c == '[' || c == '{') {
-            stack.push(c);
+            stk.push(c);
         } else {
-            if (stack.isEmpty()) return false;
-            char top = stack.pop();
+            if (stk.empty()) return false;
+            char top = stk.top(); stk.pop();
             if (c == ')' && top != '(') return false;
             if (c == ']' && top != '[') return false;
             if (c == '}' && top != '{') return false;
         }
     }
-    return stack.isEmpty();
+    return stk.empty();
 }
 ```
 
@@ -84,44 +90,48 @@ public boolean isValid(String s) {
 
 ### Approach 1: Stack Simulation — O(n) time, O(n) space
 
-```java
-public boolean backspaceCompare(String s, String t) {
-    return process(s).equals(process(t));
-}
-
-private String process(String s) {
-    Deque<Character> stack = new ArrayDeque<>();
-    for (char c : s.toCharArray()) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+string process(string s) {
+    stack<char> stk;
+    for (auto& c : s) {
         if (c != '#') {
-            stack.push(c);
-        } else if (!stack.isEmpty()) {
-            stack.pop();
+            stk.push(c);
+        } else if (!stk.empty()) {
+            stk.pop();
         }
     }
-    StringBuilder sb = new StringBuilder();
-    while (!stack.isEmpty()) sb.append(stack.pop());
-    return sb.toString();
+    string result = "";
+    while (!stk.empty()) { result += stk.top(); stk.pop(); }
+    return result;
+}
+
+bool backspaceCompare(string s, string t) {
+    return process(s) == process(t);
 }
 ```
 
 ### Approach 2: Two Pointers from End — O(n) time, O(1) space
 
-```java
-public boolean backspaceCompare(String s, String t) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+bool backspaceCompare(string s, string t) {
     int i = s.length() - 1, j = t.length() - 1;
     int skipS = 0, skipT = 0;
     while (i >= 0 || j >= 0) {
         while (i >= 0) {
-            if (s.charAt(i) == '#') { skipS++; i--; }
+            if (s[i] == '#') { skipS++; i--; }
             else if (skipS > 0) { skipS--; i--; }
             else break;
         }
         while (j >= 0) {
-            if (t.charAt(j) == '#') { skipT++; j--; }
+            if (t[j] == '#') { skipT++; j--; }
             else if (skipT > 0) { skipT--; j--; }
             else break;
         }
-        if (i >= 0 && j >= 0 && s.charAt(i) != t.charAt(j)) return false;
+        if (i >= 0 && j >= 0 && s[i] != t[j]) return false;
         if ((i >= 0) != (j >= 0)) return false;
         i--; j--;
     }
@@ -138,20 +148,22 @@ public boolean backspaceCompare(String s, String t) {
 **Input:** `"(()())(())"` → `"()()()"`
 **Rule:** Decompose into primitive parenthesizations (balanced, no proper prefix is balanced). Remove outer layer of each.
 
-```java
-public String removeOuterParentheses(String s) {
-    StringBuilder sb = new StringBuilder();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+string removeOuterParentheses(string s) {
+    string result = "";
     int depth = 0;
-    for (char c : s.toCharArray()) {
+    for (auto& c : s) {
         if (c == '(') {
-            if (depth > 0) sb.append(c);   // append inner (not outermost opening)
+            if (depth > 0) result += c;   // append inner (not outermost opening)
             depth++;
         } else {
             depth--;
-            if (depth > 0) sb.append(c);   // append inner (not outermost closing)
+            if (depth > 0) result += c;   // append inner (not outermost closing)
         }
     }
-    return sb.toString();
+    return result;
 }
 ```
 
@@ -171,35 +183,45 @@ Rules:
 - `""` = multiple slashes — ignore
 - Anything else = valid directory name — push
 
-```java
-public String simplifyPath(String path) {
-    Deque<String> stack = new ArrayDeque<>();
-    for (String part : path.split("/")) {
-        if (part.equals("..")) {
-            if (!stack.isEmpty()) stack.pop();
-        } else if (!part.isEmpty() && !part.equals(".")) {
-            stack.push(part);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+string simplifyPath(string path) {
+    stack<string> stk;
+    stringstream ss(path);
+    string part;
+    while (getline(ss, part, '/')) {
+        if (part == "..") {
+            if (!stk.empty()) stk.pop();
+        } else if (!part.empty() && part != ".") {
+            stk.push(part);
         }
     }
-    StringBuilder sb = new StringBuilder();
+    string result = "";
     // stack has most recent on top — need to reverse
-    Deque<String> reversed = new ArrayDeque<>();
-    while (!stack.isEmpty()) reversed.push(stack.pop());
-    while (!reversed.isEmpty()) sb.append("/").append(reversed.pop());
-    return sb.length() == 0 ? "/" : sb.toString();
+    stack<string> reversed;
+    while (!stk.empty()) { reversed.push(stk.top()); stk.pop(); }
+    while (!reversed.empty()) { result += "/" + reversed.top(); reversed.pop(); }
+    return result.empty() ? "/" : result;
 }
 ```
 
-**Alternative: Use LinkedList as stack with addFirst/pollFirst — iterate with iterator for correct order.**
+**Alternative: Use `std::vector<string>` as stack with `push_back`/`pop_back` — iterate directly for correct order.**
 
-```java
-public String simplifyPath(String path) {
-    LinkedList<String> stack = new LinkedList<>();
-    for (String part : path.split("/")) {
-        if (part.equals("..")) { if (!stack.isEmpty()) stack.pollLast(); }
-        else if (!part.isEmpty() && !part.equals(".")) stack.addLast(part);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+string simplifyPath(string path) {
+    vector<string> stk;
+    stringstream ss(path);
+    string part;
+    while (getline(ss, part, '/')) {
+        if (part == "..") { if (!stk.empty()) stk.pop_back(); }
+        else if (!part.empty() && part != ".") stk.push_back(part);
     }
-    return "/" + String.join("/", stack);
+    string result = "";
+    for (auto& s : stk) result += "/" + s;
+    return result.empty() ? "/" : result;
 }
 ```
 
@@ -222,7 +244,7 @@ public String simplifyPath(String path) {
 ## Common Follow-ups
 
 **Q: Can Valid Parentheses handle multiple types of brackets?**
-A: Yes — the Map approach handles `N` types without code changes.
+A: Yes — the `std::unordered_map` approach handles `N` types without code changes.
 
 **Q: Backspace Compare with O(1) space?**
 A: Two-pointer from right (shown above) — skip characters using counters.

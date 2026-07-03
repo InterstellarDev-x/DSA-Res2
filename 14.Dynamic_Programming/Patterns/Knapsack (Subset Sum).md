@@ -48,79 +48,87 @@ where `combine` is `OR` (feasibility), `+` (counting), `min`/`max` (optimization
 
 ### 2a. Pure recursion
 
-```java
-public class SubsetSum {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public boolean isSubsetSum(int[] arr, int target) {
-        return solve(arr.length - 1, target, arr);
+class SubsetSum {
+public:
+    bool isSubsetSum(vector<int>& arr, int target) {
+        return solve(arr.size() - 1, target, arr);
     }
 
-    private boolean solve(int idx, int target, int[] arr) {
+private:
+    bool solve(int idx, int target, vector<int>& arr) {
         if (target == 0) return true;          // empty subset works
         if (idx == 0) return arr[0] == target; // only first element left
-        boolean notTake = solve(idx - 1, target, arr);
-        boolean take = false;
+        bool notTake = solve(idx - 1, target, arr);
+        bool take = false;
         if (arr[idx] <= target) {
             take = solve(idx - 1, target - arr[idx], arr);
         }
         return take || notTake;
     }
-}
+};
 ```
 
 Time `O(2^n)`, exponential — every element branches twice.
 
-### 2b. Memoization (`int[][]` with `-1`)
+### 2b. Memoization (`vector<vector<int>>` initialized to `-1`)
 
-We cache booleans as `int`: `-1` = unvisited, `0` = false, `1` = true. (You could also use `Boolean[][]` and test for `null`.)
+We cache booleans as `int`: `-1` = unvisited, `0` = false, `1` = true. (You could also use a separate `visited` array.)
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class SubsetSum {
-
-    public boolean isSubsetSum(int[] arr, int target) {
-        int n = arr.length;
-        int[][] dp = new int[n][target + 1];
-        for (int[] row : dp) Arrays.fill(row, -1);
+class SubsetSum {
+public:
+    bool isSubsetSum(vector<int>& arr, int target) {
+        int n = arr.size();
+        vector<vector<int>> dp(n, vector<int>(target + 1, -1));
         return solve(n - 1, target, arr, dp);
     }
 
-    private boolean solve(int idx, int target, int[] arr, int[][] dp) {
+private:
+    bool solve(int idx, int target, vector<int>& arr, vector<vector<int>>& dp) {
         if (target == 0) return true;
         if (idx == 0) return arr[0] == target;
         if (dp[idx][target] != -1) return dp[idx][target] == 1;
 
-        boolean notTake = solve(idx - 1, target, arr, dp);
-        boolean take = false;
+        bool notTake = solve(idx - 1, target, arr, dp);
+        bool take = false;
         if (arr[idx] <= target) {
             take = solve(idx - 1, target - arr[idx], arr, dp);
         }
-        boolean result = take || notTake;
+        bool result = take || notTake;
         dp[idx][target] = result ? 1 : 0;
         return result;
     }
-}
+};
 ```
 
 Time `O(n * target)`, Space `O(n * target)` + recursion stack `O(n)`.
 
 ### 2c. Tabulation
 
-```java
-public class SubsetSum {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public boolean isSubsetSum(int[] arr, int target) {
-        int n = arr.length;
-        boolean[][] dp = new boolean[n][target + 1];
+class SubsetSum {
+public:
+    bool isSubsetSum(vector<int>& arr, int target) {
+        int n = arr.size();
+        vector<vector<bool>> dp(n, vector<bool>(target + 1, false));
 
         for (int i = 0; i < n; i++) dp[i][0] = true; // sum 0 always possible
         if (arr[0] <= target) dp[0][arr[0]] = true;
 
         for (int i = 1; i < n; i++) {
             for (int t = 1; t <= target; t++) {
-                boolean notTake = dp[i - 1][t];
-                boolean take = false;
+                bool notTake = dp[i - 1][t];
+                bool take = false;
                 if (arr[i] <= t) {
                     take = dp[i - 1][t - arr[i]];
                 }
@@ -129,19 +137,22 @@ public class SubsetSum {
         }
         return dp[n - 1][target];
     }
-}
+};
 ```
 
 ### 2d. Space optimization to 1D
 
 Each row depends only on the previous row, so we keep one array. Because this is **0/1** (each item once), we iterate capacity **downward** to avoid reusing `arr[i]` within the same pass.
 
-```java
-public class SubsetSum {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public boolean isSubsetSum(int[] arr, int target) {
-        int n = arr.length;
-        boolean[] dp = new boolean[target + 1];
+class SubsetSum {
+public:
+    bool isSubsetSum(vector<int>& arr, int target) {
+        int n = arr.size();
+        vector<bool> dp(target + 1, false);
         dp[0] = true; // empty subset
 
         for (int i = 0; i < n; i++) {
@@ -151,7 +162,7 @@ public class SubsetSum {
         }
         return dp[target];
     }
-}
+};
 ```
 
 Time `O(n * target)`, Space `O(target)`.
@@ -186,26 +197,29 @@ Time `O(n * target)`, Space `O(target)`.
 
 **Key insight.** Two equal halves means each must equal `totalSum / 2`. If `totalSum` is **odd**, it is impossible immediately. Otherwise this is exactly *Subset Sum* with `target = totalSum / 2` — reuse the 1D routine verbatim.
 
-```java
-public class PartitionEqualSubsetSum {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public boolean canPartition(int[] nums) {
+class PartitionEqualSubsetSum {
+public:
+    bool canPartition(vector<int>& nums) {
         int total = 0;
-        for (int x : nums) total += x;
+        for (auto& x : nums) total += x;
         if ((total & 1) == 1) return false; // odd total can't split evenly
 
         int target = total / 2;
-        boolean[] dp = new boolean[target + 1];
+        vector<bool> dp(target + 1, false);
         dp[0] = true;
 
-        for (int num : nums) {
+        for (auto& num : nums) {
             for (int t = target; t >= num; t--) { // 0/1 → downward
                 dp[t] = dp[t] || dp[t - num];
             }
         }
         return dp[target];
     }
-}
+};
 ```
 
 | Aspect | Complexity |
@@ -230,14 +244,17 @@ If `arr[i] == 0`, you may either include or exclude it without changing the sum,
 - `dp[0][0] = (arr[0] == 0) ? 2 : 1`
 - `if (arr[0] != 0 && arr[0] <= k) dp[0][arr[0]] = 1`
 
-```java
-public class CountSubsetsWithSumK {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    private static final int MOD = 1_000_000_007;
+class CountSubsetsWithSumK {
+    static const int MOD = 1'000'000'007;
 
-    public int perfectSum(int[] arr, int k) {
-        int n = arr.length;
-        int[][] dp = new int[n][k + 1];
+public:
+    int perfectSum(vector<int>& arr, int k) {
+        int n = arr.size();
+        vector<vector<int>> dp(n, vector<int>(k + 1, 0));
 
         // Base row handling zeros explicitly.
         if (arr[0] == 0) {
@@ -259,27 +276,30 @@ public class CountSubsetsWithSumK {
         }
         return dp[n - 1][k];
     }
-}
+};
 ```
 
 1D version (downward, 0/1). When zeros are *not* present the simpler `dp[0] = 1` base works; with zeros prefer the 2D base above, or pre-handle the count of zeros separately and multiply by `2^(#zeros)`.
 
-```java
-public class CountSubsetsWithSumK {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    private static final int MOD = 1_000_000_007;
+class CountSubsetsWithSumK {
+    static const int MOD = 1'000'000'007;
 
-    public int perfectSum(int[] arr, int k) {
-        int[] dp = new int[k + 1];
+public:
+    int perfectSum(vector<int>& arr, int k) {
+        vector<int> dp(k + 1, 0);
         dp[0] = 1; // assumes the explicit-zero handling above for arrays containing 0
-        for (int num : arr) {
+        for (auto& num : arr) {
             for (int t = k; t >= num; t--) { // 0/1 → downward
                 dp[t] = (dp[t] + dp[t - num]) % MOD;
             }
         }
         return dp[k];
     }
-}
+};
 ```
 
 | Aspect | Complexity |
@@ -302,65 +322,73 @@ This is the canonical template. Internalize all four stages.
 
 ### 5a. Pure recursion
 
-```java
-public class Knapsack01 {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int knapsack(int W, int[] weight, int[] value) {
-        return solve(weight.length - 1, W, weight, value);
+class Knapsack01 {
+public:
+    int knapsack(int W, vector<int>& weight, vector<int>& value) {
+        return solve(weight.size() - 1, W, weight, value);
     }
 
-    private int solve(int idx, int cap, int[] weight, int[] value) {
+private:
+    int solve(int idx, int cap, vector<int>& weight, vector<int>& value) {
         if (idx == 0) {
             return weight[0] <= cap ? value[0] : 0;
         }
         int notTake = solve(idx - 1, cap, weight, value);
-        int take = Integer.MIN_VALUE;
+        int take = INT_MIN;
         if (weight[idx] <= cap) {
             take = value[idx] + solve(idx - 1, cap - weight[idx], weight, value);
         }
-        return Math.max(take, notTake);
+        return max(take, notTake);
     }
-}
+};
 ```
 
-### 5b. Memoization (`int[][]`, `Arrays.fill(-1)`)
+### 5b. Memoization (`vector<vector<int>>` initialized to `-1`)
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class Knapsack01 {
-
-    public int knapsack(int W, int[] weight, int[] value) {
-        int n = weight.length;
-        int[][] dp = new int[n][W + 1];
-        for (int[] row : dp) Arrays.fill(row, -1);
+class Knapsack01 {
+public:
+    int knapsack(int W, vector<int>& weight, vector<int>& value) {
+        int n = weight.size();
+        vector<vector<int>> dp(n, vector<int>(W + 1, -1));
         return solve(n - 1, W, weight, value, dp);
     }
 
-    private int solve(int idx, int cap, int[] weight, int[] value, int[][] dp) {
+private:
+    int solve(int idx, int cap, vector<int>& weight, vector<int>& value, vector<vector<int>>& dp) {
         if (idx == 0) {
             return weight[0] <= cap ? value[0] : 0;
         }
         if (dp[idx][cap] != -1) return dp[idx][cap];
 
         int notTake = solve(idx - 1, cap, weight, value, dp);
-        int take = Integer.MIN_VALUE;
+        int take = INT_MIN;
         if (weight[idx] <= cap) {
             take = value[idx] + solve(idx - 1, cap - weight[idx], weight, value, dp);
         }
-        return dp[idx][cap] = Math.max(take, notTake);
+        return dp[idx][cap] = max(take, notTake);
     }
-}
+};
 ```
 
 ### 5c. Tabulation
 
-```java
-public class Knapsack01 {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int knapsack(int W, int[] weight, int[] value) {
-        int n = weight.length;
-        int[][] dp = new int[n][W + 1];
+class Knapsack01 {
+public:
+    int knapsack(int W, vector<int>& weight, vector<int>& value) {
+        int n = weight.size();
+        vector<vector<int>> dp(n, vector<int>(W + 1, 0));
 
         for (int cap = weight[0]; cap <= W; cap++) {
             dp[0][cap] = value[0];
@@ -369,26 +397,29 @@ public class Knapsack01 {
         for (int i = 1; i < n; i++) {
             for (int cap = 0; cap <= W; cap++) {
                 int notTake = dp[i - 1][cap];
-                int take = Integer.MIN_VALUE;
+                int take = INT_MIN;
                 if (weight[i] <= cap) {
                     take = value[i] + dp[i - 1][cap - weight[i]];
                 }
-                dp[i][cap] = Math.max(take, notTake);
+                dp[i][cap] = max(take, notTake);
             }
         }
         return dp[n - 1][W];
     }
-}
+};
 ```
 
 ### 5d. Space optimization to 1D — iterate capacity DOWNWARD
 
-```java
-public class Knapsack01 {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int knapsack(int W, int[] weight, int[] value) {
-        int n = weight.length;
-        int[] dp = new int[W + 1];
+class Knapsack01 {
+public:
+    int knapsack(int W, vector<int>& weight, vector<int>& value) {
+        int n = weight.size();
+        vector<int> dp(W + 1, 0);
 
         for (int cap = weight[0]; cap <= W; cap++) {
             dp[cap] = value[0];
@@ -397,12 +428,12 @@ public class Knapsack01 {
         for (int i = 1; i < n; i++) {
             for (int cap = W; cap >= weight[i]; cap--) { // DOWNWARD
                 int take = value[i] + dp[cap - weight[i]];
-                dp[cap] = Math.max(dp[cap], take);
+                dp[cap] = max(dp[cap], take);
             }
         }
         return dp[W];
     }
-}
+};
 ```
 
 **Why downward?** In the 1D array, `dp[cap]` is being updated in place. The recurrence for 0/1 reads from the **previous row** at `dp[cap - weight[i]]`. If we iterate **upward**, by the time we reach `cap` the slot `dp[cap - weight[i]]` has *already been updated in this same pass* — meaning item `i` could be counted twice (that is the *unbounded* behavior). Iterating **downward** guarantees `dp[cap - weight[i]]` still holds the previous row's value, preserving the "each item once" semantics.
@@ -425,22 +456,23 @@ public class Knapsack01 {
 
 ### 6a. Memoization
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class CoinChangeMin {
+class CoinChangeMin {
+    static const int INF = 1e9;
 
-    private static final int INF = (int) 1e9;
-
-    public int coinChange(int[] coins, int amount) {
-        int n = coins.length;
-        int[][] dp = new int[n][amount + 1];
-        for (int[] row : dp) Arrays.fill(row, -1);
+public:
+    int coinChange(vector<int>& coins, int amount) {
+        int n = coins.size();
+        vector<vector<int>> dp(n, vector<int>(amount + 1, -1));
         int ans = solve(n - 1, amount, coins, dp);
         return ans >= INF ? -1 : ans;
     }
 
-    private int solve(int idx, int rem, int[] coins, int[][] dp) {
+private:
+    int solve(int idx, int rem, vector<int>& coins, vector<vector<int>>& dp) {
         if (idx == 0) {
             return (rem % coins[0] == 0) ? rem / coins[0] : INF;
         }
@@ -451,31 +483,31 @@ public class CoinChangeMin {
         if (coins[idx] <= rem) {
             take = 1 + solve(idx, rem - coins[idx], coins, dp); // STAY on idx
         }
-        return dp[idx][rem] = Math.min(take, notTake);
+        return dp[idx][rem] = min(take, notTake);
     }
-}
+};
 ```
 
 ### 6b. Tabulation, 1D — iterate capacity UPWARD
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class CoinChangeMin {
-
-    public int coinChange(int[] coins, int amount) {
-        int[] dp = new int[amount + 1];
-        Arrays.fill(dp, amount + 1); // sentinel "infinity" (can't exceed amount coins)
+class CoinChangeMin {
+public:
+    int coinChange(vector<int>& coins, int amount) {
+        vector<int> dp(amount + 1, amount + 1); // sentinel "infinity" (can't exceed amount coins)
         dp[0] = 0;
 
-        for (int coin : coins) {
+        for (auto& coin : coins) {
             for (int rem = coin; rem <= amount; rem++) { // UPWARD: unbounded reuse
-                dp[rem] = Math.min(dp[rem], 1 + dp[rem - coin]);
+                dp[rem] = min(dp[rem], 1 + dp[rem - coin]);
             }
         }
         return dp[amount] > amount ? -1 : dp[amount];
     }
-}
+};
 ```
 
 **Why upward?** Because the coin is **unbounded**, the take branch reads from the *current* row (`dp[rem - coin]` updated in this same pass). Iterating **upward** is exactly what makes `dp[rem - coin]` already reflect "this coin used one or more times," allowing multiple uses of the same coin. (This is the mirror image of the 0/1 downward rule from problem 18.)
@@ -501,51 +533,55 @@ To count **combinations** (not permutations), the 1D form puts **coins on the ou
 
 ### 7a. Memoization
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class CoinChangeII {
-
-    public int change(int amount, int[] coins) {
-        int n = coins.length;
-        long[][] dp = new long[n][amount + 1];
-        for (long[] row : dp) Arrays.fill(row, -1);
+class CoinChangeII {
+public:
+    int change(int amount, vector<int>& coins) {
+        int n = coins.size();
+        vector<vector<long long>> dp(n, vector<long long>(amount + 1, -1));
         return (int) solve(n - 1, amount, coins, dp);
     }
 
-    private long solve(int idx, int rem, int[] coins, long[][] dp) {
+private:
+    long long solve(int idx, int rem, vector<int>& coins, vector<vector<long long>>& dp) {
         if (idx == 0) {
             return (rem % coins[0] == 0) ? 1 : 0;
         }
         if (dp[idx][rem] != -1) return dp[idx][rem];
 
-        long notTake = solve(idx - 1, rem, coins, dp);
-        long take = 0;
+        long long notTake = solve(idx - 1, rem, coins, dp);
+        long long take = 0;
         if (coins[idx] <= rem) {
             take = solve(idx, rem - coins[idx], coins, dp); // STAY on idx
         }
         return dp[idx][rem] = take + notTake;
     }
-}
+};
 ```
 
 ### 7b. Tabulation, 1D — outer loop coins, inner loop amount (UPWARD)
 
-```java
-public class CoinChangeII {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int change(int amount, int[] coins) {
-        long[] dp = new long[amount + 1];
+class CoinChangeII {
+public:
+    int change(int amount, vector<int>& coins) {
+        vector<long long> dp(amount + 1, 0);
         dp[0] = 1; // one way to make 0: pick nothing
 
-        for (int coin : coins) {              // OUTER: coins
+        for (auto& coin : coins) {              // OUTER: coins
             for (int rem = coin; rem <= amount; rem++) { // INNER: amount, upward
                 dp[rem] += dp[rem - coin];
             }
         }
         return (int) dp[amount];
     }
-}
+};
 ```
 
 If you swapped the loops (amount outer, coins inner) you would count **permutations** instead of combinations.
@@ -575,28 +611,32 @@ So the problem reduces to **Count Subsets with Sum = `(sum + target) / 2`** (pro
 
 **Guards.**
 - If `(sum + target)` is **odd**, `S1` is not an integer → answer `0`.
-- If `Math.abs(target) > sum` → impossible → answer `0`.
+- If `abs(target) > sum` → impossible → answer `0`.
 - The derived subset target must be non-negative (it is, given the guards above, since `(sum + target) >= 0`).
 - Zeros are still handled by the count-subset base case (each zero doubles the count).
 
-```java
-public class TargetSum {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int findTargetSumWays(int[] nums, int target) {
+class TargetSum {
+public:
+    int findTargetSumWays(vector<int>& nums, int target) {
         int sum = 0;
-        for (int x : nums) sum += x;
+        for (auto& x : nums) sum += x;
 
         // S1 = (sum + target) / 2 must be a non-negative integer.
-        if (Math.abs(target) > sum) return 0;
+        if (abs(target) > sum) return 0;
         if (((sum + target) & 1) == 1) return 0;
         int s1 = (sum + target) / 2;
 
         return countSubsets(nums, s1);
     }
 
-    private int countSubsets(int[] arr, int k) {
-        int n = arr.length;
-        int[][] dp = new int[n][k + 1];
+private:
+    int countSubsets(vector<int>& arr, int k) {
+        int n = arr.size();
+        vector<vector<int>> dp(n, vector<int>(k + 1, 0));
 
         if (arr[0] == 0) {
             dp[0][0] = 2;                 // take or skip the zero
@@ -614,7 +654,7 @@ public class TargetSum {
         }
         return dp[n - 1][k];
     }
-}
+};
 ```
 
 | Aspect | Complexity |
@@ -632,32 +672,35 @@ public class TargetSum {
 
 By symmetry it suffices to scan `s` from `0` to `total/2` (each reachable `s` and its complement give the same difference), and minimize `total - 2*s`.
 
-```java
-public class MinSubsetSumDifference {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int minDifference(int[] arr) {
+class MinSubsetSumDifference {
+public:
+    int minDifference(vector<int>& arr) {
         int total = 0;
-        for (int x : arr) total += x;
+        for (auto& x : arr) total += x;
 
         // dp[s] = is sum s reachable by some subset?
-        boolean[] dp = new boolean[total + 1];
+        vector<bool> dp(total + 1, false);
         dp[0] = true;
-        for (int num : arr) {
+        for (auto& num : arr) {
             for (int s = total; s >= num; s--) { // 0/1 → downward
                 dp[s] = dp[s] || dp[s - num];
             }
         }
 
-        int best = Integer.MAX_VALUE;
+        int best = INT_MAX;
         for (int s = 0; s <= total / 2; s++) {
             if (dp[s]) {
                 int diff = total - 2 * s; // = |s - (total - s)|, s <= total/2
-                best = Math.min(best, diff);
+                best = min(best, diff);
             }
         }
         return best;
     }
-}
+};
 ```
 
 A worked check on `arr = [1, 6, 11, 5]`, `total = 23`: reachable sums include `11` (= 6+5) and `12` (= 1+11). At `s = 11`, `diff = 23 - 22 = 1`. That is the minimum. ✔
@@ -719,13 +762,13 @@ Quick triage:
 ## 12. Summary
 
 - Everything in this pattern is the same `(index, remaining)` state machine with a **take/skip** decision.
-- **Problem 18 (0/1 Knapsack)** is the template: master recursion → memo (`Arrays.fill(dp, -1)`) → tabulation → 1D. The other 0/1 problems are transformations:
+- **Problem 18 (0/1 Knapsack)** is the template: master recursion → memo (initialized to `-1`) → tabulation → 1D. The other 0/1 problems are transformations:
   - **Subset Sum** → boolean `OR`.
   - **Partition Equal (416)** → subset sum with `target = total/2`, return false on odd total.
   - **Count Subsets / Target Sum (494)** → `+` counting; Target Sum reduces via `S1 = (sum+target)/2`.
   - **Min Subset Diff** → reachable sums + sweep `min(total - 2s)`.
 - **Unbounded** problems (Coin Change 322 / II 518) keep the index on **take** and iterate the 1D capacity loop **upward**; Coin Change II additionally loops **coins outer** to count combinations.
 - The **loop-direction rule** (down for 0/1, up for unbounded) is the highest-yield thing to memorize — it is the difference between a correct and a subtly broken solution.
-- Use `Math.min` / `Math.max` for optimization, `Integer.compare` rather than subtraction for comparators, and `long` accumulators when counts can overflow `int` (Coin Change II).
+- Use `min` / `max` for optimization, a comparison lambda rather than subtraction for custom comparators, and `long long` accumulators when counts can overflow `int` (Coin Change II).
 
 > **Last Updated:** 2026-06-26

@@ -9,51 +9,55 @@
 
 Given a string of digits, insert `+`, `-`, `*` operators to reach a target. Return all valid expressions.
 
-```java
-public List<String> addOperators(String num, int target) {
-    List<String> result = new ArrayList<>();
-    backtrack(num, target, 0, 0, 0, new StringBuilder(), result);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<string> addOperators(string num, int target) {
+    vector<string> result;
+    string expr;
+    backtrack(num, target, 0, 0, 0, expr, result);
     return result;
 }
 
 // pos: current position in num
 // eval: current evaluated value of expression so far
 // mult: value of the "last term" — needed to undo multiplication on next '*'
-private void backtrack(String num, int target, int pos, long eval, long mult,
-                        StringBuilder expr, List<String> res) {
-    if (pos == num.length()) {
-        if (eval == target) res.add(expr.toString());
+void backtrack(string& num, int target, int pos, long long eval, long long mult,
+               string& expr, vector<string>& res) {
+    if (pos == (int)num.length()) {
+        if (eval == target) res.push_back(expr);
         return;
     }
 
     int len = expr.length();
-    long cur = 0;
+    long long cur = 0;
 
-    for (int i = pos; i < num.length(); i++) {
+    for (int i = pos; i < (int)num.length(); i++) {
         // Skip leading zeros (but allow single "0")
-        if (i != pos && num.charAt(pos) == '0') break;
-        cur = cur * 10 + (num.charAt(i) - '0');
+        if (i != pos && num[pos] == '0') break;
+        cur = cur * 10 + (num[i] - '0');
 
         if (pos == 0) {
             // First number: no operator before it
-            expr.append(cur);
+            expr += to_string(cur);
             backtrack(num, target, i + 1, cur, cur, expr, res);
-            expr.setLength(len);
+            expr.resize(len);
         } else {
             // '+' operator
-            expr.append('+').append(cur);
+            expr += "+" + to_string(cur);
             backtrack(num, target, i + 1, eval + cur, cur, expr, res);
-            expr.setLength(len);
+            expr.resize(len);
 
             // '-' operator
-            expr.append('-').append(cur);
+            expr += "-" + to_string(cur);
             backtrack(num, target, i + 1, eval - cur, -cur, expr, res);
-            expr.setLength(len);
+            expr.resize(len);
 
             // '*' operator — must undo previous term's contribution and re-apply with multiplication
-            expr.append('*').append(cur);
+            expr += "*" + to_string(cur);
             backtrack(num, target, i + 1, eval - mult + mult * cur, mult * cur, expr, res);
-            expr.setLength(len);
+            expr.resize(len);
         }
     }
 }
@@ -72,40 +76,46 @@ Example: `2 + 3 * 5` — when we reach `*5`, `eval = 5`, `mult = 3`.
 
 Every operator can be a "split point" — recurse on left and right subexpressions.
 
-```java
-public List<Integer> diffWaysToCompute(String expression) {
-    List<Integer> result = new ArrayList<>();
-    for (int i = 0; i < expression.length(); i++) {
-        char c = expression.charAt(i);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> diffWaysToCompute(string expression) {
+    vector<int> result;
+    for (int i = 0; i < (int)expression.length(); i++) {
+        char c = expression[i];
         if (c == '+' || c == '-' || c == '*') {
             // Divide: left of operator, right of operator
-            List<Integer> left  = diffWaysToCompute(expression.substring(0, i));
-            List<Integer> right = diffWaysToCompute(expression.substring(i + 1));
+            vector<int> left  = diffWaysToCompute(expression.substr(0, i));
+            vector<int> right = diffWaysToCompute(expression.substr(i + 1));
             // Conquer: combine all pairs
-            for (int l : left) {
-                for (int r : right) {
-                    if      (c == '+') result.add(l + r);
-                    else if (c == '-') result.add(l - r);
-                    else               result.add(l * r);
+            for (auto l : left) {
+                for (auto r : right) {
+                    if      (c == '+') result.push_back(l + r);
+                    else if (c == '-') result.push_back(l - r);
+                    else               result.push_back(l * r);
                 }
             }
         }
     }
     // Base case: no operator found → pure number
-    if (result.isEmpty()) result.add(Integer.parseInt(expression));
+    if (result.empty()) result.push_back(stoi(expression));
     return result;
 }
 ```
 
 **Memoized version:** Cache by `expression` substring to avoid recomputation.
 
-```java
-private Map<String, List<Integer>> memo = new HashMap<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public List<Integer> diffWaysToCompute(String expression) {
-    if (memo.containsKey(expression)) return memo.get(expression);
+unordered_map<string, vector<int>> memo;
+
+vector<int> diffWaysToCompute(string expression) {
+    if (memo.count(expression)) return memo[expression];
     // ... same logic ...
-    memo.put(expression, result);
+    memo[expression] = result;
     return result;
 }
 ```

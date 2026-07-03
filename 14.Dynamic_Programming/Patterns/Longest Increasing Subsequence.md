@@ -13,7 +13,7 @@ The five problems below progress from the classic LIS, through reconstruction, i
 | 37 | Longest Increasing Subsequence | LC 300 | `O(n^2)` DP **and** `O(n log n)` tails array |
 | 38 | Print LIS | GFG | Parent pointers to reconstruct the sequence |
 | 39 | Largest Divisible Subset | LC 368 | Predicate becomes `nums[i] % nums[j] == 0` |
-| 40 | Longest String Chain | LC 1048 | Predicate is "is a predecessor word"; DP over a HashMap |
+| 40 | Longest String Chain | LC 1048 | Predicate is "is a predecessor word"; DP over an `std::unordered_map` |
 | 41 | Number of LIS | LC 673 | Add a `count[]` array alongside `length[]` |
 
 Sibling patterns: [Partition DP (MCM)](./Partition%20DP%20(MCM).md) · [DP on Subsequences](./DP%20on%20Subsequences.md)
@@ -60,33 +60,34 @@ That is the entire insight. Now let's apply it.
 
 **Recurrence.** `dp[i] = 1 + max(dp[j])` for all `j < i` with `nums[j] < nums[i]`; otherwise `dp[i] = 1`.
 
-**Base case.** `Arrays.fill(dp, 1)`.
+**Base case.** `fill(dp.begin(), dp.end(), 1)`.
 
 **Answer.** `max(dp[i])`.
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int lengthOfLIS(int[] nums) {
-        int n = nums.length;
+public:
+    int lengthOfLIS(vector<int>& nums) {
+        int n = nums.size();
         if (n == 0) return 0;
 
-        int[] dp = new int[n];
-        Arrays.fill(dp, 1);          // every element is an LIS of length 1
+        vector<int> dp(n, 1);          // every element is an LIS of length 1
 
         int best = 1;
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < i; j++) {
                 if (nums[j] < nums[i]) {      // canExtend predicate
-                    dp[i] = Math.max(dp[i], dp[j] + 1);
+                    dp[i] = max(dp[i], dp[j] + 1);
                 }
             }
-            best = Math.max(best, dp[i]);
+            best = max(best, dp[i]);
         }
         return best;
     }
-}
+};
 ```
 
 **Complexity**
@@ -124,11 +125,15 @@ We maintain an array `tails`, where **`tails[len - 1]` holds the smallest possib
 
 Because `tails` is sorted, "find the leftmost tail `>= x`" is a `lower_bound` binary search.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int lengthOfLIS(int[] nums) {
-        int n = nums.length;
-        int[] tails = new int[n];   // tails[k] = smallest tail of an increasing subseq of length k+1
+public:
+    int lengthOfLIS(vector<int>& nums) {
+        int n = nums.size();
+        vector<int> tails(n);   // tails[k] = smallest tail of an increasing subseq of length k+1
         int size = 0;               // current length of the LIS / number of valid tails
 
         for (int x : nums) {
@@ -143,7 +148,7 @@ class Solution {
 
     // Returns the first index in [0, size) whose value is >= target.
     // If none, returns size (i.e. target is larger than all current tails).
-    private int lowerBound(int[] tails, int size, int target) {
+    int lowerBound(vector<int>& tails, int size, int target) {
         int lo = 0, hi = size;        // search in [lo, hi)
         while (lo < hi) {
             int mid = lo + (hi - lo) / 2;
@@ -155,17 +160,19 @@ class Solution {
         }
         return lo;
     }
-}
+};
 ```
 
-**Using `Arrays.binarySearch` instead of a manual search.** `Arrays.binarySearch(tails, 0, size, x)` returns the index if found, or `-(insertionPoint) - 1` if not. For a *strictly* increasing LIS we want the insertion point of `x`, so:
+**Using `lower_bound` instead of a manual search.** `lower_bound(tails.begin(), tails.begin() + size, x)` returns an iterator to the first element `>= x`. To get the index:
 
-```java
-int idx = Arrays.binarySearch(tails, 0, size, x);
-int pos = (idx >= 0) ? idx : -(idx + 1);   // lower-bound style insertion point
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int pos = (int)(lower_bound(tails.begin(), tails.begin() + size, x) - tails.begin());
 ```
 
-Note `Arrays.binarySearch` finds an exact match arbitrarily among duplicates, so the manual `lowerBound` is preferred when correctness around equal keys matters. For strictly increasing LIS the difference is moot because we always overwrite at the insertion point and equal values map to the same slot.
+Note `lower_bound` always finds the leftmost element `>= x`, which is exactly what we want for a strictly increasing LIS. The manual `lowerBound` function in the solution above and this `lower_bound` call are equivalent — use whichever is clearer. For strictly increasing LIS the difference is moot because we always overwrite at the insertion point and equal values map to the same slot.
 
 **Complexity**
 
@@ -203,21 +210,19 @@ We extend the `O(n^2)` DP with a **parent (hash) pointer** array. `parent[i]` st
 
 **State.** Same `dp[i]` as Problem 37, plus `parent[i]` = predecessor index (or `i` itself / `-1` if the chain starts here).
 
-```java
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public List<Integer> printLIS(int[] nums) {
-        int n = nums.length;
-        List<Integer> result = new ArrayList<>();
+public:
+    vector<int> printLIS(vector<int>& nums) {
+        int n = nums.size();
+        vector<int> result;
         if (n == 0) return result;
 
-        int[] dp = new int[n];
-        int[] parent = new int[n];
-        Arrays.fill(dp, 1);
+        vector<int> dp(n, 1);
+        vector<int> parent(n);
         for (int i = 0; i < n; i++) {
             parent[i] = i;          // self-reference marks a chain start
         }
@@ -238,13 +243,13 @@ class Solution {
 
         // Walk the parent chain backwards from bestIdx.
         for (int cur = bestIdx; ; cur = parent[cur]) {
-            result.add(nums[cur]);
+            result.push_back(nums[cur]);
             if (parent[cur] == cur) break;   // reached a chain start
         }
-        Collections.reverse(result);
+        reverse(result.begin(), result.end());
         return result;
     }
-}
+};
 ```
 
 **Complexity**
@@ -285,23 +290,21 @@ Collected `[101, 7, 5, 2]`, reversed → **`[2, 5, 7, 101]`**.
 
 Reconstruction uses parent pointers exactly like Problem 38.
 
-```java
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public List<Integer> largestDivisibleSubset(int[] nums) {
-        int n = nums.length;
-        List<Integer> result = new ArrayList<>();
+public:
+    vector<int> largestDivisibleSubset(vector<int>& nums) {
+        int n = nums.size();
+        vector<int> result;
         if (n == 0) return result;
 
-        Arrays.sort(nums);                 // ascending; enables single-direction divisibility
+        sort(nums.begin(), nums.end());                 // ascending; enables single-direction divisibility
 
-        int[] dp = new int[n];
-        int[] parent = new int[n];
-        Arrays.fill(dp, 1);
+        vector<int> dp(n, 1);
+        vector<int> parent(n);
         for (int i = 0; i < n; i++) {
             parent[i] = i;
         }
@@ -321,13 +324,13 @@ class Solution {
         }
 
         for (int cur = bestIdx; ; cur = parent[cur]) {
-            result.add(nums[cur]);
+            result.push_back(nums[cur]);
             if (parent[cur] == cur) break;
         }
-        Collections.reverse(result);
+        reverse(result.begin(), result.end());
         return result;
     }
-}
+};
 ```
 
 **Complexity**
@@ -359,40 +362,38 @@ class Solution {
 **The variation.** Same template, but:
 
 1. **Sort by length.** A chain only ever goes from a shorter word to a word exactly one longer, so process words in increasing length order — every potential predecessor is seen before the word that extends it.
-2. **Predicate via "remove one char."** Instead of comparing all pairs (`O(n^2 * L)`), for each word we generate its `L` possible predecessors (drop one character at a time) and look them up in a `HashMap`. This is the "can extend" predicate, computed by deletion rather than comparison.
-3. **DP over a HashMap.** `dp.get(word)` = longest chain ending at `word`.
+2. **Predicate via "remove one char."** Instead of comparing all pairs (`O(n^2 * L)`), for each word we generate its `L` possible predecessors (drop one character at a time) and look them up in an `std::unordered_map`. This is the "can extend" predicate, computed by deletion rather than comparison.
+3. **DP over an `std::unordered_map`.** `dp[word]` = longest chain ending at `word`.
 
-```java
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int longestStrChain(String[] words) {
+public:
+    int longestStrChain(vector<string>& words) {
         // Sort by ascending length so predecessors are processed first.
-        Arrays.sort(words, Comparator.comparingInt(String::length));
+        sort(words.begin(), words.end(), [](const string& a, const string& b) {
+            return a.length() < b.length();
+        });
 
-        Map<String, Integer> dp = new HashMap<>();   // word -> longest chain ending here
+        unordered_map<string, int> dp;   // word -> longest chain ending here
         int best = 1;
 
-        for (String word : words) {
+        for (auto& word : words) {
             int curBest = 1;                          // the word by itself
-            StringBuilder sb = new StringBuilder(word);
-            for (int i = 0; i < word.length(); i++) {
-                sb.deleteCharAt(i);                   // candidate predecessor
-                String predecessor = sb.toString();
-                if (dp.containsKey(predecessor)) {
-                    curBest = Math.max(curBest, dp.get(predecessor) + 1);
+            for (int i = 0; i < (int)word.length(); i++) {
+                string predecessor = word.substr(0, i) + word.substr(i + 1);   // candidate predecessor
+                if (dp.count(predecessor)) {
+                    curBest = max(curBest, dp[predecessor] + 1);
                 }
-                sb.insert(i, word.charAt(i));         // restore for next deletion
             }
-            dp.put(word, curBest);
-            best = Math.max(best, curBest);
+            dp[word] = curBest;
+            best = max(best, curBest);
         }
         return best;
     }
-}
+};
 ```
 
 **Complexity** — let `n` = number of words, `L` = max word length.
@@ -400,7 +401,7 @@ class Solution {
 | Metric | Value |
 |--------|-------|
 | Time | `O(n * L^2)` (for each word, `L` deletions, each building an `O(L)` string) |
-| Space | `O(n * L)` (the HashMap of words) |
+| Space | `O(n * L)` (the `std::unordered_map` of words) |
 
 #### Dry run
 
@@ -432,18 +433,18 @@ class Solution {
 
 Finally, sum `count[i]` over all `i` where `length[i]` equals the global maximum length.
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int findNumberOfLIS(int[] nums) {
-        int n = nums.length;
+public:
+    int findNumberOfLIS(vector<int>& nums) {
+        int n = nums.size();
         if (n == 0) return 0;
 
-        int[] length = new int[n];   // length of LIS ending at i
-        int[] count  = new int[n];   // number of LIS of that length ending at i
-        Arrays.fill(length, 1);
-        Arrays.fill(count, 1);
+        vector<int> length(n, 1);   // length of LIS ending at i
+        vector<int> count(n, 1);    // number of LIS of that length ending at i
 
         int maxLen = 1;
         for (int i = 0; i < n; i++) {
@@ -457,7 +458,7 @@ class Solution {
                     }
                 }
             }
-            maxLen = Math.max(maxLen, length[i]);
+            maxLen = max(maxLen, length[i]);
         }
 
         int total = 0;
@@ -468,7 +469,7 @@ class Solution {
         }
         return total;
     }
-}
+};
 ```
 
 **Complexity**
@@ -505,7 +506,7 @@ Answer **2** (the two LISs: `1,3,5,7` and `1,3,4,7`).
 | "strictly increasing" / "monotonic" chain of values | LIS `O(n^2)` or `O(n log n)` |
 | Need the **actual** sequence, not just its length | Add parent pointers (Problem 38) |
 | Pairwise **divisibility** of a subset | Largest Divisible Subset (sort + `% == 0` predicate) |
-| Build longer **words/strings** by adding/removing one element | Longest String Chain (sort by length + HashMap DP) |
+| Build longer **words/strings** by adding/removing one element | Longest String Chain (sort by length + `std::unordered_map` DP) |
 | "**how many** longest ..." / count of optimal subsequences | Number of LIS (`length[]` + `count[]`) |
 | `n <= ~2500` and an `O(n^2)` chain DP is fast enough | `O(n^2)` template |
 | `n` up to `~10^5`, only the **length** is needed | `O(n log n)` tails / patience sorting |
@@ -520,7 +521,7 @@ The LIS pattern is fundamentally **"best chain ending at `i`, over a pluggable p
 - **The predicate is the lever.** `nums[j] < nums[i]` → strict increase (37). `nums[i] % nums[j] == 0` after sorting → divisible subset (39). "remove one char to reach a predecessor" after sorting by length → string chain (40). Same loop, different `if`.
 - **Reconstruction = parent pointers.** Store where each `dp[i]` came from, walk backwards from the best index, reverse (38, 39).
 - **Counting = a parallel `count[]` array.** Reset on a strictly longer chain, accumulate on a tie (41). Getting the reset-vs-accumulate distinction right is the whole problem.
-- **The `O(n log n)` upgrade.** Maintain a sorted `tails` array where `tails[k]` is the smallest tail of any increasing subsequence of length `k+1`; binary-search (`lowerBound`) the insertion point of each element. The array length is the LIS length, but its contents are only a length witness — reconstruct with parent pointers if you need the actual sequence.
+- **The `O(n log n)` upgrade.** Maintain a sorted `tails` array where `tails[k]` is the smallest tail of any increasing subsequence of length `k+1`; binary-search (`lower_bound`) the insertion point of each element. The array length is the LIS length, but its contents are only a length witness — reconstruct with parent pointers if you need the actual sequence.
 
 If you can write the `O(n^2)` template from memory and articulate the tails invariant, you own this entire pattern.
 

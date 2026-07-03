@@ -24,15 +24,15 @@
 
 Every number appears twice except one. Find the unique one.
 
-```java
-public int singleNumber(int[] nums) {
+```cpp
+int singleNumber(vector<int>& nums) {
     int result = 0;
-    for (int n : nums) result ^= n;
+    for (auto n : nums) result ^= n;
     return result; // all pairs cancel; unique remains
 }
 ```
 
-**Time:** O(n). **Space:** O(1). No HashSet needed.
+**Time:** O(n). **Space:** O(1). No `std::unordered_set` needed.
 
 ---
 
@@ -40,17 +40,17 @@ public int singleNumber(int[] nums) {
 
 Array of n numbers in range [0, n], one missing. XOR all indices 0..n with all values:
 
-```java
-public int missingNumber(int[] nums) {
-    int result = nums.length; // start with n
-    for (int i = 0; i < nums.length; i++) {
+```cpp
+int missingNumber(vector<int>& nums) {
+    int result = nums.size(); // start with n
+    for (int i = 0; i < (int)nums.size(); i++) {
         result ^= i ^ nums[i]; // XOR index and value cancel if equal; missing value survives
     }
     return result;
 }
 ```
 
-**Alternative:** `sum(0..n) - sum(nums)` = `n*(n+1)/2 - Arrays.stream(nums).sum()`. Both O(n) O(1).
+**Alternative:** `sum(0..n) - sum(nums)` = `n*(n+1)/2 - accumulate(nums.begin(), nums.end(), 0)`. Both O(n) O(1).
 
 ---
 
@@ -60,10 +60,10 @@ Every number appears **three times** except one. Cannot use XOR directly (triple
 
 **Bit counting approach:** Count bits mod 3. Any bit that appears 3k times cancels; the remaining bit belongs to the unique number.
 
-```java
-public int singleNumber(int[] nums) {
+```cpp
+int singleNumber(vector<int>& nums) {
     int ones = 0, twos = 0;
-    for (int n : nums) {
+    for (auto n : nums) {
         ones = (ones ^ n) & ~twos; // bits seen once (not in twos)
         twos = (twos ^ n) & ~ones; // bits seen twice (not in ones)
         // bits seen three times fall out of both
@@ -75,12 +75,12 @@ public int singleNumber(int[] nums) {
 **State machine:** Each bit cycles through states 0 → 1 → 2 → 0. `ones` tracks bits at state 1, `twos` at state 2.
 
 **Bit-by-bit approach (clearer but O(32)):**
-```java
-public int singleNumber(int[] nums) {
+```cpp
+int singleNumber(vector<int>& nums) {
     int result = 0;
     for (int bit = 0; bit < 32; bit++) {
         int sum = 0;
-        for (int n : nums) sum += (n >> bit) & 1;
+        for (auto n : nums) sum += (n >> bit) & 1;
         result |= (sum % 3) << bit;
     }
     return result;
@@ -93,21 +93,24 @@ public int singleNumber(int[] nums) {
 
 Two numbers appear once; all others appear twice. Find both.
 
-**Key insight:** `xor = a ^ b` (the XOR of the two unique numbers). Any set bit in `xor` is a bit where `a` and `b` differ — use it to partition the array.
+**Key insight:** `xorVal = a ^ b` (the XOR of the two unique numbers). Any set bit in `xorVal` is a bit where `a` and `b` differ — use it to partition the array.
 
-```java
-public int[] singleNumber(int[] nums) {
-    int xor = 0;
-    for (int n : nums) xor ^= n;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> singleNumber(vector<int>& nums) {
+    int xorVal = 0;
+    for (auto n : nums) xorVal ^= n;
 
     // Find any differing bit (e.g., lowest set bit)
-    int diff = xor & (-xor); // isolate lowest set bit
+    int diff = xorVal & (-xorVal); // isolate lowest set bit
 
     int a = 0;
-    for (int n : nums) {
+    for (auto n : nums) {
         if ((n & diff) != 0) a ^= n; // group 1: numbers with this bit set
     }
-    return new int[]{a, xor ^ a}; // b = xor ^ a
+    return {a, xorVal ^ a}; // b = xorVal ^ a
 }
 ```
 
@@ -119,14 +122,17 @@ public int[] singleNumber(int[] nums) {
 
 Prefix XOR — analogous to prefix sum but with XOR.
 
-```java
-public int[] xorQueries(int[] arr, int[][] queries) {
-    int n = arr.length;
-    int[] prefix = new int[n + 1]; // prefix[i] = XOR of arr[0..i-1]
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> xorQueries(vector<int>& arr, vector<vector<int>>& queries) {
+    int n = arr.size();
+    vector<int> prefix(n + 1); // prefix[i] = XOR of arr[0..i-1]
     for (int i = 0; i < n; i++) prefix[i + 1] = prefix[i] ^ arr[i];
 
-    int[] result = new int[queries.length];
-    for (int i = 0; i < queries.length; i++) {
+    vector<int> result(queries.size());
+    for (int i = 0; i < (int)queries.size(); i++) {
         int l = queries[i][0], r = queries[i][1];
         result[i] = prefix[r + 1] ^ prefix[l]; // XOR[l..r] = prefix[r+1] ^ prefix[l]
     }
@@ -143,15 +149,15 @@ public int[] xorQueries(int[] arr, int[][] queries) {
 `XOR(L, R) = XOR(0, L-1) ^ XOR(0, R)`
 
 XOR from 0 to n has a 4-cycle:
-```java
+```cpp
 int xorUpTo(int n) {
-    return switch (n % 4) {
-        case 0 -> n;
-        case 1 -> 1;
-        case 2 -> n + 1;
-        case 3 -> 0;
-        default -> throw new IllegalStateException();
-    };
+    switch (n % 4) {
+        case 0: return n;
+        case 1: return 1;
+        case 2: return n + 1;
+        case 3: return 0;
+        default: return -1; // unreachable
+    }
 }
 int xorRange(int l, int r) { return xorUpTo(r) ^ xorUpTo(l - 1); }
 ```

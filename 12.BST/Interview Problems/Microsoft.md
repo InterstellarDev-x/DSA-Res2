@@ -6,12 +6,13 @@ Microsoft interviews favor **clean implementation of the core operations** and s
 
 The node type used throughout:
 
-```java
-public class TreeNode {
+```cpp
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
+};
 ```
 
 ---
@@ -22,31 +23,34 @@ public class TreeNode {
 
 **Approach discussion.** First locate the node by the usual BST descent. Deletion then splits into three cases:
 
-1. **Leaf (no children):** detach it — return `null`.
+1. **Leaf (no children):** detach it — return `nullptr`.
 2. **One child:** splice it out — return the non-null child.
 3. **Two children:** the hard case. Replace the node's value with its **inorder successor** (the smallest value in the right subtree = the **leftmost node of the right subtree**), then delete that successor node from the right subtree. The successor has at most a right child, so its deletion falls into case 1 or 2 — no infinite recursion.
 
 Why the successor works: it is the next-larger value, so substituting it preserves "everything left < node < everything right." (Symmetrically, the inorder predecessor — rightmost of the left subtree — also works.)
 
-```java
-public TreeNode deleteNode(TreeNode root, int key) {
-    if (root == null) return null;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    if (key < root.val) {
-        root.left = deleteNode(root.left, key);
-    } else if (key > root.val) {
-        root.right = deleteNode(root.right, key);
+TreeNode* deleteNode(TreeNode* root, int key) {
+    if (root == nullptr) return nullptr;
+
+    if (key < root->val) {
+        root->left = deleteNode(root->left, key);
+    } else if (key > root->val) {
+        root->right = deleteNode(root->right, key);
     } else {
         // found the node to delete
-        if (root.left == null) return root.right;     // 0 or 1 child (right)
-        if (root.right == null) return root.left;     // 1 child (left)
+        if (root->left == nullptr) return root->right;     // 0 or 1 child (right)
+        if (root->right == nullptr) return root->left;     // 1 child (left)
 
         // two children: find inorder successor = leftmost of right subtree
-        TreeNode succ = root.right;
-        while (succ.left != null) succ = succ.left;
+        TreeNode* succ = root->right;
+        while (succ->left != nullptr) succ = succ->left;
 
-        root.val = succ.val;                          // copy successor value up
-        root.right = deleteNode(root.right, succ.val);// delete the successor copy
+        root->val = succ->val;                           // copy successor value up
+        root->right = deleteNode(root->right, succ->val);// delete the successor copy
     }
     return root;
 }
@@ -64,10 +68,10 @@ Delete `50` from:
     20 40 60  80
 ```
 
-1. `key == root.val (50)`. Both children exist → two-children case.
+1. `key == root->val (50)`. Both children exist → two-children case.
 2. Find the inorder successor: go right to `70`, then left as far as possible → `60`. (`60` is the smallest value greater than `50`.)
-3. Copy `succ.val = 60` into the root. The tree now has `60` at the top *and* still a `60` in the right subtree (a temporary duplicate).
-4. Recursively delete `60` from the right subtree. `60` is found as the left child of `70`; it has no left child, so case "one child / leaf" returns `60.right` (`null`). `70.left` becomes `null`.
+3. Copy `succ->val = 60` into the root. The tree now has `60` at the top *and* still a `60` in the right subtree (a temporary duplicate).
+4. Recursively delete `60` from the right subtree. `60` is found as the left child of `70`; it has no left child, so case "one child / leaf" returns `60->right` (`nullptr`). `70->left` becomes `nullptr`.
 
 Result:
 
@@ -89,25 +93,29 @@ The BST property holds, and `60` (the leftmost-of-right) had at most a right chi
 
 **Approach discussion.** Preorder visits *root, then left subtree, then right subtree*. The naive approach finds a split point per node (O(n²) worst case). The optimal **O(n) upper-bound technique** processes each value exactly once: maintain a global index `i` and a recursion that is handed an **upper bound** for the current subtree. A value belongs to the current subtree only if it is below that bound; otherwise it belongs to some ancestor's right subtree, and we return without consuming it.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    private int i = 0;
-    private int[] pre;
+    int i = 0;
+    vector<int> pre;
 
-    public TreeNode bstFromPreorder(int[] preorder) {
-        this.pre = preorder;
-        return build(Integer.MAX_VALUE);
-    }
+    TreeNode* build(int bound) {
+        if (i == (int)pre.size() || pre[i] > bound) return nullptr;
 
-    private TreeNode build(int bound) {
-        if (i == pre.length || pre[i] > bound) return null;
-
-        TreeNode node = new TreeNode(pre[i++]);     // consume this value
-        node.left = build(node.val);                // left subtree bounded by node
-        node.right = build(bound);                  // right subtree keeps parent bound
+        TreeNode* node = new TreeNode(pre[i++]);     // consume this value
+        node->left = build(node->val);               // left subtree bounded by node
+        node->right = build(bound);                  // right subtree keeps parent bound
         return node;
     }
-}
+
+public:
+    TreeNode* bstFromPreorder(vector<int>& preorder) {
+        this->pre = preorder;
+        return build(INT_MAX);
+    }
+};
 ```
 
 **Why each element is consumed once.** The index `i` only ever advances — it increments exactly when a value is turned into a node, and never rewinds. Every recursive call either consumes the current value (creating a node and moving `i` forward) or returns immediately because `pre[i] > bound` (this value belongs higher up the tree). Since `i` goes from `0` to `n` monotonically and each step does O(1) work, the whole construction is O(n) time, O(h) recursion space.
@@ -122,31 +130,35 @@ The left child inherits the current node's value as its upper bound (everything 
 
 **Approach discussion.** This is **controlled inorder traversal** — we pause the walk between calls instead of running it to completion. Keep a stack pre-loaded with the path of left children from the current position. `next()` pops the top (the next smallest), then pushes the left spine of its right child. `hasNext()` is just "stack not empty."
 
-```java
-class BSTIterator {
-    private final Deque<TreeNode> stack = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public BSTIterator(TreeNode root) {
+class BSTIterator {
+    stack<TreeNode*> stk;
+
+    void pushLeft(TreeNode* node) {
+        while (node != nullptr) {
+            stk.push(node);
+            node = node->left;
+        }
+    }
+
+public:
+    BSTIterator(TreeNode* root) {
         pushLeft(root);
     }
 
-    public int next() {
-        TreeNode node = stack.pop();      // next smallest
-        pushLeft(node.right);             // queue up its right subtree's left spine
-        return node.val;
+    int next() {
+        TreeNode* node = stk.top(); stk.pop();  // next smallest
+        pushLeft(node->right);                  // queue up its right subtree's left spine
+        return node->val;
     }
 
-    public boolean hasNext() {
-        return !stack.isEmpty();
+    bool hasNext() {
+        return !stk.empty();
     }
-
-    private void pushLeft(TreeNode node) {
-        while (node != null) {
-            stack.push(node);
-            node = node.left;
-        }
-    }
-}
+};
 ```
 
 **Complexity.** `hasNext()` is O(1). `next()` is **amortized O(1)**: although a single call may push a long left spine, each node is pushed and popped exactly once across the entire iteration, so n calls do O(n) total work. Space is **O(h)** — the stack never holds more than one root-to-leaf path. This beats flattening the tree into a list up front (which would be O(n) space).

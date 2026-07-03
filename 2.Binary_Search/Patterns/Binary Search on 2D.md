@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#c-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -76,13 +76,16 @@ Type 1 (fully sorted):        Type 2 (row+col sorted):
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Search in 2D Matrix — Type 1 (Flatten)
 
-```java
-public boolean searchMatrix(int[][] matrix, int target) {
-    int m = matrix.length, n = matrix[0].length;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool searchMatrix(vector<vector<int>>& matrix, int target) {
+    int m = matrix.size(), n = matrix[0].size();
     int lo = 0, hi = m * n - 1;
 
     while (lo <= hi) {
@@ -100,11 +103,14 @@ public boolean searchMatrix(int[][] matrix, int target) {
 
 ### 2. Search in 2D Matrix II — Type 2 (Staircase)
 
-```java
-public boolean searchMatrix(int[][] matrix, int target) {
-    int row = 0, col = matrix[0].length - 1; // start top-right
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    while (row < matrix.length && col >= 0) {
+bool searchMatrix(vector<vector<int>>& matrix, int target) {
+    int row = 0, col = matrix[0].size() - 1; // start top-right
+
+    while (row < (int)matrix.size() && col >= 0) {
         if (matrix[row][col] == target) return true;
         else if (matrix[row][col] > target) col--; // too big: move left
         else row++;                                  // too small: move down
@@ -117,9 +123,27 @@ public boolean searchMatrix(int[][] matrix, int target) {
 
 ### 3. Median in Row-wise Sorted Matrix
 
-```java
-public int matrixMedian(int[][] matrix) {
-    int m = matrix.length, n = matrix[0].length;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int countLessEqual(vector<vector<int>>& matrix, int val) {
+    int count = 0;
+    for (auto& row : matrix) {
+        // Upper bound of val in this row
+        int lo = 0, hi = row.size();
+        while (lo < hi) {
+            int mid = lo + (hi - lo) / 2;
+            if (row[mid] <= val) lo = mid + 1;
+            else hi = mid;
+        }
+        count += lo;
+    }
+    return count;
+}
+
+int matrixMedian(vector<vector<int>>& matrix) {
+    int m = matrix.size(), n = matrix[0].size();
     int lo = 1, hi = (int) 1e9;
     int desired = (m * n + 1) / 2; // position of median
 
@@ -131,29 +155,26 @@ public int matrixMedian(int[][] matrix) {
     }
     return lo;
 }
-
-private int countLessEqual(int[][] matrix, int val) {
-    int count = 0;
-    for (int[] row : matrix) {
-        // Upper bound of val in this row
-        int lo = 0, hi = row.length;
-        while (lo < hi) {
-            int mid = lo + (hi - lo) / 2;
-            if (row[mid] <= val) lo = mid + 1;
-            else hi = mid;
-        }
-        count += lo;
-    }
-    return count;
-}
 // Time: O(m * log(n) * log(max)) | Space: O(1)
 ```
 
 ### 4. Kth Smallest Element in Sorted Matrix
 
-```java
-public int kthSmallest(int[][] matrix, int k) {
-    int n = matrix.length;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int countLessEqual(vector<vector<int>>& matrix, int mid, int n) {
+    int count = 0, row = n - 1, col = 0;
+    while (row >= 0 && col < n) {
+        if (matrix[row][col] <= mid) { count += row + 1; col++; }
+        else row--;
+    }
+    return count;
+}
+
+int kthSmallest(vector<vector<int>>& matrix, int k) {
+    int n = matrix.size();
     int lo = matrix[0][0], hi = matrix[n-1][n-1];
 
     while (lo < hi) {
@@ -163,15 +184,6 @@ public int kthSmallest(int[][] matrix, int k) {
         else hi = mid;
     }
     return lo;
-}
-
-private int countLessEqual(int[][] matrix, int mid, int n) {
-    int count = 0, row = n - 1, col = 0;
-    while (row >= 0 && col < n) {
-        if (matrix[row][col] <= mid) { count += row + 1; col++; }
-        else row--;
-    }
-    return count;
 }
 // Time: O((m+n) * log(max-min)) | Space: O(1)
 ```

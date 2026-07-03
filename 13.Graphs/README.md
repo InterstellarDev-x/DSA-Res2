@@ -2,7 +2,7 @@
 
 # Graphs
 
-A complete, production-quality reference for the **Graphs** topic — 53 problems across 7 core patterns, each with full Java solutions, complexity analysis, dry-runs, and recognition signals. Graphs unify a huge slice of interview questions: connectivity, ordering with dependencies, shortest paths, and spanning structures all reduce to a handful of reusable templates.
+A complete, production-quality reference for the **Graphs** topic — 53 problems across 7 core patterns, each with full C++ solutions, complexity analysis, dry-runs, and recognition signals. Graphs unify a huge slice of interview questions: connectivity, ordering with dependencies, shortest paths, and spanning structures all reduce to a handful of reusable templates.
 
 ---
 
@@ -86,19 +86,21 @@ How you store the graph drives both correctness and performance. Pick the repres
 
 ### Adjacency list (default for sparse graphs)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Unweighted, nodes 0..n-1
-List<List<Integer>> adj = new ArrayList<>();
-for (int i = 0; i < n; i++) adj.add(new ArrayList<>());
-for (int[] e : edges) {
-    adj.get(e[0]).add(e[1]);
-    adj.get(e[1]).add(e[0]); // omit for directed graphs
+vector<vector<int>> adj(n);
+for (auto& e : edges) {
+    adj[e[0]].push_back(e[1]);
+    adj[e[1]].push_back(e[0]); // omit for directed graphs
 }
 
 // Weighted: store {neighbor, weight}
-Map<Integer, List<int[]>> wadj = new HashMap<>();
-for (int[] e : edges) {
-    wadj.computeIfAbsent(e[0], k -> new ArrayList<>()).add(new int[]{e[1], e[2]});
+unordered_map<int, vector<pair<int,int>>> wadj;
+for (auto& e : edges) {
+    wadj[e[0]].push_back({e[1], e[2]});
 }
 ```
 
@@ -107,8 +109,11 @@ for (int[] e : edges) {
 
 ### Adjacency matrix
 
-```java
-int[][] g = new int[n][n]; // g[i][j] = weight, or 0/Integer.MAX_VALUE for "no edge"
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> g(n, vector<int>(n, 0)); // g[i][j] = weight, or 0/INT_MAX for "no edge"
 ```
 
 - Space `O(V^2)`. Edge existence lookup `O(1)`.
@@ -122,7 +127,7 @@ int[][] g = new int[n][n]; // g[i][j] = weight, or 0/Integer.MAX_VALUE for "no e
 | Dense graph / all-pairs distances | Adjacency matrix |
 | Input already a matrix (provinces, grids) | Matrix / treat grid cell as node |
 | Need fast "is there an edge u→v?" lookups | Adjacency matrix |
-| Weighted edges for Dijkstra / Prim | `Map<Integer, List<int[]>>` list |
+| Weighted edges for Dijkstra / Prim | `unordered_map<int, vector<pair<int,int>>>` list |
 
 ---
 
@@ -172,7 +177,7 @@ The single most important graph skill is mapping the problem to the right algori
 2. Layer on **Topological Sort** and **Cycle Detection** (closely related — both reason about the order of DFS/dependencies).
 3. Master the **Shortest Path** decision table; most "minimum cost / minimum time" problems map to one of its five algorithms.
 4. Learn **Union Find** thoroughly — it powers MST (Kruskal), connectivity, and grouping problems, and reappears in the design section.
-5. For each problem: read the idea, study the Java solution, then re-derive the recognition signal so you can spot the pattern under interview pressure.
+5. For each problem: read the idea, study the C++ solution, then re-derive the recognition signal so you can spot the pattern under interview pressure.
 
 ---
 

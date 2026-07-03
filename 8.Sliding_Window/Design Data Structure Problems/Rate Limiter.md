@@ -9,16 +9,19 @@
 
 Return the number of calls in the last 3000 milliseconds.
 
-```java
-class RecentCounter {
-    private Queue<Integer> window = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int ping(int t) {
-        window.offer(t);
-        while (window.peek() < t - 3000) window.poll();
+class RecentCounter {
+    queue<int> window;
+public:
+    int ping(int t) {
+        window.push(t);
+        while (window.front() < t - 3000) window.pop();
         return window.size();
     }
-}
+};
 ```
 
 **Why this works:** `t` is strictly increasing. The queue is a sliding window `[t-3000, t]`. Each timestamp is added once and removed once — O(1) amortized.
@@ -31,33 +34,39 @@ Count hits in the last 5 minutes (300 seconds). `hit(timestamp)` records a hit. 
 
 ### Approach 1: Queue-based sliding window
 
-```java
-class HitCounter {
-    private Queue<Integer> hits = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public void hit(int timestamp) {
-        hits.offer(timestamp);
+class HitCounter {
+    queue<int> hits;
+public:
+    void hit(int timestamp) {
+        hits.push(timestamp);
     }
 
-    public int getHits(int timestamp) {
-        while (!hits.isEmpty() && hits.peek() <= timestamp - 300) {
-            hits.poll();
+    int getHits(int timestamp) {
+        while (!hits.empty() && hits.front() <= timestamp - 300) {
+            hits.pop();
         }
         return hits.size();
     }
-}
+};
 ```
 
 **Complexity:** O(1) amortized for both operations. Queue can hold at most all hits in the last 300 seconds.
 
 ### Approach 2: Fixed-size circular array (O(1) worst case, O(1) space)
 
-```java
-class HitCounter {
-    private int[] times = new int[300];
-    private int[] counts = new int[300];
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public void hit(int timestamp) {
+class HitCounter {
+    vector<int> times = vector<int>(300, 0);
+    vector<int> counts = vector<int>(300, 0);
+public:
+    void hit(int timestamp) {
         int idx = timestamp % 300;
         if (times[idx] == timestamp) {
             counts[idx]++;         // same second → increment
@@ -67,7 +76,7 @@ class HitCounter {
         }
     }
 
-    public int getHits(int timestamp) {
+    int getHits(int timestamp) {
         int total = 0;
         for (int i = 0; i < 300; i++) {
             if (timestamp - times[i] < 300) {
@@ -76,7 +85,7 @@ class HitCounter {
         }
         return total;
     }
-}
+};
 ```
 
 **Circular array insight:** Timestamps 1 and 301 map to the same slot (`1 % 300 == 1`). We store the timestamp to detect stale entries. If `timestamp - times[idx] >= 300`, the slot is stale and not counted.
@@ -89,34 +98,36 @@ class HitCounter {
 
 Design a rate limiter that allows at most `capacity` requests per `windowMs` milliseconds.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class RateLimiter {
-    private final int capacity;
-    private final long windowMs;
-    private final Queue<Long> requests = new ArrayDeque<>();
+    const int capacity;
+    const long windowMs;
+    queue<long> requests;
+    mutex mtx; // use std::mutex for thread safety
+public:
+    RateLimiter(int capacity, long windowMs) : capacity(capacity), windowMs(windowMs) {}
 
-    public RateLimiter(int capacity, long windowMs) {
-        this.capacity = capacity;
-        this.windowMs = windowMs;
-    }
-
-    public synchronized boolean allow(long currentTimeMs) {
+    bool allow(long currentTimeMs) {
+        lock_guard<mutex> lock(mtx);
         // Remove requests outside the sliding window
-        while (!requests.isEmpty() && requests.peek() <= currentTimeMs - windowMs) {
-            requests.poll();
+        while (!requests.empty() && requests.front() <= currentTimeMs - windowMs) {
+            requests.pop();
         }
-        if (requests.size() < capacity) {
-            requests.offer(currentTimeMs);
+        if ((int)requests.size() < capacity) {
+            requests.push(currentTimeMs);
             return true;
         }
         return false;
     }
-}
+};
 ```
 
 **Key properties:**
 - O(1) amortized per `allow()` call
-- `synchronized` for thread safety in single-instance deployments
+- `lock_guard<mutex>` for thread safety in single-instance deployments
 - Sliding window (not fixed window) — avoids the "double burst at boundary" problem of fixed windows
 
 ---

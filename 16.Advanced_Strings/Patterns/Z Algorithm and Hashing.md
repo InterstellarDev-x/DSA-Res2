@@ -22,17 +22,20 @@ We maintain a window `[L, R]` — the rightmost segment we have seen that is *kn
 - Then we try to **extend** by comparing characters past `R`.
 - If we extended past `R`, update the window `L = i, R = i + z[i]`.
 
-```java
-public static int[] buildZ(String s) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> buildZ(const string& s) {
     int n = s.length();
-    int[] z = new int[n];
+    vector<int> z(n, 0);
     int L = 0, R = 0;            // current rightmost match window [L, R)
     for (int i = 1; i < n; i++) {
         if (i < R) {
-            z[i] = Math.min(R - i, z[i - L]);   // reuse mirror, capped at window
+            z[i] = min(R - i, z[i - L]);   // reuse mirror, capped at window
         }
         // try to extend the match beyond what we reused
-        while (i + z[i] < n && s.charAt(z[i]) == s.charAt(i + z[i])) {
+        while (i + z[i] < n && s[z[i]] == s[i + z[i]]) {
             z[i]++;
         }
         if (i + z[i] > R) {       // extended past R -> slide the window
@@ -52,15 +55,18 @@ The `min(R - i, z[i - L])` cap is the subtle part: the mirror value may claim mo
 
 To find pattern `P` inside text `T`, build the Z-array of `P + '$' + T` where `$` does not occur in either string. Every index `i` (in the `T` region) with `z[i] == |P|` marks an occurrence.
 
-```java
-public static List<Integer> zSearch(String text, String pattern) {
-    String combined = pattern + '$' + text;
-    int[] z = buildZ(combined);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> zSearch(const string& text, const string& pattern) {
+    string combined = pattern + '$' + text;
+    vector<int> z = buildZ(combined);
     int m = pattern.length();
-    List<Integer> result = new ArrayList<>();
-    for (int i = m + 1; i < combined.length(); i++) {
+    vector<int> result;
+    for (int i = m + 1; i < (int)combined.length(); i++) {
         if (z[i] == m) {
-            result.add(i - m - 1);   // offset back into the original text
+            result.push_back(i - m - 1);   // offset back into the original text
         }
     }
     return result;
@@ -78,16 +84,19 @@ Treat a string as a number in base `B`:
 > `hash(s) = (s[0]*B^(m-1) + s[1]*B^(m-2) + ... + s[m-1]*B^0) mod M`
 
 - **Base `B`:** a value larger than the alphabet, commonly `31`, `131`, or `256`.
-- **Modulus `M`:** a large prime such as `1_000_000_007L` to keep values in `long` range and spread collisions.
+- **Modulus `M`:** a large prime such as `1'000'000'007LL` to keep values in `long long` range and spread collisions.
 - **Precompute powers** `B^0..B^(m)` once so a window hash updates in O(1).
 
-```java
-static final long MOD = 1_000_000_007L;
-static final long BASE = 131L;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+const long long MOD = 1000000007LL;
+const long long BASE = 131LL;
 
 // Precompute base powers up to length n.
-static long[] powers(int n) {
-    long[] p = new long[n + 1];
+vector<long long> powers(int n) {
+    vector<long long> p(n + 1);
     p[0] = 1;
     for (int i = 1; i <= n; i++) p[i] = p[i - 1] * BASE % MOD;
     return p;
@@ -105,27 +114,31 @@ Rolling forward by one character (drop leftmost, append rightmost):
 
 An anagram is purely a **multiset of characters**, so a 26-slot frequency window is the natural, collision-free tool. This is fundamentally a fixed-size sliding window — see the [Sliding Window topic](../../8.Sliding_Window/Patterns/Fixed%20Size%20Window.md).
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public List<Integer> findAnagrams(String s, String p) {
-        List<Integer> res = new ArrayList<>();
+public:
+    vector<int> findAnagrams(string s, string p) {
+        vector<int> res;
         int n = s.length(), m = p.length();
         if (n < m) return res;
-        int[] need = new int[26], win = new int[26];
-        for (char c : p.toCharArray()) need[c - 'a']++;
+        vector<int> need(26, 0), win(26, 0);
+        for (auto& c : p) need[c - 'a']++;
         for (int i = 0; i < n; i++) {
-            win[s.charAt(i) - 'a']++;            // add right edge
-            if (i >= m) win[s.charAt(i - m) - 'a']--;  // remove left edge
-            if (i >= m - 1 && Arrays.equals(win, need)) {
-                res.add(i - m + 1);
+            win[s[i] - 'a']++;            // add right edge
+            if (i >= m) win[s[i - m] - 'a']--;  // remove left edge
+            if (i >= m - 1 && win == need) {
+                res.push_back(i - m + 1);
             }
         }
         return res;
     }
-}
+};
 ```
 
-**Complexity:** O(n * 26) ≈ O(n) time, O(1) space. `Arrays.equals` over 26 ints is constant.
+**Complexity:** O(n * 26) ≈ O(n) time, O(1) space. `==` on two `vector<int>` of size 26 is constant.
 
 **Hashing alternative.** Instead of comparing arrays you can keep a *commutative* hash of the window — e.g. a fixed-length 26-vector difference counter, or a polynomial over the sorted multiset. Frequency comparison is simpler and exact, so prefer it for anagrams; rolling hash earns its keep when *order matters* (exact substring), not for anagrams.
 
@@ -137,55 +150,60 @@ class Solution {
 
 **Strategy: binary search on the length + Rabin-Karp.** A duplicate of length `L` existing implies a duplicate of every length `< L` exists (a prefix of it), so the predicate "exists a duplicate of length `L`" is monotonic — binary-search `L` in `[1, n-1]`. For a fixed `L`, slide a rolling hash over all length-`L` windows and store hashes in a set; a repeat hash (verified) means a duplicate.
 
-```java
-class Solution {
-    static final long MOD = (1L << 61) - 1;   // large Mersenne prime, room in long
-    static final long BASE = 131L;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public String longestDupSubstring(String s) {
+class Solution {
+    static const long long MOD = (1LL << 61) - 1;   // large Mersenne prime, room in long long
+    static const long long BASE = 131LL;
+
+public:
+    string longestDupSubstring(string s) {
         int n = s.length();
-        int[] a = new int[n];
-        for (int i = 0; i < n; i++) a[i] = s.charAt(i) - 'a' + 1;
+        vector<int> a(n);
+        for (int i = 0; i < n; i++) a[i] = s[i] - 'a' + 1;
         int lo = 1, hi = n - 1, start = -1, bestLen = 0;
         while (lo <= hi) {
-            int mid = (lo + hi) >>> 1;
+            int mid = (lo + hi) >> 1;
             int pos = search(a, mid);
             if (pos != -1) { start = pos; bestLen = mid; lo = mid + 1; }
             else { hi = mid - 1; }
         }
-        return start == -1 ? "" : s.substring(start, start + bestLen);
+        return start == -1 ? "" : s.substr(start, bestLen);
     }
 
+private:
     // Returns the start index of some duplicated substring of length L, or -1.
-    private int search(int[] a, int L) {
-        long pow = 1;
+    int search(const vector<int>& a, int L) {
+        long long pow = 1;
         for (int i = 0; i < L; i++) pow = mulmod(pow, BASE);
-        long h = 0;
+        long long h = 0;
         for (int i = 0; i < L; i++) h = (mulmod(h, BASE) + a[i]) % MOD;
-        HashMap<Long, List<Integer>> seen = new HashMap<>();
-        seen.computeIfAbsent(h, k -> new ArrayList<>()).add(0);
-        for (int i = L; i < a.length; i++) {
+        unordered_map<long long, vector<int>> seen;
+        seen[h].push_back(0);
+        for (int i = L; i < (int)a.size(); i++) {
             h = (mulmod(h, BASE) + a[i] - mulmod(a[i - L], pow) % MOD + MOD * MOD) % MOD;
             int startIdx = i - L + 1;
-            List<Integer> cand = seen.get(h);
-            if (cand != null) {
+            auto it = seen.find(h);
+            if (it != seen.end()) {
                 // verify to defeat spurious hash hits (collision safety)
-                for (int j : cand) if (equalsAt(a, j, startIdx, L)) return startIdx;
+                for (int j : it->second) if (equalsAt(a, j, startIdx, L)) return startIdx;
             }
-            seen.computeIfAbsent(h, k -> new ArrayList<>()).add(startIdx);
+            seen[h].push_back(startIdx);
         }
         return -1;
     }
 
-    private boolean equalsAt(int[] a, int x, int y, int L) {
+    bool equalsAt(const vector<int>& a, int x, int y, int L) {
         for (int k = 0; k < L; k++) if (a[x + k] != a[y + k]) return false;
         return true;
     }
 
-    private long mulmod(long x, long y) {
+    long long mulmod(long long x, long long y) {
         return (x % MOD) * (y % MOD) % MOD;   // fits because MOD < 2^61, x,y < MOD
     }
-}
+};
 ```
 
 **Complexity:** O(n log n) average — `log n` binary-search steps, each an O(n) rolling pass. **Double hashing** (two independent (BASE, MOD) pairs, compare both) makes a collision astronomically unlikely and lets you skip the explicit verification; we kept the verification here for a guaranteed-correct answer.
@@ -198,33 +216,38 @@ class Solution {
 
 A substring `s[i..i+2k-1]` is an echo iff its first half `s[i..i+k-1]` equals its second half `s[i+k..i+2k-1]`. With prefix hashes, comparing two halves is O(1); store every distinct echo as a (hash) to dedupe.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int distinctEchoSubstrings(String text) {
+public:
+    int distinctEchoSubstrings(string text) {
         int n = text.length();
-        long MOD = 1_000_000_007L, BASE = 131L;
-        long[] h = new long[n + 1], pw = new long[n + 1];
+        const long long MOD = 1000000007LL, BASE = 131LL;
+        vector<long long> h(n + 1, 0), pw(n + 1, 0);
         pw[0] = 1;
         for (int i = 0; i < n; i++) {
-            h[i + 1] = (h[i] * BASE + text.charAt(i)) % MOD;
+            h[i + 1] = (h[i] * BASE + text[i]) % MOD;
             pw[i + 1] = pw[i] * BASE % MOD;
         }
-        Set<Long> distinct = new HashSet<>();
+        unordered_set<long long> distinct;
         for (int len = 1; 2 * len <= n; len++) {           // half-length
             for (int i = 0; i + 2 * len <= n; i++) {
-                long first  = sub(h, pw, MOD, i, i + len);
-                long second = sub(h, pw, MOD, i + len, i + 2 * len);
-                if (first == second) distinct.add(first); // dedupe by half-hash
+                long long first  = sub(h, pw, MOD, i, i + len);
+                long long second = sub(h, pw, MOD, i + len, i + 2 * len);
+                if (first == second) distinct.insert(first); // dedupe by half-hash
             }
         }
         return distinct.size();
     }
 
+private:
     // hash of text[l..r) from prefix hashes.
-    private long sub(long[] h, long[] pw, long MOD, int l, int r) {
+    long long sub(const vector<long long>& h, const vector<long long>& pw, long long MOD, int l, int r) {
         return ((h[r] - h[l] * pw[r - l]) % MOD + MOD) % MOD;
     }
-}
+};
 ```
 
 **Complexity:** O(n^2) hashing comparisons, O(n^2) distinct entries worst-case. Note the `(... + MOD) % MOD` to fix the negative produced by `h[r] - h[l]*pw[]`. For full collision safety in interviews, mention double hashing on the stored key.

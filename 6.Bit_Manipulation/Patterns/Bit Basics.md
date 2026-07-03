@@ -5,7 +5,7 @@
 
 ---
 
-## Java Bitwise Operators
+## C++ Bitwise Operators
 
 | Operator | Symbol | Example | Result |
 |----------|--------|---------|--------|
@@ -15,20 +15,23 @@
 | NOT | `~` | `~5` = `~00000101` | `11111010` = -6 |
 | Left Shift | `<<` | `1 << 3` | `1000` = 8 |
 | Arithmetic Right | `>>` | `-8 >> 1` | `-4` (sign-extends) |
-| Logical Right | `>>>` | `-8 >>> 1` | `2147483644` (fills with 0) |
+| Logical Right | `(unsigned)n >> k` | `(unsigned)-8 >> 1` | `2147483644` (fills with 0) |
 
-**Java quirk:** `~n = -(n+1)` in two's complement. `~0 = -1`, `~(-1) = 0`.
+**Note:** `~n = -(n+1)` in two's complement. `~0 = -1`, `~(-1) = 0`.
 
 ---
 
 ## Core Operations
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 int getBit(int n, int k)    { return (n >> k) & 1; }
 int setBit(int n, int k)    { return n | (1 << k); }
 int clearBit(int n, int k)  { return n & ~(1 << k); }
 int toggleBit(int n, int k) { return n ^ (1 << k); }
-boolean isPowerOf2(int n)   { return n > 0 && (n & (n - 1)) == 0; }
+bool isPowerOf2(int n)      { return n > 0 && (n & (n - 1)) == 0; }
 int lowestSetBit(int n)     { return n & (-n); }         // isolate
 int clearLowest(int n)      { return n & (n - 1); }       // clear lowest
 ```
@@ -39,18 +42,21 @@ int clearLowest(int n)      { return n & (n - 1); }       // clear lowest
 
 Process 32 bits one at a time: extract LSB from `n`, put into MSB of result.
 
-```java
-public int reverseBits(int n) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int reverseBits(int n) {
     int result = 0;
     for (int i = 0; i < 32; i++) {
         result = (result << 1) | (n & 1); // shift result left, put current LSB
-        n >>>= 1; // logical shift (unsigned) — fill with 0
+        n = (int)((unsigned int)n >> 1); // logical shift (unsigned) — fill with 0
     }
     return result;
 }
 ```
 
-**Note:** Must use `>>>` (logical), not `>>` (arithmetic). For negative `n`, `>>` would fill with 1s and give wrong answer.
+**Note:** Must use `(unsigned int)n >> 1` (logical), not `n >> 1` (arithmetic). For negative `n`, arithmetic `>>` fills with 1s and gives wrong answer.
 
 ---
 
@@ -58,8 +64,8 @@ public int reverseBits(int n) {
 
 A power of 2 has exactly one set bit. `n & (n-1)` clears the lowest set bit.
 
-```java
-public boolean isPowerOfTwo(int n) {
+```cpp
+bool isPowerOfTwo(int n) {
     return n > 0 && (n & (n - 1)) == 0;
 }
 ```
@@ -72,8 +78,8 @@ public boolean isPowerOfTwo(int n) {
 
 Simulate binary addition with carry:
 
-```java
-public int getSum(int a, int b) {
+```cpp
+int getSum(int a, int b) {
     while (b != 0) {
         int carry = (a & b) << 1; // carry: positions where both bits are 1
         a = a ^ b;                 // sum without carry
@@ -85,7 +91,7 @@ public int getSum(int a, int b) {
 
 **Loop invariant:** At each iteration, `a` holds the partial sum (no carry), `b` holds the carry to be added. When `b == 0`, no more carries — `a` is the answer.
 
-**Java infinite loop trap:** In Java, `int` is always 32-bit. This terminates. In Python, integers are unbounded — need `& 0xFFFFFFFF` masking.
+**Note:** In C++, `int` is typically 32-bit on modern platforms. This terminates. In Python, integers are unbounded — need `& 0xFFFFFFFF` masking.
 
 ---
 
@@ -93,12 +99,15 @@ public int getSum(int a, int b) {
 
 Use bit shifts to find the largest multiple of divisor ≤ dividend:
 
-```java
-public int divide(int dividend, int divisor) {
-    if (dividend == Integer.MIN_VALUE && divisor == -1) return Integer.MAX_VALUE; // overflow
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    long dvd = Math.abs((long) dividend);
-    long dvs = Math.abs((long) divisor);
+int divide(int dividend, int divisor) {
+    if (dividend == INT_MIN && divisor == -1) return INT_MAX; // overflow
+
+    long dvd = abs((long) dividend);
+    long dvs = abs((long) divisor);
     int sign = (dividend > 0) == (divisor > 0) ? 1 : -1;
     long result = 0;
 
@@ -125,8 +134,8 @@ All numbers in [m, n] AND'd together. Any differing bit in the range will have b
 
 The result is the **common prefix** of m and n in binary.
 
-```java
-public int rangeBitwiseAnd(int m, int n) {
+```cpp
+int rangeBitwiseAnd(int m, int n) {
     int shift = 0;
     while (m != n) {
         m >>= 1;
@@ -138,7 +147,7 @@ public int rangeBitwiseAnd(int m, int n) {
 ```
 
 **Alternative — Brian Kernighan:** Keep clearing lowest set bit of `n` until `n <= m`.
-```java
+```cpp
 while (n > m) n &= (n - 1);
 return n;
 ```
@@ -149,13 +158,16 @@ return n;
 
 Numbers 1, 2, ..., n concatenated in binary. Result mod 10^9+7.
 
-```java
-public int concatenatedBinary(int n) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int concatenatedBinary(int n) {
     long result = 0;
-    final int MOD = (int) 1e9 + 7;
+    const int MOD = (int)1e9 + 7;
     for (int i = 1; i <= n; i++) {
-        int bits = (int)(Math.log(i) / Math.log(2)) + 1; // bit length of i
-        // OR: bits = 32 - Integer.numberOfLeadingZeros(i)
+        int bits = (int)(log(i) / log(2)) + 1; // bit length of i
+        // OR: bits = 32 - __builtin_clz(i)
         result = ((result << bits) | i) % MOD;
     }
     return (int) result;
@@ -166,7 +178,7 @@ public int concatenatedBinary(int n) {
 
 ## Shift Operator Precedence Trap
 
-```java
+```cpp
 // BUG: + has higher precedence than <<
 1 << n + 1  // = 1 << (n+1), not (1 << n) + 1
 
@@ -180,8 +192,8 @@ public int concatenatedBinary(int n) {
 
 - `-n = ~n + 1`
 - `n & (-n)` = lowest set bit (from two's complement)
-- `Integer.MIN_VALUE = -2^31` has no positive counterpart in `int` → use `long`
-- `~Integer.MIN_VALUE = Integer.MAX_VALUE`
+- `INT_MIN = -2^31` has no positive counterpart in `int` → use `long`
+- `~INT_MIN = INT_MAX`
 
 ---
 

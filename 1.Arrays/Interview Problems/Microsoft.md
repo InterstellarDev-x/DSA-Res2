@@ -19,7 +19,7 @@
 |-----------|----------------------|
 | **Problem understanding** | Ask clarifying questions before coding |
 | **Multiple approaches** | Present brute force → optimized |
-| **Code quality** | Readable Java, proper naming, helper methods |
+| **Code quality** | Readable C++, proper naming, helper methods |
 | **Test cases** | Write test cases on the whiteboard/IDE |
 | **Communication** | Explain as you code |
 | **Handle edge cases** | Null, empty, single element, all same |
@@ -51,12 +51,15 @@
 | **Skill tested** | Single-pass greedy |
 | **Pattern** | Prefix min tracking |
 
-```java
-public int maxProfit(int[] prices) {
-    int minPrice = Integer.MAX_VALUE, maxProfit = 0;
-    for (int price : prices) {
-        minPrice = Math.min(minPrice, price);
-        maxProfit = Math.max(maxProfit, price - minPrice);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int maxProfit(vector<int>& prices) {
+    int minPrice = INT_MAX, maxProfit = 0;
+    for (auto& price : prices) {
+        minPrice = min(minPrice, price);
+        maxProfit = max(maxProfit, price - minPrice);
     }
     return maxProfit;
 }
@@ -78,15 +81,19 @@ public int maxProfit(int[] prices) {
 | **Skill tested** | In-place reversal trick |
 | **Pattern** | Three-reverse |
 
-```java
-public void rotate(int[] nums, int k) {
-    k %= nums.length;
-    reverse(nums, 0, nums.length - 1);
-    reverse(nums, 0, k - 1);
-    reverse(nums, k, nums.length - 1);
-}
-private void reverse(int[] arr, int l, int r) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void reverseArr(vector<int>& arr, int l, int r) {
     while (l < r) { int t = arr[l]; arr[l++] = arr[r]; arr[r--] = t; }
+}
+
+void rotate(vector<int>& nums, int k) {
+    k %= nums.size();
+    reverseArr(nums, 0, nums.size() - 1);
+    reverseArr(nums, 0, k - 1);
+    reverseArr(nums, k, nums.size() - 1);
 }
 ```
 

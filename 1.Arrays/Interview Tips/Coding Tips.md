@@ -1,14 +1,14 @@
 # Coding Tips — Arrays
 
 > **Topic:** [Arrays](../README.md) · **Section:** Interview Tips
-> **Tags:** `interview-tips` `coding` `arrays` `java`
+> **Tags:** `interview-tips` `coding` `arrays` `cpp`
 
 ---
 
 ## Table of Contents
 
 1. [Before You Code](#before-you-code)
-2. [Java-Specific Tips](#java-specific-tips)
+2. [C++-Specific Tips](#c-specific-tips)
 3. [Array Manipulation Tricks](#array-manipulation-tricks)
 4. [Complexity Shortcuts](#complexity-shortcuts)
 5. [Checklist Before Submitting](#checklist-before-submitting)
@@ -30,48 +30,59 @@
 
 ---
 
-## Java-Specific Tips
+## C++-Specific Tips
 
 ### Sorting
 
-```java
-Arrays.sort(arr);                                  // primitives: O(n log n) dual-pivot quicksort
-Arrays.sort(intervals, (a, b) -> a[0] - b[0]);    // sort by first element
-Arrays.sort(arr, Collections.reverseOrder());      // won't work on int[] — use Integer[]
-Integer[] boxed = Arrays.stream(arr).boxed().toArray(Integer[]::new); // convert for reverse sort
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+sort(arr.begin(), arr.end());                                                              // O(n log n) introsort
+sort(intervals.begin(), intervals.end(), [](auto& a, auto& b){ return a[0] < b[0]; });   // sort by first element
+sort(arr.begin(), arr.end(), greater<int>());                                              // reverse sort — works on vector<int>
 ```
 
 ### Copy & Fill
 
-```java
-int[] copy = Arrays.copyOf(arr, arr.length);       // full copy
-int[] sub  = Arrays.copyOfRange(arr, l, r + 1);   // [l, r] inclusive
-Arrays.fill(arr, 0);                               // fill entire array
-Arrays.fill(arr, l, r + 1, -1);                   // fill [l, r]
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> copy(arr);                                                 // full copy
+vector<int> sub(arr.begin() + l, arr.begin() + r + 1);               // [l, r] inclusive
+fill(arr.begin(), arr.end(), 0);                                       // fill entire array
+fill(arr.begin() + l, arr.begin() + r + 1, -1);                       // fill [l, r]
 ```
 
 ### Two-Pointer Swap
 
-```java
-private void swap(int[] arr, int i, int j) {
-    int tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+```cpp
+void swap_arr(vector<int>& arr, int i, int j) {
+    swap(arr[i], arr[j]);
 }
 ```
 
 ### Common Initializations
 
-```java
-int max = Integer.MIN_VALUE;  // not 0! (handles all-negative arrays)
-int min = Integer.MAX_VALUE;
-int sum = 0;                  // use long if values can overflow
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int maxVal = INT_MIN;  // not 0! (handles all-negative arrays)
+int minVal = INT_MAX;
+int sum = 0;           // use long long if values can overflow
 ```
 
 ### 2D Array
 
-```java
-int[][] matrix = new int[m][n];
-int rows = matrix.length;
-int cols = matrix[0].length;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> matrix(m, vector<int>(n, 0));
+int rows = matrix.size();
+int cols = matrix[0].size();
 ```
 
 ---
@@ -90,24 +101,21 @@ int cols = matrix[0].length;
 
 ### Rotate Array by K (Three Reversal Trick)
 
-```java
+```cpp
 // Rotate right by k: [1,2,3,4,5], k=2 → [4,5,1,2,3]
 k %= n;
-reverse(arr, 0, n-1);     // [5,4,3,2,1]
-reverse(arr, 0, k-1);     // [4,5,3,2,1]
-reverse(arr, k, n-1);     // [4,5,1,2,3]
+reverse(arr.begin(), arr.end());           // [5,4,3,2,1]
+reverse(arr.begin(), arr.begin() + k);     // [4,5,3,2,1]
+reverse(arr.begin() + k, arr.end());       // [4,5,1,2,3]
 ```
 
 ### In-Place Matrix Transpose
 
-```java
+```cpp
 // Transpose square matrix: arr[i][j] ↔ arr[j][i]
 for (int i = 0; i < n; i++)
-    for (int j = i + 1; j < n; j++) {
-        int tmp = matrix[i][j];
-        matrix[i][j] = matrix[j][i];
-        matrix[j][i] = tmp;
-    }
+    for (int j = i + 1; j < n; j++)
+        swap(matrix[i][j], matrix[j][i]);
 // Then reverse each row for 90° clockwise rotation
 ```
 
@@ -134,7 +142,7 @@ for (int i = 0; i < n; i++)
 □ Single element array handled?
 □ All same elements handled?
 □ Negative values handled (if applicable)?
-□ Integer overflow possible? (use long)
+□ Integer overflow possible? (use long long)
 □ Index out of bounds impossible?
 □ Time complexity stated?
 □ Space complexity stated?

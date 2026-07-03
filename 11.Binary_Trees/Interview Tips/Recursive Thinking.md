@@ -6,12 +6,13 @@ Binary trees are *the* canonical place to build recursive intuition: a tree is l
 
 Node definition used throughout:
 
-```java
-public class TreeNode {
+```cpp
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
+};
 ```
 
 ---
@@ -20,7 +21,7 @@ public class TreeNode {
 
 Before writing a single line, answer two questions about your recursive method:
 
-1. **What does the function RETURN?** Define precisely what value comes back for a given subtree. "Returns the height of the subtree rooted here." "Returns the LCA of `p` and `q` if both live below here, else whichever one does, else `null`." "Returns the best downward path gain starting at this node."
+1. **What does the function RETURN?** Define precisely what value comes back for a given subtree. "Returns the height of the subtree rooted here." "Returns the LCA of `p` and `q` if both live below here, else whichever one does, else `nullptr`." "Returns the best downward path gain starting at this node."
 2. **What does it PROMISE its callers?** This is the *contract*. If `height(node)` promises "the number of nodes on the longest root-to-leaf path of this subtree," then every caller can rely on that, and you only have to make the promise true for one node — assuming the children already keep theirs.
 
 If you can state the contract in one sentence, the body almost writes itself: handle the empty subtree (base case), call yourself on the children (trusting the contract), and combine. If you *can't* state it, you don't understand the problem yet — that's the signal to slow down.
@@ -35,13 +36,13 @@ There are two fundamentally different ways information flows through tree recurs
 
 Each node computes its answer **from its children's answers**. Information flows from the leaves upward. This is the natural fit for "size/height/sum of this subtree" style questions.
 
-```java
+```cpp
 // Bottom-up maxDepth: each call RETURNS the height of its subtree.
-int maxDepthBottomUp(TreeNode node) {
-    if (node == null) return 0;
-    int left = maxDepthBottomUp(node.left);
-    int right = maxDepthBottomUp(node.right);
-    return 1 + Math.max(left, right);          // combine children's results
+int maxDepthBottomUp(TreeNode* node) {
+    if (node == nullptr) return 0;
+    int left = maxDepthBottomUp(node->left);
+    int right = maxDepthBottomUp(node->right);
+    return 1 + max(left, right);          // combine children's results
 }
 ```
 
@@ -49,16 +50,16 @@ int maxDepthBottomUp(TreeNode node) {
 
 Each node receives **context from above** through method parameters, and "answers" are recorded as it descends (often into a global, or by reaching a leaf). Information flows from the root downward.
 
-```java
+```cpp
 // Top-down maxDepth: the current depth is PASSED DOWN as a parameter.
 int best = 0;
 
-void maxDepthTopDown(TreeNode node, int depth) {
-    if (node == null) return;
-    if (node.left == null && node.right == null)
-        best = Math.max(best, depth);          // record at the leaf
-    maxDepthTopDown(node.left,  depth + 1);    // hand context to children
-    maxDepthTopDown(node.right, depth + 1);
+void maxDepthTopDown(TreeNode* node, int depth) {
+    if (node == nullptr) return;
+    if (node->left == nullptr && node->right == nullptr)
+        best = max(best, depth);          // record at the leaf
+    maxDepthTopDown(node->left,  depth + 1);    // hand context to children
+    maxDepthTopDown(node->right, depth + 1);
 }
 // call as: maxDepthTopDown(root, 1);
 ```
@@ -74,19 +75,19 @@ Some problems can't be expressed with a return value alone. **Diameter** and **M
 - The **return value** is what an ancestor can legally extend (a single downward chain: a height, or a one-branch gain).
 - The **global** captures answers that "bend" at a node and therefore can't be passed upward (a path using *both* children).
 
-```java
-int[] best = new int[1];   // length-1 array as mutable global state
+```cpp
+int best = 0;   // mutable global state
 
-int height(TreeNode node) {
-    if (node == null) return 0;
-    int left = height(node.left);
-    int right = height(node.right);
-    best[0] = Math.max(best[0], left + right); // GLOBAL: path bending here
-    return 1 + Math.max(left, right);          // RETURN: extendable height
+int height(TreeNode* node) {
+    if (node == nullptr) return 0;
+    int left = height(node->left);
+    int right = height(node->right);
+    best = max(best, left + right); // GLOBAL: path bending here
+    return 1 + max(left, right);          // RETURN: extendable height
 }
 ```
 
-Use `int[] best = new int[1]` (or an instance field) so the value survives across recursive frames. A local `int` would reset on every call. When the return value alone fully answers the question (height, count, sum), skip the global — it's just noise.
+Use a reference parameter or a global/member variable so the value survives across recursive frames. A local `int` would reset on every call. When the return value alone fully answers the question (height, count, sum), skip the global — it's just noise.
 
 ---
 
@@ -94,16 +95,16 @@ Use `int[] best = new int[1]` (or an instance field) so the value survives acros
 
 The hardest mental hurdle is resisting the urge to trace the recursion all the way down. Don't. **Assume the recursive call is already correct for the subtrees**, and focus only on combining those (assumed-correct) results for the current node.
 
-When you write `int left = height(node.left);`, treat `left` as a finished, trustworthy fact — *the height of the left subtree* — exactly as the contract promises. Your only job is to make the contract true for *this* node given correct children. Induction does the rest: base case is correct, the combine step preserves correctness, therefore the whole thing is correct.
+When you write `int left = height(node->left);`, treat `left` as a finished, trustworthy fact — *the height of the left subtree* — exactly as the contract promises. Your only job is to make the contract true for *this* node given correct children. Induction does the rest: base case is correct, the combine step preserves correctness, therefore the whole thing is correct.
 
-```java
-boolean isSameTree(TreeNode a, TreeNode b) {
-    if (a == null && b == null) return true;        // base case
-    if (a == null || b == null) return false;
+```cpp
+bool isSameTree(TreeNode* a, TreeNode* b) {
+    if (a == nullptr && b == nullptr) return true;        // base case
+    if (a == nullptr || b == nullptr) return false;
     // TRUST that the two recursive calls correctly compare the subtrees:
-    return a.val == b.val
-        && isSameTree(a.left,  b.left)
-        && isSameTree(a.right, b.right);
+    return a->val == b->val
+        && isSameTree(a->left,  b->left)
+        && isSameTree(a->right, b->right);
 }
 ```
 
@@ -115,31 +116,34 @@ If you find yourself mentally unrolling three levels deep, stop — that's a sig
 
 Recursion is elegant but not always allowed or safe:
 
-- **Stack overflow on deep / skewed trees.** Recursion depth equals tree height. A degenerate (linked-list-shaped) tree of, say, 100,000 nodes recurses 100,000 frames deep and blows the JVM stack. Production code over untrusted input often must use an explicit stack instead.
+- **Stack overflow on deep / skewed trees.** Recursion depth equals tree height. A degenerate (linked-list-shaped) tree of, say, 100,000 nodes recurses 100,000 frames deep and blows the call stack. Production code over untrusted input often must use an explicit stack instead.
 - **Explicit O(1)-space requirements.** If the interviewer asks for constant extra space inorder traversal, recursion (O(h) stack) is disqualified — you need **Morris traversal**, which threads the tree instead of using a stack.
 - **The interviewer explicitly asks for non-recursive / iterative.** A common follow-up after you give the recursive answer.
 
 Here is the iterative inorder with an explicit stack — the standard "convert recursion to a stack" pattern:
 
-```java
-List<Integer> inorderIterative(TreeNode root) {
-    List<Integer> out = new ArrayList<>();
-    Deque<TreeNode> stack = new ArrayDeque<>();
-    TreeNode curr = root;
-    while (curr != null || !stack.isEmpty()) {
-        while (curr != null) {            // go all the way left
-            stack.push(curr);
-            curr = curr.left;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> inorderIterative(TreeNode* root) {
+    vector<int> out;
+    stack<TreeNode*> stk;
+    TreeNode* curr = root;
+    while (curr != nullptr || !stk.empty()) {
+        while (curr != nullptr) {            // go all the way left
+            stk.push(curr);
+            curr = curr->left;
         }
-        curr = stack.pop();               // visit
-        out.add(curr.val);
-        curr = curr.right;                // then go right
+        curr = stk.top(); stk.pop();               // visit
+        out.push_back(curr->val);
+        curr = curr->right;                // then go right
     }
     return out;
 }
 ```
 
-The explicit `Deque<TreeNode> stack = new ArrayDeque<>()` mirrors exactly what the call stack was doing for you. It has the same O(h) space, but you control it (and it won't overflow the JVM stack on a skewed tree because heap space is far larger). For truly O(1) space, fall back to Morris traversal.
+The explicit `stack<TreeNode*> stk` mirrors exactly what the call stack was doing for you. It has the same O(h) space, but you control it (and it won't overflow the call stack on a skewed tree because heap space is far larger). For truly O(1) space, fall back to Morris traversal.
 
 ---
 
@@ -149,7 +153,7 @@ A reliable recipe for any tree recursion:
 
 1. State the contract in one sentence (what it returns / promises).
 2. Decide the information flow — bottom-up (return values) or top-down (parameters), or both with a global.
-3. Write the base case first (`if (node == null) ...`).
+3. Write the base case first (`if (node == nullptr) ...`).
 4. Recurse on `left` and `right`, **trusting** they are correct.
 5. Combine, update any global, and return per the contract.
 6. Ask: could this overflow on a skewed tree, or is O(1) space required? If so, convert to an explicit stack or Morris.

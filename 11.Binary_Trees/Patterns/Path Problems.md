@@ -6,12 +6,13 @@ A "path" in a binary tree is a sequence of connected nodes. Problems differ by *
 path may start/end** (root→leaf, any→any), and whether you **collect** paths or **score**
 them. Two recurring techniques: **leaf-base-case checks** and **backtracking** for collection.
 
-```java
-public class TreeNode {
+```cpp
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
+};
 ```
 
 ---
@@ -20,18 +21,18 @@ public class TreeNode {
 
 The base case is the **leaf check**: a leaf has no children, so the path ends there.
 
-```java
-public boolean hasPathSum(TreeNode root, int targetSum) {
-    if (root == null) return false;
-    if (root.left == null && root.right == null)      // leaf
-        return root.val == targetSum;
-    int remaining = targetSum - root.val;
-    return hasPathSum(root.left, remaining)
-        || hasPathSum(root.right, remaining);
+```cpp
+bool hasPathSum(TreeNode* root, int targetSum) {
+    if (root == nullptr) return false;
+    if (root->left == nullptr && root->right == nullptr)      // leaf
+        return root->val == targetSum;
+    int remaining = targetSum - root->val;
+    return hasPathSum(root->left, remaining)
+        || hasPathSum(root->right, remaining);
 }
 ```
 
-> Don't use `root == null && targetSum == 0` as the success base case — an empty child of a
+> Don't use `root == nullptr && targetSum == 0` as the success base case — an empty child of a
 > one-child node would falsely succeed. Always check the **leaf** condition explicitly.
 
 ---
@@ -41,28 +42,32 @@ public boolean hasPathSum(TreeNode root, int targetSum) {
 Classic **backtracking**: add the node to the path, recurse, then *remove it* so siblings
 start from a clean path.
 
-```java
-public List<List<Integer>> pathSum(TreeNode root, int targetSum) {
-    List<List<Integer>> result = new ArrayList<>();
-    backtrack(root, targetSum, new ArrayList<>(), result);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> pathSum(TreeNode* root, int targetSum) {
+    vector<vector<int>> result;
+    vector<int> path;
+    backtrack(root, targetSum, path, result);
     return result;
 }
 
-private void backtrack(TreeNode node, int remaining,
-                       List<Integer> path, List<List<Integer>> result) {
-    if (node == null) return;
-    path.add(node.val);                                  // choose
-    if (node.left == null && node.right == null && remaining == node.val) {
-        result.add(new ArrayList<>(path));               // copy! the path is mutable
+void backtrack(TreeNode* node, int remaining,
+               vector<int>& path, vector<vector<int>>& result) {
+    if (node == nullptr) return;
+    path.push_back(node->val);                                  // choose
+    if (node->left == nullptr && node->right == nullptr && remaining == node->val) {
+        result.push_back(path);               // copy! the path is mutable
     } else {
-        backtrack(node.left,  remaining - node.val, path, result);
-        backtrack(node.right, remaining - node.val, path, result);
+        backtrack(node->left,  remaining - node->val, path, result);
+        backtrack(node->right, remaining - node->val, path, result);
     }
-    path.remove(path.size() - 1);                        // un-choose (backtrack)
+    path.pop_back();                        // un-choose (backtrack)
 }
 ```
 
-> ⚠️ Two non-negotiables: **copy** the path when recording (`new ArrayList<>(path)`), and
+> ⚠️ Two non-negotiables: **copy** the path when recording (`result.push_back(path)`), and
 > **remove** the last element on the way out. Forgetting either is the #1 bug here.
 
 ---
@@ -73,20 +78,20 @@ The diameter is the longest path *in edges* between any two nodes — it **need 
 through the root**. Compute each node's depth bottom-up while updating a global max of
 `leftDepth + rightDepth`.
 
-```java
-private int maxDiameter = 0;
+```cpp
+int maxDiameter = 0;
 
-public int diameterOfBinaryTree(TreeNode root) {
+int diameterOfBinaryTree(TreeNode* root) {
     depth(root);
     return maxDiameter;
 }
 
-private int depth(TreeNode node) {
-    if (node == null) return 0;
-    int left  = depth(node.left);
-    int right = depth(node.right);
-    maxDiameter = Math.max(maxDiameter, left + right);   // path THROUGH this node
-    return 1 + Math.max(left, right);                    // depth returned to parent
+int depth(TreeNode* node) {
+    if (node == nullptr) return 0;
+    int left  = depth(node->left);
+    int right = depth(node->right);
+    maxDiameter = max(maxDiameter, left + right);   // path THROUGH this node
+    return 1 + max(left, right);                    // depth returned to parent
 }
 ```
 
@@ -99,26 +104,29 @@ maximize are different.
 ## 4. Binary Tree Maximum Path Sum (LC 124) — Hard
 
 Same dual-purpose shape as diameter, with two twists:
-1. **Prune negative subtrees:** `gain = Math.max(0, gain)` — a negative subtree contributes
+1. **Prune negative subtrees:** `gain = max(0, gain)` — a negative subtree contributes
    nothing, so we treat it as 0.
-2. The best path **through** a node is `node.val + leftGain + rightGain`, but the value
+2. The best path **through** a node is `node->val + leftGain + rightGain`, but the value
    **returned** to the parent can only follow one branch:
-   `node.val + max(leftGain, rightGain)`.
+   `node->val + max(leftGain, rightGain)`.
 
-```java
-private int maxSum = Integer.MIN_VALUE;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public int maxPathSum(TreeNode root) {
+int maxSum = INT_MIN;
+
+int maxPathSum(TreeNode* root) {
     gain(root);
     return maxSum;
 }
 
-private int gain(TreeNode node) {
-    if (node == null) return 0;
-    int leftGain  = Math.max(0, gain(node.left));    // ignore negative contributions
-    int rightGain = Math.max(0, gain(node.right));
-    maxSum = Math.max(maxSum, node.val + leftGain + rightGain);  // path through node
-    return node.val + Math.max(leftGain, rightGain);             // extendable to parent
+int gain(TreeNode* node) {
+    if (node == nullptr) return 0;
+    int leftGain  = max(0, gain(node->left));    // ignore negative contributions
+    int rightGain = max(0, gain(node->right));
+    maxSum = max(maxSum, node->val + leftGain + rightGain);  // path through node
+    return node->val + max(leftGain, rightGain);             // extendable to parent
 }
 ```
 
@@ -127,18 +135,18 @@ private int gain(TreeNode node) {
 ## 5. Sum Root to Leaf Numbers (LC 129)
 
 Each root→leaf path spells a number (e.g. `1→2→3` = 123). Carry the running value **down**
-the recursion: `current = current * 10 + node.val`.
+the recursion: `current = current * 10 + node->val`.
 
-```java
-public int sumNumbers(TreeNode root) {
+```cpp
+int sumNumbers(TreeNode* root) {
     return dfs(root, 0);
 }
 
-private int dfs(TreeNode node, int current) {
-    if (node == null) return 0;
-    current = current * 10 + node.val;
-    if (node.left == null && node.right == null) return current;   // leaf -> the number
-    return dfs(node.left, current) + dfs(node.right, current);
+int dfs(TreeNode* node, int current) {
+    if (node == nullptr) return 0;
+    current = current * 10 + node->val;
+    if (node->left == nullptr && node->right == nullptr) return current;   // leaf -> the number
+    return dfs(node->left, current) + dfs(node->right, current);
 }
 ```
 
@@ -149,32 +157,35 @@ way back up.
 
 ## 6. Binary Tree Paths (LC 257) — all root→leaf paths as strings
 
-Build a `"a->b->c"` string per path. Use a `StringBuilder` with length-rollback (backtrack),
+Build a `"a->b->c"` string per path. Use a `string` with length-rollback (backtrack),
 or simple string concatenation passed down.
 
-```java
-public List<String> binaryTreePaths(TreeNode root) {
-    List<String> result = new ArrayList<>();
-    if (root != null) dfs(root, new StringBuilder(), result);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<string> binaryTreePaths(TreeNode* root) {
+    vector<string> result;
+    if (root != nullptr) dfs(root, "", result);
     return result;
 }
 
-private void dfs(TreeNode node, StringBuilder sb, List<String> result) {
-    int len = sb.length();                       // remember length to roll back
-    if (sb.length() > 0) sb.append("->");
-    sb.append(node.val);
-    if (node.left == null && node.right == null) {
-        result.add(sb.toString());
+void dfs(TreeNode* node, string path, vector<string>& result) {
+    int len = path.length();                       // remember length to roll back
+    if (path.length() > 0) path += "->";
+    path += to_string(node->val);
+    if (node->left == nullptr && node->right == nullptr) {
+        result.push_back(path);
     } else {
-        if (node.left  != null) dfs(node.left,  sb, result);
-        if (node.right != null) dfs(node.right, sb, result);
+        if (node->left  != nullptr) dfs(node->left,  path, result);
+        if (node->right != nullptr) dfs(node->right, path, result);
     }
-    sb.setLength(len);                           // backtrack the StringBuilder
+    path.resize(len);                           // backtrack the string
 }
 ```
 
-Simpler (less efficient) alternative: pass `path + "->" + node.val` or
-`String.join("->", list)` — fine for interview clarity.
+Simpler (less efficient) alternative: pass `path + "->" + to_string(node->val)` or
+build with a delimiter — fine for interview clarity.
 
 ---
 

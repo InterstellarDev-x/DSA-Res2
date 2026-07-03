@@ -20,7 +20,7 @@ Design a data structure that follows the **Least Recently Used** (LRU) cache evi
 
 Two data structures combined:
 
-1. **HashMap<Integer, Node>** — O(1) lookup by key to the node in the DLL
+1. **unordered_map<int, Node\*>** — O(1) lookup by key to the node in the DLL
 2. **Doubly Linked List** — O(1) move-to-front and evict-from-back
 
 ```
@@ -29,61 +29,66 @@ head ↔ [most recent] ↔ ... ↔ [least recent] ↔ tail
 
 Sentinel nodes `head` and `tail` eliminate edge cases (no null checks on insert/remove).
 
-```java
-class LRUCache {
-    private final int capacity;
-    private final Map<Integer, Node> map;
-    private final Node head, tail; // sentinels
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    private static class Node {
+class LRUCache {
+    struct Node {
         int key, val;
-        Node prev, next;
-        Node(int k, int v) { key = k; val = v; }
+        Node* prev;
+        Node* next;
+        Node(int k, int v) : key(k), val(v), prev(nullptr), next(nullptr) {}
+    };
+
+    int capacity;
+    unordered_map<int, Node*> map;
+    Node* head;
+    Node* tail; // sentinels
+
+    void remove(Node* node) {
+        node->prev->next = node->next;
+        node->next->prev = node->prev;
     }
 
-    public LRUCache(int capacity) {
-        this.capacity = capacity;
-        map = new HashMap<>();
+    void insertFront(Node* node) {
+        node->next = head->next;
+        node->prev = head;
+        head->next->prev = node;
+        head->next = node;
+    }
+
+public:
+    LRUCache(int capacity) : capacity(capacity) {
         head = new Node(0, 0);
         tail = new Node(0, 0);
-        head.next = tail;
-        tail.prev = head;
+        head->next = tail;
+        tail->prev = head;
     }
 
-    public int get(int key) {
-        if (!map.containsKey(key)) return -1;
-        Node node = map.get(key);
+    int get(int key) {
+        if (!map.count(key)) return -1;
+        Node* node = map[key];
         remove(node);
         insertFront(node);
-        return node.val;
+        return node->val;
     }
 
-    public void put(int key, int value) {
-        if (map.containsKey(key)) {
-            remove(map.get(key));
-        } else if (map.size() == capacity) {
+    void put(int key, int value) {
+        if (map.count(key)) {
+            remove(map[key]);
+        } else if ((int)map.size() == capacity) {
             // Evict LRU: node just before tail
-            Node lru = tail.prev;
+            Node* lru = tail->prev;
             remove(lru);
-            map.remove(lru.key);
+            map.erase(lru->key);
+            delete lru;
         }
-        Node node = new Node(key, value);
+        Node* node = new Node(key, value);
         insertFront(node);
-        map.put(key, node);
+        map[key] = node;
     }
-
-    private void remove(Node node) {
-        node.prev.next = node.next;
-        node.next.prev = node.prev;
-    }
-
-    private void insertFront(Node node) {
-        node.next = head.next;
-        node.prev = head;
-        head.next.prev = node;
-        head.next = node;
-    }
-}
+};
 ```
 
 ---
@@ -96,35 +101,47 @@ class LRUCache {
 
 ## Why Store `key` in the Node?
 
-When evicting `tail.prev`, we need to remove it from the HashMap. Without `key` in the node, there's no way to look it up — we'd have to scan the map (O(n)).
+When evicting `tail->prev`, we need to remove it from the `unordered_map`. Without `key` in the node, there's no way to look it up — we'd have to scan the map (O(n)).
 
 ---
 
-## Java LinkedHashMap Shortcut
+## C++ std::list Shortcut
 
-Java's `LinkedHashMap` with `accessOrder = true` implements LRU internally:
+C++ has no direct equivalent of Java's `LinkedHashMap` with `accessOrder`. The idiomatic C++ approach uses `std::list` paired with `std::unordered_map` storing list iterators, enabling O(1) splice (move-to-front) without pointer rewiring:
 
-```java
-class LRUCache extends LinkedHashMap<Integer, Integer> {
-    private final int capacity;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public LRUCache(int capacity) {
-        super(capacity, 0.75f, true); // accessOrder = true
-        this.capacity = capacity;
+// C++ idiomatic LRU using std::list + unordered_map
+class LRUCache {
+    int capacity;
+    list<pair<int,int>> lruList; // {key, value}, front = most recent
+    unordered_map<int, list<pair<int,int>>::iterator> map;
+
+public:
+    LRUCache(int capacity) : capacity(capacity) {}
+
+    int get(int key) {
+        if (!map.count(key)) return -1;
+        lruList.splice(lruList.begin(), lruList, map[key]);
+        return map[key]->second;
     }
 
-    public int get(int key) { return super.getOrDefault(key, -1); }
-
-    public void put(int key, int value) { super.put(key, value); }
-
-    @Override
-    protected boolean removeEldestEntry(Map.Entry<Integer, Integer> eldest) {
-        return size() > capacity;
+    void put(int key, int value) {
+        if (map.count(key)) {
+            lruList.erase(map[key]);
+        } else if ((int)lruList.size() == capacity) {
+            map.erase(lruList.back().first);
+            lruList.pop_back();
+        }
+        lruList.push_front({key, value});
+        map[key] = lruList.begin();
     }
-}
+};
 ```
 
-> **Note for interviews:** Mention this exists but implement from scratch unless told otherwise. Interviewers at Google/Amazon expect the DLL + HashMap design.
+> **Note for interviews:** Mention the `std::list` variant exists but implement from scratch (DLL + `unordered_map`) unless told otherwise. Interviewers at Google/Amazon expect the DLL + HashMap design.
 
 ---
 
@@ -154,7 +171,7 @@ get(2)   → return -1 (evicted)
 ## Follow-up Questions
 
 **Q: How would you make this thread-safe?**
-Wrap with `Collections.synchronizedMap` or use `ConcurrentHashMap` + explicit synchronized block around DLL operations. Or use `ReentrantReadWriteLock`.
+Wrap operations with `std::mutex` (exclusive lock) or use `std::shared_mutex` with `std::unique_lock` for writes and `std::shared_lock` for reads. Or use a `std::shared_mutex` as a reader-writer lock equivalent to Java's `ReentrantReadWriteLock`.
 
 **Q: What if we want O(1) get/put but also O(1) `getMin`?**
 That's the [LFU Cache](./LFU%20Cache.md) variant for frequency, or add a parallel min-heap (but breaks O(1) for updates).

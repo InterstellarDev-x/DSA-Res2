@@ -24,40 +24,37 @@ Quick mental flowchart:
 4. Need every pair, and `V` is small (<= ~400)? -> **Floyd-Warshall**.
 5. Otherwise (non-negative weights, single source) -> **Dijkstra**.
 
-> **Critical pitfall:** when ordering a `PriorityQueue<int[]>`, NEVER use `(a, b) -> a[1] - b[1]`. The subtraction can overflow for large weights and silently corrupt the heap order. Always use `Integer.compare(a[1], b[1])`.
+> **Critical pitfall:** when ordering a `std::priority_queue` with a custom comparator, NEVER use `a[1] - b[1]` as the comparison value. The subtraction can overflow for large weights and silently corrupt the heap order. Always use explicit `<` or `>` comparisons.
 
 ---
 
 ## Dijkstra Template
 
-Greedy single-source shortest path for **non-negative** weights. Maintain a `dist[]` array, push `{node, dist}` onto a min-heap, and pop the closest unfinished node. Because we may push the same node multiple times, **skip stale entries** (a popped distance larger than the recorded `dist[node]`).
+Greedy single-source shortest path for **non-negative** weights. Maintain a `dist[]` array, push `{dist, node}` onto a min-heap, and pop the closest unfinished node. Because we may push the same node multiple times, **skip stale entries** (a popped distance larger than the recorded `dist[node]`).
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-int[] dijkstra(int n, List<int[]>[] adj, int src) {
+vector<int> dijkstra(int n, vector<vector<pair<int,int>>>& adj, int src) {
     // adj[u] holds entries {v, weight}
-    int[] dist = new int[n];
-    Arrays.fill(dist, Integer.MAX_VALUE);
+    vector<int> dist(n, INT_MAX);
     dist[src] = 0;
 
-    // min-heap ordered by distance; {node, dist}
-    PriorityQueue<int[]> pq =
-        new PriorityQueue<>((a, b) -> Integer.compare(a[1], b[1]));
-    pq.offer(new int[]{src, 0});
+    // min-heap ordered by distance; {dist, node}
+    priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> pq;
+    pq.push({0, src});
 
-    while (!pq.isEmpty()) {
-        int[] cur = pq.poll();
-        int u = cur[0], d = cur[1];
+    while (!pq.empty()) {
+        auto [d, u] = pq.top(); pq.pop();
 
         // skip stale entry: a better distance was already finalized
         if (d > dist[u]) continue;
 
-        for (int[] edge : adj[u]) {
-            int v = edge[0], w = edge[1];
+        for (auto& [v, w] : adj[u]) {
             if (dist[u] + w < dist[v]) {
                 dist[v] = dist[u] + w;
-                pq.offer(new int[]{v, dist[v]});
+                pq.push({dist[v], v});
             }
         }
     }
@@ -71,29 +68,29 @@ int[] dijkstra(int n, List<int[]>[] adj, int src) {
 
 Handles **negative** edge weights and detects negative cycles. Relax every edge `V-1` times: after `i` rounds, all shortest paths using at most `i` edges are correct. A `V`-th round that still relaxes something proves a negative cycle.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-int[] bellmanFord(int n, int[][] edges, int src) {
+vector<int> bellmanFord(int n, vector<vector<int>>& edges, int src) {
     // edges[i] = {u, v, w}
-    int[] dist = new int[n];
-    Arrays.fill(dist, Integer.MAX_VALUE);
+    vector<int> dist(n, INT_MAX);
     dist[src] = 0;
 
     // V - 1 relaxation rounds
     for (int i = 0; i < n - 1; i++) {
-        for (int[] e : edges) {
+        for (auto& e : edges) {
             int u = e[0], v = e[1], w = e[2];
-            if (dist[u] != Integer.MAX_VALUE && dist[u] + w < dist[v]) {
+            if (dist[u] != INT_MAX && dist[u] + w < dist[v]) {
                 dist[v] = dist[u] + w;
             }
         }
     }
 
     // optional: negative-cycle check
-    for (int[] e : edges) {
+    for (auto& e : edges) {
         int u = e[0], v = e[1], w = e[2];
-        if (dist[u] != Integer.MAX_VALUE && dist[u] + w < dist[v]) {
+        if (dist[u] != INT_MAX && dist[u] + w < dist[v]) {
             // negative cycle reachable from src
         }
     }
@@ -107,18 +104,18 @@ int[] bellmanFord(int n, int[][] edges, int src) {
 
 All-pairs shortest path via dynamic programming. `dist[i][j]` is iteratively improved by allowing each vertex `k` as an intermediate. The triple loop is `O(V³)` — the `k` loop **must** be outermost.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-int[][] floydWarshall(int n, int[][] edges) {
-    final int INF = 1_000_000_000;
-    int[][] dist = new int[n][n];
-    for (int[] row : dist) Arrays.fill(row, INF);
+vector<vector<int>> floydWarshall(int n, vector<vector<int>>& edges) {
+    const int INF = 1'000'000'000;
+    vector<vector<int>> dist(n, vector<int>(n, INF));
     for (int i = 0; i < n; i++) dist[i][i] = 0;
 
-    for (int[] e : edges) {
-        dist[e[0]][e[1]] = Math.min(dist[e[0]][e[1]], e[2]);
-        dist[e[1]][e[0]] = Math.min(dist[e[1]][e[0]], e[2]); // drop if directed
+    for (auto& e : edges) {
+        dist[e[0]][e[1]] = min(dist[e[0]][e[1]], e[2]);
+        dist[e[1]][e[0]] = min(dist[e[1]][e[0]], e[2]); // drop if directed
     }
 
     // k outermost: "can we route i->j through k?"
@@ -140,31 +137,29 @@ int[][] floydWarshall(int n, int[][] edges) {
 
 ## 0-1 BFS Template
 
-When every edge costs **0 or 1**, a plain deque beats Dijkstra's log factor. Push 0-weight relaxations to the **front** (`addFirst`) and 1-weight ones to the **back** (`addLast`). The deque stays sorted by distance, so the first time you pop a node its distance is final.
+When every edge costs **0 or 1**, a plain deque beats Dijkstra's log factor. Push 0-weight relaxations to the **front** (`push_front`) and 1-weight ones to the **back** (`push_back`). The deque stays sorted by distance, so the first time you pop a node its distance is final.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-int[] zeroOneBfs(int n, List<int[]>[] adj, int src) {
+vector<int> zeroOneBfs(int n, vector<vector<pair<int,int>>>& adj, int src) {
     // adj[u] holds entries {v, weight in {0,1}}
-    int[] dist = new int[n];
-    Arrays.fill(dist, Integer.MAX_VALUE);
+    vector<int> dist(n, INT_MAX);
     dist[src] = 0;
 
-    Deque<int[]> dq = new ArrayDeque<>();  // {node, dist}
-    dq.offerFirst(new int[]{src, 0});
+    deque<pair<int,int>> dq;  // {node, dist}
+    dq.push_front({src, 0});
 
-    while (!dq.isEmpty()) {
-        int[] cur = dq.pollFirst();
-        int u = cur[0], d = cur[1];
+    while (!dq.empty()) {
+        auto [u, d] = dq.front(); dq.pop_front();
         if (d > dist[u]) continue;          // stale
 
-        for (int[] edge : adj[u]) {
-            int v = edge[0], w = edge[1];
+        for (auto& [v, w] : adj[u]) {
             if (dist[u] + w < dist[v]) {
                 dist[v] = dist[u] + w;
-                if (w == 0) dq.offerFirst(new int[]{v, dist[v]});
-                else        dq.offerLast(new int[]{v, dist[v]});
+                if (w == 0) dq.push_front({v, dist[v]});
+                else        dq.push_back({v, dist[v]});
             }
         }
     }
@@ -193,45 +188,42 @@ int[] zeroOneBfs(int n, List<int[]>[] adj, int src) {
 
 **Idea:** Run Dijkstra from source `k`; the answer is the maximum finalized distance (the time for the *last* node to receive the signal), or `-1` if any node is unreachable.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int networkDelayTime(int[][] times, int n, int k) {
-        List<int[]>[] adj = new List[n + 1];
-        for (int i = 1; i <= n; i++) adj[i] = new ArrayList<>();
-        for (int[] t : times) adj[t[0]].add(new int[]{t[1], t[2]});
+public:
+    int networkDelayTime(vector<vector<int>>& times, int n, int k) {
+        vector<vector<pair<int,int>>> adj(n + 1);
+        for (auto& t : times) adj[t[0]].push_back({t[1], t[2]});
 
-        int[] dist = new int[n + 1];
-        Arrays.fill(dist, Integer.MAX_VALUE);
+        vector<int> dist(n + 1, INT_MAX);
         dist[k] = 0;
 
-        PriorityQueue<int[]> pq =
-            new PriorityQueue<>((a, b) -> Integer.compare(a[1], b[1]));
-        pq.offer(new int[]{k, 0});
+        priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> pq;
+        pq.push({0, k});
 
-        while (!pq.isEmpty()) {
-            int[] cur = pq.poll();
-            int u = cur[0], d = cur[1];
+        while (!pq.empty()) {
+            auto [d, u] = pq.top(); pq.pop();
             if (d > dist[u]) continue;            // stale entry
 
-            for (int[] e : adj[u]) {
-                int v = e[0], w = e[1];
+            for (auto& [v, w] : adj[u]) {
                 if (dist[u] + w < dist[v]) {
                     dist[v] = dist[u] + w;
-                    pq.offer(new int[]{v, dist[v]});
+                    pq.push({dist[v], v});
                 }
             }
         }
 
         int ans = 0;
         for (int i = 1; i <= n; i++) {
-            if (dist[i] == Integer.MAX_VALUE) return -1;   // unreachable
-            ans = Math.max(ans, dist[i]);
+            if (dist[i] == INT_MAX) return -1;   // unreachable
+            ans = max(ans, dist[i]);
         }
         return ans;
     }
-}
+};
 ```
 
 **Complexity:** Time `O(E log V)`, Space `O(V + E)`.
@@ -260,20 +252,21 @@ Note how the heap ordering by distance guarantees node 2's neighbors are settled
 
 **Idea:** Bellman-Ford limited to `K+1` edge-relaxation rounds; **clone** the `dist` array each round so a single round can only extend paths from the *previous* round (preventing more than the allowed number of stops).
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int findCheapestPrice(int n, int[][] flights, int src, int dst, int k) {
-        final int INF = Integer.MAX_VALUE;
-        int[] dist = new int[n];
-        Arrays.fill(dist, INF);
+public:
+    int findCheapestPrice(int n, vector<vector<int>>& flights, int src, int dst, int k) {
+        const int INF = INT_MAX;
+        vector<int> dist(n, INF);
         dist[src] = 0;
 
         // K stops => at most K+1 edges => K+1 relaxation rounds
         for (int i = 0; i <= k; i++) {
-            int[] prev = dist.clone();   // freeze last round's distances
-            for (int[] f : flights) {
+            vector<int> prev = dist;   // freeze last round's distances
+            for (auto& f : flights) {
                 int u = f[0], v = f[1], w = f[2];
                 if (prev[u] != INF && prev[u] + w < dist[v]) {
                     dist[v] = prev[u] + w;
@@ -282,7 +275,7 @@ class Solution {
         }
         return dist[dst] == INF ? -1 : dist[dst];
     }
-}
+};
 ```
 
 **Why clone:** without the snapshot, relaxing edge A then edge B in the same round could chain two new edges, sneaking in an extra stop beyond `K`.
@@ -295,42 +288,41 @@ class Solution {
 
 **Idea:** Dijkstra on the grid where the "distance" of a path is the **maximum** absolute height difference between adjacent cells along it (minimax). Relaxation uses `max(currentEffort, |h - hNeighbor|)`.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int minimumEffortPath(int[][] heights) {
-        int rows = heights.length, cols = heights[0].length;
-        int[][] dirs = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+public:
+    int minimumEffortPath(vector<vector<int>>& heights) {
+        int rows = heights.size(), cols = heights[0].size();
+        vector<vector<int>> dirs = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
 
-        int[][] effort = new int[rows][cols];
-        for (int[] row : effort) Arrays.fill(row, Integer.MAX_VALUE);
+        vector<vector<int>> effort(rows, vector<int>(cols, INT_MAX));
         effort[0][0] = 0;
 
-        // {row, col, effortSoFar}
-        PriorityQueue<int[]> pq =
-            new PriorityQueue<>((a, b) -> Integer.compare(a[2], b[2]));
-        pq.offer(new int[]{0, 0, 0});
+        // {effortSoFar, row, col}
+        priority_queue<tuple<int,int,int>, vector<tuple<int,int,int>>, greater<tuple<int,int,int>>> pq;
+        pq.push({0, 0, 0});
 
-        while (!pq.isEmpty()) {
-            int[] cur = pq.poll();
-            int r = cur[0], c = cur[1], e = cur[2];
+        while (!pq.empty()) {
+            auto [e, r, c] = pq.top(); pq.pop();
             if (e > effort[r][c]) continue;                 // stale
             if (r == rows - 1 && c == cols - 1) return e;    // first pop is optimal
 
-            for (int[] d : dirs) {
+            for (auto& d : dirs) {
                 int nr = r + d[0], nc = c + d[1];
                 if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-                int ne = Math.max(e, Math.abs(heights[nr][nc] - heights[r][c]));
+                int ne = max(e, abs(heights[nr][nc] - heights[r][c]));
                 if (ne < effort[nr][nc]) {
                     effort[nr][nc] = ne;
-                    pq.offer(new int[]{nr, nc, ne});
+                    pq.push({ne, nr, nc});
                 }
             }
         }
         return 0; // single cell grid
     }
-}
+};
 ```
 
 **Complexity:** Time `O(R·C·log(R·C))`, Space `O(R·C)`.
@@ -341,36 +333,36 @@ class Solution {
 
 **Idea:** The time to reach the bottom-right equals the **minimum over all paths of the maximum elevation** on that path — another minimax Dijkstra. The cost of stepping onto a cell is its elevation; the path cost is the max elevation seen.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int swimInWater(int[][] grid) {
-        int n = grid.length;
-        int[][] dirs = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+public:
+    int swimInWater(vector<vector<int>>& grid) {
+        int n = grid.size();
+        vector<vector<int>> dirs = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
 
-        boolean[][] visited = new boolean[n][n];
-        // {row, col, maxElevationSoFar}
-        PriorityQueue<int[]> pq =
-            new PriorityQueue<>((a, b) -> Integer.compare(a[2], b[2]));
-        pq.offer(new int[]{0, 0, grid[0][0]});
+        vector<vector<bool>> visited(n, vector<bool>(n, false));
+        // {maxElevationSoFar, row, col}
+        priority_queue<tuple<int,int,int>, vector<tuple<int,int,int>>, greater<tuple<int,int,int>>> pq;
+        pq.push({grid[0][0], 0, 0});
 
-        while (!pq.isEmpty()) {
-            int[] cur = pq.poll();
-            int r = cur[0], c = cur[1], t = cur[2];
+        while (!pq.empty()) {
+            auto [t, r, c] = pq.top(); pq.pop();
             if (visited[r][c]) continue;
             visited[r][c] = true;
             if (r == n - 1 && c == n - 1) return t;   // first arrival is optimal
 
-            for (int[] d : dirs) {
+            for (auto& d : dirs) {
                 int nr = r + d[0], nc = c + d[1];
                 if (nr < 0 || nr >= n || nc < 0 || nc >= n || visited[nr][nc]) continue;
-                pq.offer(new int[]{nr, nc, Math.max(t, grid[nr][nc])});
+                pq.push({max(t, grid[nr][nc]), nr, nc});
             }
         }
         return -1; // unreachable (won't happen on valid input)
     }
-}
+};
 ```
 
 **Complexity:** Time `O(N²·log N)`, Space `O(N²)`.
@@ -381,48 +373,45 @@ class Solution {
 
 **Idea:** Dijkstra with a **max-heap**, maximizing the **product** of edge probabilities. Since probabilities are in `[0,1]`, products only shrink, so the greedy "pop the largest first" property holds just like minimizing a sum.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public double maxProbability(int n, int[][] edges, double[] succProb,
-                                 int start, int end) {
-        List<double[]>[] adj = new List[n];
-        for (int i = 0; i < n; i++) adj[i] = new ArrayList<>();
-        for (int i = 0; i < edges.length; i++) {
+public:
+    double maxProbability(int n, vector<vector<int>>& edges, vector<double>& succProb,
+                          int start, int end) {
+        vector<vector<pair<int,double>>> adj(n);
+        for (int i = 0; i < (int)edges.size(); i++) {
             int u = edges[i][0], v = edges[i][1];
             double p = succProb[i];
-            adj[u].add(new double[]{v, p});
-            adj[v].add(new double[]{u, p});
+            adj[u].push_back({v, p});
+            adj[v].push_back({u, p});
         }
 
-        double[] prob = new double[n];
+        vector<double> prob(n, 0.0);
         prob[start] = 1.0;
 
-        // max-heap by probability; {node, prob}
-        PriorityQueue<double[]> pq =
-            new PriorityQueue<>((a, b) -> Double.compare(b[1], a[1]));
-        pq.offer(new double[]{start, 1.0});
+        // max-heap by probability; {prob, node}
+        priority_queue<pair<double,int>> pq;
+        pq.push({1.0, start});
 
-        while (!pq.isEmpty()) {
-            double[] cur = pq.poll();
-            int u = (int) cur[0];
-            double p = cur[1];
+        while (!pq.empty()) {
+            auto [p, u] = pq.top(); pq.pop();
             if (p < prob[u]) continue;          // stale
             if (u == end) return p;             // first pop of end is optimal
 
-            for (double[] e : adj[u]) {
-                int v = (int) e[0];
-                double np = p * e[1];
+            for (auto& [v, ep] : adj[u]) {
+                double np = p * ep;
                 if (np > prob[v]) {
                     prob[v] = np;
-                    pq.offer(new double[]{v, np});
+                    pq.push({np, v});
                 }
             }
         }
         return 0.0; // end unreachable
     }
-}
+};
 ```
 
 **Complexity:** Time `O(E log V)`, Space `O(V + E)`.
@@ -433,17 +422,18 @@ class Solution {
 
 **Idea:** Compute all-pairs shortest paths with Floyd-Warshall, then for each city count how many others lie within `distanceThreshold`; pick the city with the fewest such neighbors, breaking ties by the **largest** index.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int findTheCity(int n, int[][] edges, int distanceThreshold) {
-        final int INF = 1_000_000_000;
-        int[][] dist = new int[n][n];
-        for (int[] row : dist) Arrays.fill(row, INF);
+public:
+    int findTheCity(int n, vector<vector<int>>& edges, int distanceThreshold) {
+        const int INF = 1'000'000'000;
+        vector<vector<int>> dist(n, vector<int>(n, INF));
         for (int i = 0; i < n; i++) dist[i][i] = 0;
 
-        for (int[] e : edges) {
+        for (auto& e : edges) {
             dist[e[0]][e[1]] = e[2];
             dist[e[1]][e[0]] = e[2];   // undirected
         }
@@ -456,7 +446,7 @@ class Solution {
                         dist[i][j] = dist[i][k] + dist[k][j];
             }
 
-        int bestCity = -1, fewest = Integer.MAX_VALUE;
+        int bestCity = -1, fewest = INT_MAX;
         for (int i = 0; i < n; i++) {
             int count = 0;
             for (int j = 0; j < n; j++)
@@ -469,7 +459,7 @@ class Solution {
         }
         return bestCity;
     }
-}
+};
 ```
 
 **Complexity:** Time `O(V³)`, Space `O(V²)`.
@@ -480,25 +470,25 @@ class Solution {
 
 **Idea:** 0-1 BFS. Each cell points a direction; **following** the arrow costs `0`, **changing** it (moving any other direction) costs `1`. Find the minimum-cost path from top-left to bottom-right.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int minCost(int[][] grid) {
-        int rows = grid.length, cols = grid[0].length;
+public:
+    int minCost(vector<vector<int>>& grid) {
+        int rows = grid.size(), cols = grid[0].size();
         // grid value 1=right, 2=left, 3=down, 4=up -> matching dirs index
-        int[][] dirs = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+        vector<vector<int>> dirs = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
 
-        int[][] dist = new int[rows][cols];
-        for (int[] row : dist) Arrays.fill(row, Integer.MAX_VALUE);
+        vector<vector<int>> dist(rows, vector<int>(cols, INT_MAX));
         dist[0][0] = 0;
 
-        Deque<int[]> dq = new ArrayDeque<>();   // {row, col, cost}
-        dq.offerFirst(new int[]{0, 0, 0});
+        deque<tuple<int,int,int>> dq;   // {row, col, cost}
+        dq.push_front({0, 0, 0});
 
-        while (!dq.isEmpty()) {
-            int[] cur = dq.pollFirst();
-            int r = cur[0], c = cur[1], cost = cur[2];
+        while (!dq.empty()) {
+            auto [r, c, cost] = dq.front(); dq.pop_front();
             if (cost > dist[r][c]) continue;            // stale
 
             for (int dir = 0; dir < 4; dir++) {
@@ -508,14 +498,14 @@ class Solution {
                 int w = (grid[r][c] == dir + 1) ? 0 : 1;
                 if (cost + w < dist[nr][nc]) {
                     dist[nr][nc] = cost + w;
-                    if (w == 0) dq.offerFirst(new int[]{nr, nc, cost});
-                    else        dq.offerLast(new int[]{nr, nc, cost + 1});
+                    if (w == 0) dq.push_front({nr, nc, cost});
+                    else        dq.push_back({nr, nc, cost + 1});
                 }
             }
         }
         return dist[rows - 1][cols - 1];
     }
-}
+};
 ```
 
 **Complexity:** Time `O(R·C)`, Space `O(R·C)`.
@@ -526,37 +516,38 @@ class Solution {
 
 **Idea:** Unweighted shortest path over a **state graph** `(node, visitedMask)`. BFS layer by layer; the goal is any node whose mask equals all-ones (`(1<<n)-1`). Because `n <= 12`, the total state count `n · 2^n` is small.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int shortestPathLength(int[][] graph) {
-        int n = graph.length;
+public:
+    int shortestPathLength(vector<vector<int>>& graph) {
+        int n = graph.size();
         if (n == 1) return 0;
         int full = (1 << n) - 1;
 
-        boolean[][] visited = new boolean[n][1 << n];
-        Deque<int[]> queue = new ArrayDeque<>();   // {node, mask}
+        vector<vector<bool>> visited(n, vector<bool>(1 << n, false));
+        deque<pair<int,int>> queue;   // {node, mask}
 
         // can start from any node
         for (int i = 0; i < n; i++) {
-            queue.offer(new int[]{i, 1 << i});
+            queue.push_back({i, 1 << i});
             visited[i][1 << i] = true;
         }
 
         int steps = 0;
-        while (!queue.isEmpty()) {
+        while (!queue.empty()) {
             int size = queue.size();
             for (int s = 0; s < size; s++) {
-                int[] cur = queue.poll();
-                int node = cur[0], mask = cur[1];
+                auto [node, mask] = queue.front(); queue.pop_front();
                 if (mask == full) return steps;     // all nodes visited
 
                 for (int next : graph[node]) {
                     int nextMask = mask | (1 << next);
                     if (!visited[next][nextMask]) {
                         visited[next][nextMask] = true;
-                        queue.offer(new int[]{next, nextMask});
+                        queue.push_back({next, nextMask});
                     }
                 }
             }
@@ -564,7 +555,7 @@ class Solution {
         }
         return -1; // graph guaranteed connected, so unreachable
     }
-}
+};
 ```
 
 **Complexity:** Time `O(n² · 2ⁿ)`, Space `O(n · 2ⁿ)`.

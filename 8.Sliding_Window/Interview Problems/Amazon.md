@@ -10,16 +10,19 @@
 
 ### Full Solution with `have/need` Counter
 
-```java
-public String minWindow(String s, String t) {
-    int[] need = new int[128];
-    for (char c : t.toCharArray()) need[c]++;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+string minWindow(string s, string t) {
+    int need[128] = {};
+    for (char c : t) need[c]++;
 
     int left = 0, have = 0, required = t.length();
-    int minLen = Integer.MAX_VALUE, minLeft = 0;
+    int minLen = INT_MAX, minLeft = 0;
 
-    for (int right = 0; right < s.length(); right++) {
-        char c = s.charAt(right);
+    for (int right = 0; right < (int)s.length(); right++) {
+        char c = s[right];
         if (need[c] > 0) have++;   // satisfying a genuine need
         need[c]--;
 
@@ -28,13 +31,13 @@ public String minWindow(String s, String t) {
                 minLen = right - left + 1;
                 minLeft = left;
             }
-            char l = s.charAt(left);
+            char l = s[left];
             need[l]++;
             if (need[l] > 0) have--;   // we lost a needed char
             left++;
         }
     }
-    return minLen == Integer.MAX_VALUE ? "" : s.substring(minLeft, minLeft + minLen);
+    return minLen == INT_MAX ? "" : s.substr(minLeft, minLen);
 }
 ```
 
@@ -61,21 +64,24 @@ A: The `need` array handles this — `need['A'] = 2`, so you need two A's in the
 
 **LC 424** · Medium · O(n) time
 
-```java
-public int characterReplacement(String s, int k) {
-    int[] freq = new int[26];
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int characterReplacement(string s, int k) {
+    int freq[26] = {};
     int left = 0, maxFreq = 0, maxLen = 0;
 
-    for (int right = 0; right < s.length(); right++) {
-        freq[s.charAt(right) - 'A']++;
-        maxFreq = Math.max(maxFreq, freq[s.charAt(right) - 'A']);
+    for (int right = 0; right < (int)s.length(); right++) {
+        freq[s[right] - 'A']++;
+        maxFreq = max(maxFreq, freq[s[right] - 'A']);
 
         if ((right - left + 1) - maxFreq > k) {
-            freq[s.charAt(left) - 'A']--;
+            freq[s[left] - 'A']--;
             left++;
         }
 
-        maxLen = Math.max(maxLen, right - left + 1);
+        maxLen = max(maxLen, right - left + 1);
     }
     return maxLen;
 }
@@ -93,22 +99,25 @@ A: We're looking for the maximum window. Any valid window must have `windowSize 
 
 **LC 904** · Medium
 
-```java
-public int totalFruit(int[] fruits) {
-    Map<Integer, Integer> basket = new HashMap<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int totalFruit(vector<int>& fruits) {
+    unordered_map<int, int> basket;
     int left = 0, maxLen = 0;
 
-    for (int right = 0; right < fruits.length; right++) {
-        basket.merge(fruits[right], 1, Integer::sum);
+    for (int right = 0; right < (int)fruits.size(); right++) {
+        basket[fruits[right]]++;
 
         while (basket.size() > 2) {
             int f = fruits[left];
-            basket.merge(f, -1, Integer::sum);
-            if (basket.get(f) == 0) basket.remove(f);
+            basket[f]--;
+            if (basket[f] == 0) basket.erase(f);
             left++;
         }
 
-        maxLen = Math.max(maxLen, right - left + 1);
+        maxLen = max(maxLen, right - left + 1);
     }
     return maxLen;
 }
@@ -118,7 +127,7 @@ public int totalFruit(int[] fruits) {
 A: Replace `> 2` with `> k`. Same O(n) solution.
 
 **Q: What if fruits[] can be very large values (not 0..n)?**
-A: HashMap handles arbitrary values. If values were bounded (e.g., 0..1000), an int array of size 1001 would be more efficient.
+A: `std::unordered_map` handles arbitrary values. If values were bounded (e.g., 0..1000), an int array of size 1001 would be more efficient.
 
 ---
 

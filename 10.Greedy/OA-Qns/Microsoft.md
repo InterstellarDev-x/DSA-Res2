@@ -23,12 +23,15 @@
 3. "What if nums[i] is the exact number of steps (not maximum)?" → BFS required, greedy fails
 
 **Code they want to see:**
-```java
-public boolean canJump(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool canJump(vector<int>& nums) {
     int maxReach = 0;
-    for (int i = 0; i < nums.length; i++) {
+    for (int i = 0; i < (int)nums.size(); i++) {
         if (i > maxReach) return false;
-        maxReach = Math.max(maxReach, i + nums[i]);
+        maxReach = max(maxReach, i + nums[i]);
     }
     return true;
 }
@@ -53,22 +56,25 @@ public boolean canJump(int[] nums) {
 3. "What if intervals can have the same start?" → Algorithm handles it; explain why
 
 **Code they want to see:**
-```java
-public int[][] insert(int[][] intervals, int[] newInterval) {
-    List<int[]> result = new ArrayList<>();
-    int i = 0, n = intervals.length;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> insert(vector<vector<int>>& intervals, vector<int>& newInterval) {
+    vector<vector<int>> result;
+    int i = 0, n = intervals.size();
     // Phase 1: Add all intervals ending before newInterval starts
-    while (i < n && intervals[i][1] < newInterval[0]) result.add(intervals[i++]);
+    while (i < n && intervals[i][1] < newInterval[0]) result.push_back(intervals[i++]);
     // Phase 2: Merge all overlapping intervals
     while (i < n && intervals[i][0] <= newInterval[1]) {
-        newInterval[0] = Math.min(newInterval[0], intervals[i][0]);
-        newInterval[1] = Math.max(newInterval[1], intervals[i][1]);
+        newInterval[0] = min(newInterval[0], intervals[i][0]);
+        newInterval[1] = max(newInterval[1], intervals[i][1]);
         i++;
     }
-    result.add(newInterval);
+    result.push_back(newInterval);
     // Phase 3: Add remaining intervals
-    while (i < n) result.add(intervals[i++]);
-    return result.toArray(new int[0][]);
+    while (i < n) result.push_back(intervals[i++]);
+    return result;
 }
 ```
 

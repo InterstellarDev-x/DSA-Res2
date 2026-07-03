@@ -18,121 +18,172 @@ Design a **Least Frequently Used** cache. Among ties in frequency, evict the **L
 
 Three data structures:
 
-1. **`keyMap: HashMap<Integer, Node>`** — O(1) lookup to node by key
-2. **`freqMap: HashMap<Integer, DoublyLinkedList>`** — each frequency bucket is a DLL of nodes (ordered by recency: head = most recent)
+1. **`keyMap: unordered_map<int, Node*>`** — O(1) lookup to node by key
+2. **`freqMap: unordered_map<int, DLL*>`** — each frequency bucket is a DLL of nodes (ordered by recency: head = most recent)
 3. **`minFreq: int`** — current minimum frequency in the cache
 
 ### Node Structure
 
-```java
-private static class Node {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct Node {
     int key, val, freq;
-    Node prev, next;
-    Node(int k, int v) { key = k; val = v; freq = 1; }
-}
+    Node* prev;
+    Node* next;
+    Node(int k, int v) : key(k), val(v), freq(1), prev(nullptr), next(nullptr) {}
+};
 ```
 
 ### DoublyLinkedList (per frequency bucket)
 
 Each frequency bucket is an LRU cache internally — most recently used is at head, LRU is at tail.
 
-```java
-private static class DLL {
-    Node head, tail; // sentinels
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct DLL {
+    Node* head;
+    Node* tail; // sentinels
     int size;
 
-    DLL() {
+    DLL() : size(0) {
         head = new Node(0, 0);
         tail = new Node(0, 0);
-        head.next = tail;
-        tail.prev = head;
+        head->next = tail;
+        tail->prev = head;
     }
 
-    void addFront(Node node) {
-        node.next = head.next;
-        node.prev = head;
-        head.next.prev = node;
-        head.next = node;
+    void addFront(Node* node) {
+        node->next = head->next;
+        node->prev = head;
+        head->next->prev = node;
+        head->next = node;
         size++;
     }
 
-    void remove(Node node) {
-        node.prev.next = node.next;
-        node.next.prev = node.prev;
+    void remove(Node* node) {
+        node->prev->next = node->next;
+        node->next->prev = node->prev;
         size--;
     }
 
-    Node removeLast() { // remove LRU from this bucket
-        if (size == 0) return null;
-        Node node = tail.prev;
+    Node* removeLast() { // remove LRU from this bucket
+        if (size == 0) return nullptr;
+        Node* node = tail->prev;
         remove(node);
         return node;
     }
-}
+};
 ```
 
 ---
 
 ## Full Implementation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct Node {
+    int key, val, freq;
+    Node* prev;
+    Node* next;
+    Node(int k, int v) : key(k), val(v), freq(1), prev(nullptr), next(nullptr) {}
+};
+
+struct DLL {
+    Node* head;
+    Node* tail; // sentinels
+    int size;
+
+    DLL() : size(0) {
+        head = new Node(0, 0);
+        tail = new Node(0, 0);
+        head->next = tail;
+        tail->prev = head;
+    }
+
+    void addFront(Node* node) {
+        node->next = head->next;
+        node->prev = head;
+        head->next->prev = node;
+        head->next = node;
+        size++;
+    }
+
+    void remove(Node* node) {
+        node->prev->next = node->next;
+        node->next->prev = node->prev;
+        size--;
+    }
+
+    Node* removeLast() { // remove LRU from this bucket
+        if (size == 0) return nullptr;
+        Node* node = tail->prev;
+        remove(node);
+        return node;
+    }
+};
+
 class LFUCache {
-    private final int capacity;
-    private int minFreq;
-    private final Map<Integer, Node> keyMap;
-    private final Map<Integer, DLL> freqMap;
+    int capacity;
+    int minFreq;
+    unordered_map<int, Node*> keyMap;
+    unordered_map<int, DLL*> freqMap;
 
-    public LFUCache(int capacity) {
-        this.capacity = capacity;
-        this.minFreq = 0;
-        keyMap = new HashMap<>();
-        freqMap = new HashMap<>();
-    }
+public:
+    LFUCache(int capacity) : capacity(capacity), minFreq(0) {}
 
-    public int get(int key) {
-        if (!keyMap.containsKey(key)) return -1;
-        Node node = keyMap.get(key);
+    int get(int key) {
+        if (!keyMap.count(key)) return -1;
+        Node* node = keyMap[key];
         updateFreq(node);
-        return node.val;
+        return node->val;
     }
 
-    public void put(int key, int value) {
+    void put(int key, int value) {
         if (capacity == 0) return;
 
-        if (keyMap.containsKey(key)) {
-            Node node = keyMap.get(key);
-            node.val = value;
+        if (keyMap.count(key)) {
+            Node* node = keyMap[key];
+            node->val = value;
             updateFreq(node);
             return;
         }
 
-        if (keyMap.size() == capacity) {
+        if ((int)keyMap.size() == capacity) {
             // Evict LFU (LRU within minFreq bucket)
-            DLL minBucket = freqMap.get(minFreq);
-            Node evicted = minBucket.removeLast();
-            keyMap.remove(evicted.key);
+            DLL* minBucket = freqMap[minFreq];
+            Node* evicted = minBucket->removeLast();
+            keyMap.erase(evicted->key);
         }
 
-        Node node = new Node(key, value); // freq = 1
-        keyMap.put(key, node);
-        freqMap.computeIfAbsent(1, k -> new DLL()).addFront(node);
+        Node* node = new Node(key, value); // freq = 1
+        keyMap[key] = node;
+        if (!freqMap.count(1)) freqMap[1] = new DLL();
+        freqMap[1]->addFront(node);
         minFreq = 1; // new node always has freq 1
     }
 
-    private void updateFreq(Node node) {
-        int oldFreq = node.freq;
-        DLL oldBucket = freqMap.get(oldFreq);
-        oldBucket.remove(node);
+private:
+    void updateFreq(Node* node) {
+        int oldFreq = node->freq;
+        DLL* oldBucket = freqMap[oldFreq];
+        oldBucket->remove(node);
 
-        if (oldBucket.size == 0) {
-            freqMap.remove(oldFreq);
+        if (oldBucket->size == 0) {
+            freqMap.erase(oldFreq);
             if (minFreq == oldFreq) minFreq++; // only increment if we removed min
         }
 
-        node.freq++;
-        freqMap.computeIfAbsent(node.freq, k -> new DLL()).addFront(node);
+        node->freq++;
+        if (!freqMap.count(node->freq)) freqMap[node->freq] = new DLL();
+        freqMap[node->freq]->addFront(node);
     }
-}
+};
 ```
 
 ---
@@ -153,7 +204,7 @@ On `put` of a new node: reset `minFreq = 1` (new node always at frequency 1).
 |--------|-----|-----|
 | Eviction rule | Least recently used | Least frequently used (LRU as tiebreaker) |
 | State tracked | Position in access order | Frequency + position per frequency |
-| Data structures | 1 HashMap + 1 DLL | 2 HashMaps + N DLLs |
+| Data structures | 1 std::unordered_map + 1 DLL | 2 std::unordered_maps + N DLLs |
 | When optimal | Temporal locality (e.g., video streaming) | Frequency locality (e.g., database pages) |
 
 ---
@@ -189,7 +240,7 @@ get(3):   freq[3] moves to 2. freqMap={2:[3,1]}, minFreq=2
 |---------|-----|
 | Incrementing `minFreq` unconditionally on update | Only increment if `oldFreq == minFreq` AND that bucket is now empty |
 | Not resetting `minFreq = 1` on new `put` | New nodes always go to freq=1; minFreq must reflect this |
-| `computeIfAbsent` returning stale reference | `computeIfAbsent` returns the value — use it directly |
+| `computeIfAbsent` (Java) / missing bucket init in C++ | Check `freqMap.count(freq)` before inserting; create new DLL if absent |
 | Forgetting `if (capacity == 0) return` | LFU with capacity 0 should do nothing |
 
 ---

@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#c-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -72,31 +72,37 @@ The key invariant: at every step, pointers maintain a constraint (e.g. `sum ≤ 
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Opposite Ends — Two Sum (Sorted)
 
-```java
-public int[] twoSum(int[] arr, int target) {
-    int l = 0, r = arr.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> twoSum(vector<int>& arr, int target) {
+    int l = 0, r = arr.size() - 1;
     while (l < r) {
         int sum = arr[l] + arr[r];
-        if (sum == target) return new int[]{l, r};
+        if (sum == target) return {l, r};
         else if (sum < target) l++;
         else r--;
     }
-    return new int[]{-1, -1};
+    return {-1, -1};
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 2. Same Direction — Remove Duplicates (Sorted)
 
-```java
-public int removeDuplicates(int[] nums) {
-    if (nums.length == 0) return 0;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int removeDuplicates(vector<int>& nums) {
+    if (nums.empty()) return 0;
     int slow = 0;
-    for (int fast = 1; fast < nums.length; fast++) {
+    for (int fast = 1; fast < (int)nums.size(); fast++) {
         if (nums[fast] != nums[slow]) {
             slow++;
             nums[slow] = nums[fast];
@@ -109,34 +115,40 @@ public int removeDuplicates(int[] nums) {
 
 ### 3. Move Zeros to End
 
-```java
-public void moveZeroes(int[] nums) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void moveZeroes(vector<int>& nums) {
     int slow = 0;
-    for (int fast = 0; fast < nums.length; fast++) {
+    for (int fast = 0; fast < (int)nums.size(); fast++) {
         if (nums[fast] != 0) {
             nums[slow++] = nums[fast];
         }
     }
-    while (slow < nums.length) nums[slow++] = 0;
+    while (slow < (int)nums.size()) nums[slow++] = 0;
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 4. 3Sum
 
-```java
-public List<List<Integer>> threeSum(int[] nums) {
-    Arrays.sort(nums);
-    List<List<Integer>> result = new ArrayList<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    for (int i = 0; i < nums.length - 2; i++) {
+vector<vector<int>> threeSum(vector<int>& nums) {
+    sort(nums.begin(), nums.end());
+    vector<vector<int>> result;
+
+    for (int i = 0; i < (int)nums.size() - 2; i++) {
         if (i > 0 && nums[i] == nums[i - 1]) continue; // skip duplicate i
 
-        int l = i + 1, r = nums.length - 1;
+        int l = i + 1, r = nums.size() - 1;
         while (l < r) {
             int sum = nums[i] + nums[l] + nums[r];
             if (sum == 0) {
-                result.add(Arrays.asList(nums[i], nums[l], nums[r]));
+                result.push_back({nums[i], nums[l], nums[r]});
                 while (l < r && nums[l] == nums[l + 1]) l++; // skip dup l
                 while (l < r && nums[r] == nums[r - 1]) r--; // skip dup r
                 l++; r--;
@@ -151,30 +163,36 @@ public List<List<Integer>> threeSum(int[] nums) {
 
 ### 5. Container With Most Water
 
-```java
-public int maxArea(int[] height) {
-    int l = 0, r = height.length - 1, max = 0;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int maxArea(vector<int>& height) {
+    int l = 0, r = height.size() - 1, maxWater = 0;
     while (l < r) {
-        max = Math.max(max, Math.min(height[l], height[r]) * (r - l));
+        maxWater = max(maxWater, min(height[l], height[r]) * (r - l));
         if (height[l] < height[r]) l++;
         else r--;
     }
-    return max;
+    return maxWater;
 }
 // Time: O(n) | Space: O(1)
 ```
 
 ### 6. Merge Two Sorted Arrays into One
 
-```java
-public int[] mergeSorted(int[] a, int[] b) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> mergeSorted(vector<int>& a, vector<int>& b) {
     int i = 0, j = 0, k = 0;
-    int[] result = new int[a.length + b.length];
-    while (i < a.length && j < b.length) {
+    vector<int> result(a.size() + b.size());
+    while (i < (int)a.size() && j < (int)b.size()) {
         result[k++] = (a[i] <= b[j]) ? a[i++] : b[j++];
     }
-    while (i < a.length) result[k++] = a[i++];
-    while (j < b.length) result[k++] = b[j++];
+    while (i < (int)a.size()) result[k++] = a[i++];
+    while (j < (int)b.size()) result[k++] = b[j++];
     return result;
 }
 // Time: O(m+n) | Space: O(m+n)
@@ -186,7 +204,7 @@ public int[] mergeSorted(int[] a, int[] b) {
 
 | Mistake | Fix |
 |---------|-----|
-| Applying Two Pointers to unsorted array | Sort first (adds O(n log n)) or use HashMap |
+| Applying Two Pointers to unsorted array | Sort first (adds O(n log n)) or use std::unordered_map |
 | Loop condition `l < r` vs `l <= r` | `l < r` for pairs; `l <= r` if element can be used alone |
 | 3Sum: not skipping duplicates | Skip when `nums[i] == nums[i-1]` AND `nums[l] == nums[l+1]` |
 | Moving both pointers when sum equals target | Move both; `l++` and `r--` together |

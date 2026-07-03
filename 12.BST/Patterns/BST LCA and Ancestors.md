@@ -6,12 +6,16 @@
 descent** and **O(1) extra space** — no parent pointers, no full-tree search. You compare the
 target(s) against the current node and decide which way to go, updating a candidate as you pass.
 
-```java
-public class TreeNode {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+};
 ```
 
 > **Recognition signals:** "lowest common ancestor (and it's a BST)", "inorder successor /
@@ -25,15 +29,18 @@ Walk down from the root. If **both** `p` and `q` are smaller than the current no
 the left subtree; if **both** are larger, go right. The first node where they **split** (one on
 each side, or one equals the node) is the LCA. No recursion or extra space required.
 
-```java
-public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
-    TreeNode cur = root;
-    while (cur != null) {
-        if (p.val < cur.val && q.val < cur.val)      cur = cur.left;   // both smaller
-        else if (p.val > cur.val && q.val > cur.val) cur = cur.right;  // both larger
-        else return cur;                                               // split point = LCA
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
+    TreeNode* cur = root;
+    while (cur != nullptr) {
+        if (p->val < cur->val && q->val < cur->val)      cur = cur->left;   // both smaller
+        else if (p->val > cur->val && q->val > cur->val) cur = cur->right;  // both larger
+        else return cur;                                                     // split point = LCA
     }
-    return null;
+    return nullptr;
 }
 ```
 
@@ -55,16 +62,19 @@ The inorder successor of `p` is the smallest key strictly greater than `p.val`. 
 
 A single descent handles both cases:
 
-```java
-public TreeNode inorderSuccessor(TreeNode root, TreeNode p) {
-    TreeNode successor = null;
-    TreeNode cur = root;
-    while (cur != null) {
-        if (p.val < cur.val) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+TreeNode* inorderSuccessor(TreeNode* root, TreeNode* p) {
+    TreeNode* successor = nullptr;
+    TreeNode* cur = root;
+    while (cur != nullptr) {
+        if (p->val < cur->val) {
             successor = cur;        // candidate: we may come back up to it
-            cur = cur.left;
+            cur = cur->left;
         } else {
-            cur = cur.right;        // p.val >= cur.val: successor is further right
+            cur = cur->right;       // p->val >= cur->val: successor is further right
         }
     }
     return successor;
@@ -87,34 +97,37 @@ public TreeNode inorderSuccessor(TreeNode root, TreeNode p) {
 Descend once. When the current value qualifies as a candidate, record it and move toward a
 *tighter* candidate.
 
-```java
-// Largest value <= x, or Integer.MIN_VALUE if none.
-public int floor(TreeNode root, int x) {
-    int best = Integer.MIN_VALUE;
-    TreeNode cur = root;
-    while (cur != null) {
-        if (cur.val == x) return x;
-        if (cur.val < x) {           // candidate floor; try to find a larger one on the right
-            best = cur.val;
-            cur = cur.right;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+// Largest value <= x, or INT_MIN if none.
+int floor(TreeNode* root, int x) {
+    int best = INT_MIN;
+    TreeNode* cur = root;
+    while (cur != nullptr) {
+        if (cur->val == x) return x;
+        if (cur->val < x) {           // candidate floor; try to find a larger one on the right
+            best = cur->val;
+            cur = cur->right;
         } else {
-            cur = cur.left;          // too big, go smaller
+            cur = cur->left;          // too big, go smaller
         }
     }
     return best;
 }
 
-// Smallest value >= x, or Integer.MAX_VALUE if none.
-public int ceil(TreeNode root, int x) {
-    int best = Integer.MAX_VALUE;
-    TreeNode cur = root;
-    while (cur != null) {
-        if (cur.val == x) return x;
-        if (cur.val > x) {           // candidate ceil; try to find a smaller one on the left
-            best = cur.val;
-            cur = cur.left;
+// Smallest value >= x, or INT_MAX if none.
+int ceil(TreeNode* root, int x) {
+    int best = INT_MAX;
+    TreeNode* cur = root;
+    while (cur != nullptr) {
+        if (cur->val == x) return x;
+        if (cur->val > x) {           // candidate ceil; try to find a smaller one on the left
+            best = cur->val;
+            cur = cur->left;
         } else {
-            cur = cur.right;         // too small, go larger
+            cur = cur->right;         // too small, go larger
         }
     }
     return best;
@@ -123,8 +136,7 @@ public int ceil(TreeNode root, int x) {
 
 **Complexity:** Time O(h); Space O(1) each.
 
-> Java's `TreeMap`/`TreeSet` expose exactly these as `floorKey`, `ceilingKey`, `lowerKey`,
-> `higherKey` — all O(log n). See [BST vs Hash vs Heap](../Interview%20Tips/BST%20vs%20Hash%20vs%20Heap.md).
+> C++'s `std::map`/`std::set` expose exactly these as `lower_bound`, `upper_bound` — all O(log n). See [BST vs Hash vs Heap](../Interview%20Tips/BST%20vs%20Hash%20vs%20Heap.md).
 
 ---
 
@@ -141,7 +153,7 @@ public int ceil(TreeNode root, int x) {
 ```
 
 1. cur = 6: `2 < 6` and `4 < 6` → both smaller → go **left** to `2`.
-2. cur = 2: `p.val == cur.val` → not "both smaller" and not "both larger" → **split / equal**.
+2. cur = 2: `p->val == cur->val` → not "both smaller" and not "both larger" → **split / equal**.
    Return `2`.
 
 LCA(2, 4) = **2** (a node can be its own ancestor). The walk visited only 2 nodes — O(h).

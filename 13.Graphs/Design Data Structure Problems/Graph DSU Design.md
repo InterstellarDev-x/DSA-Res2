@@ -14,19 +14,19 @@ questions extremely fast:
 
 while also supporting the mutation:
 
-- **Merge the sets containing `a` and `b`.** (`union`)
+- **Merge the sets containing `a` and `b`.** (`unite`)
 
 ### Why it matters for graphs
 
 1. **Dynamic connectivity.** As edges are added one at a time, DSU tells you
    in near constant time whether two vertices are already connected. This is
    the backbone of **Kruskal's MST** (skip an edge if its endpoints are
-   already connected, otherwise union them) and of detecting cycles in an
+   already connected, otherwise unite them) and of detecting cycles in an
    undirected graph.
 2. **Grouping / clustering.** Problems that ask for the *number of connected
    components*, *number of provinces*, *number of islands*, *accounts merge*,
    *friend circles*, or *redundant connection* are all DSU in disguise. You
-   union related items and read off `count()` or group by representative.
+   unite related items and read off `count()` or group by representative.
 3. **Online vs. offline.** Plain DSU is an *incremental* (online) structure:
    it handles unions and queries interleaved. With a **rollback** variant you
    can also support *offline dynamic connectivity* where edges are added and
@@ -52,54 +52,45 @@ for any input that fits in the universe.
 
 ## 1. Production `UnionFind` for integer nodes `[0, n)`
 
-```java
-/**
- * Disjoint Set Union (Union-Find) over the integer universe [0, n).
- *
- * <p>Supports near-constant-time {@code union} and {@code find} via
- * path compression and union by rank. Also tracks the current number of
- * disjoint components.
- */
-public class UnionFind {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    /** parent[x] is the parent of x; a root r satisfies parent[r] == r. */
-    private final int[] parent;
+// Disjoint Set Union (Union-Find) over the integer universe [0, n).
+//
+// Supports near-constant-time unite and find via
+// path compression and union by rank. Also tracks the current number of
+// disjoint components.
+class UnionFind {
 
-    /** rank[x] is an upper bound on the height of the tree rooted at x. */
-    private final int[] rank;
+    // parent[x] is the parent of x; a root r satisfies parent[r] == r.
+    vector<int> parent;
 
-    /** Current number of disjoint sets (components). */
-    private int count;
+    // rnk[x] is an upper bound on the height of the tree rooted at x.
+    vector<int> rnk;
 
-    /**
-     * Creates a structure with {@code n} singleton sets {0}, {1}, ..., {n-1}.
-     *
-     * @param n the number of elements; must be non-negative
-     * @throws IllegalArgumentException if {@code n < 0}
-     */
-    public UnionFind(int n) {
+    // Current number of disjoint sets (components).
+    int cnt;
+
+public:
+    // Creates a structure with n singleton sets {0}, {1}, ..., {n-1}.
+    // n: the number of elements; must be non-negative
+    UnionFind(int n) {
         if (n < 0) {
-            throw new IllegalArgumentException("n must be non-negative: " + n);
+            throw invalid_argument("n must be non-negative: " + to_string(n));
         }
-        this.parent = new int[n];
-        this.rank = new int[n];
-        this.count = n;
+        parent.resize(n);
+        rnk.resize(n, 0);
+        cnt = n;
         for (int i = 0; i < n; i++) {
             parent[i] = i;   // each element is its own root initially
-            rank[i] = 0;
         }
     }
 
-    /**
-     * Returns the representative (root) of the set containing {@code x},
-     * applying iterative path compression so that every node on the path
-     * points directly at the root afterwards.
-     *
-     * @param x an element in [0, n)
-     * @return the root of x's set
-     * @throws IndexOutOfBoundsException if x is out of range
-     */
-    public int find(int x) {
+    // Returns the representative (root) of the set containing x,
+    // applying iterative path compression so that every node on the path
+    // points directly at the root afterwards.
+    int find(int x) {
         // First pass: locate the root.
         int root = x;
         while (root != parent[root]) {
@@ -114,67 +105,55 @@ public class UnionFind {
         return root;
     }
 
-    /**
-     * Merges the sets containing {@code a} and {@code b} using union by rank.
-     *
-     * @param a an element in [0, n)
-     * @param b an element in [0, n)
-     * @return {@code true} if a and b were in different sets and a merge
-     *         occurred; {@code false} if they were already connected
-     */
-    public boolean union(int a, int b) {
+    // Merges the sets containing a and b using union by rank.
+    // Returns true if a and b were in different sets and a merge
+    // occurred; false if they were already connected.
+    bool unite(int a, int b) {
         int rootA = find(a);
         int rootB = find(b);
         if (rootA == rootB) {
             return false;   // already in the same set, nothing to do
         }
         // Attach the lower-rank tree under the higher-rank tree.
-        if (rank[rootA] < rank[rootB]) {
+        if (rnk[rootA] < rnk[rootB]) {
             parent[rootA] = rootB;
-        } else if (rank[rootA] > rank[rootB]) {
+        } else if (rnk[rootA] > rnk[rootB]) {
             parent[rootB] = rootA;
         } else {
             parent[rootB] = rootA;
-            rank[rootA]++;   // equal ranks: pick one as root and bump its rank
+            rnk[rootA]++;   // equal ranks: pick one as root and bump its rank
         }
-        count--;
+        cnt--;
         return true;
     }
 
-    /**
-     * Reports whether {@code a} and {@code b} belong to the same set.
-     *
-     * @param a an element in [0, n)
-     * @param b an element in [0, n)
-     * @return {@code true} if connected, otherwise {@code false}
-     */
-    public boolean connected(int a, int b) {
+    // Reports whether a and b belong to the same set.
+    bool connected(int a, int b) {
         return find(a) == find(b);
     }
 
-    /**
-     * Returns the current number of disjoint components.
-     *
-     * @return the number of sets
-     */
-    public int count() {
-        return count;
+    // Returns the current number of disjoint components.
+    int count() {
+        return cnt;
     }
-}
+};
 ```
 
 ### Example: counting connected components
 
-```java
-// Graph with 5 vertices and edges (0-1), (1-2), (3-4).
-UnionFind uf = new UnionFind(5);
-uf.union(0, 1);
-uf.union(1, 2);
-uf.union(3, 4);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-System.out.println(uf.count());          // 2  -> {0,1,2} and {3,4}
-System.out.println(uf.connected(0, 2));  // true
-System.out.println(uf.connected(0, 3));  // false
+// Graph with 5 vertices and edges (0-1), (1-2), (3-4).
+UnionFind uf(5);
+uf.unite(0, 1);
+uf.unite(1, 2);
+uf.unite(3, 4);
+
+cout << uf.count() << "\n";          // 2  -> {0,1,2} and {3,4}
+cout << uf.connected(0, 2) << "\n";  // true
+cout << uf.connected(0, 3) << "\n";  // false
 ```
 
 ---
@@ -185,126 +164,105 @@ When nodes are strings, longs, or custom objects (e.g. account emails,
 city names, coordinate pairs), back the structure with hash maps instead of
 arrays. Elements are created lazily on first reference.
 
-```java
-import java.util.HashMap;
-import java.util.Map;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-/**
- * Generic Disjoint Set Union over an arbitrary element type {@code T}.
- *
- * <p>Elements are introduced lazily: any element passed to {@code makeSet},
- * {@code find}, or {@code union} that is not yet known becomes a new
- * singleton set. {@code T} must have well-behaved {@code equals}/{@code hashCode}.
- *
- * @param <T> the element type
- */
-public class UnionFind<T> {
+// Generic Disjoint Set Union over an arbitrary element type T.
+//
+// Elements are introduced lazily: any element passed to makeSet,
+// find, or unite that is not yet known becomes a new
+// singleton set. T must have well-behaved == and std::hash support.
+//
+// @tparam T the element type
+template<typename T>
+class UnionFind {
 
-    /** Maps each element to its parent; a root maps to itself. */
-    private final Map<T, T> parent = new HashMap<>();
+    // Maps each element to its parent; a root maps to itself.
+    unordered_map<T, T> parent;
 
-    /** Maps each root candidate to its rank (tree height upper bound). */
-    private final Map<T, Integer> rank = new HashMap<>();
+    // Maps each root candidate to its rank (tree height upper bound).
+    unordered_map<T, int> rnk;
 
-    /** Current number of disjoint sets. */
-    private int count = 0;
+    // Current number of disjoint sets.
+    int cnt = 0;
 
-    /**
-     * Ensures {@code x} exists as a singleton set if it is not already known.
-     *
-     * @param x the element to register
-     */
-    public void makeSet(T x) {
-        if (!parent.containsKey(x)) {
-            parent.put(x, x);
-            rank.put(x, 0);
-            count++;
+public:
+    // Ensures x exists as a singleton set if it is not already known.
+    void makeSet(const T& x) {
+        if (!parent.count(x)) {
+            parent[x] = x;
+            rnk[x] = 0;
+            cnt++;
         }
     }
 
-    /**
-     * Returns the representative of {@code x}'s set, registering {@code x}
-     * first if needed, with full path compression.
-     *
-     * @param x the element to look up
-     * @return the root element of x's set
-     */
-    public T find(T x) {
+    // Returns the representative of x's set, registering x
+    // first if needed, with full path compression.
+    T find(const T& x) {
         makeSet(x);
         // Locate the root.
         T root = x;
-        while (!root.equals(parent.get(root))) {
-            root = parent.get(root);
+        while (!(root == parent[root])) {
+            root = parent[root];
         }
         // Compress the path.
         T cur = x;
-        while (!cur.equals(root)) {
-            T next = parent.get(cur);
-            parent.put(cur, root);
+        while (!(cur == root)) {
+            T next = parent[cur];
+            parent[cur] = root;
             cur = next;
         }
         return root;
     }
 
-    /**
-     * Merges the sets containing {@code a} and {@code b} by rank.
-     *
-     * @param a first element
-     * @param b second element
-     * @return {@code true} if a merge occurred, {@code false} if already joined
-     */
-    public boolean union(T a, T b) {
+    // Merges the sets containing a and b by rank.
+    // Returns true if a merge occurred, false if already joined.
+    bool unite(const T& a, const T& b) {
         T rootA = find(a);
         T rootB = find(b);
-        if (rootA.equals(rootB)) {
+        if (rootA == rootB) {
             return false;
         }
-        int rankA = rank.get(rootA);
-        int rankB = rank.get(rootB);
+        int rankA = rnk[rootA];
+        int rankB = rnk[rootB];
         if (rankA < rankB) {
-            parent.put(rootA, rootB);
+            parent[rootA] = rootB;
         } else if (rankA > rankB) {
-            parent.put(rootB, rootA);
+            parent[rootB] = rootA;
         } else {
-            parent.put(rootB, rootA);
-            rank.put(rootA, rankA + 1);
+            parent[rootB] = rootA;
+            rnk[rootA] = rankA + 1;
         }
-        count--;
+        cnt--;
         return true;
     }
 
-    /**
-     * Reports whether {@code a} and {@code b} are in the same set.
-     *
-     * @param a first element
-     * @param b second element
-     * @return {@code true} if connected
-     */
-    public boolean connected(T a, T b) {
-        return find(a).equals(find(b));
+    // Reports whether a and b are in the same set.
+    bool connected(const T& a, const T& b) {
+        return find(a) == find(b);
     }
 
-    /**
-     * Returns the current number of disjoint sets.
-     *
-     * @return the component count
-     */
-    public int count() {
-        return count;
+    // Returns the current number of disjoint sets.
+    int count() {
+        return cnt;
     }
-}
+};
 ```
 
 ### Example: grouping strings
 
-```java
-UnionFind<String> uf = new UnionFind<>();
-uf.union("alice@a.com", "alice@b.com");
-uf.union("bob@x.com",   "bob@y.com");
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-System.out.println(uf.connected("alice@a.com", "alice@b.com")); // true
-System.out.println(uf.connected("alice@a.com", "bob@x.com"));   // false
-System.out.println(uf.count());                                 // 2
+UnionFind<string> uf;
+uf.unite("alice@a.com", "alice@b.com");
+uf.unite("bob@x.com",   "bob@y.com");
+
+cout << uf.connected("alice@a.com", "alice@b.com") << "\n"; // true
+cout << uf.connected("alice@a.com", "bob@x.com") << "\n";   // false
+cout << uf.count() << "\n";                                  // 2
 ```
 
 ---
@@ -320,7 +278,7 @@ ever be stored in practice (well beyond the number of atoms in the universe).
 | Operation                | Array `UnionFind` | Generic `UnionFind<T>` | Notes |
 |--------------------------|-------------------|------------------------|-------|
 | `find(x)`                | O(α(n)) amortized | O(α(n)) amortized*     | `*` plus hash-map constant per node touched |
-| `union(a, b)`            | O(α(n)) amortized | O(α(n)) amortized*     | two finds + a constant merge |
+| `unite(a, b)`            | O(α(n)) amortized | O(α(n)) amortized*     | two finds + a constant merge |
 | `connected(a, b)`        | O(α(n)) amortized | O(α(n)) amortized*     | two finds |
 | `count()`                | O(1)              | O(1)                   | maintained incrementally |
 | Construction / `makeSet` | O(n) / O(1)       | O(1) per element       | array init vs. lazy insert |
@@ -345,69 +303,58 @@ applications are:
 - **Equation / parity problems**: `weight[x]` = additive offset (e.g. `value(x) - value(parent(x))`).
 
 Below is a multiplicative-ratio version (Evaluate Division). `find` accumulates
-the product of edge weights while compressing, and `union(a, b, ratio)` records
+the product of edge weights while compressing, and `unite(a, b, ratio)` records
 `a / b == ratio`.
 
-```java
-import java.util.HashMap;
-import java.util.Map;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-/**
- * Weighted (relational) Disjoint Set Union for ratio constraints of the form
- * {@code value(a) / value(b) == ratio}.
- *
- * <p>{@code weight.get(x)} stores {@code value(x) / value(parent.get(x))}.
- * Path compression multiplies weights along the path so each node ends up
- * storing its ratio directly to the root.
- */
-public class WeightedUnionFind {
+// Weighted (relational) Disjoint Set Union for ratio constraints of the form
+// value(a) / value(b) == ratio.
+//
+// weight[x] stores value(x) / value(parent[x]).
+// Path compression multiplies weights along the path so each node ends up
+// storing its ratio directly to the root.
+class WeightedUnionFind {
 
-    private final Map<String, String> parent = new HashMap<>();
-    private final Map<String, Double> weight = new HashMap<>();
+    unordered_map<string, string> parent;
+    unordered_map<string, double> weight;
 
-    /** Registers {@code x} as a singleton with ratio 1.0 to itself. */
-    public void makeSet(String x) {
-        if (!parent.containsKey(x)) {
-            parent.put(x, x);
-            weight.put(x, 1.0);
+public:
+    // Registers x as a singleton with ratio 1.0 to itself.
+    void makeSet(const string& x) {
+        if (!parent.count(x)) {
+            parent[x] = x;
+            weight[x] = 1.0;
         }
     }
 
-    /**
-     * Finds the root of {@code x} while accumulating the multiplicative weight
-     * from {@code x} up to the root, and compresses the path so that
-     * {@code weight.get(x)} becomes {@code value(x) / value(root)}.
-     *
-     * @param x the element to look up
-     * @return the root of x's set
-     */
-    public String find(String x) {
+    // Finds the root of x while accumulating the multiplicative weight
+    // from x up to the root, and compresses the path so that
+    // weight[x] becomes value(x) / value(root).
+    string find(const string& x) {
         makeSet(x);
-        if (parent.get(x).equals(x)) {
+        if (parent[x] == x) {
             return x;
         }
-        String p = parent.get(x);
-        String root = find(p);                 // recurse: now weight[p] = p/root
-        weight.put(x, weight.get(x) * weight.get(p)); // x/root = x/p * p/root
-        parent.put(x, root);                   // point directly at root
+        string p = parent[x];
+        string root = find(p);                     // recurse: now weight[p] = p/root
+        weight[x] = weight[x] * weight[p];         // x/root = x/p * p/root
+        parent[x] = root;                          // point directly at root
         return root;
     }
 
-    /**
-     * Records the relation {@code value(a) / value(b) == ratio} by merging the
-     * two sets. If they are already connected this is treated as consistent
-     * input and ignored.
-     *
-     * @param a     numerator element
-     * @param b     denominator element
-     * @param ratio the value of value(a) / value(b)
-     */
-    public void union(String a, String b, double ratio) {
+    // Records the relation value(a) / value(b) == ratio by merging the
+    // two sets. If they are already connected this is treated as consistent
+    // input and ignored.
+    // a: numerator element, b: denominator element, ratio: value(a) / value(b)
+    void unite(const string& a, const string& b, double ratio) {
         makeSet(a);
         makeSet(b);
-        String rootA = find(a);
-        String rootB = find(b);
-        if (rootA.equals(rootB)) {
+        string rootA = find(a);
+        string rootB = find(b);
+        if (rootA == rootB) {
             return; // already related (assumes consistent input)
         }
         // We need: value(a)/value(b) = ratio.
@@ -416,42 +363,39 @@ public class WeightedUnionFind {
         //   a/b = (a/rootA) * (rootA/rootB) * (rootB/b) = ratio
         // => rootA/rootB = ratio * (b/rootB) / (a/rootA)
         //               = ratio * weight[b] / weight[a]
-        weight.put(rootA, ratio * weight.get(b) / weight.get(a));
-        parent.put(rootA, rootB);
+        weight[rootA] = ratio * weight[b] / weight[a];
+        parent[rootA] = rootB;
     }
 
-    /**
-     * Returns {@code value(a) / value(b)} if both are known and connected,
-     * otherwise {@code -1.0} (the LeetCode "Evaluate Division" sentinel).
-     *
-     * @param a numerator element
-     * @param b denominator element
-     * @return the ratio, or -1.0 if undeterminable
-     */
-    public double query(String a, String b) {
-        if (!parent.containsKey(a) || !parent.containsKey(b)) {
+    // Returns value(a) / value(b) if both are known and connected,
+    // otherwise -1.0 (the LeetCode "Evaluate Division" sentinel).
+    double query(const string& a, const string& b) {
+        if (!parent.count(a) || !parent.count(b)) {
             return -1.0;
         }
-        String rootA = find(a);
-        String rootB = find(b);
-        if (!rootA.equals(rootB)) {
+        string rootA = find(a);
+        string rootB = find(b);
+        if (rootA != rootB) {
             return -1.0;
         }
         // a/b = (a/root) / (b/root) = weight[a] / weight[b]
-        return weight.get(a) / weight.get(b);
+        return weight[a] / weight[b];
     }
-}
+};
 ```
 
-```java
-// a/b = 2, b/c = 3  =>  a/c = 6, c/a = 1/6, x unknown.
-WeightedUnionFind wuf = new WeightedUnionFind();
-wuf.union("a", "b", 2.0);
-wuf.union("b", "c", 3.0);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-System.out.println(wuf.query("a", "c"));  // 6.0
-System.out.println(wuf.query("c", "a"));  // 0.1666...
-System.out.println(wuf.query("a", "x"));  // -1.0  (x not present)
+// a/b = 2, b/c = 3  =>  a/c = 6, c/a = 1/6, x unknown.
+WeightedUnionFind wuf;
+wuf.unite("a", "b", 2.0);
+wuf.unite("b", "c", 3.0);
+
+cout << wuf.query("a", "c") << "\n";  // 6.0
+cout << wuf.query("c", "a") << "\n";  // 0.1666...
+cout << wuf.query("a", "x") << "\n";  // -1.0  (x not present)
 ```
 
 > For **additive** problems (parity, "differences between variables") replace
@@ -466,153 +410,123 @@ reverse order. This requires:
 
 - **Union by rank/size only — no path compression.** Path compression mutates
   arbitrarily many nodes per `find`, which cannot be undone in O(1). Without it,
-  each `union` changes at most one `parent` entry and one `rank` entry, so it is
+  each `unite` changes at most one `parent` entry and one `rank` entry, so it is
   cheaply reversible. The trade-off is **O(log n)** per `find` instead of
   inverse Ackermann.
-- A **history stack** recording exactly what each `union` changed.
+- A **history stack** recording exactly what each `unite` changed.
 
-```java
-import java.util.ArrayDeque;
-import java.util.Deque;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-/**
- * Rollback (undoable) Disjoint Set Union using union by rank WITHOUT path
- * compression. Every successful {@code union} can be reversed in O(1) via
- * {@code rollback()}, in last-in-first-out order.
- *
- * <p>{@code find} is O(log n) because path compression is intentionally
- * omitted to keep unions undoable.
- */
-public class RollbackUnionFind {
+// Rollback (undoable) Disjoint Set Union using union by rank WITHOUT path
+// compression. Every successful unite can be reversed in O(1) via
+// rollback(), in last-in-first-out order.
+//
+// find is O(log n) because path compression is intentionally
+// omitted to keep unions undoable.
+class RollbackUnionFind {
 
-    private final int[] parent;
-    private final int[] rank;
-    private int count;
+    vector<int> parent;
+    vector<int> rnk;
+    int cnt;
 
-    /**
-     * One reversible change: the root that was attached, plus whether the
-     * surviving root's rank was incremented during this union.
-     */
-    private static final class Change {
-        final int attachedRoot;       // root whose parent was changed
-        final boolean rankIncreased;  // did the surviving root's rank go up?
-        final int survivingRoot;      // root that remained a root
+    // One reversible change: the root that was attached, plus whether the
+    // surviving root's rank was incremented during this unite.
+    struct Change {
+        int attachedRoot;       // root whose parent was changed
+        bool rankIncreased;     // did the surviving root's rank go up?
+        int survivingRoot;      // root that remained a root
 
-        Change(int attachedRoot, int survivingRoot, boolean rankIncreased) {
-            this.attachedRoot = attachedRoot;
-            this.survivingRoot = survivingRoot;
-            this.rankIncreased = rankIncreased;
-        }
-    }
+        Change(int attachedRoot, int survivingRoot, bool rankIncreased)
+            : attachedRoot(attachedRoot), survivingRoot(survivingRoot),
+              rankIncreased(rankIncreased) {}
+    };
 
-    private final Deque<Change> history = new ArrayDeque<>();
+    stack<Change> history;
 
-    /**
-     * Creates {@code n} singleton sets {0}, ..., {n-1}.
-     *
-     * @param n the number of elements
-     */
-    public RollbackUnionFind(int n) {
-        parent = new int[n];
-        rank = new int[n];
-        count = n;
+public:
+    // Creates n singleton sets {0}, ..., {n-1}.
+    RollbackUnionFind(int n) : parent(n), rnk(n, 0), cnt(n) {
         for (int i = 0; i < n; i++) {
             parent[i] = i;
         }
     }
 
-    /**
-     * Returns the root of {@code x} WITHOUT path compression.
-     *
-     * @param x the element to look up
-     * @return the root of x's set
-     */
-    public int find(int x) {
+    // Returns the root of x WITHOUT path compression.
+    int find(int x) {
         while (x != parent[x]) {
             x = parent[x];
         }
         return x;
     }
 
-    /**
-     * Merges the sets of {@code a} and {@code b} by rank, pushing the change
-     * onto the history stack so it can be undone.
-     *
-     * @param a first element
-     * @param b second element
-     * @return {@code true} if a merge happened (a rollback point was pushed),
-     *         {@code false} if already connected (nothing pushed)
-     */
-    public boolean union(int a, int b) {
+    // Merges the sets of a and b by rank, pushing the change
+    // onto the history stack so it can be undone.
+    // Returns true if a merge happened (a rollback point was pushed),
+    // false if already connected (nothing pushed).
+    bool unite(int a, int b) {
         int rootA = find(a);
         int rootB = find(b);
         if (rootA == rootB) {
             return false; // no change recorded
         }
         // Ensure rootA is the higher (or equal) rank root.
-        if (rank[rootA] < rank[rootB]) {
-            int tmp = rootA;
-            rootA = rootB;
-            rootB = tmp;
+        if (rnk[rootA] < rnk[rootB]) {
+            swap(rootA, rootB);
         }
         // Attach rootB under rootA.
-        boolean rankIncreased = (rank[rootA] == rank[rootB]);
+        bool rankIncreased = (rnk[rootA] == rnk[rootB]);
         parent[rootB] = rootA;
         if (rankIncreased) {
-            rank[rootA]++;
+            rnk[rootA]++;
         }
-        count--;
-        history.push(new Change(rootB, rootA, rankIncreased));
+        cnt--;
+        history.push(Change(rootB, rootA, rankIncreased));
         return true;
     }
 
-    /**
-     * Undoes the most recent successful {@code union}. Call only when at least
-     * one union is on the history stack.
-     *
-     * @throws java.util.NoSuchElementException if there is nothing to roll back
-     */
-    public void rollback() {
-        Change c = history.pop();
+    // Undoes the most recent successful unite. Call only when at least
+    // one unite is on the history stack.
+    void rollback() {
+        Change c = history.top();
+        history.pop();
         parent[c.attachedRoot] = c.attachedRoot; // detach: make it a root again
         if (c.rankIncreased) {
-            rank[c.survivingRoot]--;              // undo the rank bump
+            rnk[c.survivingRoot]--;              // undo the rank bump
         }
-        count++;
+        cnt++;
     }
 
-    /**
-     * Reports whether {@code a} and {@code b} are currently connected.
-     *
-     * @param a first element
-     * @param b second element
-     * @return {@code true} if connected
-     */
-    public boolean connected(int a, int b) {
+    // Reports whether a and b are currently connected.
+    bool connected(int a, int b) {
         return find(a) == find(b);
     }
 
-    /** @return the current number of components. */
-    public int count() {
-        return count;
+    // Returns the current number of components.
+    int count() {
+        return cnt;
     }
 
-    /** @return the number of undoable unions currently on the history stack. */
-    public int historySize() {
-        return history.size();
+    // Returns the number of undoable unions currently on the history stack.
+    int historySize() {
+        return (int)history.size();
     }
-}
+};
 ```
 
-```java
-RollbackUnionFind ruf = new RollbackUnionFind(4);
-ruf.union(0, 1);
-ruf.union(2, 3);
-System.out.println(ruf.count());          // 2
-ruf.union(1, 2);
-System.out.println(ruf.connected(0, 3));  // true,  count == 1
-ruf.rollback();                            // undo union(1, 2)
-System.out.println(ruf.connected(0, 3));  // false, count == 2
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+RollbackUnionFind ruf(4);
+ruf.unite(0, 1);
+ruf.unite(2, 3);
+cout << ruf.count() << "\n";          // 2
+ruf.unite(1, 2);
+cout << ruf.connected(0, 3) << "\n";  // true,  count == 1
+ruf.rollback();                        // undo unite(1, 2)
+cout << ruf.connected(0, 3) << "\n";  // false, count == 2
 ```
 
 > A persistent/rollback DSU plugged into a **segment tree over the timeline**

@@ -9,30 +9,37 @@
 
 **LC 232** · Easy · Amortized O(1)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class MyQueue {
-    private Deque<Integer> inStack  = new ArrayDeque<>();
-    private Deque<Integer> outStack = new ArrayDeque<>();
+    stack<int> inStack, outStack;
 
-    public void push(int x) { inStack.push(x); }
+    void transfer() {
+        if (outStack.empty())
+            while (!inStack.empty()) {
+                outStack.push(inStack.top());
+                inStack.pop();
+            }
+    }
+public:
+    void push(int x) { inStack.push(x); }
 
-    public int pop() {
+    int pop() {
         transfer();
-        return outStack.pop();
+        int val = outStack.top();
+        outStack.pop();
+        return val;
     }
 
-    public int peek() {
+    int peek() {
         transfer();
-        return outStack.peek();
+        return outStack.top();
     }
 
-    public boolean empty() { return inStack.isEmpty() && outStack.isEmpty(); }
-
-    private void transfer() {
-        if (outStack.isEmpty())
-            while (!inStack.isEmpty()) outStack.push(inStack.pop());
-    }
-}
+    bool empty() { return inStack.empty() && outStack.empty(); }
+};
 ```
 
 **Q: What is the amortized time complexity?**
@@ -43,28 +50,36 @@ A: Not possible with only stacks. You'd need to transfer on every push instead �
 
 **Q: Microsoft follow-up — extend to thread-safe queue.**
 
-```java
+```cpp
+#include <bits/stdc++.h>
+#include <mutex>
+using namespace std;
+
 class ThreadSafeQueue {
-    private final Deque<Integer> inStack  = new ArrayDeque<>();
-    private final Deque<Integer> outStack = new ArrayDeque<>();
-    private final Object lock = new Object();
+    stack<int> inStack, outStack;
+    mutex mtx;
 
-    public void push(int x) {
-        synchronized(lock) { inStack.push(x); }
+    void transfer() {
+        if (outStack.empty())
+            while (!inStack.empty()) {
+                outStack.push(inStack.top());
+                inStack.pop();
+            }
+    }
+public:
+    void push(int x) {
+        lock_guard<mutex> lock(mtx);
+        inStack.push(x);
     }
 
-    public int pop() {
-        synchronized(lock) {
-            transfer();
-            return outStack.pop();
-        }
+    int pop() {
+        lock_guard<mutex> lock(mtx);
+        transfer();
+        int val = outStack.top();
+        outStack.pop();
+        return val;
     }
-
-    private void transfer() {
-        if (outStack.isEmpty())
-            while (!inStack.isEmpty()) outStack.push(inStack.pop());
-    }
-}
+};
 ```
 
 ---
@@ -75,25 +90,26 @@ class ThreadSafeQueue {
 
 Microsoft often asks this in a "live coding" format with follow-ups about edge cases.
 
-```java
-public int calculate(String s) {
-    Deque<Integer> stack = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int calculate(string s) {
+    stack<int> stk;
     int num = 0; char sign = '+';
-    for (int i = 0; i < s.length(); i++) {
-        char c = s.charAt(i);
-        if (Character.isDigit(c)) num = num * 10 + (c - '0');
-        if ((!Character.isDigit(c) && c != ' ') || i == s.length() - 1) {
-            switch (sign) {
-                case '+' -> stack.push(num);
-                case '-' -> stack.push(-num);
-                case '*' -> stack.push(stack.pop() * num);
-                case '/' -> stack.push(stack.pop() / num);
-            }
+    for (int i = 0; i < (int)s.length(); i++) {
+        char c = s[i];
+        if (isdigit(c)) num = num * 10 + (c - '0');
+        if ((!isdigit(c) && c != ' ') || i == (int)s.length() - 1) {
+            if (sign == '+') stk.push(num);
+            else if (sign == '-') stk.push(-num);
+            else if (sign == '*') { int top = stk.top(); stk.pop(); stk.push(top * num); }
+            else if (sign == '/') { int top = stk.top(); stk.pop(); stk.push(top / num); }
             sign = c; num = 0;
         }
     }
     int result = 0;
-    while (!stack.isEmpty()) result += stack.pop();
+    while (!stk.empty()) { result += stk.top(); stk.pop(); }
     return result;
 }
 ```
@@ -102,7 +118,7 @@ public int calculate(String s) {
 - Spaces between tokens: `"3 + 2"` — handled by `c != ' '` skip
 - Multi-digit numbers: `"14+2"` — handled by `num = num * 10 + digit`
 - Negative results: `"1-2"` — handled by pushing `-num` for `-` sign
-- Division truncation: Java integer division truncates toward zero by default ✓
+- Division truncation: C++ integer division truncates toward zero by default ✓
 - Single number: `"5"` — final `i == s.length()-1` condition handles last number
 
 ---
@@ -115,9 +131,12 @@ Microsoft interviewers focus on code quality and approach justification.
 
 **Preferred approach for Microsoft interview:**
 
-```java
-public int trap(int[] height) {
-    int left = 0, right = height.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int trap(vector<int>& height) {
+    int left = 0, right = (int)height.size() - 1;
     int maxLeft = 0, maxRight = 0, water = 0;
     while (left < right) {
         if (height[left] <= height[right]) {

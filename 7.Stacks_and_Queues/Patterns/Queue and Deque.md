@@ -8,29 +8,33 @@
 ## Core Concepts
 
 ### Queue — FIFO
-```java
-// ArrayDeque is the standard Queue implementation in Java
-Queue<Integer> queue = new ArrayDeque<>();
-queue.offer(x);     // enqueue (returns false if fails — prefer over add())
-queue.poll();       // dequeue (returns null if empty — prefer over remove())
-queue.peek();       // view front without removing
-queue.isEmpty();
-queue.size();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+// std::queue is the standard Queue implementation in C++
+queue<int> q;
+q.push(x);      // enqueue
+q.front();      // view front without removing
+q.pop();        // dequeue (returns void — read front() first)
+q.empty();
+q.size();
 ```
 
 ### Deque — Double-Ended Queue
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 // Both stack and queue operations available
-Deque<Integer> deque = new ArrayDeque<>();
+deque<int> dq;
 // Front operations
-deque.offerFirst(x);   deque.pollFirst();   deque.peekFirst();
+dq.push_front(x);   dq.pop_front();   dq.front();
 // Back operations
-deque.offerLast(x);    deque.pollLast();    deque.peekLast();
+dq.push_back(x);    dq.pop_back();    dq.back();
 // Stack-style (front = top)
-deque.push(x);         deque.pop();         deque.peek();
+dq.push_front(x);   dq.pop_front();   dq.front();
 ```
 
-**Key distinction:** Use `Deque` (not `Stack`) for LIFO. `ArrayDeque` is O(1) amortized for all operations. `LinkedList` is O(1) but has more overhead per node.
+**Key distinction:** Use `deque<T>` (not `stack<T>`) when you need both-end access. `deque` is O(1) amortized for all operations. `list<T>` is O(1) but has more overhead per node.
 
 ---
 
@@ -38,35 +42,44 @@ deque.push(x);         deque.pop();         deque.peek();
 
 **Constraint:** Use only push, pop, peek, empty operations of standard stack.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 class MyQueue {
-    private Deque<Integer> inStack  = new ArrayDeque<>();  // for push
-    private Deque<Integer> outStack = new ArrayDeque<>();  // for pop/peek
+    stack<int> inStack;   // for push
+    stack<int> outStack;  // for pop/peek
 
-    public void push(int x) {
+public:
+    void push(int x) {
         inStack.push(x);
     }
 
-    public int pop() {
+    int pop() {
         move();
-        return outStack.pop();
+        int val = outStack.top();
+        outStack.pop();
+        return val;
     }
 
-    public int peek() {
+    int peek() {
         move();
-        return outStack.peek();
+        return outStack.top();
     }
 
-    public boolean empty() {
-        return inStack.isEmpty() && outStack.isEmpty();
+    bool empty() {
+        return inStack.empty() && outStack.empty();
     }
 
-    private void move() {
-        if (outStack.isEmpty()) {
-            while (!inStack.isEmpty()) outStack.push(inStack.pop());
+private:
+    void move() {
+        if (outStack.empty()) {
+            while (!inStack.empty()) {
+                outStack.push(inStack.top());
+                inStack.pop();
+            }
         }
     }
-}
+};
 ```
 
 **Amortized O(1) — the key insight:**
@@ -85,27 +98,35 @@ Each element crosses from inStack → outStack exactly **once** total. Even thou
 
 **Invariant:** Queue always stores elements with the most recently pushed at front.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 class MyStack {
-    private Queue<Integer> queue = new ArrayDeque<>();
+    queue<int> q;
 
-    public void push(int x) {
-        queue.offer(x);
+public:
+    void push(int x) {
+        q.push(x);
         // Rotate: move all elements before x to the back
-        for (int i = 0; i < queue.size() - 1; i++) {
-            queue.offer(queue.poll());
+        for (int i = 0; i < (int)q.size() - 1; i++) {
+            q.push(q.front());
+            q.pop();
         }
     }
 
-    public int pop()  { return queue.poll(); }
-    public int top()  { return queue.peek(); }
-    public boolean empty() { return queue.isEmpty(); }
-}
+    int pop() {
+        int val = q.front();
+        q.pop();
+        return val;
+    }
+    int top()  { return q.front(); }
+    bool empty() { return q.empty(); }
+};
 ```
 
 **Why rotate on push?** After adding `x` at the tail, we rotate all previous elements behind it, making `x` the new front. Front always = top of stack.
 
-**Trace:** push(1): queue=[1]; push(2): after offer [1,2], rotate 1→back: [2,1]; push(3): after offer [2,1,3], rotate 2,1→back: [3,2,1]
+**Trace:** push(1): q=[1]; push(2): after push [1,2], rotate 1→back: [2,1]; push(3): after push [2,1,3], rotate 2,1→back: [3,2,1]
 
 ---
 
@@ -117,27 +138,29 @@ class MyStack {
 **Naive:** O(nk) — recompute max for each window.
 **Optimal:** Monotonic Deque — O(n).
 
-```java
-public int[] maxSlidingWindow(int[] nums, int k) {
-    int n = nums.length;
-    int[] result = new int[n - k + 1];
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+vector<int> maxSlidingWindow(vector<int>& nums, int k) {
+    int n = nums.size();
+    vector<int> result(n - k + 1);
     // Deque stores INDICES; front = index of current window max
-    Deque<Integer> deque = new ArrayDeque<>();
+    deque<int> dq;
 
     for (int i = 0; i < n; i++) {
         // 1. Remove indices outside current window
-        while (!deque.isEmpty() && deque.peekFirst() <= i - k) {
-            deque.pollFirst();
+        while (!dq.empty() && dq.front() <= i - k) {
+            dq.pop_front();
         }
         // 2. Maintain decreasing order: remove smaller elements from back
-        while (!deque.isEmpty() && nums[deque.peekLast()] <= nums[i]) {
-            deque.pollLast();
+        while (!dq.empty() && nums[dq.back()] <= nums[i]) {
+            dq.pop_back();
         }
-        deque.offerLast(i);
+        dq.push_back(i);
 
         // 3. Window is full starting from i == k-1
         if (i >= k - 1) {
-            result[i - k + 1] = nums[deque.peekFirst()];
+            result[i - k + 1] = nums[dq.front()];
         }
     }
     return result;
@@ -168,18 +191,21 @@ i=7: nums[7]=7 > nums[6]=6 → remove. deque=[7]. result[5]=nums[7]=7
 
 **Design:** `RecentCounter` — `ping(t)` adds call at time `t`, returns number of calls in `[t-3000, t]`.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 class RecentCounter {
-    private Queue<Integer> queue = new ArrayDeque<>();
+    queue<int> q;
 
-    public int ping(int t) {
-        queue.offer(t);
-        while (queue.peek() < t - 3000) {
-            queue.poll();
+public:
+    int ping(int t) {
+        q.push(t);
+        while (q.front() < t - 3000) {
+            q.pop();
         }
-        return queue.size();
+        return q.size();
     }
-}
+};
 ```
 
 **Why works:** `t` is strictly increasing (guaranteed). Queue maintains a sliding window of calls within the last 3000 ms. Each call is added at most once and removed at most once — O(1) amortized per `ping`.
@@ -196,14 +222,16 @@ A **monotonic deque** maintains a deque where values are always in a consistent 
 | Increasing deque | Front = min | Sliding window minimum |
 
 **Template:**
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 for (int i = 0; i < n; i++) {
     // Expire out-of-window indices
-    while (!dq.isEmpty() && dq.peekFirst() < i - k + 1) dq.pollFirst();
+    while (!dq.empty() && dq.front() < i - k + 1) dq.pop_front();
     // Maintain monotonicity (decreasing for max)
-    while (!dq.isEmpty() && nums[dq.peekLast()] <= nums[i]) dq.pollLast();
-    dq.offerLast(i);
-    if (i >= k - 1) result[i - k + 1] = nums[dq.peekFirst()];
+    while (!dq.empty() && nums[dq.back()] <= nums[i]) dq.pop_back();
+    dq.push_back(i);
+    if (i >= k - 1) result[i - k + 1] = nums[dq.front()];
 }
 ```
 
@@ -213,11 +241,11 @@ for (int i = 0; i < n; i++) {
 
 | Need | Use |
 |------|-----|
-| Pure FIFO | `Queue<T>` backed by `ArrayDeque` |
-| LIFO (stack) | `Deque<T>` with `push/pop/peek` |
-| Both ends (sliding window) | `Deque<T>` with `offerFirst/Last`, `pollFirst/Last` |
-| Priority FIFO | `PriorityQueue<T>` |
-| Thread-safe queue | `LinkedBlockingQueue<T>` |
+| Pure FIFO | `queue<T>` |
+| LIFO (stack) | `stack<T>` or `deque<T>` with `push_front`/`pop_front` |
+| Both ends (sliding window) | `deque<T>` with `push_front`/`push_back`, `pop_front`/`pop_back` |
+| Priority FIFO | `priority_queue<T>` |
+| Thread-safe queue | No direct STL equivalent — use mutex + `queue<T>` or a concurrent library |
 
 ---
 

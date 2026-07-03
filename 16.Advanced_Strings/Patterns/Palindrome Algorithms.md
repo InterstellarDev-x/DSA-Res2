@@ -16,31 +16,35 @@ Every palindrome has a center. A string of length `n` has **2n − 1** centers: 
 
 ### Problem 5 — Longest Palindromic Substring (LC 5, Medium)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public String longestPalindrome(String s) {
-        if (s == null || s.length() < 1) return "";
+public:
+    string longestPalindrome(string s) {
+        if (s.empty()) return "";
         int start = 0, end = 0;
-        for (int i = 0; i < s.length(); i++) {
+        for (int i = 0; i < (int)s.length(); i++) {
             int odd  = expand(s, i, i);       // odd-length, center at i
             int even = expand(s, i, i + 1);   // even-length, center between i, i+1
-            int len = Math.max(odd, even);
+            int len = max(odd, even);
             if (len > end - start + 1) {
                 start = i - (len - 1) / 2;     // recover left boundary from length
                 end = i + len / 2;
             }
         }
-        return s.substring(start, end + 1);
+        return s.substr(start, end - start + 1);
     }
 
     // Returns the length of the palindrome expanding from (left, right).
-    private int expand(String s, int left, int right) {
-        while (left >= 0 && right < s.length() && s.charAt(left) == s.charAt(right)) {
+    int expand(string& s, int left, int right) {
+        while (left >= 0 && right < (int)s.length() && s[left] == s[right]) {
             left--; right++;
         }
         return right - left - 1;   // chars between the over-stepped bounds
     }
-}
+};
 ```
 
 **Complexity:** O(n²) time, O(1) space. The two `expand` calls (odd + even) per index are exactly the 2n−1 centers. The boundary recovery `start = i - (len-1)/2` works for both parities — memorize it.
@@ -51,25 +55,29 @@ class Solution {
 
 Each successful single-character extension during expansion is one more palindrome, so count expansions instead of tracking the longest.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int countSubstrings(String s) {
+public:
+    int countSubstrings(string s) {
         int count = 0;
-        for (int i = 0; i < s.length(); i++) {
+        for (int i = 0; i < (int)s.length(); i++) {
             count += countFrom(s, i, i);       // odd centers
             count += countFrom(s, i, i + 1);   // even centers
         }
         return count;
     }
 
-    private int countFrom(String s, int left, int right) {
+    int countFrom(string& s, int left, int right) {
         int count = 0;
-        while (left >= 0 && right < s.length() && s.charAt(left) == s.charAt(right)) {
+        while (left >= 0 && right < (int)s.length() && s[left] == s[right]) {
             count++; left--; right++;
         }
         return count;
     }
-}
+};
 ```
 
 **Complexity:** O(n²) time, O(1) space.
@@ -84,23 +92,26 @@ Manacher removes the odd/even split by **transforming** the string: insert a sep
 
 We keep a `center C` and `right boundary R` of the rightmost palindrome found, plus an array `p[i]` = radius at `i`. The **mirror trick**: for `i < R`, its mirror is `mirror = 2*C - i`, and `p[i]` can be seeded from `p[mirror]`, capped by `R - i`.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public String longestPalindrome(String s) {
-        if (s.isEmpty()) return "";
+public:
+    string longestPalindrome(string s) {
+        if (s.empty()) return "";
         // Build transformed string: ^ # a # b # ... $
-        StringBuilder t = new StringBuilder("^");
-        for (char c : s.toCharArray()) t.append('#').append(c);
-        t.append("#$");
-        String tt = t.toString();
-        int n = tt.length();
-        int[] p = new int[n];     // p[i] = palindrome radius centered at i
+        string t = "^";
+        for (char c : s) { t += '#'; t += c; }
+        t += "#$";
+        int n = t.length();
+        vector<int> p(n, 0);     // p[i] = palindrome radius centered at i
         int C = 0, R = 0;         // current center and right boundary
         for (int i = 1; i < n - 1; i++) {
             int mirror = 2 * C - i;
-            if (i < R) p[i] = Math.min(R - i, p[mirror]);   // mirror seed, capped
+            if (i < R) p[i] = min(R - i, p[mirror]);   // mirror seed, capped
             // expand around i past the seeded radius
-            while (tt.charAt(i + p[i] + 1) == tt.charAt(i - p[i] - 1)) p[i]++;
+            while (t[i + p[i] + 1] == t[i - p[i] - 1]) p[i]++;
             if (i + p[i] > R) { C = i; R = i + p[i]; }       // slide the window
         }
         // find max radius and map back to original indices
@@ -109,9 +120,9 @@ class Solution {
             if (p[i] > maxLen) { maxLen = p[i]; centerIndex = i; }
         }
         int start = (centerIndex - maxLen) / 2;   // convert transformed -> original
-        return s.substring(start, start + maxLen);
+        return s.substr(start, maxLen);
     }
-}
+};
 ```
 
 **Complexity:** O(n) time, O(n) space. The sentinels `^`/`$` mean the inner `while` never reads out of bounds (they never match `#` or a real char). The mapping `start = (centerIndex - maxLen) / 2` undoes the `#`-insertion. **Interview note:** code this only if asked for linear time — it is fiddly and easy to get wrong under pressure; expand-around-center is the safe default.
@@ -128,31 +139,37 @@ class Solution {
 
 The `'#'` separator (a char not in `s`) is essential: without it the border could spill from `s` into `reverse(s)` and overcount, producing a wrong (and possibly non-palindromic) answer.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public String shortestPalindrome(String s) {
-        if (s.isEmpty()) return s;
-        String rev = new StringBuilder(s).reverse().toString();
-        String combined = s + "#" + rev;
-        int[] lps = buildLPS(combined);
+public:
+    string shortestPalindrome(string s) {
+        if (s.empty()) return s;
+        string rev = s;
+        reverse(rev.begin(), rev.end());
+        string combined = s + "#" + rev;
+        vector<int> lps = buildLPS(combined);
         int palPrefixLen = lps[combined.length() - 1];   // longest palindromic prefix
         // characters of s after the palindromic prefix, reversed, go in front
-        String suffix = s.substring(palPrefixLen);
-        return new StringBuilder(suffix).reverse().toString() + s;
+        string suffix = s.substr(palPrefixLen);
+        reverse(suffix.begin(), suffix.end());
+        return suffix + s;
     }
 
-    private int[] buildLPS(String t) {
+    vector<int> buildLPS(string& t) {
         int n = t.length();
-        int[] lps = new int[n];
+        vector<int> lps(n, 0);
         int len = 0, i = 1;
         while (i < n) {
-            if (t.charAt(i) == t.charAt(len)) { lps[i++] = ++len; }
+            if (t[i] == t[len]) { lps[i++] = ++len; }
             else if (len > 0) { len = lps[len - 1]; }
             else { lps[i++] = 0; }
         }
         return lps;
     }
-}
+};
 ```
 
 **Complexity:** O(n) time, O(n) space. Example: `s = "aacecaaa"`, `rev = "aaacecaa"`, `combined = "aacecaaa#aaacecaa"`. The LPS ends at 7 (`"aacecaa"` is the longest palindromic prefix), leaving the trailing `"a"`; prepend `reverse("a") = "a"` → `"aaacecaaa"`.

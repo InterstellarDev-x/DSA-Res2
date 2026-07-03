@@ -6,12 +6,13 @@ Google interviews push on **optimal space** and **deep, layered follow-ups**, es
 
 The node type used throughout:
 
-```java
-public class TreeNode {
+```cpp
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
+};
 ```
 
 ---
@@ -27,27 +28,32 @@ public class TreeNode {
 
 Track three pointers during inorder: `first`, `second`, and a rolling `prev`. At each descent, if `first` is still null set `first = prev`; always set `second = curr`. After the walk, swap the two values.
 
-```java
-public void recoverTree(TreeNode root) {
-    Deque<TreeNode> stack = new ArrayDeque<>();
-    TreeNode curr = root, prev = null;
-    TreeNode first = null, second = null;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    while (curr != null || !stack.isEmpty()) {
-        while (curr != null) {
-            stack.push(curr);
-            curr = curr.left;
+void recoverTree(TreeNode* root) {
+    stack<TreeNode*> stk;
+    TreeNode* curr = root;
+    TreeNode* prev = nullptr;
+    TreeNode* first = nullptr;
+    TreeNode* second = nullptr;
+
+    while (curr != nullptr || !stk.empty()) {
+        while (curr != nullptr) {
+            stk.push(curr);
+            curr = curr->left;
         }
-        curr = stack.pop();
-        if (prev != null && prev.val > curr.val) {   // a descent
-            if (first == null) first = prev;          // set once
+        curr = stk.top(); stk.pop();
+        if (prev != nullptr && prev->val > curr->val) {   // a descent
+            if (first == nullptr) first = prev;          // set once
             second = curr;                            // always update
         }
         prev = curr;
-        curr = curr.right;
+        curr = curr->right;
     }
-    if (first != null && second != null) {
-        int t = first.val; first.val = second.val; second.val = t;
+    if (first != nullptr && second != nullptr) {
+        int t = first->val; first->val = second->val; second->val = t;
     }
 }
 ```
@@ -58,43 +64,48 @@ This is O(n) time, O(h) space for the stack. See [BST Validation and Inorder](..
 
 **The L5 follow-up:** *"Can you do it in constant space?"* Morris inorder threads the tree: before descending left, it links the **rightmost node of the left subtree** (the inorder predecessor) back to the current node. That temporary thread replaces the stack; we tear it down when we return through it, leaving the tree unchanged.
 
-```java
-public void recoverTree(TreeNode root) {
-    TreeNode curr = root, prev = null;          // prev = last visited in inorder
-    TreeNode first = null, second = null;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    while (curr != null) {
-        if (curr.left == null) {
+void recoverTree(TreeNode* root) {
+    TreeNode* curr = root;
+    TreeNode* prev = nullptr;          // prev = last visited in inorder
+    TreeNode* first = nullptr;
+    TreeNode* second = nullptr;
+
+    while (curr != nullptr) {
+        if (curr->left == nullptr) {
             // visit curr
-            if (prev != null && prev.val > curr.val) {
-                if (first == null) first = prev;
+            if (prev != nullptr && prev->val > curr->val) {
+                if (first == nullptr) first = prev;
                 second = curr;
             }
             prev = curr;
-            curr = curr.right;
+            curr = curr->right;
         } else {
             // find inorder predecessor: rightmost node of left subtree
-            TreeNode pred = curr.left;
-            while (pred.right != null && pred.right != curr) {
-                pred = pred.right;
+            TreeNode* pred = curr->left;
+            while (pred->right != nullptr && pred->right != curr) {
+                pred = pred->right;
             }
-            if (pred.right == null) {
-                pred.right = curr;      // create thread, then go left
-                curr = curr.left;
+            if (pred->right == nullptr) {
+                pred->right = curr;      // create thread, then go left
+                curr = curr->left;
             } else {
-                pred.right = null;      // thread already there: tear it down
+                pred->right = nullptr;      // thread already there: tear it down
                 // visit curr
-                if (prev != null && prev.val > curr.val) {
-                    if (first == null) first = prev;
+                if (prev != nullptr && prev->val > curr->val) {
+                    if (first == nullptr) first = prev;
                     second = curr;
                 }
                 prev = curr;
-                curr = curr.right;
+                curr = curr->right;
             }
         }
     }
-    if (first != null && second != null) {
-        int t = first.val; first.val = second.val; second.val = t;
+    if (first != nullptr && second != nullptr) {
+        int t = first->val; first->val = second->val; second->val = t;
     }
 }
 ```
@@ -107,32 +118,39 @@ public void recoverTree(TreeNode root) {
 
 **Prompt / framing.** Return the kth smallest, but assume kth queries are *frequent* and the tree may also change. The plain O(h + k) inorder is fine once; under repeated queries it is wasteful. The L4/L5 expectation is to **design for repeated queries** by augmenting each node with the size of its subtree (or just its left subtree).
 
-Store `count` = total number of nodes in the subtree rooted at this node. The left subtree's size is then `size(node.left)`, and rank decisions are pure arithmetic.
+Store `count` = total number of nodes in the subtree rooted at this node. The left subtree's size is then `size(node->left)`, and rank decisions are pure arithmetic.
 
-```java
-class CountedNode {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct CountedNode {
     int val;
     int count;                 // size of the subtree rooted here (incl. this node)
-    CountedNode left, right;
-    CountedNode(int val) { this.val = val; this.count = 1; }
-}
+    CountedNode* left;
+    CountedNode* right;
+    CountedNode(int val) : val(val), count(1), left(nullptr), right(nullptr) {}
+};
 
-private int size(CountedNode n) { return n == null ? 0 : n.count; }
+int size(CountedNode* n) { return n == nullptr ? 0 : n->count; }
 ```
 
 ### kthSmallest using counts — O(h)
 
-```java
-public int kthSmallest(CountedNode root, int k) {
-    CountedNode curr = root;
-    while (curr != null) {
-        int leftSize = size(curr.left);
-        if (k == leftSize + 1) return curr.val;     // this node has rank leftSize+1
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int kthSmallest(CountedNode* root, int k) {
+    CountedNode* curr = root;
+    while (curr != nullptr) {
+        int leftSize = size(curr->left);
+        if (k == leftSize + 1) return curr->val;     // this node has rank leftSize+1
         if (k <= leftSize) {
-            curr = curr.left;                       // answer is in the left subtree
+            curr = curr->left;                       // answer is in the left subtree
         } else {
             k -= leftSize + 1;                      // skip left subtree + this node
-            curr = curr.right;
+            curr = curr->right;
         }
     }
     return -1;     // k out of range
@@ -143,15 +161,18 @@ public int kthSmallest(CountedNode root, int k) {
 
 Every node on the insertion path gains one descendant, so increment `count` as you unwind (or on the way down). Doing it on the recursive return keeps it clean:
 
-```java
-public CountedNode insert(CountedNode root, int val) {
-    if (root == null) return new CountedNode(val);
-    if (val < root.val) {
-        root.left = insert(root.left, val);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+CountedNode* insert(CountedNode* root, int val) {
+    if (root == nullptr) return new CountedNode(val);
+    if (val < root->val) {
+        root->left = insert(root->left, val);
     } else {
-        root.right = insert(root.right, val);
+        root->right = insert(root->right, val);
     }
-    root.count = 1 + size(root.left) + size(root.right);   // recompute from children
+    root->count = 1 + size(root->left) + size(root->right);   // recompute from children
     return root;
 }
 ```
@@ -164,7 +185,7 @@ Recomputing `count` from the children's sizes is the most robust pattern — it 
 
 ## 3. Inorder Successor in a BST (LC 285)
 
-**Prompt.** Given a BST root and a node `p`, return the node with the smallest value greater than `p.val`, or null if none.
+**Prompt.** Given a BST root and a node `p`, return the node with the smallest value greater than `p->val`, or nullptr if none.
 
 **Approach discussion.** Two cases, both resolved in a single O(h) descent:
 
@@ -173,16 +194,19 @@ Recomputing `count` from the children's sizes is the most robust pattern — it 
 
 The elegant single-descent version handles both without needing parent pointers: walk down from the root toward `p`, and every time we move *left* we record the current node as the best successor candidate so far.
 
-```java
-public TreeNode inorderSuccessor(TreeNode root, TreeNode p) {
-    TreeNode succ = null;
-    TreeNode curr = root;
-    while (curr != null) {
-        if (p.val < curr.val) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+TreeNode* inorderSuccessor(TreeNode* root, TreeNode* p) {
+    TreeNode* succ = nullptr;
+    TreeNode* curr = root;
+    while (curr != nullptr) {
+        if (p->val < curr->val) {
             succ = curr;            // candidate: we turned left here
-            curr = curr.left;
+            curr = curr->left;
         } else {
-            curr = curr.right;      // p.val >= curr.val: successor is further right
+            curr = curr->right;      // p->val >= curr->val: successor is further right
         }
     }
     return succ;
@@ -191,7 +215,7 @@ public TreeNode inorderSuccessor(TreeNode root, TreeNode p) {
 
 When `p` has a right subtree, the descent naturally moves right at `p` and the last left-turn captured is the correct ancestor (or the leftmost-of-right is reached); when it has none, the last recorded left-turn ancestor is returned. This unifies both cases in O(h) time, O(1) space.
 
-**Parent-pointer variant (LC 510), briefly.** If each node carries a `parent` pointer and you are *given the node itself* (not the root): if it has a right child, return the leftmost descendant of that right child; otherwise climb parents until you come up from a *left* child, and return that parent (or null at the root). Same O(h), still O(1) extra space.
+**Parent-pointer variant (LC 510), briefly.** If each node carries a `parent` pointer and you are *given the node itself* (not the root): if it has a right child, return the leftmost descendant of that right child; otherwise climb parents until you come up from a *left* child, and return that parent (or nullptr at the root). Same O(h), still O(1) extra space.
 
 ---
 

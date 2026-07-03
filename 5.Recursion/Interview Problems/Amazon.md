@@ -21,7 +21,7 @@
 
 ### The Two Invariants
 
-```java
+```cpp
 if (open < n)    // can add '(' — haven't used all open brackets
 if (close < open) // can add ')' — can only close what's been opened
 ```
@@ -46,29 +46,32 @@ Space: O(n) per stack frame, max depth 2n.
 
 Backtracking + memoization. Separate **reachability** from **enumeration**:
 
-```java
-public List<String> wordBreak(String s, List<String> wordDict) {
-    Set<String> dict = new HashSet<>(wordDict);
-    Map<Integer, List<String>> memo = new HashMap<>();
-    return backtrack(s, 0, dict, memo);
-}
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-private List<String> backtrack(String s, int start, Set<String> dict, Map<Integer, List<String>> memo) {
-    if (memo.containsKey(start)) return memo.get(start);
-    List<String> result = new ArrayList<>();
-    if (start == s.length()) { result.add(""); return result; }
+vector<string> backtrack(const string& s, int start, const unordered_set<string>& dict, unordered_map<int, vector<string>>& memo) {
+    if (memo.count(start)) return memo[start];
+    vector<string> result;
+    if (start == (int)s.size()) { result.push_back(""); return result; }
 
-    for (int end = start + 1; end <= s.length(); end++) {
-        String word = s.substring(start, end);
-        if (dict.contains(word)) {
-            List<String> suffixes = backtrack(s, end, dict, memo);
-            for (String suffix : suffixes) {
-                result.add(word + (suffix.isEmpty() ? "" : " " + suffix));
+    for (int end = start + 1; end <= (int)s.size(); end++) {
+        string word = s.substr(start, end - start);
+        if (dict.count(word)) {
+            vector<string> suffixes = backtrack(s, end, dict, memo);
+            for (auto& suffix : suffixes) {
+                result.push_back(word + (suffix.empty() ? "" : " " + suffix));
             }
         }
     }
-    memo.put(start, result);
+    memo[start] = result;
     return result;
+}
+
+vector<string> wordBreak(string s, vector<string>& wordDict) {
+    unordered_set<string> dict(wordDict.begin(), wordDict.end());
+    unordered_map<int, vector<string>> memo;
+    return backtrack(s, 0, dict, memo);
 }
 ```
 

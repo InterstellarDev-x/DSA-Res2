@@ -9,29 +9,34 @@
 
 Unlike arrays, linked lists have no random access — so "two pointers" on a LL means:
 
-1. **Gap pointer:** Advance one pointer N steps ahead, then move both at 1x until the leader hits `null`. Follower is now N steps from end.
-2. **Intersection / sync:** Two pointers start at different heads. When each exhausts its list, it restarts from the **other** head. They meet at intersection (or both hit `null` if none).
+1. **Gap pointer:** Advance one pointer N steps ahead, then move both at 1x until the leader hits `nullptr`. Follower is now N steps from end.
+2. **Intersection / sync:** Two pointers start at different heads. When each exhausts its list, it restarts from the **other** head. They meet at intersection (or both hit `nullptr` if none).
 
 ---
 
 ## Template 1 — Remove Nth Node from End (LC 19)
 
-```java
-public ListNode removeNthFromEnd(ListNode head, int n) {
-    ListNode dummy = new ListNode(0);
-    dummy.next = head;
-    ListNode fast = dummy, slow = dummy;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct ListNode { int val; ListNode* next; ListNode(int x): val(x), next(nullptr){} };
+
+ListNode* removeNthFromEnd(ListNode* head, int n) {
+    ListNode* dummy = new ListNode(0);
+    dummy->next = head;
+    ListNode* fast = dummy, *slow = dummy;
 
     // Advance fast n+1 steps (so slow lands one BEFORE target)
-    for (int i = 0; i <= n; i++) fast = fast.next;
+    for (int i = 0; i <= n; i++) fast = fast->next;
 
-    while (fast != null) {
-        slow = slow.next;
-        fast = fast.next;
+    while (fast != nullptr) {
+        slow = slow->next;
+        fast = fast->next;
     }
 
-    slow.next = slow.next.next; // delete target
-    return dummy.next;
+    slow->next = slow->next->next; // delete target
+    return dummy->next;
 }
 ```
 
@@ -41,18 +46,21 @@ public ListNode removeNthFromEnd(ListNode head, int n) {
 
 ## Template 2 — Intersection of Two Linked Lists (LC 160)
 
-```java
-public ListNode getIntersectionNode(ListNode headA, ListNode headB) {
-    ListNode a = headA, b = headB;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+ListNode* getIntersectionNode(ListNode* headA, ListNode* headB) {
+    ListNode* a = headA, *b = headB;
     while (a != b) {
-        a = (a != null) ? a.next : headB;
-        b = (b != null) ? b.next : headA;
+        a = (a != nullptr) ? a->next : headB;
+        b = (b != nullptr) ? b->next : headA;
     }
-    return a; // null if no intersection (both reach null simultaneously)
+    return a; // nullptr if no intersection (both reach nullptr simultaneously)
 }
 ```
 
-**Why it works:** If list A has length `la` and list B has length `lb`, pointer `a` traverses `la + lb` nodes (its own list then B) and so does pointer `b`. They synchronize at the intersection node (or at `null` if no intersection).
+**Why it works:** If list A has length `la` and list B has length `lb`, pointer `a` traverses `la + lb` nodes (its own list then B) and so does pointer `b`. They synchronize at the intersection node (or at `nullptr` if no intersection).
 
 **Important:** Check `a != b` with reference equality (pointer equality), not value equality.
 
@@ -60,25 +68,28 @@ public ListNode getIntersectionNode(ListNode headA, ListNode headB) {
 
 ## Template 3 — Rotate List (LC 61)
 
-```java
-public ListNode rotateRight(ListNode head, int k) {
-    if (head == null || head.next == null || k == 0) return head;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+ListNode* rotateRight(ListNode* head, int k) {
+    if (head == nullptr || head->next == nullptr || k == 0) return head;
 
     // Find length and tail
     int length = 1;
-    ListNode tail = head;
-    while (tail.next != null) { tail = tail.next; length++; }
+    ListNode* tail = head;
+    while (tail->next != nullptr) { tail = tail->next; length++; }
 
     k = k % length;
     if (k == 0) return head;
 
     // Find new tail (length - k - 1 steps from head)
-    ListNode newTail = head;
-    for (int i = 0; i < length - k - 1; i++) newTail = newTail.next;
+    ListNode* newTail = head;
+    for (int i = 0; i < length - k - 1; i++) newTail = newTail->next;
 
-    ListNode newHead = newTail.next;
-    newTail.next = null;
-    tail.next = head; // connect old tail to old head
+    ListNode* newHead = newTail->next;
+    newTail->next = nullptr;
+    tail->next = head; // connect old tail to old head
     return newHead;
 }
 ```
@@ -91,24 +102,27 @@ public ListNode rotateRight(ListNode head, int k) {
 
 Partition list around value `x`: all nodes < x before nodes >= x, preserving relative order.
 
-```java
-public ListNode partition(ListNode head, int x) {
-    ListNode lessHead = new ListNode(0), greaterHead = new ListNode(0);
-    ListNode less = lessHead, greater = greaterHead;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    while (head != null) {
-        if (head.val < x) { less.next = head; less = less.next; }
-        else              { greater.next = head; greater = greater.next; }
-        head = head.next;
+ListNode* partition(ListNode* head, int x) {
+    ListNode* lessHead = new ListNode(0), *greaterHead = new ListNode(0);
+    ListNode* less = lessHead, *greater = greaterHead;
+
+    while (head != nullptr) {
+        if (head->val < x) { less->next = head; less = less->next; }
+        else               { greater->next = head; greater = greater->next; }
+        head = head->next;
     }
 
-    greater.next = null; // CRITICAL: terminate — avoids a cycle if original tail < x
-    less.next = greaterHead.next;
-    return lessHead.next;
+    greater->next = nullptr; // CRITICAL: terminate — avoids a cycle if original tail < x
+    less->next = greaterHead->next;
+    return lessHead->next;
 }
 ```
 
-**Critical:** Set `greater.next = null` before connecting. If the last node was already in `less`, `greater.next` still points into the original list, creating a cycle.
+**Critical:** Set `greater->next = nullptr` before connecting. If the last node was already in `less`, `greater->next` still points into the original list, creating a cycle.
 
 ---
 
@@ -116,24 +130,27 @@ public ListNode partition(ListNode head, int x) {
 
 Swap the kth node from beginning and kth from end (by value, not relinking):
 
-```java
-public ListNode swapNodes(ListNode head, int k) {
-    ListNode first = head, second = head, curr = head;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+ListNode* swapNodes(ListNode* head, int k) {
+    ListNode* first = head, *second = head, *curr = head;
 
     // Advance curr k-1 steps to kth node from beginning
-    for (int i = 1; i < k; i++) curr = curr.next;
+    for (int i = 1; i < k; i++) curr = curr->next;
     first = curr; // kth from beginning
 
     // Find kth from end: advance curr to end, second follows
-    while (curr.next != null) {
-        curr = curr.next;
-        second = second.next;
+    while (curr->next != nullptr) {
+        curr = curr->next;
+        second = second->next;
     }
     // second is now kth from end
 
-    int tmp = first.val;
-    first.val = second.val;
-    second.val = tmp;
+    int tmp = first->val;
+    first->val = second->val;
+    second->val = tmp;
     return head;
 }
 ```
@@ -144,17 +161,20 @@ public ListNode swapNodes(ListNode head, int k) {
 
 Alternative to Floyd's for cycle entry: find cycle length `c`, then use two pointers with gap `c`.
 
-```java
-public ListNode detectCycle(ListNode head) {
-    int cycleLen = getCycleLength(head);
-    if (cycleLen == 0) return null;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    ListNode p1 = head, p2 = head;
-    for (int i = 0; i < cycleLen; i++) p1 = p1.next; // advance p1 by cycleLen
+ListNode* detectCycle(ListNode* head) {
+    int cycleLen = getCycleLength(head);
+    if (cycleLen == 0) return nullptr;
+
+    ListNode* p1 = head, *p2 = head;
+    for (int i = 0; i < cycleLen; i++) p1 = p1->next; // advance p1 by cycleLen
 
     while (p1 != p2) {
-        p1 = p1.next;
-        p2 = p2.next;
+        p1 = p1->next;
+        p2 = p2->next;
     }
     return p1;
 }
@@ -180,7 +200,7 @@ public ListNode detectCycle(ListNode head) {
 | Off-by-one: slow lands on target, not before it | Advance fast `n+1` times for "node before" |
 | Intersection: using `headA` vs `headB` for restart incorrectly | When `a` is null, redirect to `headB` (not `headA`) |
 | Rotate: not handling `k % length == 0` | Return `head` immediately if no rotation needed |
-| Partition: `greater.next` not nulled — creates cycle | Always null-terminate the greater list |
+| Partition: `greater->next` not nulled — creates cycle | Always null-terminate the greater list |
 
 ---
 

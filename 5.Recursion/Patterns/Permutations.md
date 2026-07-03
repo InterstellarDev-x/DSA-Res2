@@ -17,21 +17,26 @@ Two implementation strategies:
 
 ## Template 1 — Permutations via used[] (LC 46)
 
-```java
-public List<List<Integer>> permute(int[] nums) {
-    List<List<Integer>> result = new ArrayList<>();
-    backtrack(nums, new boolean[nums.length], new ArrayList<>(), result);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> permute(vector<int>& nums) {
+    vector<vector<int>> result;
+    vector<bool> used(nums.size(), false);
+    vector<int> path;
+    backtrack(nums, used, path, result);
     return result;
 }
 
-private void backtrack(int[] nums, boolean[] used, List<Integer> path, List<List<Integer>> res) {
-    if (path.size() == nums.length) { res.add(new ArrayList<>(path)); return; }
-    for (int i = 0; i < nums.length; i++) {
+void backtrack(vector<int>& nums, vector<bool>& used, vector<int>& path, vector<vector<int>>& res) {
+    if (path.size() == nums.size()) { res.push_back(path); return; }
+    for (int i = 0; i < nums.size(); i++) {
         if (used[i]) continue;
         used[i] = true;
-        path.add(nums[i]);
+        path.push_back(nums[i]);
         backtrack(nums, used, path, res);
-        path.remove(path.size() - 1);
+        path.pop_back();
         used[i] = false;
     }
 }
@@ -41,29 +46,28 @@ private void backtrack(int[] nums, boolean[] used, List<Integer> path, List<List
 
 ## Template 2 — Permutations via Swap (LC 46, O(1) extra space)
 
-```java
-public List<List<Integer>> permute(int[] nums) {
-    List<List<Integer>> result = new ArrayList<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> permute(vector<int> nums) {
+    vector<vector<int>> result;
     permuteHelper(nums, 0, result);
     return result;
 }
 
-private void permuteHelper(int[] nums, int start, List<List<Integer>> res) {
-    if (start == nums.length) {
+void permuteHelper(vector<int>& nums, int start, vector<vector<int>>& res) {
+    if (start == nums.size()) {
         // Collect current array state as a permutation
-        List<Integer> perm = new ArrayList<>();
-        for (int n : nums) perm.add(n);
-        res.add(perm);
+        res.push_back(nums);
         return;
     }
-    for (int i = start; i < nums.length; i++) {
-        swap(nums, start, i);          // put nums[i] at position start
+    for (int i = start; i < nums.size(); i++) {
+        swap(nums[start], nums[i]);          // put nums[i] at position start
         permuteHelper(nums, start + 1, res);
-        swap(nums, start, i);          // restore
+        swap(nums[start], nums[i]);          // restore
     }
 }
-
-private void swap(int[] a, int i, int j) { int tmp = a[i]; a[i] = a[j]; a[j] = tmp; }
 ```
 
 **Visualization for [1,2,3] at start=0:**
@@ -79,25 +83,30 @@ i=2: [3,2,1] → recurse start=1
 
 Sort first. Skip if same value was already placed at the current position this level.
 
-```java
-public List<List<Integer>> permuteUnique(int[] nums) {
-    Arrays.sort(nums);
-    List<List<Integer>> result = new ArrayList<>();
-    backtrack(nums, new boolean[nums.length], new ArrayList<>(), result);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> permuteUnique(vector<int>& nums) {
+    sort(nums.begin(), nums.end());
+    vector<vector<int>> result;
+    vector<bool> used(nums.size(), false);
+    vector<int> path;
+    backtrack(nums, used, path, result);
     return result;
 }
 
-private void backtrack(int[] nums, boolean[] used, List<Integer> path, List<List<Integer>> res) {
-    if (path.size() == nums.length) { res.add(new ArrayList<>(path)); return; }
-    for (int i = 0; i < nums.length; i++) {
+void backtrack(vector<int>& nums, vector<bool>& used, vector<int>& path, vector<vector<int>>& res) {
+    if (path.size() == nums.size()) { res.push_back(path); return; }
+    for (int i = 0; i < nums.size(); i++) {
         if (used[i]) continue;
         // Skip: same value AND previous duplicate not used
         // Ensures duplicates are placed in order (prevents same-level reuse)
         if (i > 0 && nums[i] == nums[i - 1] && !used[i - 1]) continue;
         used[i] = true;
-        path.add(nums[i]);
+        path.push_back(nums[i]);
         backtrack(nums, used, path, res);
-        path.remove(path.size() - 1);
+        path.pop_back();
         used[i] = false;
     }
 }
@@ -110,25 +119,28 @@ If `nums[i-1] == nums[i]` and `used[i-1]` is false, it means `nums[i-1]` was pre
 
 ## Template 4 — String Permutations (all permutations of a string)
 
-```java
-public List<String> permutations(String s) {
-    List<String> result = new ArrayList<>();
-    char[] arr = s.toCharArray();
-    Arrays.sort(arr);
-    boolean[] used = new boolean[arr.length];
-    permuteStr(arr, used, new StringBuilder(), result);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<string> permutations(string s) {
+    vector<string> result;
+    sort(s.begin(), s.end());
+    vector<bool> used(s.size(), false);
+    string current;
+    permuteStr(s, used, current, result);
     return result;
 }
 
-private void permuteStr(char[] arr, boolean[] used, StringBuilder sb, List<String> res) {
-    if (sb.length() == arr.length) { res.add(sb.toString()); return; }
-    for (int i = 0; i < arr.length; i++) {
+void permuteStr(const string& s, vector<bool>& used, string& current, vector<string>& res) {
+    if (current.size() == s.size()) { res.push_back(current); return; }
+    for (int i = 0; i < s.size(); i++) {
         if (used[i]) continue;
-        if (i > 0 && arr[i] == arr[i - 1] && !used[i - 1]) continue; // skip dup
+        if (i > 0 && s[i] == s[i - 1] && !used[i - 1]) continue; // skip dup
         used[i] = true;
-        sb.append(arr[i]);
-        permuteStr(arr, used, sb, res);
-        sb.deleteCharAt(sb.length() - 1);
+        current += s[i];
+        permuteStr(s, used, current, res);
+        current.pop_back();
         used[i] = false;
     }
 }
@@ -140,9 +152,12 @@ private void permuteStr(char[] arr, boolean[] used, StringBuilder sb, List<Strin
 
 Finds the lexicographically next permutation in-place:
 
-```java
-public void nextPermutation(int[] nums) {
-    int n = nums.length;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void nextPermutation(vector<int>& nums) {
+    int n = nums.size();
     // Step 1: find largest i where nums[i] < nums[i+1] (rightmost "dip")
     int i = n - 2;
     while (i >= 0 && nums[i] >= nums[i + 1]) i--;
@@ -151,10 +166,10 @@ public void nextPermutation(int[] nums) {
         // Step 2: find smallest j > i where nums[j] > nums[i]
         int j = n - 1;
         while (nums[j] <= nums[i]) j--;
-        swap(nums, i, j);
+        swap(nums[i], nums[j]);
     }
     // Step 3: reverse suffix from i+1 to end
-    reverse(nums, i + 1, n - 1);
+    reverse(nums.begin() + i + 1, nums.end());
 }
 ```
 
@@ -167,7 +182,7 @@ public void nextPermutation(int[] nums) {
 | Extra space | O(n) for `used[]` | O(1) |
 | Order preserved | Yes — generates in sorted order | No — depends on swap order |
 | Duplicate handling | `!used[i-1]` trick | Harder with swap |
-| Readability | ✅ Clearer | Lower |
+| Readability | Clearer | Lower |
 | Preferred when | Duplicates present | Space-constrained |
 
 ---
@@ -187,9 +202,9 @@ public void nextPermutation(int[] nums) {
 | Mistake | Fix |
 |---------|-----|
 | `i > 0 && !used[i-1]` — condition reversed | `nums[i] == nums[i-1] && !used[i-1]` — check value equality AND parent not used |
-| In swap approach: not restoring (forgetting second swap) | Both `swap(nums, start, i)` calls are required |
-| Storing reference to `path` | `new ArrayList<>(path)` at the leaf |
-| Swap approach: collecting result with `Arrays.asList(nums)` | That shares the backing array; copy explicitly |
+| In swap approach: not restoring (forgetting second swap) | Both `swap(nums[start], nums[i])` calls are required |
+| Storing reference to `path` | `res.push_back(path)` copies by value at the leaf |
+| Swap approach: collecting result without copying | Copy `nums` explicitly: `res.push_back(nums)` |
 
 ---
 

@@ -12,17 +12,20 @@ If you internalize the recipes here, you can solve *any* of the 55 problems in t
 
 A subproblem is uniquely identified by its **state** (the arguments that actually vary across recursive calls). Memoization stores the answer for each state the first time it is computed and returns the stored value on every subsequent visit.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Skeleton of every top-down DP.
 int solve(State s) {
     if (isBaseCase(s)) return baseValue(s);   // 1. base case
-    if (memo.contains(s)) return memo.get(s);  // 2. cache hit -> return
+    if (memo.count(s)) return memo[s];        // 2. cache hit -> return
     int ans = combine(                         // 3. recurrence / transition
         solve(next1(s)),
         solve(next2(s)),
         ...
     );
-    memo.put(s, ans);                          // 4. cache the result
+    memo[s] = ans;                            // 4. cache the result
     return ans;
 }
 ```
@@ -47,41 +50,42 @@ When the state is a small tuple of bounded integers (`index`, `capacity`, `i`, `
 Pick a sentinel that **cannot be a real answer**:
 
 - Use `-1` when all valid answers are `>= 0` (counts, lengths, non-negative costs).
-- Use `Integer.MIN_VALUE` / `Integer.MAX_VALUE` when `-1` is a legal answer (e.g., profits or costs that can be negative).
-- For boolean DP, use an `int[][]` holding `{-1 = unknown, 0 = false, 1 = true}`, or a `Boolean[][]` (whose default `null` *is* the "unknown" sentinel).
+- Use `INT_MIN` / `INT_MAX` when `-1` is a legal answer (e.g., profits or costs that can be negative).
+- For boolean DP, use a `vector<vector<int>>` holding `{-1 = unknown, 0 = false, 1 = true}`.
 
 ### 1D, 2D, 3D initialization
 
-```java
-// 1D: states indexed by a single integer in [0, n].
-int[] memo1 = new int[n + 1];
-Arrays.fill(memo1, -1);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-// 2D: states (i, j). Arrays.fill works per-row only.
-int[][] memo2 = new int[n + 1][m + 1];
-for (int[] row : memo2) Arrays.fill(row, -1);
+// 1D: states indexed by a single integer in [0, n].
+vector<int> memo1(n + 1, -1);
+
+// 2D: states (i, j).
+vector<vector<int>> memo2(n + 1, vector<int>(m + 1, -1));
 
 // 3D: states (i, j, k) — e.g., stock with transaction cap, Cherry Pickup II.
-int[][][] memo3 = new int[n][m][k];
-for (int[][] plane : memo3)
-    for (int[] row : plane)
-        Arrays.fill(row, -1);
+vector<vector<vector<int>>> memo3(n, vector<vector<int>>(m, vector<int>(k, -1)));
 ```
 
-> **Pitfall:** `Arrays.fill(memo2, -1)` does **not** work for a 2D array — it would try to fill the outer array with the `int` `-1`, which fails to compile (or fills rows with `null` for object arrays). Always fill row-by-row.
+> **Pitfall:** Initializing a 2D structure row-by-row is not needed in C++ since the constructor fills all values. Use the constructor with an initial value as shown above.
 
-### Boolean DP with a `Boolean[][]` (null sentinel)
+### Boolean DP with a `vector<vector<int>>` (-1 sentinel)
 
-```java
-Boolean[][] memo = new Boolean[n + 1][target + 1];   // defaults to null = "not computed"
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-boolean subsetSum(int idx, int target, int[] nums) {
+vector<vector<int>> memo(n + 1, vector<int>(target + 1, -1));  // -1 = "not computed"
+
+bool subsetSum(int idx, int target, vector<int>& nums) {
     if (target == 0) return true;
     if (idx == 0)    return nums[0] == target;
-    if (memo[idx][target] != null) return memo[idx][target];
+    if (memo[idx][target] != -1) return memo[idx][target];
 
-    boolean notTake = subsetSum(idx - 1, target, nums);
-    boolean take = false;
+    bool notTake = subsetSum(idx - 1, target, nums);
+    bool take = false;
     if (nums[idx] <= target) take = subsetSum(idx - 1, target - nums[idx], nums);
 
     return memo[idx][target] = (take || notTake);
@@ -90,68 +94,74 @@ boolean subsetSum(int idx, int target, int[] nums) {
 
 ---
 
-## 3. HashMap-Based Memo (sparse or non-integer states)
+## 3. unordered_map-Based Memo (sparse or non-integer states)
 
-Use a `Map` when the state space is **huge but sparsely visited**, **not naturally rectangular**, or **keyed by something other than small ints** (strings, sets, doubles).
+Use an `unordered_map` when the state space is **huge but sparsely visited**, **not naturally rectangular**, or **keyed by something other than small ints** (strings, sets, doubles).
 
 ### When to prefer a map over an array
 
 | Situation | Use |
 |-----------|-----|
-| Dense, small, integer-bounded state | `int[][]` array |
-| State range is large but only a few states are actually reached | `HashMap` |
-| State key is a `String`, object, or bitmask that doesn't index cleanly | `HashMap` |
-| Memory of the full rectangular table would not fit | `HashMap` |
+| Dense, small, integer-bounded state | `vector<vector<int>>` array |
+| State range is large but only a few states are actually reached | `unordered_map` |
+| State key is a `string`, object, or bitmask that doesn't index cleanly | `unordered_map` |
+| Memory of the full rectangular table would not fit | `unordered_map` |
 
-### Pattern A — encode the state to a single `long` key
+### Pattern A — encode the state to a single `long long` key
 
-When you have 2–3 bounded integer dimensions, pack them into one `long`. This avoids object allocation per key and is faster than a string key.
+When you have 2–3 bounded integer dimensions, pack them into one `long long`. This avoids object allocation per key and is faster than a string key.
 
-```java
-// Encode (i, j) where 0 <= j < BASE into a single long.
-private static final long BASE = 100_000L;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-long encode(int i, int j) {
-    return (long) i * BASE + j;
+// Encode (i, j) where 0 <= j < BASE into a single long long.
+const long long BASE = 100000LL;
+
+long long encode(int i, int j) {
+    return (long long) i * BASE + j;
 }
 
-Map<Long, Integer> memo = new HashMap<>();
+unordered_map<long long, int> memo;
 
 int solve(int i, int j) {
     if (/* base case */ ) return /* base value */;
-    long key = encode(i, j);
-    Integer cached = memo.get(key);
-    if (cached != null) return cached;
+    long long key = encode(i, j);
+    auto it = memo.find(key);
+    if (it != memo.end()) return it->second;
 
     int ans = /* recurrence using solve(...) */ 0;
-    memo.put(key, ans);
+    memo[key] = ans;
     return ans;
 }
 ```
 
-### Pattern B — `Map<String, Integer>` for irregular keys
+### Pattern B — `unordered_map<string, int>` for irregular keys
 
 Readable and flexible (e.g., Boolean Evaluation keys an operator range plus a target flag). Slightly slower due to string building and hashing.
 
-```java
-Map<String, Integer> memo = new HashMap<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-int countWays(int i, int j, boolean isTrue, String exp) {
+unordered_map<string, int> memo;
+
+int countWays(int i, int j, bool isTrue, string& exp) {
     if (i > j) return 0;
     if (i == j) { /* single operand */ return /* ... */ 0; }
-    String key = i + "|" + j + "|" + isTrue;
-    if (memo.containsKey(key)) return memo.get(key);
+    string key = to_string(i) + "|" + to_string(j) + "|" + to_string(isTrue);
+    if (memo.count(key)) return memo[key];
 
     int ways = 0;
     for (int k = i + 1; k <= j - 1; k += 2) {
         // partition on operator at k, combine left/right true/false counts...
     }
-    memo.put(key, ways);
+    memo[key] = ways;
     return ways;
 }
 ```
 
-> **Tip:** `containsKey` + `get` is two lookups. For hot paths, do a single `get` and compare against `null` (boxing means `null` is a clean "absent" sentinel).
+> **Tip:** `count` + `[]` is two lookups. For hot paths, use `find()` and compare against `end()` to perform a single lookup and retrieve the value via the iterator.
 
 ---
 
@@ -159,7 +169,7 @@ int countWays(int i, int j, boolean isTrue, String exp) {
 
 Most interviewers accept either, but tabulation removes recursion-stack risk and is often easier to space-optimize. Convert mechanically:
 
-1. **Identify the state and its ranges.** Whatever the memo is indexed by becomes the DP table dimensions: `int[][] dp = new int[N+1][M+1]`.
+1. **Identify the state and its ranges.** Whatever the memo is indexed by becomes the DP table dimensions: `vector<vector<int>> dp(N+1, vector<int>(M+1))`.
 2. **Translate base cases into table initialization.** Every `if (baseCase) return v;` becomes a pre-filled cell or row/column.
 3. **Determine iteration order.** A state must be computed *after* all states it depends on. If `solve(i)` calls `solve(i-1)`, iterate `i` from low to high. If it calls `solve(i+1)` (suffix DP), iterate `i` from high to low. For interval DP `dp(i,j)` that depends on smaller ranges, iterate by **increasing length** (or `i` descending, `j` ascending).
 4. **Replace each recursive call with a table read.** `solve(i-1)` → `dp[i-1]`. The body of the recurrence is otherwise identical.
@@ -167,9 +177,12 @@ Most interviewers accept either, but tabulation removes recursion-stack risk and
 
 ### Worked example — Fibonacci as a template
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Top-down (memoized)
-int fibMemo(int n, int[] memo) {
+int fibMemo(int n, vector<int>& memo) {
     if (n <= 1) return n;                 // base case
     if (memo[n] != -1) return memo[n];
     return memo[n] = fibMemo(n - 1, memo) + fibMemo(n - 2, memo);
@@ -178,7 +191,7 @@ int fibMemo(int n, int[] memo) {
 // Bottom-up (tabulated) — same recurrence, explicit order
 int fibTab(int n) {
     if (n <= 1) return n;
-    int[] dp = new int[n + 1];
+    vector<int> dp(n + 1);
     dp[0] = 0; dp[1] = 1;                  // base cases -> initialization
     for (int i = 2; i <= n; i++)           // order: low -> high (depends on i-1, i-2)
         dp[i] = dp[i - 1] + dp[i - 2];     // call -> table read
@@ -206,7 +219,7 @@ The progression `recursion → memoization → tabulation → space-optimized` a
 
 | Approach | Pros | Cons | Use when |
 |----------|------|------|----------|
-| **Memoization (top-down)** | Mirrors the recurrence directly; only computes *reachable* states; easiest to write from brute force. | Recursion stack overhead; risk of `StackOverflowError` on deep states; harder to space-optimize. | The recurrence is clear, the state graph is sparse, or you're deriving the solution live. |
+| **Memoization (top-down)** | Mirrors the recurrence directly; only computes *reachable* states; easiest to write from brute force. | Recursion stack overhead; risk of stack overflow on deep states; harder to space-optimize. | The recurrence is clear, the state graph is sparse, or you're deriving the solution live. |
 | **Tabulation (bottom-up)** | No recursion stack; predictable iteration; easy to space-optimize; often faster (no call overhead). | Must compute *all* states even if some are unreachable; iteration order requires thought. | Depth is large, you need the space-optimized form, or all states are visited anyway. |
 | **Space-optimized** | O(1) or O(n) memory instead of O(n²)/O(n·m). | Loses the full table, so path reconstruction/printing becomes impossible. | Only the final value is needed and the state depends on a bounded number of prior states. |
 
@@ -216,20 +229,18 @@ The progression `recursion → memoization → tabulation → space-optimized` a
 
 ## 6. Recursion Depth & Stack Overflow
 
-Java's default thread stack (~512 KB) overflows at roughly **10,000–20,000** frames of moderate-size methods. A top-down DP over `n = 10^5` along a single chain (e.g., LIS, Word Break, Frog Jump on a large array) can blow the stack.
+C++'s default thread stack (typically **1–8 MB** depending on OS) can overflow with deep recursion. A top-down DP over `n = 10^5` along a single chain (e.g., LIS, Word Break, Frog Jump on a large array) can blow the stack.
 
 Mitigations, in order of preference:
 
 1. **Convert to tabulation.** The cleanest fix — no recursion at all.
-2. **Run the recursion on a larger thread stack** when you must keep top-down:
-   ```java
-   public static void main(String[] args) throws InterruptedException {
-       Thread t = new Thread(null, () -> {
-           // ... call deep recursive DP here ...
-       }, "dp", 1 << 26);   // 64 MB stack
-       t.start();
-       t.join();
-   }
+2. **Increase the stack size** when you must keep top-down:
+   ```cpp
+   // On Linux/macOS: ulimit -s unlimited before running the binary.
+   // On Windows (MSVC): use /F<size> linker flag, e.g. /F67108864 for 64 MB.
+   // In competitive programming, a common trick is a pragma comment:
+   // #pragma comment(linker, "/STACK:1000000000")
+   // There is no portable standard-library mechanism for this in C++.
    ```
 3. **Iterative explicit-stack DFS** for the rare case where the recurrence is awkward to tabulate.
 
@@ -259,62 +270,59 @@ Each state is computed exactly once (after that it's a cache hit), so the total 
 
 Putting the framework together: brute force, then array memo, then the array memo's space-optimized tabulation. This is the template behind every problem in [Knapsack (Subset Sum)](../Patterns/Knapsack%20(Subset%20Sum).md).
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class KnapsackFramework {
+// ---- Step 1: brute-force recursion (exponential) ----
+int rec(int i, int cap, vector<int>& wt, vector<int>& val) {
+    if (i < 0 || cap == 0) return 0;
+    int notTake = rec(i - 1, cap, wt, val);
+    int take = INT_MIN;
+    if (wt[i] <= cap) take = val[i] + rec(i - 1, cap - wt[i], wt, val);
+    return max(take, notTake);
+}
 
-    // ---- Step 1: brute-force recursion (exponential) ----
-    static int rec(int i, int cap, int[] wt, int[] val) {
-        if (i < 0 || cap == 0) return 0;
-        int notTake = rec(i - 1, cap, wt, val);
-        int take = Integer.MIN_VALUE;
-        if (wt[i] <= cap) take = val[i] + rec(i - 1, cap - wt[i], wt, val);
-        return Math.max(take, notTake);
-    }
+// ---- Step 2: top-down memoization ----
+int memoHelper(int i, int cap, vector<int>& wt, vector<int>& val, vector<vector<int>>& memo) {
+    if (i < 0 || cap == 0) return 0;
+    if (memo[i][cap] != -1) return memo[i][cap];
+    int notTake = memoHelper(i - 1, cap, wt, val, memo);
+    int take = INT_MIN;
+    if (wt[i] <= cap) take = val[i] + memoHelper(i - 1, cap - wt[i], wt, val, memo);
+    return memo[i][cap] = max(take, notTake);
+}
 
-    // ---- Step 2: top-down memoization ----
-    static int memoized(int n, int W, int[] wt, int[] val) {
-        int[][] memo = new int[n][W + 1];
-        for (int[] row : memo) Arrays.fill(row, -1);
-        return memo(n - 1, W, wt, val, memo);
-    }
+int memoized(int n, int W, vector<int>& wt, vector<int>& val) {
+    vector<vector<int>> memo(n, vector<int>(W + 1, -1));
+    return memoHelper(n - 1, W, wt, val, memo);
+}
 
-    static int memo(int i, int cap, int[] wt, int[] val, int[][] memo) {
-        if (i < 0 || cap == 0) return 0;
-        if (memo[i][cap] != -1) return memo[i][cap];
-        int notTake = memo(i - 1, cap, wt, val, memo);
-        int take = Integer.MIN_VALUE;
-        if (wt[i] <= cap) take = val[i] + memo(i - 1, cap - wt[i], wt, val, memo);
-        return memo[i][cap] = Math.max(take, notTake);
-    }
-
-    // ---- Step 3: bottom-up tabulation ----
-    static int tabulation(int n, int W, int[] wt, int[] val) {
-        int[][] dp = new int[n + 1][W + 1];   // dp[i][cap] using items 0..i-1
-        for (int i = 1; i <= n; i++) {
-            for (int cap = 0; cap <= W; cap++) {
-                int notTake = dp[i - 1][cap];
-                int take = Integer.MIN_VALUE;
-                if (wt[i - 1] <= cap) take = val[i - 1] + dp[i - 1][cap - wt[i - 1]];
-                dp[i][cap] = Math.max(take, notTake);
-            }
+// ---- Step 3: bottom-up tabulation ----
+int tabulation(int n, int W, vector<int>& wt, vector<int>& val) {
+    vector<vector<int>> dp(n + 1, vector<int>(W + 1, 0));   // dp[i][cap] using items 0..i-1
+    for (int i = 1; i <= n; i++) {
+        for (int cap = 0; cap <= W; cap++) {
+            int notTake = dp[i - 1][cap];
+            int take = INT_MIN;
+            if (wt[i - 1] <= cap) take = val[i - 1] + dp[i - 1][cap - wt[i - 1]];
+            dp[i][cap] = max(take, notTake);
         }
-        return dp[n][W];
     }
+    return dp[n][W];
+}
 
-    // ---- Step 4: 1D space optimization (iterate capacity DOWNWARD for 0/1) ----
-    static int spaceOptimized(int n, int W, int[] wt, int[] val) {
-        int[] dp = new int[W + 1];
-        for (int i = 0; i < n; i++)
-            for (int cap = W; cap >= wt[i]; cap--)        // downward => each item used once
-                dp[cap] = Math.max(dp[cap], val[i] + dp[cap - wt[i]]);
-        return dp[W];
-    }
+// ---- Step 4: 1D space optimization (iterate capacity DOWNWARD for 0/1) ----
+int spaceOptimized(int n, int W, vector<int>& wt, vector<int>& val) {
+    vector<int> dp(W + 1, 0);
+    for (int i = 0; i < n; i++)
+        for (int cap = W; cap >= wt[i]; cap--)        // downward => each item used once
+            dp[cap] = max(dp[cap], val[i] + dp[cap - wt[i]]);
+    return dp[W];
 }
 ```
 
-The four methods return identical answers; they differ only in time/space and in whether they use the recursion stack.
+The four functions return identical answers; they differ only in time/space and in whether they use the recursion stack.
 
 ---
 
@@ -323,7 +331,7 @@ The four methods return identical answers; they differ only in time/space and in
 1. **Define the state** — the minimal set of arguments that determines the answer.
 2. **Write the recurrence** — express the answer in terms of smaller states.
 3. **Establish base cases** — the smallest states with direct answers.
-4. **Choose memo storage** — array if dense/integer-indexed, HashMap if sparse/irregular; pick a safe sentinel.
+4. **Choose memo storage** — array if dense/integer-indexed, `unordered_map` if sparse/irregular; pick a safe sentinel.
 5. **Decide order** (for tabulation) — compute each state after its dependencies.
 6. **Locate the answer** — the state matching the original top-level call.
 7. **Space-optimize last** — only if you don't need to reconstruct the path.

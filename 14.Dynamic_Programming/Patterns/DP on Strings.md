@@ -2,11 +2,11 @@
 
 # DP on Strings
 
-String DP problems revolve around comparing, matching, partitioning, or transforming one or more strings. The defining trait is a **state indexed by positions** within the string(s) — typically `dp[i][j]` describing the relationship between a prefix of length `i` of one string and a prefix of length `j` of another, or `dp[i]` describing a property of the first `i` characters of a single string. From these states we derive transitions by inspecting one character at a time (`s.charAt(i - 1)`), branching on equality, special pattern symbols (`?`, `*`, `.`), or dictionary membership.
+String DP problems revolve around comparing, matching, partitioning, or transforming one or more strings. The defining trait is a **state indexed by positions** within the string(s) — typically `dp[i][j]` describing the relationship between a prefix of length `i` of one string and a prefix of length `j` of another, or `dp[i]` describing a property of the first `i` characters of a single string. From these states we derive transitions by inspecting one character at a time (`s[i - 1]`), branching on equality, special pattern symbols (`?`, `*`, `.`), or dictionary membership.
 
 This pattern is the natural extension of [Longest Common Subsequence](./Longest%20Common%20Subsequence.md): once you internalize the `i`/`j` prefix-state formulation, edit distance, wildcard matching, regex matching, and interleaving all become variations on the same skeleton. Single-string problems (word break, decode ways, palindromic substrings) reuse the prefix idea with a 1D state or a 2D substring table `dp[i][j]` over the span `[i, j]`.
 
-This document covers eight canonical problems (48–55). Each section gives the **state definition**, **recurrence**, **base cases**, a **complexity table**, full compilable Java (recursion → memoization → tabulation → space optimization where relevant), and at least one worked dry-run.
+This document covers eight canonical problems (48–55). Each section gives the **state definition**, **recurrence**, **base cases**, a **complexity table**, full compilable C++ (recursion → memoization → tabulation → space optimization where relevant), and at least one worked dry-run.
 
 ---
 
@@ -20,7 +20,7 @@ Given two strings `word1` and `word2`, return the minimum number of operations �
 
 ### Recurrence
 
-Let `m = word1.length()`, `n = word2.length()`. Consider the last characters `word1.charAt(i - 1)` and `word2.charAt(j - 1)`:
+Let `m = word1.size()`, `n = word2.size()`. Consider the last characters `word1[i - 1]` and `word2[j - 1]`:
 
 - If they match: `dp[i][j] = dp[i - 1][j - 1]` (no operation needed).
 - Otherwise take the best of three operations:
@@ -42,113 +42,125 @@ Let `m = word1.length()`, `n = word2.length()`. Consider the last characters `wo
 | Tabulation | O(m · n) | O(m · n) |
 | 1D space optimized | O(m · n) | O(n) |
 
-### Java — Recursion
+### C++ — Recursion
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class EditDistanceRecursion {
-    public int minDistance(String word1, String word2) {
-        return solve(word1, word2, word1.length(), word2.length());
+public:
+    int minDistance(string word1, string word2) {
+        return solve(word1, word2, word1.size(), word2.size());
     }
 
-    private int solve(String w1, String w2, int i, int j) {
+private:
+    int solve(const string& w1, const string& w2, int i, int j) {
         if (i == 0) return j; // insert remaining j chars
         if (j == 0) return i; // delete remaining i chars
 
-        if (w1.charAt(i - 1) == w2.charAt(j - 1)) {
+        if (w1[i - 1] == w2[j - 1]) {
             return solve(w1, w2, i - 1, j - 1);
         }
         int replace = solve(w1, w2, i - 1, j - 1);
-        int delete = solve(w1, w2, i - 1, j);
-        int insert = solve(w1, w2, i, j - 1);
-        return 1 + Math.min(replace, Math.min(delete, insert));
+        int del = solve(w1, w2, i - 1, j);
+        int ins = solve(w1, w2, i, j - 1);
+        return 1 + min(replace, min(del, ins));
     }
-}
+};
 ```
 
-### Java — Memoization (`Arrays.fill` with -1)
+### C++ — Memoization
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class EditDistanceMemo {
-    public int minDistance(String word1, String word2) {
-        int m = word1.length(), n = word2.length();
-        int[][] dp = new int[m + 1][n + 1];
-        for (int[] row : dp) Arrays.fill(row, -1);
+public:
+    int minDistance(string word1, string word2) {
+        int m = word1.size(), n = word2.size();
+        vector<vector<int>> dp(m + 1, vector<int>(n + 1, -1));
         return solve(word1, word2, m, n, dp);
     }
 
-    private int solve(String w1, String w2, int i, int j, int[][] dp) {
+private:
+    int solve(const string& w1, const string& w2, int i, int j, vector<vector<int>>& dp) {
         if (i == 0) return j;
         if (j == 0) return i;
         if (dp[i][j] != -1) return dp[i][j];
 
-        if (w1.charAt(i - 1) == w2.charAt(j - 1)) {
+        if (w1[i - 1] == w2[j - 1]) {
             return dp[i][j] = solve(w1, w2, i - 1, j - 1, dp);
         }
         int replace = solve(w1, w2, i - 1, j - 1, dp);
-        int delete = solve(w1, w2, i - 1, j, dp);
-        int insert = solve(w1, w2, i, j - 1, dp);
-        return dp[i][j] = 1 + Math.min(replace, Math.min(delete, insert));
+        int del = solve(w1, w2, i - 1, j, dp);
+        int ins = solve(w1, w2, i, j - 1, dp);
+        return dp[i][j] = 1 + min(replace, min(del, ins));
     }
-}
+};
 ```
 
-### Java — Tabulation
+### C++ — Tabulation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class EditDistanceTabulation {
-    public int minDistance(String word1, String word2) {
-        int m = word1.length(), n = word2.length();
-        int[][] dp = new int[m + 1][n + 1];
+public:
+    int minDistance(string word1, string word2) {
+        int m = word1.size(), n = word2.size();
+        vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
 
         for (int j = 0; j <= n; j++) dp[0][j] = j; // base row
         for (int i = 0; i <= m; i++) dp[i][0] = i; // base column
 
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
-                if (word1.charAt(i - 1) == word2.charAt(j - 1)) {
+                if (word1[i - 1] == word2[j - 1]) {
                     dp[i][j] = dp[i - 1][j - 1];
                 } else {
                     int replace = dp[i - 1][j - 1];
-                    int delete = dp[i - 1][j];
-                    int insert = dp[i][j - 1];
-                    dp[i][j] = 1 + Math.min(replace, Math.min(delete, insert));
+                    int del = dp[i - 1][j];
+                    int ins = dp[i][j - 1];
+                    dp[i][j] = 1 + min(replace, min(del, ins));
                 }
             }
         }
         return dp[m][n];
     }
-}
+};
 ```
 
-### Java — 1D Space Optimized
+### C++ — 1D Space Optimized
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class EditDistanceSpaceOptimized {
-    public int minDistance(String word1, String word2) {
-        int m = word1.length(), n = word2.length();
-        int[] prev = new int[n + 1];
-        int[] curr = new int[n + 1];
+public:
+    int minDistance(string word1, string word2) {
+        int m = word1.size(), n = word2.size();
+        vector<int> prev(n + 1), curr(n + 1);
 
         for (int j = 0; j <= n; j++) prev[j] = j; // dp[0][j]
 
         for (int i = 1; i <= m; i++) {
             curr[0] = i; // dp[i][0]
             for (int j = 1; j <= n; j++) {
-                if (word1.charAt(i - 1) == word2.charAt(j - 1)) {
+                if (word1[i - 1] == word2[j - 1]) {
                     curr[j] = prev[j - 1];
                 } else {
-                    curr[j] = 1 + Math.min(prev[j - 1], Math.min(prev[j], curr[j - 1]));
+                    curr[j] = 1 + min(prev[j - 1], min(prev[j], curr[j - 1]));
                 }
             }
-            int[] temp = prev;
-            prev = curr;
-            curr = temp; // reuse the array
+            swap(prev, curr); // reuse the array
         }
         return prev[n];
     }
-}
+};
 ```
 
 ### Dry Run
@@ -181,10 +193,10 @@ Given an input string `s` and a pattern `p` containing `?` and `*`, return wheth
 
 ### Recurrence
 
-Inspect `p.charAt(j - 1)`:
+Inspect `p[j - 1]`:
 
 - If it is a normal char or `?`: it must consume one char of `s` —
-  `dp[i][j] = dp[i - 1][j - 1] && (p.charAt(j-1) == '?' || p.charAt(j-1) == s.charAt(i-1))`.
+  `dp[i][j] = dp[i - 1][j - 1] && (p[j-1] == '?' || p[j-1] == s[i-1])`.
 - If it is `*`: it matches **empty** (`dp[i][j - 1]`) **or** absorbs one more char of `s` (`dp[i - 1][j]`):
   `dp[i][j] = dp[i][j - 1] || dp[i - 1][j]`.
 
@@ -192,7 +204,7 @@ Inspect `p.charAt(j - 1)`:
 
 - `dp[0][0] = true` — empty pattern matches empty string.
 - `dp[i][0] = false` for `i > 0` — non-empty string cannot match empty pattern.
-- **Leading `*`s:** `dp[0][j] = dp[0][j - 1] && p.charAt(j - 1) == '*'`. An empty string matches a prefix of pattern only if that prefix is all `*`s (each matching the empty sequence).
+- **Leading `*`s:** `dp[0][j] = dp[0][j - 1] && p[j - 1] == '*'`. An empty string matches a prefix of pattern only if that prefix is all `*`s (each matching the empty sequence).
 
 ### Complexity
 
@@ -200,29 +212,33 @@ Inspect `p.charAt(j - 1)`:
 |---|---|---|
 | Tabulation | O(m · n) | O(m · n) |
 
-(where `m = s.length()`, `n = p.length()`)
+(where `m = s.size()`, `n = p.size()`)
 
-### Java — Tabulation
+### C++ — Tabulation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class WildcardMatching {
-    public boolean isMatch(String s, String p) {
-        int m = s.length(), n = p.length();
-        boolean[][] dp = new boolean[m + 1][n + 1];
+public:
+    bool isMatch(string s, string p) {
+        int m = s.size(), n = p.size();
+        vector<vector<bool>> dp(m + 1, vector<bool>(n + 1, false));
 
         dp[0][0] = true; // empty matches empty
         for (int j = 1; j <= n; j++) {
             // leading '*' can match empty prefix of s
-            dp[0][j] = dp[0][j - 1] && p.charAt(j - 1) == '*';
+            dp[0][j] = dp[0][j - 1] && p[j - 1] == '*';
         }
 
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
-                char pc = p.charAt(j - 1);
+                char pc = p[j - 1];
                 if (pc == '*') {
-                    // '*' = empty (dp[i][j-1]) OR absorb s.charAt(i-1) (dp[i-1][j])
+                    // '*' = empty (dp[i][j-1]) OR absorb s[i-1] (dp[i-1][j])
                     dp[i][j] = dp[i][j - 1] || dp[i - 1][j];
-                } else if (pc == '?' || pc == s.charAt(i - 1)) {
+                } else if (pc == '?' || pc == s[i - 1]) {
                     dp[i][j] = dp[i - 1][j - 1];
                 } else {
                     dp[i][j] = false;
@@ -231,7 +247,7 @@ class WildcardMatching {
         }
         return dp[m][n];
     }
-}
+};
 ```
 
 ### Dry Run
@@ -255,19 +271,19 @@ The key difference from wildcard `*`: here `*` modifies the character immediatel
 
 ### Recurrence
 
-Inspect `p.charAt(j - 1)`:
+Inspect `p[j - 1]`:
 
-- Normal char or `.`: `dp[i][j] = dp[i - 1][j - 1] && matches(s.charAt(i-1), p.charAt(j-1))` where `matches` is true when the pattern char is `.` or equals the string char.
-- `*` (with preceding char `p.charAt(j - 2)`):
+- Normal char or `.`: `dp[i][j] = dp[i - 1][j - 1] && matches(s[i-1], p[j-1])` where `matches` is true when the pattern char is `.` or equals the string char.
+- `*` (with preceding char `p[j - 2]`):
   - **Zero occurrences:** drop the pair `x*` → `dp[i][j - 2]`.
-  - **One or more occurrences:** if the preceding pattern char matches `s.charAt(i - 1)`, consume that char → `dp[i - 1][j]`.
-  - Combine: `dp[i][j] = dp[i][j - 2] || (matches(s.charAt(i-1), p.charAt(j-2)) && dp[i - 1][j])`.
+  - **One or more occurrences:** if the preceding pattern char matches `s[i - 1]`, consume that char → `dp[i - 1][j]`.
+  - Combine: `dp[i][j] = dp[i][j - 2] || (matches(s[i-1], p[j-2]) && dp[i - 1][j])`.
 
 ### Base Cases
 
 - `dp[0][0] = true`.
 - `dp[i][0] = false` for `i > 0`.
-- **Patterns like `a*`, `a*b*`** can match the empty string: for `j >= 2`, if `p.charAt(j - 1) == '*'` then `dp[0][j] = dp[0][j - 2]`.
+- **Patterns like `a*`, `a*b*`** can match the empty string: for `j >= 2`, if `p[j - 1] == '*'` then `dp[0][j] = dp[0][j - 2]`.
 
 ### Complexity
 
@@ -276,31 +292,33 @@ Inspect `p.charAt(j - 1)`:
 | Memoization | O(m · n) | O(m · n) + stack |
 | Tabulation | O(m · n) | O(m · n) |
 
-### Java — Memoization
+### C++ — Memoization
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class RegexMatchingMemo {
-    // 0 = unknown, 1 = true, -1 = false (since boolean cannot hold "unset")
-    private int[][] memo;
+    // 0 = unknown, 1 = true, -1 = false (since bool cannot hold "unset")
+    vector<vector<int>> memo;
 
-    public boolean isMatch(String s, String p) {
-        memo = new int[s.length() + 1][p.length() + 1];
-        for (int[] row : memo) Arrays.fill(row, 0);
+public:
+    bool isMatch(string s, string p) {
+        memo.assign(s.size() + 1, vector<int>(p.size() + 1, 0));
         return solve(s, p, 0, 0);
     }
 
-    private boolean solve(String s, String p, int i, int j) {
-        if (j == p.length()) return i == s.length();
+private:
+    bool solve(const string& s, const string& p, int i, int j) {
+        if (j == (int)p.size()) return i == (int)s.size();
         if (memo[i][j] != 0) return memo[i][j] == 1;
 
-        boolean firstMatch = i < s.length()
-                && (p.charAt(j) == '.' || p.charAt(j) == s.charAt(i));
+        bool firstMatch = i < (int)s.size()
+                && (p[j] == '.' || p[j] == s[i]);
 
-        boolean result;
-        if (j + 1 < p.length() && p.charAt(j + 1) == '*') {
-            // zero occurrences (skip "x*") OR one+ (consume s.charAt(i))
+        bool result;
+        if (j + 1 < (int)p.size() && p[j + 1] == '*') {
+            // zero occurrences (skip "x*") OR one+ (consume s[i])
             result = solve(s, p, i, j + 2)
                     || (firstMatch && solve(s, p, i + 1, j));
         } else {
@@ -310,37 +328,41 @@ class RegexMatchingMemo {
         memo[i][j] = result ? 1 : -1;
         return result;
     }
-}
+};
 ```
 
-### Java — Tabulation
+### C++ — Tabulation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class RegexMatchingTabulation {
-    public boolean isMatch(String s, String p) {
-        int m = s.length(), n = p.length();
-        boolean[][] dp = new boolean[m + 1][n + 1];
+public:
+    bool isMatch(string s, string p) {
+        int m = s.size(), n = p.size();
+        vector<vector<bool>> dp(m + 1, vector<bool>(n + 1, false));
 
         dp[0][0] = true;
         // patterns like a*, a*b* may match empty string
         for (int j = 2; j <= n; j++) {
-            if (p.charAt(j - 1) == '*') {
+            if (p[j - 1] == '*') {
                 dp[0][j] = dp[0][j - 2];
             }
         }
 
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
-                char pc = p.charAt(j - 1);
+                char pc = p[j - 1];
                 if (pc == '*') {
-                    char prev = p.charAt(j - 2);
+                    char prev = p[j - 2];
                     // zero occurrences of the preceding element
                     dp[i][j] = dp[i][j - 2];
                     // one or more occurrences
-                    if (prev == '.' || prev == s.charAt(i - 1)) {
+                    if (prev == '.' || prev == s[i - 1]) {
                         dp[i][j] = dp[i][j] || dp[i - 1][j];
                     }
-                } else if (pc == '.' || pc == s.charAt(i - 1)) {
+                } else if (pc == '.' || pc == s[i - 1]) {
                     dp[i][j] = dp[i - 1][j - 1];
                 } else {
                     dp[i][j] = false;
@@ -349,7 +371,7 @@ class RegexMatchingTabulation {
         }
         return dp[m][n];
     }
-}
+};
 ```
 
 ### Dry Run
@@ -364,13 +386,13 @@ Given a string `s` and a dictionary `wordDict`, return whether `s` can be segmen
 
 ### State
 
-`dp[i]` = whether the prefix `s.substring(0, i)` (length `i`) can be segmented entirely using dictionary words.
+`dp[i]` = whether the prefix `s.substr(0, i)` (length `i`) can be segmented entirely using dictionary words.
 
 ### Recurrence
 
 For each end position `i`, try every split point `j < i`:
 
-`dp[i] = OR over j in [0, i) of ( dp[j] && dictionary.contains(s.substring(j, i)) )`.
+`dp[i] = OR over j in [0, i) of ( dp[j] && dictionary.count(s.substr(j, i - j)) )`.
 
 In words: the prefix of length `i` is breakable if some earlier prefix of length `j` is breakable AND the remaining segment `s[j..i)` is a dictionary word.
 
@@ -382,27 +404,27 @@ In words: the prefix of length `i` is breakable if some earlier prefix of length
 
 | Approach | Time | Space |
 |---|---|---|
-| Tabulation (HashSet lookup) | O(n^2 · L) | O(n + dict) |
+| Tabulation (unordered_set lookup) | O(n^2 · L) | O(n + dict) |
 
-`n = s.length()`, `L` = average word length (cost of substring + hashing).
+`n = s.size()`, `L` = average word length (cost of substring + hashing).
 
-### Java — Tabulation
+### C++ — Tabulation
 
-```java
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class WordBreak {
-    public boolean wordBreak(String s, List<String> wordDict) {
-        Set<String> dictionary = new HashSet<>(wordDict);
-        int n = s.length();
-        boolean[] dp = new boolean[n + 1];
+public:
+    bool wordBreak(string s, vector<string>& wordDict) {
+        unordered_set<string> dictionary(wordDict.begin(), wordDict.end());
+        int n = s.size();
+        vector<bool> dp(n + 1, false);
         dp[0] = true; // empty prefix
 
         for (int i = 1; i <= n; i++) {
             for (int j = 0; j < i; j++) {
-                if (dp[j] && dictionary.contains(s.substring(j, i))) {
+                if (dp[j] && dictionary.count(s.substr(j, i - j))) {
                     dp[i] = true;
                     break; // one valid split is enough
                 }
@@ -410,7 +432,7 @@ class WordBreak {
         }
         return dp[n];
     }
-}
+};
 ```
 
 ### Dry Run
@@ -431,13 +453,13 @@ A message of digits is encoded with `A → 1`, ..., `Z → 26`. Given a digit st
 
 ### State
 
-`dp[i]` = number of ways to decode the prefix `s.substring(0, i)` (length `i`).
+`dp[i]` = number of ways to decode the prefix `s.substr(0, i)` (length `i`).
 
 ### Recurrence
 
 For position `i` (1-indexed over characters):
 
-- **One-digit decode:** if `s.charAt(i - 1)` is `'1'..'9'`, add `dp[i - 1]`.
+- **One-digit decode:** if `s[i - 1]` is `'1'..'9'`, add `dp[i - 1]`.
 - **Two-digit decode:** if the substring `s[i-2..i)` (i.e. chars at `i-2` and `i-1`) forms a value in `[10, 26]`, add `dp[i - 2]`.
 
 `dp[i] = (validOne ? dp[i-1] : 0) + (validTwo ? dp[i-2] : 0)`.
@@ -447,7 +469,7 @@ A character `'0'` can never decode as a single digit and is only valid as the se
 ### Base Cases
 
 - `dp[0] = 1` — empty string has one (empty) decoding.
-- `dp[1] = (s.charAt(0) == '0') ? 0 : 1`.
+- `dp[1] = (s[0] == '0') ? 0 : 1`.
 
 ### Complexity
 
@@ -456,21 +478,25 @@ A character `'0'` can never decode as a single digit and is only valid as the se
 | Tabulation | O(n) | O(n) |
 | O(1) space variant | O(n) | O(1) |
 
-### Java — Tabulation
+### C++ — Tabulation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class DecodeWays {
-    public int numDecodings(String s) {
-        int n = s.length();
-        if (n == 0 || s.charAt(0) == '0') return 0;
+public:
+    int numDecodings(string s) {
+        int n = s.size();
+        if (n == 0 || s[0] == '0') return 0;
 
-        int[] dp = new int[n + 1];
+        vector<int> dp(n + 1, 0);
         dp[0] = 1;
-        dp[1] = 1; // s.charAt(0) is guaranteed != '0' here
+        dp[1] = 1; // s[0] is guaranteed != '0' here
 
         for (int i = 2; i <= n; i++) {
-            char one = s.charAt(i - 1);
-            char tens = s.charAt(i - 2);
+            char one = s[i - 1];
+            char tens = s[i - 2];
 
             if (one != '0') {                 // single-digit decode 1..9
                 dp[i] += dp[i - 1];
@@ -482,24 +508,28 @@ class DecodeWays {
         }
         return dp[n];
     }
-}
+};
 ```
 
-### Java — O(1) Space
+### C++ — O(1) Space
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class DecodeWaysSpaceOptimized {
-    public int numDecodings(String s) {
-        int n = s.length();
-        if (n == 0 || s.charAt(0) == '0') return 0;
+public:
+    int numDecodings(string s) {
+        int n = s.size();
+        if (n == 0 || s[0] == '0') return 0;
 
         int prev2 = 1;        // dp[i-2]
         int prev1 = 1;        // dp[i-1], i.e. dp[1]
 
         for (int i = 2; i <= n; i++) {
             int curr = 0;
-            char one = s.charAt(i - 1);
-            char tens = s.charAt(i - 2);
+            char one = s[i - 1];
+            char tens = s[i - 2];
 
             if (one != '0') {
                 curr += prev1;
@@ -513,7 +543,7 @@ class DecodeWaysSpaceOptimized {
         }
         return prev1;
     }
-}
+};
 ```
 
 ### Dry Run
@@ -538,9 +568,9 @@ Every palindrome has a center: either a single character (odd length, `n` center
 
 ### Approach B — DP Boolean Table
 
-`dp[i][j]` = whether `s.substring(i, j + 1)` is a palindrome.
+`dp[i][j]` = whether `s.substr(i, j - i + 1)` is a palindrome.
 
-Recurrence: `dp[i][j] = (s.charAt(i) == s.charAt(j)) && (j - i < 2 || dp[i + 1][j - 1])`.
+Recurrence: `dp[i][j] = (s[i] == s[j]) && (j - i < 2 || dp[i + 1][j - 1])`.
 
 The condition `j - i < 2` covers length-1 (`i == j`) and length-2 (`j == i + 1`) substrings, which need no inner check. Iterate `i` from high to low so that `dp[i + 1][...]` is already computed.
 
@@ -551,44 +581,53 @@ The condition `j - i < 2` covers length-1 (`i == j`) and length-2 (`j == i + 1`)
 | Expand around center | O(n^2) | O(1) |
 | DP boolean table | O(n^2) | O(n^2) |
 
-### Java — Expand Around Center
+### C++ — Expand Around Center
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class PalindromicSubstringsExpand {
-    public int countSubstrings(String s) {
+public:
+    int countSubstrings(string s) {
         int count = 0;
-        for (int center = 0; center < s.length(); center++) {
+        for (int center = 0; center < (int)s.size(); center++) {
             count += expand(s, center, center);     // odd length
             count += expand(s, center, center + 1);  // even length
         }
         return count;
     }
 
-    private int expand(String s, int left, int right) {
+private:
+    int expand(const string& s, int left, int right) {
         int count = 0;
-        while (left >= 0 && right < s.length()
-                && s.charAt(left) == s.charAt(right)) {
+        while (left >= 0 && right < (int)s.size()
+                && s[left] == s[right]) {
             count++;
             left--;
             right++;
         }
         return count;
     }
-}
+};
 ```
 
-### Java — DP Boolean Table
+### C++ — DP Boolean Table
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class PalindromicSubstringsDP {
-    public int countSubstrings(String s) {
-        int n = s.length();
-        boolean[][] dp = new boolean[n][n];
+public:
+    int countSubstrings(string s) {
+        int n = s.size();
+        vector<vector<bool>> dp(n, vector<bool>(n, false));
         int count = 0;
 
         for (int i = n - 1; i >= 0; i--) {
             for (int j = i; j < n; j++) {
-                if (s.charAt(i) == s.charAt(j) && (j - i < 2 || dp[i + 1][j - 1])) {
+                if (s[i] == s[j] && (j - i < 2 || dp[i + 1][j - 1])) {
                     dp[i][j] = true;
                     count++;
                 }
@@ -596,7 +635,7 @@ class PalindromicSubstringsDP {
         }
         return count;
     }
-}
+};
 ```
 
 ### Dry Run
@@ -615,7 +654,7 @@ Same `2n - 1` centers as above, but instead of counting, track the longest match
 
 ### Approach B — DP Table
 
-`dp[i][j]` = whether `s.substring(i, j + 1)` is a palindrome (same recurrence as Section 6). While filling, record the longest `(i, j)` span where `dp[i][j]` is true.
+`dp[i][j]` = whether `s.substr(i, j - i + 1)` is a palindrome (same recurrence as Section 6). While filling, record the longest `(i, j)` span where `dp[i][j]` is true.
 
 ### Complexity
 
@@ -624,25 +663,30 @@ Same `2n - 1` centers as above, but instead of counting, track the longest match
 | Expand around center | O(n^2) | O(1) |
 | DP table | O(n^2) | O(n^2) |
 
-### Java — Expand Around Center
+### C++ — Expand Around Center
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class LongestPalindromeExpand {
-    private int start = 0;
-    private int maxLen = 0;
+    int start = 0;
+    int maxLen = 0;
 
-    public String longestPalindrome(String s) {
-        if (s == null || s.isEmpty()) return "";
-        for (int center = 0; center < s.length(); center++) {
+public:
+    string longestPalindrome(string s) {
+        if (s.empty()) return "";
+        for (int center = 0; center < (int)s.size(); center++) {
             expand(s, center, center);      // odd length
             expand(s, center, center + 1);  // even length
         }
-        return s.substring(start, start + maxLen);
+        return s.substr(start, maxLen);
     }
 
-    private void expand(String s, int left, int right) {
-        while (left >= 0 && right < s.length()
-                && s.charAt(left) == s.charAt(right)) {
+private:
+    void expand(const string& s, int left, int right) {
+        while (left >= 0 && right < (int)s.size()
+                && s[left] == s[right]) {
             left--;
             right++;
         }
@@ -652,23 +696,27 @@ class LongestPalindromeExpand {
             start = left + 1;
         }
     }
-}
+};
 ```
 
-### Java — DP Table
+### C++ — DP Table
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class LongestPalindromeDP {
-    public String longestPalindrome(String s) {
-        int n = s.length();
+public:
+    string longestPalindrome(string s) {
+        int n = s.size();
         if (n < 2) return s;
 
-        boolean[][] dp = new boolean[n][n];
+        vector<vector<bool>> dp(n, vector<bool>(n, false));
         int bestStart = 0, bestLen = 1;
 
         for (int i = n - 1; i >= 0; i--) {
             for (int j = i; j < n; j++) {
-                if (s.charAt(i) == s.charAt(j) && (j - i < 2 || dp[i + 1][j - 1])) {
+                if (s[i] == s[j] && (j - i < 2 || dp[i + 1][j - 1])) {
                     dp[i][j] = true;
                     if (j - i + 1 > bestLen) {
                         bestLen = j - i + 1;
@@ -677,9 +725,9 @@ class LongestPalindromeDP {
                 }
             }
         }
-        return s.substring(bestStart, bestStart + bestLen);
+        return s.substr(bestStart, bestLen);
     }
-}
+};
 ```
 
 ### Dry Run
@@ -694,7 +742,7 @@ Given `s1`, `s2`, and `s3`, return whether `s3` is formed by an interleaving of 
 
 ### Length Check First
 
-An interleaving must use every character of both inputs, so `s1.length() + s2.length() == s3.length()` is a necessary precondition. If it fails, return `false` immediately.
+An interleaving must use every character of both inputs, so `s1.size() + s2.size() == s3.size()` is a necessary precondition. If it fails, return `false` immediately.
 
 ### State
 
@@ -702,18 +750,18 @@ An interleaving must use every character of both inputs, so `s1.length() + s2.le
 
 ### Recurrence
 
-The character `s3.charAt(i + j - 1)` came from either `s1` or `s2`:
+The character `s3[i + j - 1]` came from either `s1` or `s2`:
 
-- From `s1`: `dp[i - 1][j] && s1.charAt(i - 1) == s3.charAt(i + j - 1)`.
-- From `s2`: `dp[i][j - 1] && s2.charAt(j - 1) == s3.charAt(i + j - 1)`.
+- From `s1`: `dp[i - 1][j] && s1[i - 1] == s3[i + j - 1]`.
+- From `s2`: `dp[i][j - 1] && s2[j - 1] == s3[i + j - 1]`.
 
 `dp[i][j] = (fromS1) || (fromS2)`.
 
 ### Base Cases
 
 - `dp[0][0] = true`.
-- `dp[i][0]`: only `s1`'s prefix used — `dp[i - 1][0] && s1.charAt(i - 1) == s3.charAt(i - 1)`.
-- `dp[0][j]`: only `s2`'s prefix used — `dp[0][j - 1] && s2.charAt(j - 1) == s3.charAt(j - 1)`.
+- `dp[i][0]`: only `s1`'s prefix used — `dp[i - 1][0] && s1[i - 1] == s3[i - 1]`.
+- `dp[0][j]`: only `s2`'s prefix used — `dp[0][j - 1] && s2[j - 1] == s3[j - 1]`.
 
 ### Complexity
 
@@ -721,35 +769,39 @@ The character `s3.charAt(i + j - 1)` came from either `s1` or `s2`:
 |---|---|---|
 | Tabulation | O(m · n) | O(m · n) |
 
-### Java — Tabulation
+### C++ — Tabulation
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class InterleavingString {
-    public boolean isInterleave(String s1, String s2, String s3) {
-        int m = s1.length(), n = s2.length();
-        if (m + n != s3.length()) return false; // length precondition
+public:
+    bool isInterleave(string s1, string s2, string s3) {
+        int m = s1.size(), n = s2.size();
+        if (m + n != (int)s3.size()) return false; // length precondition
 
-        boolean[][] dp = new boolean[m + 1][n + 1];
+        vector<vector<bool>> dp(m + 1, vector<bool>(n + 1, false));
         dp[0][0] = true;
 
         for (int i = 1; i <= m; i++) { // first column: only s1
-            dp[i][0] = dp[i - 1][0] && s1.charAt(i - 1) == s3.charAt(i - 1);
+            dp[i][0] = dp[i - 1][0] && s1[i - 1] == s3[i - 1];
         }
         for (int j = 1; j <= n; j++) { // first row: only s2
-            dp[0][j] = dp[0][j - 1] && s2.charAt(j - 1) == s3.charAt(j - 1);
+            dp[0][j] = dp[0][j - 1] && s2[j - 1] == s3[j - 1];
         }
 
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
-                char target = s3.charAt(i + j - 1);
-                boolean fromS1 = dp[i - 1][j] && s1.charAt(i - 1) == target;
-                boolean fromS2 = dp[i][j - 1] && s2.charAt(j - 1) == target;
+                char target = s3[i + j - 1];
+                bool fromS1 = dp[i - 1][j] && s1[i - 1] == target;
+                bool fromS2 = dp[i][j - 1] && s2[j - 1] == target;
                 dp[i][j] = fromS1 || fromS2;
             }
         }
         return dp[m][n];
     }
-}
+};
 ```
 
 ### Dry Run

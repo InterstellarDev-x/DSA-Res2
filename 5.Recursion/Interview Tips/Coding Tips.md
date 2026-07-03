@@ -7,13 +7,16 @@
 
 ## Backtracking Template — Never Deviate
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 void backtrack(state, choices, results) {
     if (goal reached) {
-        results.add(copy of state);  // COPY, not reference
+        results.push_back(state);  // vector copies by value — no explicit copy needed
         return;
     }
-    for (choice : validChoices) {
+    for (auto& choice : validChoices) {
         makeChoice(state, choice);   // mutate state
         backtrack(state, ...);       // recurse
         undoChoice(state, choice);   // restore state exactly
@@ -24,37 +27,43 @@ void backtrack(state, choices, results) {
 Every backtracking problem fits this template. Identify:
 1. What is `state`? (path list, grid cell, queen positions)
 2. What is `validChoices`? (digits 1–9, positions 0..n-1, indices start..n)
-3. What is `copy`? (`new ArrayList<>(path)`, `board.clone()`)
-4. What is `undo`? (`path.remove(last)`, `board[r][c] = '.'`)
+3. What is `copy`? (`vector<int>(path)` — or just `path` since `push_back` copies, `board` snapshot via copy)
+4. What is `undo`? (`path.pop_back()`, `board[r][c] = '.'`)
 
 ---
 
-## StringBuilder for Path (not String)
+## String with pop_back for Path (not concat)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // SLOW — O(n) per concat, O(n²) total for path of length n
-String path = "";
-path += ch;         // new String object every time
-path = path.substring(0, path.length()-1); // undo is O(n)
+string path = "";
+path += ch;                        // creates new string object every time via +=
+path = path.substr(0, path.length()-1); // undo is O(n)
 
 // FAST — O(1) amortized append/delete
-StringBuilder sb = new StringBuilder();
-sb.append(ch);
-sb.deleteCharAt(sb.length() - 1); // O(1) undo
+string sb = "";
+sb += ch;
+sb.pop_back(); // O(1) undo
 ```
 
-Rule: If you're building a string incrementally in a recursion, always use `StringBuilder`.
+Rule: If you're building a string incrementally in a recursion, always use `string` with `pop_back()` for undo instead of `substr`.
 
 ---
 
-## List Path Copy (not Reference)
+## Vector Path Copy (not Reference)
 
-```java
-// BUG: all results point to the same list object
-result.add(path); // adds reference
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-// FIX: snapshot the current state
-result.add(new ArrayList<>(path));
+// NOTE: In C++, push_back already copies the vector — no pointer aliasing bug
+result.push_back(path); // safe: copies the current state
+
+// Explicit copy (equivalent, sometimes clearer):
+result.push_back(vector<int>(path));
 ```
 
 ---
@@ -65,18 +74,24 @@ Always sort the input before backtracking when:
 1. You need to skip duplicates (`i > start && nums[i] == nums[i-1]`)
 2. You want to prune with `if (nums[i] > remaining) break`
 
-```java
-Arrays.sort(nums); // O(n log n) one time — enables O(1) pruning per node
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+sort(nums.begin(), nums.end()); // O(n log n) one time — enables O(1) pruning per node
 ```
 
 ---
 
-## Integer.MIN_VALUE in Pow(x, n)
+## INT_MIN in Pow(x, n)
 
-```java
-// OVERFLOW: -Integer.MIN_VALUE = Integer.MIN_VALUE (still negative!)
-int n = Integer.MIN_VALUE;
-n = -n; // BUG: still MIN_VALUE
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+// OVERFLOW: -INT_MIN = INT_MIN (still negative!)
+int n = INT_MIN;
+n = -n; // BUG: still INT_MIN
 
 // FIX: cast to long before negating
 long N = (long) n;
@@ -87,9 +102,9 @@ N = -N; // correct: 2147483648
 
 ## In-Place Grid Marking (Word Search)
 
-Instead of a separate `boolean[][] visited` array:
+Instead of a separate `vector<vector<bool>> visited` array:
 
-```java
+```cpp
 char tmp = board[r][c];
 board[r][c] = '#';  // mark — any non-letter sentinel
 dfs(board, r+1, c, word, k+1);
@@ -102,7 +117,7 @@ Saves O(m×n) extra space.
 
 ## `used[i-1]` Duplicate Trick in Permutations II
 
-```java
+```cpp
 // Skip duplicate at same recursion level:
 if (i > 0 && nums[i] == nums[i-1] && !used[i-1]) continue;
 ```

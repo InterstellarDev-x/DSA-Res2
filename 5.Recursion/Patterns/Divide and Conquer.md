@@ -31,13 +31,16 @@ solve(problem) {
 
 T(n) = 2T(n/2) + O(n) → **O(n log n)**, Space O(n).
 
-```java
-public int[] sortArray(int[] nums) {
-    mergeSort(nums, 0, nums.length - 1);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> sortArray(vector<int>& nums) {
+    mergeSort(nums, 0, nums.size() - 1);
     return nums;
 }
 
-private void mergeSort(int[] arr, int lo, int hi) {
+void mergeSort(vector<int>& arr, int lo, int hi) {
     if (lo >= hi) return;
     int mid = lo + (hi - lo) / 2;
     mergeSort(arr, lo, mid);
@@ -45,8 +48,8 @@ private void mergeSort(int[] arr, int lo, int hi) {
     merge(arr, lo, mid, hi);
 }
 
-private void merge(int[] arr, int lo, int mid, int hi) {
-    int[] tmp = new int[hi - lo + 1];
+void merge(vector<int>& arr, int lo, int mid, int hi) {
+    vector<int> tmp(hi - lo + 1);
     int i = lo, j = mid + 1, k = 0;
     while (i <= mid && j <= hi) {
         if (arr[i] <= arr[j]) tmp[k++] = arr[i++];
@@ -54,7 +57,7 @@ private void merge(int[] arr, int lo, int mid, int hi) {
     }
     while (i <= mid) tmp[k++] = arr[i++];
     while (j <= hi)  tmp[k++] = arr[j++];
-    System.arraycopy(tmp, 0, arr, lo, tmp.length);
+    copy(tmp.begin(), tmp.end(), arr.begin() + lo);
 }
 ```
 
@@ -68,35 +71,38 @@ private void merge(int[] arr, int lo, int mid, int hi) {
 
 Average O(n log n), worst O(n²) (sorted input + bad pivot). Space O(log n) avg stack.
 
-```java
-public void quickSort(int[] arr, int lo, int hi) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void quickSort(vector<int>& arr, int lo, int hi) {
     if (lo >= hi) return;
     int p = partition(arr, lo, hi);
     quickSort(arr, lo, p - 1);
     quickSort(arr, p + 1, hi);
 }
 
-private int partition(int[] arr, int lo, int hi) {
+int partition(vector<int>& arr, int lo, int hi) {
     // Lomuto partition: pivot = arr[hi]
     int pivot = arr[hi], i = lo - 1;
     for (int j = lo; j < hi; j++) {
-        if (arr[j] <= pivot) swap(arr, ++i, j);
+        if (arr[j] <= pivot) swap(arr[++i], arr[j]);
     }
-    swap(arr, i + 1, hi);
+    swap(arr[i + 1], arr[hi]);
     return i + 1;
 }
 ```
 
 **3-way partition (Dutch National Flag) for duplicates:**
-```java
-private int[] partition3Way(int[] arr, int lo, int hi) {
+```cpp
+pair<int,int> partition3Way(vector<int>& arr, int lo, int hi) {
     int pivot = arr[lo], lt = lo, gt = hi, i = lo;
     while (i <= gt) {
-        if      (arr[i] < pivot)  swap(arr, lt++, i++);
-        else if (arr[i] > pivot)  swap(arr, i, gt--);
+        if      (arr[i] < pivot)  swap(arr[lt++], arr[i++]);
+        else if (arr[i] > pivot)  swap(arr[i], arr[gt--]);
         else                      i++;
     }
-    return new int[]{lt, gt}; // arr[lt..gt] == pivot
+    return {lt, gt}; // arr[lt..gt] == pivot
 }
 ```
 
@@ -106,12 +112,15 @@ private int[] partition3Way(int[] arr, int lo, int hi) {
 
 T(n) = T(n/2) + O(1) → **O(log n)**, Space O(log n) stack.
 
-```java
-public double myPow(double x, int n) {
-    return power(x, (long) n); // cast to long — handles Integer.MIN_VALUE
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+double myPow(double x, int n) {
+    return power(x, (long long) n); // cast to long long — handles INT_MIN
 }
 
-private double power(double x, long n) {
+double power(double x, long long n) {
     if (n == 0) return 1.0;
     if (n < 0)  return power(1.0 / x, -n);
     double half = power(x, n / 2);
@@ -120,8 +129,8 @@ private double power(double x, long n) {
 ```
 
 **Iterative fast power (O(1) space):**
-```java
-private double power(double x, long n) {
+```cpp
+double power(double x, long long n) {
     if (n < 0) { x = 1.0 / x; n = -n; }
     double result = 1.0;
     while (n > 0) {
@@ -139,11 +148,14 @@ private double power(double x, long n) {
 
 Row 1: `0`. Each `0` → `01`, each `1` → `10`. Find kth symbol (1-indexed) in row n.
 
-```java
-public int kthGrammar(int n, int k) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int kthGrammar(int n, int k) {
     if (n == 1) return 0;
     int parent = kthGrammar(n - 1, (k + 1) / 2);
-    boolean isLeftChild = (k % 2 == 1);
+    bool isLeftChild = (k % 2 == 1);
     return isLeftChild ? parent : (1 - parent); // left = same, right = flipped
 }
 ```
@@ -156,19 +168,23 @@ public int kthGrammar(int n, int k) {
 
 Pattern: `.` matches any char; `*` matches zero or more of the preceding.
 
-```java
-public boolean isMatch(String s, String p) {
-    return match(s, p, 0, 0, new Boolean[s.length() + 1][p.length() + 1]);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool isMatch(string s, string p) {
+    vector<vector<int>> memo(s.size() + 1, vector<int>(p.size() + 1, -1));
+    return match(s, p, 0, 0, memo);
 }
 
-private boolean match(String s, String p, int i, int j, Boolean[][] memo) {
-    if (j == p.length()) return i == s.length();
-    if (memo[i][j] != null) return memo[i][j];
+bool match(const string& s, const string& p, int i, int j, vector<vector<int>>& memo) {
+    if (j == (int)p.size()) return i == (int)s.size();
+    if (memo[i][j] != -1) return memo[i][j];
 
-    boolean firstMatch = (i < s.length()) && (p.charAt(j) == s.charAt(i) || p.charAt(j) == '.');
-    boolean result;
+    bool firstMatch = (i < (int)s.size()) && (p[j] == s[i] || p[j] == '.');
+    bool result;
 
-    if (j + 1 < p.length() && p.charAt(j + 1) == '*') {
+    if (j + 1 < (int)p.size() && p[j + 1] == '*') {
         // Two choices for '*': use zero of p[j], or use one and stay on same pattern char
         result = match(s, p, i, j + 2, memo)              // zero occurrences
               || (firstMatch && match(s, p, i + 1, j, memo)); // one or more
@@ -222,7 +238,7 @@ Recursion + overlapping subproblems → DP (memoize). Non-overlapping → pure D
 | Mistake | Fix |
 |---------|-----|
 | `mid = (lo + hi) / 2` — overflow for large indices | `lo + (hi - lo) / 2` |
-| Pow: `-n` on `Integer.MIN_VALUE` overflows | Cast `n` to `long` before negating |
+| Pow: `-n` on `INT_MIN` overflows | Cast `n` to `long long` before negating |
 | Merge: `arr[i] < arr[j]` instead of `<=` — unstable | Use `<=` for stable merge |
 | Quick Sort: always picking first/last as pivot on sorted input → O(n²) | Random pivot or median-of-three |
 

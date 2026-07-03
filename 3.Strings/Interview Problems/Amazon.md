@@ -9,8 +9,8 @@
 
 | Dimension | Detail |
 |-----------|--------|
-| **Java String immutability** | Use `StringBuilder`; never `+` in a loop |
-| **Char frequency** | `int[26]` over `HashMap` when possible |
+| **String concatenation** | Use `string` with `+=`; avoid repeated string concatenation in a loop |
+| **Char frequency** | `int[26]` over `std::unordered_map` when possible |
 | **Edge cases** | Empty string, single char, all same chars, spaces |
 | **Custom sort** | Write a comparator correctly (total ordering) |
 | **Clarify charset** | "Are there only lowercase letters? ASCII? Unicode?" |
@@ -28,24 +28,28 @@
 | **Skill** | Custom comparator, stable sort |
 | **LeetCode** | [LC 937](https://leetcode.com/problems/reorder-data-in-log-files/) |
 
-```java
-public String[] reorderLogFiles(String[] logs) {
-    List<String> letters = new ArrayList<>(), digits = new ArrayList<>();
-    for (String log : logs) {
-        if (Character.isDigit(log.split(" ")[1].charAt(0))) digits.add(log);
-        else letters.add(log);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<string> reorderLogFiles(vector<string>& logs) {
+    vector<string> letters, digits;
+    for (auto& log : logs) {
+        int spacePos = log.find(' ');
+        if (isdigit(log[spacePos + 1])) digits.push_back(log);
+        else letters.push_back(log);
     }
-    letters.sort((a, b) -> {
-        String ca = a.substring(a.indexOf(' ') + 1);
-        String cb = b.substring(b.indexOf(' ') + 1);
-        int cmp = ca.compareTo(cb);
-        return cmp != 0 ? cmp : a.compareTo(b); // tie-break by identifier
+    stable_sort(letters.begin(), letters.end(), [](const string& a, const string& b) {
+        string ca = a.substr(a.find(' ') + 1);
+        string cb = b.substr(b.find(' ') + 1);
+        int cmp = ca.compare(cb);
+        return cmp != 0 ? cmp < 0 : a < b; // tie-break by identifier
     });
-    letters.addAll(digits);
-    return letters.toArray(new String[0]);
+    letters.insert(letters.end(), digits.begin(), digits.end());
+    return letters;
 }
 ```
-**Follow-ups:** "What if two logs have the same content AND same identifier?" → they're equal, preserve original order → `Arrays.sort` is stable in Java.
+**Follow-ups:** "What if two logs have the same content AND same identifier?" → they're equal, preserve original order → `std::stable_sort` is stable in C++.
 
 ---
 
@@ -60,7 +64,7 @@ public String[] reorderLogFiles(String[] logs) {
 
 **Follow-ups:**
 - "What if you need the actual substring, not just length?" → Track start index and `maxStart`
-- "Unicode chars?" → Use `HashMap<Character, Integer>` instead of `int[128]`
+- "Unicode chars?" → Use `std::unordered_map<char, int>` instead of `int[128]`
 
 ---
 
@@ -88,17 +92,20 @@ public String[] reorderLogFiles(String[] logs) {
 | **Skill** | State machine parsing, overflow detection |
 | **LeetCode** | [LC 8](https://leetcode.com/problems/string-to-integer-atoi/) |
 
-```java
-public int myAtoi(String s) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int myAtoi(string s) {
     int i = 0, n = s.length(), sign = 1;
     long result = 0;
-    while (i < n && s.charAt(i) == ' ') i++;           // skip spaces
-    if (i < n && (s.charAt(i) == '+' || s.charAt(i) == '-'))
-        sign = s.charAt(i++) == '-' ? -1 : 1;
-    while (i < n && Character.isDigit(s.charAt(i))) {
-        result = result * 10 + (s.charAt(i++) - '0');
-        if (result * sign > Integer.MAX_VALUE) return Integer.MAX_VALUE;
-        if (result * sign < Integer.MIN_VALUE) return Integer.MIN_VALUE;
+    while (i < n && s[i] == ' ') i++;           // skip spaces
+    if (i < n && (s[i] == '+' || s[i] == '-'))
+        sign = s[i++] == '-' ? -1 : 1;
+    while (i < n && isdigit(s[i])) {
+        result = result * 10 + (s[i++] - '0');
+        if (result * sign > INT_MAX) return INT_MAX;
+        if (result * sign < INT_MIN) return INT_MIN;
     }
     return (int)(result * sign);
 }
@@ -116,7 +123,7 @@ public int myAtoi(String s) {
 | **LeetCode** | [LC 76](https://leetcode.com/problems/minimum-window-substring/) |
 
 **Follow-ups:**
-- "What's the space complexity?" → O(1) with `int[128]` vs O(Σ) with HashMap
+- "What's the space complexity?" → O(1) with `int[128]` vs O(Σ) with `std::unordered_map`
 - "What if pattern has duplicate characters?" → Frequency-based `formed` handles it correctly
 
 ---

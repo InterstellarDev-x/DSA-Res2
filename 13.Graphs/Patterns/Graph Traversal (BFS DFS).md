@@ -42,36 +42,35 @@ Both BFS and DFS explore a graph by starting at a source vertex and visiting rea
 
 Most graph problems hand you `n` nodes and a list of edges. Convert that into an **adjacency list** — for each node, a list of its neighbors.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class GraphBuilder {
+public:
     // Build an undirected adjacency list for n nodes (0-indexed) from edges.
-    public static List<List<Integer>> buildUndirected(int n, int[][] edges) {
-        List<List<Integer>> adj = new ArrayList<>();
-        for (int i = 0; i < n; i++) {
-            adj.add(new ArrayList<>());
-        }
-        for (int[] e : edges) {
+    static vector<vector<int>> buildUndirected(int n, vector<vector<int>>& edges) {
+        vector<vector<int>> adj(n);
+        for (auto& e : edges) {
             int u = e[0], v = e[1];
-            adj.get(u).add(v);
-            adj.get(v).add(u); // omit this line for a DIRECTED graph
+            adj[u].push_back(v);
+            adj[v].push_back(u); // omit this line for a DIRECTED graph
         }
         return adj;
     }
-}
+};
 ```
 
-For a **directed** graph, only add `adj.get(u).add(v)`.
+For a **directed** graph, only add `adj[u].push_back(v)`.
 
-### `boolean[] visited` vs `Set<Integer>`
+### `vector<bool> visited` vs `unordered_set<int>`
 
 | Structure | Use when | Cost |
 |-----------|----------|------|
-| `boolean[] visited` | Nodes are integers in a known range `[0, n)` | O(1) access, O(n) space, cache-friendly |
-| `Set<Integer>` (or `Set<String>`) | Node identifiers are sparse, non-integer, or unknown range (strings, coordinates encoded as keys, generic objects) | O(1) average, hashing overhead |
+| `vector<bool> visited` | Nodes are integers in a known range `[0, n)` | O(1) access, O(n) space, cache-friendly |
+| `unordered_set<int>` (or `unordered_set<string>`) | Node identifiers are sparse, non-integer, or unknown range (strings, coordinates encoded as keys, generic objects) | O(1) average, hashing overhead |
 
-Rule of thumb: if the problem gives you `n` and integer-labeled nodes, use `boolean[] visited`. If nodes are strings (Word Ladder) or arbitrary objects (Clone Graph), use a `Set` / `Map`.
+Rule of thumb: if the problem gives you `n` and integer-labeled nodes, use `vector<bool> visited`. If nodes are strings (Word Ladder) or arbitrary objects (Clone Graph), use an `unordered_set` / `unordered_map`.
 
 ---
 
@@ -79,27 +78,29 @@ Rule of thumb: if the problem gives you `n` and integer-labeled nodes, use `bool
 
 The **size-loop** idiom is how you process one full level at a time: snapshot `queue.size()` before the inner loop so newly added nodes (the next level) don't get counted in the current level.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class BFSTemplate {
-    public int bfs(int start, List<List<Integer>> adj, int n) {
-        boolean[] visited = new boolean[n];
-        Queue<Integer> queue = new ArrayDeque<>();
+public:
+    int bfs(int start, vector<vector<int>>& adj, int n) {
+        vector<bool> visited(n, false);
+        queue<int> q;
 
-        queue.offer(start);
+        q.push(start);
         visited[start] = true;   // mark visited when ENQUEUED, not when dequeued
         int level = 0;
 
-        while (!queue.isEmpty()) {
-            int size = queue.size();        // snapshot: number of nodes at this level
+        while (!q.empty()) {
+            int size = q.size();        // snapshot: number of nodes at this level
             for (int i = 0; i < size; i++) {
-                int node = queue.poll();
+                int node = q.front(); q.pop();
                 // ---- process `node` here (it is at distance `level` from start) ----
-                for (int next : adj.get(node)) {
+                for (int next : adj[node]) {
                     if (!visited[next]) {
                         visited[next] = true;
-                        queue.offer(next);
+                        q.push(next);
                     }
                 }
             }
@@ -107,7 +108,7 @@ class BFSTemplate {
         }
         return level;
     }
-}
+};
 ```
 
 ---
@@ -116,48 +117,52 @@ class BFSTemplate {
 
 ### Recursive DFS
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class DFSRecursive {
-    public void dfs(int node, List<List<Integer>> adj, boolean[] visited) {
+public:
+    void dfs(int node, vector<vector<int>>& adj, vector<bool>& visited) {
         visited[node] = true;
         // ---- process `node` here ----
-        for (int next : adj.get(node)) {
+        for (int next : adj[node]) {
             if (!visited[next]) {
                 dfs(next, adj, visited);
             }
         }
     }
-}
+};
 ```
 
 ### Iterative DFS (explicit stack)
 
 Equivalent traversal without recursion — safer for very deep graphs (avoids stack overflow).
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class DFSIterative {
-    public void dfs(int start, List<List<Integer>> adj, int n) {
-        boolean[] visited = new boolean[n];
-        Deque<Integer> stack = new ArrayDeque<>();
-        stack.push(start);
+public:
+    void dfs(int start, vector<vector<int>>& adj, int n) {
+        vector<bool> visited(n, false);
+        stack<int> stk;
+        stk.push(start);
 
-        while (!stack.isEmpty()) {
-            int node = stack.pop();
+        while (!stk.empty()) {
+            int node = stk.top(); stk.pop();
             if (visited[node]) continue;   // a node can be pushed multiple times
             visited[node] = true;
             // ---- process `node` here ----
-            for (int next : adj.get(node)) {
+            for (int next : adj[node]) {
                 if (!visited[next]) {
-                    stack.push(next);
+                    stk.push(next);
                 }
             }
         }
     }
-}
+};
 ```
 
 > Note: in iterative DFS we check `visited` on **pop** (not push) because the same node may be pushed by several neighbors before it is popped. Guarding on pop keeps it correct.
@@ -176,7 +181,7 @@ class DFSIterative {
 | Grid of cells, expand to 4 (or 8) neighbors | **Grid DFS/BFS with `dirs`** |
 | Color nodes / two groups / no two adjacent equal | **Bipartite check (BFS/DFS 2-coloring)** |
 | Reconstruct **all** shortest paths | **BFS to build parent map + DFS backtrack** |
-| Generic node objects, must duplicate structure | **DFS/BFS with `Map<orig,clone>`** |
+| Generic node objects, must duplicate structure | **DFS/BFS with `unordered_map<orig,clone>`** |
 
 ---
 
@@ -188,11 +193,15 @@ class DFSIterative {
 
 **Idea:** The matrix `isConnected[i][j] == 1` means cities `i` and `j` are directly connected. A *province* is a connected component. Run DFS from each unvisited city; each DFS launch marks one whole province, so count the launches.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int findCircleNum(int[][] isConnected) {
-        int n = isConnected.length;
-        boolean[] visited = new boolean[n];
+public:
+    int findCircleNum(vector<vector<int>>& isConnected) {
+        int n = isConnected.size();
+        vector<bool> visited(n, false);
         int provinces = 0;
 
         for (int i = 0; i < n; i++) {
@@ -204,15 +213,16 @@ class Solution {
         return provinces;
     }
 
-    private void dfs(int city, int[][] isConnected, boolean[] visited) {
+private:
+    void dfs(int city, vector<vector<int>>& isConnected, vector<bool>& visited) {
         visited[city] = true;
-        for (int next = 0; next < isConnected.length; next++) {
+        for (int next = 0; next < (int)isConnected.size(); next++) {
             if (isConnected[city][next] == 1 && !visited[next]) {
                 dfs(next, isConnected, visited);
             }
         }
     }
-}
+};
 ```
 
 **Complexity:** Time O(n²) (we scan the full row for every city), Space O(n) for `visited` + recursion stack.
@@ -223,12 +233,15 @@ class Solution {
 
 **Idea:** Treat the grid as a graph where adjacent `'1'` cells are connected. Each time we find an unvisited `'1'`, we flood-fill (DFS) the entire island, sinking it to `'0'`, and increment the island count.
 
-```java
-class Solution {
-    int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int numIslands(char[][] grid) {
-        int rows = grid.length, cols = grid[0].length;
+class Solution {
+    int dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+public:
+    int numIslands(vector<vector<char>>& grid) {
+        int rows = grid.size(), cols = grid[0].size();
         int count = 0;
 
         for (int r = 0; r < rows; r++) {
@@ -242,17 +255,18 @@ class Solution {
         return count;
     }
 
-    private void dfs(char[][] grid, int r, int c) {
-        if (r < 0 || r >= grid.length || c < 0 || c >= grid[0].length
+private:
+    void dfs(vector<vector<char>>& grid, int r, int c) {
+        if (r < 0 || r >= (int)grid.size() || c < 0 || c >= (int)grid[0].size()
                 || grid[r][c] != '1') {
             return;
         }
         grid[r][c] = '0';                  // sink this land cell
-        for (int[] d : dirs) {
+        for (auto& d : dirs) {
             dfs(grid, r + d[0], c + d[1]);
         }
     }
-}
+};
 ```
 
 **Complexity:** Time O(rows × cols) — each cell visited once. Space O(rows × cols) worst-case recursion depth (a grid that is one giant island).
@@ -290,28 +304,32 @@ Scan in row-major order:
 
 **Idea:** Standard flood fill. Starting at `(sr, sc)`, repaint every 4-directionally connected cell that shares the original color with `newColor`. Guard against the case `newColor == originalColor` to avoid infinite recursion.
 
-```java
-class Solution {
-    int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int[][] floodFill(int[][] image, int sr, int sc, int newColor) {
+class Solution {
+    int dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+public:
+    vector<vector<int>> floodFill(vector<vector<int>>& image, int sr, int sc, int newColor) {
         int original = image[sr][sc];
         if (original == newColor) return image;   // nothing to do; avoids infinite loop
         dfs(image, sr, sc, original, newColor);
         return image;
     }
 
-    private void dfs(int[][] image, int r, int c, int original, int newColor) {
-        if (r < 0 || r >= image.length || c < 0 || c >= image[0].length
+private:
+    void dfs(vector<vector<int>>& image, int r, int c, int original, int newColor) {
+        if (r < 0 || r >= (int)image.size() || c < 0 || c >= (int)image[0].size()
                 || image[r][c] != original) {
             return;
         }
         image[r][c] = newColor;
-        for (int[] d : dirs) {
+        for (auto& d : dirs) {
             dfs(image, r + d[0], c + d[1], original, newColor);
         }
     }
-}
+};
 ```
 
 **Complexity:** Time O(rows × cols), Space O(rows × cols) recursion depth.
@@ -320,49 +338,53 @@ class Solution {
 
 ## 4. Clone Graph — Medium (LC133)
 
-**Idea:** Deep-copy a connected undirected graph. Maintain a `HashMap<Node, Node>` mapping each original node to its clone. During DFS, the first time we see a node we create its clone and recurse on neighbors; if we've seen it before, we return the existing clone (this also breaks cycles).
+**Idea:** Deep-copy a connected undirected graph. Maintain an `unordered_map<Node*, Node*>` mapping each original node to its clone. During DFS, the first time we see a node we create its clone and recurse on neighbors; if we've seen it before, we return the existing clone (this also breaks cycles).
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 // Definition for a Node.
 class Node {
-    public int val;
-    public List<Node> neighbors;
-    public Node() {
+public:
+    int val;
+    vector<Node*> neighbors;
+    Node() {
         val = 0;
-        neighbors = new ArrayList<>();
+        neighbors = {};
     }
-    public Node(int val) {
-        this.val = val;
-        neighbors = new ArrayList<>();
+    Node(int _val) {
+        val = _val;
+        neighbors = {};
     }
-    public Node(int val, ArrayList<Node> neighbors) {
-        this.val = val;
-        this.neighbors = neighbors;
+    Node(int _val, vector<Node*> _neighbors) {
+        val = _val;
+        neighbors = _neighbors;
     }
-}
+};
 
 class Solution {
-    private Map<Node, Node> visited = new HashMap<>();
+private:
+    unordered_map<Node*, Node*> visited;
 
-    public Node cloneGraph(Node node) {
-        if (node == null) return null;
+public:
+    Node* cloneGraph(Node* node) {
+        if (node == nullptr) return nullptr;
 
         // If already cloned, return the stored clone (handles cycles).
-        if (visited.containsKey(node)) {
-            return visited.get(node);
+        if (visited.count(node)) {
+            return visited[node];
         }
 
-        Node clone = new Node(node.val);
-        visited.put(node, clone);              // record BEFORE recursing
+        Node* clone = new Node(node->val);
+        visited[node] = clone;              // record BEFORE recursing
 
-        for (Node neighbor : node.neighbors) {
-            clone.neighbors.add(cloneGraph(neighbor));
+        for (auto& neighbor : node->neighbors) {
+            clone->neighbors.push_back(cloneGraph(neighbor));
         }
         return clone;
     }
-}
+};
 ```
 
 **Complexity:** Time O(V + E), Space O(V) for the map + recursion stack.
@@ -373,13 +395,16 @@ class Solution {
 
 **Idea:** An `'O'` survives only if it is connected to a border `'O'`. So first, from every border `'O'`, DFS and mark all reachable `'O'`s as safe (temporary `'#'`). Then sweep the board: any remaining `'O'` is surrounded → flip to `'X'`; restore `'#'` back to `'O'`.
 
-```java
-class Solution {
-    int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public void solve(char[][] board) {
-        if (board == null || board.length == 0) return;
-        int rows = board.length, cols = board[0].length;
+class Solution {
+    int dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+public:
+    void solve(vector<vector<char>>& board) {
+        if (board.empty() || board[0].empty()) return;
+        int rows = board.size(), cols = board[0].size();
 
         // 1. Mark border-connected 'O's as safe ('#').
         for (int r = 0; r < rows; r++) {
@@ -400,17 +425,18 @@ class Solution {
         }
     }
 
-    private void dfs(char[][] board, int r, int c) {
-        if (r < 0 || r >= board.length || c < 0 || c >= board[0].length
+private:
+    void dfs(vector<vector<char>>& board, int r, int c) {
+        if (r < 0 || r >= (int)board.size() || c < 0 || c >= (int)board[0].size()
                 || board[r][c] != 'O') {
             return;
         }
         board[r][c] = '#';                 // safe marker
-        for (int[] d : dirs) {
+        for (auto& d : dirs) {
             dfs(board, r + d[0], c + d[1]);
         }
     }
-}
+};
 ```
 
 **Complexity:** Time O(rows × cols), Space O(rows × cols) recursion depth.
@@ -421,19 +447,20 @@ class Solution {
 
 **Idea:** Instead of asking which cells flow to *both* oceans (expensive per-cell), reverse the flow: DFS **inland from each ocean's border**, climbing only to cells of **equal-or-greater** height. Cells reachable from the Pacific border AND the Atlantic border are the answer.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
+    int dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+public:
+    vector<vector<int>> pacificAtlantic(vector<vector<int>>& heights) {
+        vector<vector<int>> result;
+        if (heights.empty() || heights[0].empty()) return result;
 
-    public List<List<Integer>> pacificAtlantic(int[][] heights) {
-        List<List<Integer>> result = new ArrayList<>();
-        if (heights == null || heights.length == 0) return result;
-
-        int rows = heights.length, cols = heights[0].length;
-        boolean[][] pacific = new boolean[rows][cols];
-        boolean[][] atlantic = new boolean[rows][cols];
+        int rows = heights.size(), cols = heights[0].size();
+        vector<vector<bool>> pacific(rows, vector<bool>(cols, false));
+        vector<vector<bool>> atlantic(rows, vector<bool>(cols, false));
 
         // Pacific touches top row and left column.
         // Atlantic touches bottom row and right column.
@@ -449,18 +476,19 @@ class Solution {
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 if (pacific[r][c] && atlantic[r][c]) {
-                    result.add(Arrays.asList(r, c));
+                    result.push_back({r, c});
                 }
             }
         }
         return result;
     }
 
-    private void dfs(int[][] heights, int r, int c, boolean[][] ocean) {
+private:
+    void dfs(vector<vector<int>>& heights, int r, int c, vector<vector<bool>>& ocean) {
         ocean[r][c] = true;
-        for (int[] d : dirs) {
+        for (auto& d : dirs) {
             int nr = r + d[0], nc = c + d[1];
-            if (nr < 0 || nr >= heights.length || nc < 0 || nc >= heights[0].length) {
+            if (nr < 0 || nr >= (int)heights.size() || nc < 0 || nc >= (int)heights[0].size()) {
                 continue;
             }
             // climb only to equal-or-higher cells (reverse of water flow)
@@ -469,7 +497,7 @@ class Solution {
             }
         }
     }
-}
+};
 ```
 
 **Complexity:** Time O(rows × cols), Space O(rows × cols) for the two visited matrices.
@@ -478,30 +506,31 @@ class Solution {
 
 ## 7. Is Graph Bipartite — Medium (LC785)
 
-**Idea:** A graph is bipartite iff it is 2-colorable. Use `int[] color` initialized to `-1` (uncolored). For each uncolored node, BFS and color neighbors the opposite color. If we ever find a neighbor already colored the **same** as the current node, it's not bipartite.
+**Idea:** A graph is bipartite iff it is 2-colorable. Use `vector<int> color` initialized to `-1` (uncolored). For each uncolored node, BFS and color neighbors the opposite color. If we ever find a neighbor already colored the **same** as the current node, it's not bipartite.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public boolean isBipartite(int[][] graph) {
-        int n = graph.length;
-        int[] color = new int[n];
-        Arrays.fill(color, -1);              // -1 = uncolored
+public:
+    bool isBipartite(vector<vector<int>>& graph) {
+        int n = graph.size();
+        vector<int> color(n, -1);              // -1 = uncolored
 
         for (int start = 0; start < n; start++) {
             if (color[start] != -1) continue;     // already handled component
 
-            Queue<Integer> queue = new ArrayDeque<>();
-            queue.offer(start);
+            queue<int> q;
+            q.push(start);
             color[start] = 0;
 
-            while (!queue.isEmpty()) {
-                int node = queue.poll();
+            while (!q.empty()) {
+                int node = q.front(); q.pop();
                 for (int next : graph[node]) {
                     if (color[next] == -1) {
                         color[next] = 1 - color[node];   // opposite color
-                        queue.offer(next);
+                        q.push(next);
                     } else if (color[next] == color[node]) {
                         return false;                    // conflict
                     }
@@ -510,7 +539,7 @@ class Solution {
         }
         return true;
     }
-}
+};
 ```
 
 **Complexity:** Time O(V + E), Space O(V).
@@ -521,43 +550,48 @@ class Solution {
 
 **Idea:** Each word is a node; two words are connected if they differ by exactly one letter. We want the **shortest transformation length** → BFS. To find neighbors efficiently, pre-build buckets keyed by wildcard patterns (e.g., `h*t`); all words sharing a pattern are one-edit neighbors.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int ladderLength(String beginWord, String endWord, List<String> wordList) {
-        Set<String> dict = new HashSet<>(wordList);
-        if (!dict.contains(endWord)) return 0;
+public:
+    int ladderLength(string beginWord, string endWord, vector<string>& wordList) {
+        unordered_set<string> dict(wordList.begin(), wordList.end());
+        if (!dict.count(endWord)) return 0;
 
         int L = beginWord.length();
 
         // Build wildcard buckets: "h*t" -> [hot, hat, ...]
-        Map<String, List<String>> patterns = new HashMap<>();
-        for (String word : dict) {
+        unordered_map<string, vector<string>> patterns;
+        for (auto& word : dict) {
             for (int i = 0; i < L; i++) {
-                String key = word.substring(0, i) + "*" + word.substring(i + 1);
-                patterns.computeIfAbsent(key, k -> new ArrayList<>()).add(word);
+                string key = word.substr(0, i) + "*" + word.substr(i + 1);
+                patterns[key].push_back(word);
             }
         }
 
-        Queue<String> queue = new ArrayDeque<>();
-        Set<String> visited = new HashSet<>();
-        queue.offer(beginWord);
-        visited.add(beginWord);
+        queue<string> q;
+        unordered_set<string> visited;
+        q.push(beginWord);
+        visited.insert(beginWord);
         int level = 1;                        // beginWord counts as the first word
 
-        while (!queue.isEmpty()) {
-            int size = queue.size();
+        while (!q.empty()) {
+            int size = q.size();
             for (int i = 0; i < size; i++) {
-                String word = queue.poll();
-                if (word.equals(endWord)) return level;
+                string word = q.front(); q.pop();
+                if (word == endWord) return level;
 
                 for (int j = 0; j < L; j++) {
-                    String key = word.substring(0, j) + "*" + word.substring(j + 1);
-                    for (String neighbor : patterns.getOrDefault(key, Collections.emptyList())) {
-                        if (!visited.contains(neighbor)) {
-                            visited.add(neighbor);
-                            queue.offer(neighbor);
+                    string key = word.substr(0, j) + "*" + word.substr(j + 1);
+                    auto it = patterns.find(key);
+                    if (it != patterns.end()) {
+                        for (auto& neighbor : it->second) {
+                            if (!visited.count(neighbor)) {
+                                visited.insert(neighbor);
+                                q.push(neighbor);
+                            }
                         }
                     }
                 }
@@ -566,7 +600,7 @@ class Solution {
         }
         return 0;
     }
-}
+};
 ```
 
 **Complexity:** Time O(N × L²) — N words, L word length; building each pattern is O(L) and there are L patterns per word, and substring is O(L). Space O(N × L²) for the bucket map.
@@ -613,47 +647,50 @@ Path: `hit → hot → dot → dog → cog` (or `hit → hot → lot → log →
 
 **Idea:** Now we must return **all** shortest transformation sequences. Do BFS level by level recording, for each word, the set of predecessors (`parents`) that first reached it at the shortest distance. Stop BFS at the level where `endWord` appears. Then DFS-backtrack from `endWord` through the parent map to reconstruct every shortest path.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public List<List<String>> findLadders(String beginWord, String endWord, List<String> wordList) {
-        List<List<String>> result = new ArrayList<>();
-        Set<String> dict = new HashSet<>(wordList);
-        if (!dict.contains(endWord)) return result;
+public:
+    vector<vector<string>> findLadders(string beginWord, string endWord, vector<string>& wordList) {
+        vector<vector<string>> result;
+        unordered_set<string> dict(wordList.begin(), wordList.end());
+        if (!dict.count(endWord)) return result;
 
         int L = beginWord.length();
 
-        // parents.get(w) = words that reached w on the shortest path
-        Map<String, List<String>> parents = new HashMap<>();
-        Set<String> current = new HashSet<>();
-        current.add(beginWord);
-        Set<String> visited = new HashSet<>();
-        visited.add(beginWord);
-        boolean found = false;
+        // parents[w] = words that reached w on the shortest path
+        unordered_map<string, vector<string>> parents;
+        unordered_set<string> current;
+        current.insert(beginWord);
+        unordered_set<string> visited;
+        visited.insert(beginWord);
+        bool found = false;
 
-        while (!current.isEmpty() && !found) {
+        while (!current.empty() && !found) {
             // Remove this level's words from dict so we don't revisit earlier levels.
-            dict.removeAll(current);
-            Set<String> next = new HashSet<>();
+            for (auto& w : current) dict.erase(w);
+            unordered_set<string> next;
 
-            for (String word : current) {
-                char[] chars = word.toCharArray();
+            for (auto& word : current) {
+                string chars = word;
                 for (int i = 0; i < L; i++) {
                     char old = chars[i];
                     for (char c = 'a'; c <= 'z'; c++) {
                         if (c == old) continue;
                         chars[i] = c;
-                        String cand = new String(chars);
-                        if (dict.contains(cand)) {
-                            if (visited.add(cand)) {      // first time at this BFS depth
-                                next.add(cand);
+                        string cand = chars;
+                        if (dict.count(cand)) {
+                            if (!visited.count(cand)) {      // first time at this BFS depth
+                                visited.insert(cand);
+                                next.insert(cand);
                             }
                             // record predecessor regardless (same level reach)
-                            if (next.contains(cand) || cand.equals(endWord)) {
-                                parents.computeIfAbsent(cand, k -> new ArrayList<>()).add(word);
+                            if (next.count(cand) || cand == endWord) {
+                                parents[cand].push_back(word);
                             }
-                            if (cand.equals(endWord)) found = true;
+                            if (cand == endWord) found = true;
                         }
                     }
                     chars[i] = old;
@@ -663,27 +700,29 @@ class Solution {
         }
 
         if (found) {
-            LinkedList<String> path = new LinkedList<>();
-            path.add(endWord);
+            vector<string> path = {endWord};
             backtrack(endWord, beginWord, parents, path, result);
         }
         return result;
     }
 
-    private void backtrack(String word, String beginWord,
-                           Map<String, List<String>> parents,
-                           LinkedList<String> path, List<List<String>> result) {
-        if (word.equals(beginWord)) {
-            result.add(new ArrayList<>(path));
+private:
+    void backtrack(string word, string& beginWord,
+                   unordered_map<string, vector<string>>& parents,
+                   vector<string>& path, vector<vector<string>>& result) {
+        if (word == beginWord) {
+            result.push_back(vector<string>(path.rbegin(), path.rend()));
             return;
         }
-        for (String parent : parents.getOrDefault(word, Collections.emptyList())) {
-            path.addFirst(parent);
+        auto it = parents.find(word);
+        if (it == parents.end()) return;
+        for (auto& parent : it->second) {
+            path.push_back(parent);
             backtrack(parent, beginWord, parents, path, result);
-            path.removeFirst();
+            path.pop_back();
         }
     }
-}
+};
 ```
 
 **Complexity:** Time O(N × L × 26 + P) where P is the cost of enumerating all shortest paths; Space O(N × L) for the parent map plus output.
@@ -694,31 +733,33 @@ class Solution {
 
 **Idea:** Each 4-digit state is a node; turning one wheel one notch (up or down, with wraparound 0↔9) gives 8 neighbors. We want the **minimum number of moves** from `"0000"` to `target` → BFS. Treat each deadend as already-visited so BFS never expands it.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int openLock(String[] deadends, String target) {
-        Set<String> dead = new HashSet<>(Arrays.asList(deadends));
-        if (dead.contains("0000")) return -1;
-        if (target.equals("0000")) return 0;
+public:
+    int openLock(vector<string>& deadends, string target) {
+        unordered_set<string> dead(deadends.begin(), deadends.end());
+        if (dead.count("0000")) return -1;
+        if (target == "0000") return 0;
 
-        Set<String> visited = new HashSet<>(dead);   // deadends count as visited
-        Queue<String> queue = new ArrayDeque<>();
-        queue.offer("0000");
-        visited.add("0000");
+        unordered_set<string> visited(dead);   // deadends count as visited
+        queue<string> q;
+        q.push("0000");
+        visited.insert("0000");
         int moves = 0;
 
-        while (!queue.isEmpty()) {
-            int size = queue.size();
+        while (!q.empty()) {
+            int size = q.size();
             for (int i = 0; i < size; i++) {
-                String state = queue.poll();
-                if (state.equals(target)) return moves;
+                string state = q.front(); q.pop();
+                if (state == target) return moves;
 
-                for (String next : neighbors(state)) {
-                    if (!visited.contains(next)) {
-                        visited.add(next);
-                        queue.offer(next);
+                for (auto& next : neighbors(state)) {
+                    if (!visited.count(next)) {
+                        visited.insert(next);
+                        q.push(next);
                     }
                 }
             }
@@ -727,23 +768,23 @@ class Solution {
         return -1;
     }
 
-    private List<String> neighbors(String state) {
-        List<String> res = new ArrayList<>();
-        char[] arr = state.toCharArray();
+private:
+    vector<string> neighbors(string state) {
+        vector<string> res;
         for (int i = 0; i < 4; i++) {
-            char old = arr[i];
+            char old = state[i];
 
-            arr[i] = (old == '9') ? '0' : (char) (old + 1);   // turn up
-            res.add(new String(arr));
+            state[i] = (old == '9') ? '0' : (char)(old + 1);   // turn up
+            res.push_back(state);
 
-            arr[i] = (old == '0') ? '9' : (char) (old - 1);   // turn down
-            res.add(new String(arr));
+            state[i] = (old == '0') ? '9' : (char)(old - 1);   // turn down
+            res.push_back(state);
 
-            arr[i] = old;
+            state[i] = old;
         }
         return res;
     }
-}
+};
 ```
 
 **Complexity:** Time O(10⁴ × 8) ≈ O(N) over the bounded state space (10000 states, 8 neighbors each), Space O(10⁴) for the visited set.

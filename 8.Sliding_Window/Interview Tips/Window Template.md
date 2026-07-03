@@ -6,11 +6,14 @@
 
 ## The Universal Sliding Window Template
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Step 1: Choose state representation
 //   - int counter for simple counts (zeros, odds)
 //   - int[] freq array for character frequencies
-//   - Map<K,V> for arbitrary key frequencies/counts
+//   - unordered_map<K,V> for arbitrary key frequencies/counts
 
 // Step 2: Choose goal (maximize or minimize window)
 //   - Maximize: use 'if' for shrink, update answer after shrink
@@ -33,8 +36,8 @@ for (int right = 0; right < n; right++) {
     }
 
     // [RECORD] Update answer
-    // For max length: maxLen = Math.max(maxLen, right - left + 1)
-    // For min length: minLen = Math.min(minLen, right - left + 1) [inside while]
+    // For max length: maxLen = max(maxLen, right - left + 1)
+    // For min length: minLen = min(minLen, right - left + 1) [inside while]
     // For count: result += right - left + 1
 }
 ```
@@ -47,14 +50,17 @@ for (int right = 0; right < n; right++) {
 
 **Problems:** Max Consecutive Ones III, Fruits Into Baskets, LSWORC
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 int left = 0, state = 0, maxLen = 0;
 for (int right = 0; right < n; right++) {
     state += increase(nums[right]);           // expand
     if (state > k) {                          // violated → if, not while
         state -= decrease(nums[left++]);      // shrink by 1
     }
-    maxLen = Math.max(maxLen, right - left + 1);  // window is valid
+    maxLen = max(maxLen, right - left + 1);  // window is valid
 }
 return maxLen;
 ```
@@ -63,43 +69,53 @@ return maxLen;
 
 **Problems:** Minimum Subarray Sum
 
-```java
-int left = 0, state = 0, minLen = Integer.MAX_VALUE;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int left = 0, state = 0, minLen = INT_MAX;
 for (int right = 0; right < n; right++) {
     state += nums[right];                     // expand
     while (state >= target) {                 // valid → while, minimize
-        minLen = Math.min(minLen, right - left + 1);
+        minLen = min(minLen, right - left + 1);
         state -= nums[left++];
     }
 }
-return minLen == Integer.MAX_VALUE ? 0 : minLen;
+return minLen == INT_MAX ? 0 : minLen;
 ```
 
 ### Template 3: Min Length — All Chars Present
 
 **Problems:** Minimum Window Substring
 
-```java
-int[] need = buildNeedArray(t);
-int left = 0, have = 0, required = t.length();
-int minLen = Integer.MAX_VALUE, minLeft = 0;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int need[128] = {};
+// buildNeedArray equivalent: populate need[] from t
+int left = 0, have = 0, required = (int)t.length();
+int minLen = INT_MAX, minLeft = 0;
 
 for (int right = 0; right < n; right++) {
-    if (need[s.charAt(right)]-- > 0) have++;  // expand with condition
-    while (have == required) {                 // valid → while, minimize
+    if (need[s[right]]-- > 0) have++;          // expand with condition
+    while (have == required) {                  // valid → while, minimize
         if (right - left + 1 < minLen) { minLen = right - left + 1; minLeft = left; }
-        if (++need[s.charAt(left)] > 0) have--;  // shrink with condition
+        if (++need[s[left]] > 0) have--;        // shrink with condition
         left++;
     }
 }
-return minLen == Integer.MAX_VALUE ? "" : s.substring(minLeft, minLeft + minLen);
+return minLen == INT_MAX ? "" : s.substr(minLeft, minLen);
 ```
 
 ### Template 4: Count Subarrays — At Most k
 
 **Problems:** Subarray Product < K, Binary Subarrays With Sum (combined with subtraction)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 int left = 0, state = initialState, result = 0;
 for (int right = 0; right < n; right++) {
     state = applyRight(state, nums[right]);    // expand
@@ -140,7 +156,7 @@ Problem says "subarray/substring"?
 | Zero count | `int zeros` | 0 | `if x==0: zeros++` | `if x==0: zeros--` | `zeros > k` |
 | Odd count | `int odds` | 0 | `if x%2==1: odds++` | `if x%2==1: odds--` | `odds > k` |
 | Running product | `int product` | 1 | `product *= x` | `product /= x` | `product >= k` |
-| Distinct count | `Map + size` | empty | `put/merge x` | `remove if 0` | `map.size() > k` |
+| Distinct count | `unordered_map + size` | empty | `put/merge x` | `remove if 0` | `map.size() > k` |
 | Char frequency | `int[] freq` | zeros | `freq[x]++` | `freq[x]--` | `freq[x] > 1` or `freq[x] > allowed` |
 | Have/need | `int have` | 0 | conditional `have++` | conditional `have--` | `have < required` |
 

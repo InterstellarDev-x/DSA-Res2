@@ -2,7 +2,7 @@
 
 # Google — DP Interview Deep Dives
 
-Google interviews probe *why* a recurrence is correct, not just whether you remember it. These four — Edit Distance, Burst Balloons, Regex Matching, Number of LIS — are the ones where the derivation is the interview. Each includes the state, a traced recurrence, base cases, full Java, complexity, and the level (L4/L5) at which it typically appears.
+Google interviews probe *why* a recurrence is correct, not just whether you remember it. These four — Edit Distance, Burst Balloons, Regex Matching, Number of LIS — are the ones where the derivation is the interview. Each includes the state, a traced recurrence, base cases, full C++, complexity, and the level (L4/L5) at which it typically appears.
 
 See also: [OA-Qns → Google](../OA-Qns/Google.md) · [Interview Problems → Amazon](./Amazon.md) · [Interview Problems → Microsoft](./Microsoft.md) · [Topic README](../README.md)
 
@@ -29,19 +29,22 @@ Aligning the suffixes ends in one of three ways: the last char of `word1` is con
 
 **Trace** `word1="horse"`, `word2="ros"` → answer 3 (replace `h→r`, delete `r`, delete `e`). The dp table fills row by row; `dp[5][3] = 3`.
 
-```java
-public int minDistance(String word1, String word2) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int minDistance(string word1, string word2) {
     int m = word1.length(), n = word2.length();
-    int[][] dp = new int[m + 1][n + 1];
+    vector<vector<int>> dp(m + 1, vector<int>(n + 1));
     for (int i = 0; i <= m; i++) dp[i][0] = i;
     for (int j = 0; j <= n; j++) dp[0][j] = j;
     for (int i = 1; i <= m; i++) {
         for (int j = 1; j <= n; j++) {
-            if (word1.charAt(i - 1) == word2.charAt(j - 1)) {
+            if (word1[i - 1] == word2[j - 1]) {
                 dp[i][j] = dp[i - 1][j - 1];
             } else {
-                dp[i][j] = 1 + Math.min(dp[i - 1][j - 1],
-                              Math.min(dp[i - 1][j], dp[i][j - 1]));
+                dp[i][j] = 1 + min(dp[i - 1][j - 1],
+                              min(dp[i - 1][j], dp[i][j - 1]));
             }
         }
     }
@@ -55,19 +58,22 @@ Time `O(m·n)`, space `O(m·n)`.
 
 Each row needs only the previous row plus the diagonal. Keep two rows (or one row + a saved diagonal):
 
-```java
-public int minDistance(String word1, String word2) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int minDistance(string word1, string word2) {
     int m = word1.length(), n = word2.length();
-    int[] prev = new int[n + 1];
+    vector<int> prev(n + 1);
     for (int j = 0; j <= n; j++) prev[j] = j;
     for (int i = 1; i <= m; i++) {
-        int[] cur = new int[n + 1];
+        vector<int> cur(n + 1);
         cur[0] = i;
         for (int j = 1; j <= n; j++) {
-            if (word1.charAt(i - 1) == word2.charAt(j - 1)) {
+            if (word1[i - 1] == word2[j - 1]) {
                 cur[j] = prev[j - 1];
             } else {
-                cur[j] = 1 + Math.min(prev[j - 1], Math.min(prev[j], cur[j - 1]));
+                cur[j] = 1 + min(prev[j - 1], min(prev[j], cur[j - 1]));
             }
         }
         prev = cur;
@@ -101,20 +107,23 @@ If you ask "which balloon to burst **first** in range `(i, j)`?", the moment you
 - **Base:** `dp[i][j] = 0` when `j - i < 2` (nothing strictly between).
 - **Order:** increasing interval length, since `dp[i][j]` needs shorter `dp[i][k]` and `dp[k][j]`.
 
-```java
-public int maxCoins(int[] nums) {
-    int n = nums.length;
-    int[] arr = new int[n + 2];
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int maxCoins(vector<int>& nums) {
+    int n = nums.size();
+    vector<int> arr(n + 2);
     arr[0] = arr[n + 1] = 1;
     for (int i = 0; i < n; i++) arr[i + 1] = nums[i];
 
-    int[][] dp = new int[n + 2][n + 2];
+    vector<vector<int>> dp(n + 2, vector<int>(n + 2, 0));
     for (int len = 2; len <= n + 1; len++) {          // interval length (exclusive ends)
         for (int i = 0; i + len <= n + 1; i++) {
             int j = i + len;
             for (int k = i + 1; k < j; k++) {         // k bursts LAST in (i, j)
                 int coins = arr[i] * arr[k] * arr[j] + dp[i][k] + dp[k][j];
-                dp[i][j] = Math.max(dp[i][j], coins);
+                dp[i][j] = max(dp[i][j], coins);
             }
         }
     }
@@ -126,7 +135,7 @@ Time `O(n³)`, space `O(n²)`. This is the canonical [Partition DP (MCM)](../Pat
 
 ### Common follow-ups
 - "Min cost to cut a stick" (LC 1547) — same interval DP, minimize instead.
-- "Why not memoized recursion?" — equivalent; `dp(i,j)` with `Integer[][]` memo and the same "last to burst" loop.
+- "Why not memoized recursion?" — equivalent; `dp(i,j)` with `vector<vector<int>>` memo and the same "last to burst" loop.
 
 ---
 
@@ -148,27 +157,30 @@ Time `O(n³)`, space `O(n²)`. This is the canonical [Partition DP (MCM)](../Pat
 
 `x*` can stand for **nothing** (drop both `x` and `*`, look back 2 in the pattern) or for **at least one** `x` (consume one char of `s`, keep the `x*` available, look back 1 in the string). Missing the "look back 2" branch is the #1 failure on Google's hidden tests.
 
-```java
-public boolean isMatch(String s, String p) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool isMatch(string s, string p) {
     int m = s.length(), n = p.length();
-    boolean[][] dp = new boolean[m + 1][n + 1];
+    vector<vector<bool>> dp(m + 1, vector<bool>(n + 1, false));
     dp[0][0] = true;
     // empty string vs patterns like a*, a*b*, ...
     for (int j = 1; j <= n; j++) {
-        if (p.charAt(j - 1) == '*') {
+        if (p[j - 1] == '*') {
             dp[0][j] = dp[0][j - 2];
         }
     }
     for (int i = 1; i <= m; i++) {
         for (int j = 1; j <= n; j++) {
-            char pc = p.charAt(j - 1);
+            char pc = p[j - 1];
             if (pc == '*') {
                 dp[i][j] = dp[i][j - 2];                       // zero occurrences
-                char prev = p.charAt(j - 2);
-                if (prev == '.' || prev == s.charAt(i - 1)) {
+                char prev = p[j - 2];
+                if (prev == '.' || prev == s[i - 1]) {
                     dp[i][j] = dp[i][j] || dp[i - 1][j];       // one or more
                 }
-            } else if (pc == '.' || pc == s.charAt(i - 1)) {
+            } else if (pc == '.' || pc == s[i - 1]) {
                 dp[i][j] = dp[i - 1][j - 1];
             }
         }
@@ -201,13 +213,14 @@ For each `i`, scan `j < i` with `nums[j] < nums[i]`:
 
 Finally sum `count[i]` over all `i` with the global max length.
 
-```java
-public int findNumberOfLIS(int[] nums) {
-    int n = nums.length;
-    int[] length = new int[n];
-    int[] count = new int[n];
-    Arrays.fill(length, 1);
-    Arrays.fill(count, 1);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int findNumberOfLIS(vector<int>& nums) {
+    int n = nums.size();
+    vector<int> length(n, 1);
+    vector<int> count(n, 1);
     int maxLen = 1;
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < i; j++) {
@@ -220,7 +233,7 @@ public int findNumberOfLIS(int[] nums) {
                 }
             }
         }
-        maxLen = Math.max(maxLen, length[i]);
+        maxLen = max(maxLen, length[i]);
     }
     int total = 0;
     for (int i = 0; i < n; i++) {

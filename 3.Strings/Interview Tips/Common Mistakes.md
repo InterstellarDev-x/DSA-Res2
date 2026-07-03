@@ -8,27 +8,30 @@
 
 | # | Mistake | Buggy Code | Fix |
 |---|---------|-----------|-----|
-| 1 | String concatenation in loop | `result += s` in a loop | `StringBuilder.append()` |
-| 2 | `==` for string equality | `if (s == t)` | `if (s.equals(t))` |
-| 3 | `split(" ")` misses multiple spaces | `"  a  b".split(" ")` gives `["", "", "a", "", "b"]` | `split("\\s+")` then `trim()` |
-| 4 | `c - 'a'` on uppercase char | `'A' - 'a'` = -32 → array index -32 | Lowercase first: `Character.toLowerCase(c) - 'a'` |
+| 1 | String concatenation in loop | `result += s` in a loop | use `ostringstream` or `string::reserve()` + `+=` |
+| 2 | `==` for string equality (Java pitfall) | `if (s == t)` | In C++, `==` works correctly for `std::string` value comparison |
+| 3 | `split(" ")` misses multiple spaces | `"  a  b".split(" ")` gives empty tokens | Use `istringstream` to skip whitespace tokens |
+| 4 | `c - 'a'` on uppercase char | `'A' - 'a'` = -32 → array index -32 | Lowercase first: `tolower(c) - 'a'` |
 | 5 | `int[26]` for mixed-case input | Index out of bounds for uppercase | Use `int[128]` or normalize to lowercase |
-| 6 | Not checking empty string | `s.charAt(0)` on `""` | Guard: `if (s.isEmpty()) return ...` |
+| 6 | Not checking empty string | `s[0]` on `""` | Guard: `if (s.empty()) return ...` |
 | 7 | Sliding window: `if` instead of `while` to shrink | One shrink may not be enough | Always `while (invalid)` |
 | 8 | KMP: `i++` after `len = lps[len-1]` | Wrong LPS values | Do NOT advance `i` when falling back |
 | 9 | Palindrome: not trying both skip directions | `isPalin(s, l+1, r)` only | Also try `isPalin(s, l, r-1)` |
-| 10 | `substring(l, r)` is exclusive of `r` | `s.substring(0, 3)` returns chars 0,1,2 | For inclusive `r`: `s.substring(l, r+1)` |
+| 10 | `substr(pos, len)` takes length, not end index | `s.substr(0, 3)` returns chars 0,1,2 (length=3) | For inclusive `r`: `s.substr(l, r-l+1)` |
 
 ---
 
 ## Sliding Window String Mistakes
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // WRONG: frequency key bug
-StringBuilder key = new StringBuilder();
-for (int f : freq) key.append(f);
+string key = "";
+for (auto f : freq) key += to_string(f);
 // "12" and "1" + "2" collision → use separator
-key.append('#').append(f); // CORRECT: "#1#2#..."
+key += '#'; key += to_string(f); // CORRECT: "#1#2#..."
 
 // WRONG: formed counter uses >=
 if (window[rc] >= need[rc]) formed++; // double-counts
@@ -40,13 +43,16 @@ if (need[rc] > 0 && window[rc] == need[rc]) formed++;
 
 ## Palindrome Mistakes
 
-```java
-// WRONG: comparing with == for Character objects
-if (s.charAt(l) == s.charAt(r)) // OK for char (primitive)
-if (Character.valueOf(s.charAt(l)) == Character.valueOf(s.charAt(r))) // WRONG for boxed
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+// OK: comparing chars directly (no boxing issue in C++)
+if (s[l] == s[r]) // OK for char (C++ strings return char, not a boxed type)
+// Note: unlike Java, there is no "boxed Character" pitfall in C++
 
 // WRONG: palindrome II only trying one skip direction
-if (s.charAt(l) != s.charAt(r))
+if (s[l] != s[r])
     return isPalin(s, l+1, r); // WRONG - misses cases
     // CORRECT:
     return isPalin(s, l+1, r) || isPalin(s, l, r-1);

@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#c-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -70,13 +70,16 @@ Array: [1, 2, 1, 3, 5, 6, 4]
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Find Peak Element (any peak)
 
-```java
-public int findPeakElement(int[] nums) {
-    int lo = 0, hi = nums.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int findPeakElement(vector<int>& nums) {
+    int lo = 0, hi = nums.size() - 1;
     while (lo < hi) {
         int mid = lo + (hi - lo) / 2;
         if (nums[mid] < nums[mid + 1])
@@ -93,10 +96,13 @@ public int findPeakElement(int[] nums) {
 
 ### 2. Mountain Array Peak Index
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Array strictly increases then strictly decreases
-public int peakIndexInMountainArray(int[] arr) {
-    int lo = 0, hi = arr.length - 1;
+int peakIndexInMountainArray(vector<int>& arr) {
+    int lo = 0, hi = arr.size() - 1;
     while (lo < hi) {
         int mid = lo + (hi - lo) / 2;
         if (arr[mid] < arr[mid + 1])
@@ -111,20 +117,12 @@ public int peakIndexInMountainArray(int[] arr) {
 
 ### 3. Search in Mountain Array (search both halves)
 
-```java
-public int findInMountainArray(int target, int[] mountainArr) {
-    int peak = findPeak(mountainArr);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    // Search in ascending half [0, peak]
-    int idx = binarySearch(mountainArr, 0, peak, target, true);
-    if (idx != -1) return idx;
-
-    // Search in descending half [peak+1, n-1]
-    return binarySearch(mountainArr, peak + 1, mountainArr.length - 1, target, false);
-}
-
-private int findPeak(int[] arr) {
-    int lo = 0, hi = arr.length - 1;
+int findPeak(vector<int>& arr) {
+    int lo = 0, hi = arr.size() - 1;
     while (lo < hi) {
         int mid = lo + (hi - lo) / 2;
         if (arr[mid] < arr[mid + 1]) lo = mid + 1;
@@ -133,7 +131,7 @@ private int findPeak(int[] arr) {
     return lo;
 }
 
-private int binarySearch(int[] arr, int lo, int hi, int target, boolean ascending) {
+int binarySearch(vector<int>& arr, int lo, int hi, int target, bool ascending) {
     while (lo <= hi) {
         int mid = lo + (hi - lo) / 2;
         if (arr[mid] == target) return mid;
@@ -145,30 +143,44 @@ private int binarySearch(int[] arr, int lo, int hi, int target, boolean ascendin
     }
     return -1;
 }
+
+int findInMountainArray(int target, vector<int>& mountainArr) {
+    int peak = findPeak(mountainArr);
+
+    // Search in ascending half [0, peak]
+    int idx = binarySearch(mountainArr, 0, peak, target, true);
+    if (idx != -1) return idx;
+
+    // Search in descending half [peak+1, n-1]
+    return binarySearch(mountainArr, peak + 1, mountainArr.size() - 1, target, false);
+}
 // Time: O(log n) | Space: O(1)
 ```
 
 ### 4. Find Peak Element II (2D Matrix)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Each row is a separate 1D problem; binary search on columns
-public int[] findPeakGrid(int[][] mat) {
-    int lo = 0, hi = mat[0].length - 1;
+vector<int> findPeakGrid(vector<vector<int>>& mat) {
+    int lo = 0, hi = mat[0].size() - 1;
     while (lo <= hi) {
         int midCol = lo + (hi - lo) / 2;
         int maxRow = 0;
         // Find row with max element in midCol
-        for (int r = 0; r < mat.length; r++)
+        for (int r = 0; r < (int)mat.size(); r++)
             if (mat[r][midCol] > mat[maxRow][midCol]) maxRow = r;
 
-        boolean leftBigger  = midCol > 0 && mat[maxRow][midCol - 1] > mat[maxRow][midCol];
-        boolean rightBigger = midCol < mat[0].length - 1 && mat[maxRow][midCol + 1] > mat[maxRow][midCol];
+        bool leftBigger  = midCol > 0 && mat[maxRow][midCol - 1] > mat[maxRow][midCol];
+        bool rightBigger = midCol < (int)mat[0].size() - 1 && mat[maxRow][midCol + 1] > mat[maxRow][midCol];
 
-        if (!leftBigger && !rightBigger) return new int[]{maxRow, midCol};
+        if (!leftBigger && !rightBigger) return vector<int>{maxRow, midCol};
         else if (rightBigger) lo = midCol + 1;
         else hi = midCol - 1;
     }
-    return new int[]{-1, -1};
+    return vector<int>{-1, -1};
 }
 // Time: O(m log n) | Space: O(1)
 ```

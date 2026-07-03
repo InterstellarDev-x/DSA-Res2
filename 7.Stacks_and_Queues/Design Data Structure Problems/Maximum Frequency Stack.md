@@ -22,40 +22,41 @@ pop() → 4  (5→1, 4→1; 4 was pushed more recently)
 
 ---
 
-## Solution: HashMap + HashMap of Stacks
+## Solution: std::unordered_map + std::unordered_map of Stacks
 
 **Key insight:** Group elements by frequency. Within each frequency group, maintain insertion order (stack semantics for tie-breaking).
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class FreqStack {
-    private Map<Integer, Integer> freq;          // val → current frequency
-    private Map<Integer, Deque<Integer>> group;  // freq → stack of vals at this freq
-    private int maxFreq;
+    unordered_map<int, int> freq;          // val → current frequency
+    unordered_map<int, stack<int>> group;  // freq → stack of vals at this freq
+    int maxFreq;
 
-    public FreqStack() {
-        freq  = new HashMap<>();
-        group = new HashMap<>();
-        maxFreq = 0;
+public:
+    FreqStack() : maxFreq(0) {}
+
+    void push(int val) {
+        int f = (freq.count(val) ? freq[val] : 0) + 1;
+        freq[val] = f;
+        maxFreq = max(maxFreq, f);
+        group[f].push(val);  // default-constructs stack if key absent
     }
 
-    public void push(int val) {
-        int f = freq.getOrDefault(val, 0) + 1;
-        freq.put(val, f);
-        maxFreq = Math.max(maxFreq, f);
-        group.computeIfAbsent(f, k -> new ArrayDeque<>()).push(val);
-    }
-
-    public int pop() {
-        Deque<Integer> stack = group.get(maxFreq);
-        int val = stack.pop();
-        freq.put(val, freq.get(val) - 1);
-        if (stack.isEmpty()) {
-            group.remove(maxFreq);
+    int pop() {
+        auto& stk = group[maxFreq];
+        int val = stk.top();
+        stk.pop();
+        freq[val] = freq[val] - 1;
+        if (stk.empty()) {
+            group.erase(maxFreq);
             maxFreq--;   // only decrement — can never skip a frequency level
         }
         return val;
     }
-}
+};
 ```
 
 **Complexity:** O(1) for both `push` and `pop`.
@@ -117,16 +118,16 @@ Both deal with frequency. Key differences:
 ## Follow-up Interview Questions
 
 **Q: What if we also need to peek without popping?**
-A: `peek()` = `group.get(maxFreq).peek()`. O(1).
+A: `peek()` = `group[maxFreq].top()`. O(1).
 
 **Q: What if we need the k-th most frequent element's stack?**
-A: `group.get(maxFreq - k + 1).peek()` gives the top of the k-th frequency group.
+A: `group[maxFreq - k + 1].top()` gives the top of the k-th frequency group.
 
 **Q: Thread safety considerations?**
-A: Two non-atomic operations in `push` (update freq map, update group map) and `pop` (read group, update freq, possibly decrement maxFreq). Need to synchronize the entire method or use a ReentrantLock.
+A: Two non-atomic operations in `push` (update freq map, update group map) and `pop` (read group, update freq, possibly decrement maxFreq). Need to synchronize the entire method or use a mutex.
 
 **Q: How would you handle negative frequencies (after many pops)?**
-A: The design guarantees freq[val] ≥ 0 (we never pop more than we push). But defensively, we could cap at 0: `freq.put(val, Math.max(0, freq.get(val) - 1))`.
+A: The design guarantees freq[val] ≥ 0 (we never pop more than we push). But defensively, we could cap at 0: `freq[val] = max(0, freq[val] - 1)`.
 
 ---
 

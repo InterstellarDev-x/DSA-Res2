@@ -29,12 +29,15 @@
 | **LeetCode** | [LC 34](https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/) |
 | **Follow-ups** | Count of occurrences · What if unsorted? |
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Demonstrate clean decomposition
-public int[] searchRange(int[] nums, int target) {
+vector<int> searchRange(vector<int>& nums, int target) {
     int first = lowerBound(nums, target);
-    if (first == nums.length || nums[first] != target) return new int[]{-1, -1};
-    return new int[]{first, upperBound(nums, target) - 1};
+    if (first == (int)nums.size() || nums[first] != target) return {-1, -1};
+    return {first, upperBound(nums, target) - 1};
 }
 ```
 

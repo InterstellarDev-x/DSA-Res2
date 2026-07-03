@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#c-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -67,27 +67,26 @@ The Dutch National Flag algorithm (Dijkstra, 1976) sorts an array of three disti
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Classic Dutch National Flag (Sort Colors)
 
-```java
-public void sortColors(int[] nums) {
-    int lo = 0, mid = 0, hi = nums.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void sortColors(vector<int>& nums) {
+    int lo = 0, mid = 0, hi = (int)nums.size() - 1;
 
     while (mid <= hi) {
         if (nums[mid] == 0) {
-            swap(nums, lo++, mid++); // 0: goes to front, both advance
+            swap(nums[lo++], nums[mid++]); // 0: goes to front, both advance
         } else if (nums[mid] == 1) {
-            mid++;                   // 1: already in place
-        } else {                     // nums[mid] == 2
-            swap(nums, mid, hi--);   // 2: goes to back, DON'T advance mid
+            mid++;                         // 1: already in place
+        } else {                           // nums[mid] == 2
+            swap(nums[mid], nums[hi--]);   // 2: goes to back, DON'T advance mid
         }
     }
-}
-
-private void swap(int[] arr, int i, int j) {
-    int tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
 }
 // Time: O(n) | Space: O(1) | Single pass
 ```
@@ -97,13 +96,16 @@ private void swap(int[] arr, int i, int j) {
 
 ### 2. Segregate Negatives and Positives (2-way)
 
-```java
-public void segregate(int[] arr) {
-    int lo = 0, hi = arr.length - 1;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+void segregate(vector<int>& arr) {
+    int lo = 0, hi = (int)arr.size() - 1;
     while (lo < hi) {
         while (lo < hi && arr[lo] < 0) lo++;
         while (lo < hi && arr[hi] >= 0) hi--;
-        if (lo < hi) swap(arr, lo, hi);
+        if (lo < hi) swap(arr[lo], arr[hi]);
     }
 }
 // Time: O(n) | Space: O(1)
@@ -111,33 +113,39 @@ public void segregate(int[] arr) {
 
 ### 3. Three-way Partition around Pivot (QuickSort)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Partition arr[l..r] around pivot value
-public int[] threeWayPartition(int[] arr, int l, int r, int pivot) {
+pair<int,int> threeWayPartition(vector<int>& arr, int l, int r, int pivot) {
     int lo = l, mid = l, hi = r;
     while (mid <= hi) {
-        if (arr[mid] < pivot)       swap(arr, lo++, mid++);
+        if (arr[mid] < pivot)       swap(arr[lo++], arr[mid++]);
         else if (arr[mid] == pivot) mid++;
-        else                        swap(arr, mid, hi--);
+        else                        swap(arr[mid], arr[hi--]);
     }
-    return new int[]{lo, hi}; // [lo, hi] is the range of pivot elements
+    return {lo, hi}; // [lo, hi] is the range of pivot elements
 }
 ```
 
 ### 4. Rearrange Positives and Negatives (Preserve Relative Order)
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // This needs O(n) extra space to preserve relative order
-public void rearrange(int[] arr) {
-    int n = arr.length;
-    int[] result = new int[n];
+void rearrange(vector<int>& arr) {
+    int n = arr.size();
+    vector<int> result(n);
     int pos = 0, neg = n / 2;
     // Assumes equal counts of positives and negatives
-    for (int x : arr) {
+    for (auto& x : arr) {
         if (x >= 0) result[pos++] = x;
         else result[neg++] = x;
     }
-    System.arraycopy(result, 0, arr, 0, n);
+    arr = result;
 }
 ```
 

@@ -11,7 +11,7 @@
 2. [When to Use](#when-to-use)
 3. [Recognition Cues](#recognition-cues)
 4. [Complexity](#complexity)
-5. [Java Templates](#java-templates)
+5. [C++ Templates](#cpp-templates)
 6. [Common Mistakes](#common-mistakes)
 7. [Variations](#variations)
 8. [Practice Problems](#practice-problems)
@@ -68,61 +68,73 @@ The sort step is the key enabler: once sorted, all overlapping intervals are con
 
 ---
 
-## Java Templates
+## C++ Templates
 
 ### 1. Merge Overlapping Intervals
 
-```java
-public int[][] merge(int[][] intervals) {
-    Arrays.sort(intervals, (a, b) -> a[0] - b[0]); // sort by start
-    List<int[]> merged = new ArrayList<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    for (int[] interval : intervals) {
-        if (merged.isEmpty() || merged.get(merged.size() - 1)[1] < interval[0]) {
-            merged.add(interval); // no overlap
+vector<vector<int>> merge(vector<vector<int>>& intervals) {
+    sort(intervals.begin(), intervals.end(), [](const vector<int>& a, const vector<int>& b) {
+        return a[0] < b[0]; // sort by start
+    });
+    vector<vector<int>> merged;
+
+    for (auto& interval : intervals) {
+        if (merged.empty() || merged.back()[1] < interval[0]) {
+            merged.push_back(interval); // no overlap
         } else {
             // overlap: extend the end
-            merged.get(merged.size() - 1)[1] =
-                Math.max(merged.get(merged.size() - 1)[1], interval[1]);
+            merged.back()[1] = max(merged.back()[1], interval[1]);
         }
     }
-    return merged.toArray(new int[0][]);
+    return merged;
 }
 // Time: O(n log n) | Space: O(n)
 ```
 
 ### 2. Insert Interval
 
-```java
-public int[][] insert(int[][] intervals, int[] newInterval) {
-    List<int[]> result = new ArrayList<>();
-    int i = 0, n = intervals.length;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> insert(vector<vector<int>>& intervals, vector<int> newInterval) {
+    vector<vector<int>> result;
+    int i = 0, n = intervals.size();
 
     // Add all intervals ending before newInterval starts
     while (i < n && intervals[i][1] < newInterval[0]) {
-        result.add(intervals[i++]);
+        result.push_back(intervals[i++]);
     }
     // Merge all overlapping intervals with newInterval
     while (i < n && intervals[i][0] <= newInterval[1]) {
-        newInterval[0] = Math.min(newInterval[0], intervals[i][0]);
-        newInterval[1] = Math.max(newInterval[1], intervals[i][1]);
+        newInterval[0] = min(newInterval[0], intervals[i][0]);
+        newInterval[1] = max(newInterval[1], intervals[i][1]);
         i++;
     }
-    result.add(newInterval);
+    result.push_back(newInterval);
     // Add remaining intervals
-    while (i < n) result.add(intervals[i++]);
+    while (i < n) result.push_back(intervals[i++]);
 
-    return result.toArray(new int[0][]);
+    return result;
 }
 // Time: O(n) | Space: O(n)
 ```
 
 ### 3. Meeting Rooms I — Can One Person Attend All?
 
-```java
-public boolean canAttendMeetings(int[][] intervals) {
-    Arrays.sort(intervals, (a, b) -> a[0] - b[0]);
-    for (int i = 1; i < intervals.length; i++) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+bool canAttendMeetings(vector<vector<int>>& intervals) {
+    sort(intervals.begin(), intervals.end(), [](const vector<int>& a, const vector<int>& b) {
+        return a[0] < b[0];
+    });
+    for (int i = 1; i < (int)intervals.size(); i++) {
         if (intervals[i][0] < intervals[i - 1][1]) return false; // overlap
     }
     return true;
@@ -132,19 +144,22 @@ public boolean canAttendMeetings(int[][] intervals) {
 
 ### 4. Meeting Rooms II — Minimum Rooms Required
 
-```java
-public int minMeetingRooms(int[][] intervals) {
-    int[] starts = new int[intervals.length];
-    int[] ends   = new int[intervals.length];
-    for (int i = 0; i < intervals.length; i++) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int minMeetingRooms(vector<vector<int>>& intervals) {
+    vector<int> starts(intervals.size());
+    vector<int> ends(intervals.size());
+    for (int i = 0; i < (int)intervals.size(); i++) {
         starts[i] = intervals[i][0];
         ends[i]   = intervals[i][1];
     }
-    Arrays.sort(starts);
-    Arrays.sort(ends);
+    sort(starts.begin(), starts.end());
+    sort(ends.begin(), ends.end());
 
     int rooms = 0, endPtr = 0;
-    for (int i = 0; i < starts.length; i++) {
+    for (int i = 0; i < (int)starts.size(); i++) {
         if (starts[i] < ends[endPtr]) rooms++; // new room needed
         else endPtr++;                          // room freed
     }
@@ -155,11 +170,16 @@ public int minMeetingRooms(int[][] intervals) {
 
 ### 5. Non-overlapping Intervals — Minimum Removals (Activity Selection)
 
-```java
-public int eraseOverlapIntervals(int[][] intervals) {
-    Arrays.sort(intervals, (a, b) -> a[1] - b[1]); // sort by END
-    int count = 0, lastEnd = Integer.MIN_VALUE;
-    for (int[] iv : intervals) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int eraseOverlapIntervals(vector<vector<int>>& intervals) {
+    sort(intervals.begin(), intervals.end(), [](const vector<int>& a, const vector<int>& b) {
+        return a[1] < b[1]; // sort by END
+    });
+    int count = 0, lastEnd = INT_MIN;
+    for (auto& iv : intervals) {
         if (iv[0] >= lastEnd) {
             lastEnd = iv[1]; // keep this interval
         } else {
@@ -181,7 +201,7 @@ public int eraseOverlapIntervals(int[][] intervals) {
 | Sorting by end instead of start (for merge) | Sort by `start` for merge; sort by `end` for activity selection |
 | Overlap condition: `<` vs `<=` | `intervals[i][0] <= lastEnd` means touching intervals merge; adjust per problem |
 | Mutating the original input array | Clone interval arrays when needed |
-| Not handling empty input | Guard `if (intervals.length == 0) return ...` |
+| Not handling empty input | Guard `if (intervals.empty()) return ...` |
 | Meeting rooms: using a min-heap when two sorted arrays work | Two-pointer approach on sorted starts/ends is cleaner |
 
 ---
@@ -192,23 +212,26 @@ public int eraseOverlapIntervals(int[][] intervals) {
 |-----------|----------|
 | Employee Free Time | Merge all intervals from all employees, find gaps |
 | Interval List Intersections | Two pointer on two sorted interval lists |
-| My Calendar I/II/III | TreeMap / Sweep line for dynamic insertions |
+| My Calendar I/II/III | std::map / Sweep line for dynamic insertions |
 | Maximum CPU Load | Sweep line, track sum of loads |
 
 ### Interval Intersection
 
-```java
-public int[][] intervalIntersection(int[][] A, int[][] B) {
-    List<int[]> result = new ArrayList<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> intervalIntersection(vector<vector<int>>& A, vector<vector<int>>& B) {
+    vector<vector<int>> result;
     int i = 0, j = 0;
-    while (i < A.length && j < B.length) {
-        int lo = Math.max(A[i][0], B[j][0]);
-        int hi = Math.min(A[i][1], B[j][1]);
-        if (lo <= hi) result.add(new int[]{lo, hi});
+    while (i < (int)A.size() && j < (int)B.size()) {
+        int lo = max(A[i][0], B[j][0]);
+        int hi = min(A[i][1], B[j][1]);
+        if (lo <= hi) result.push_back({lo, hi});
         if (A[i][1] < B[j][1]) i++;
         else j++;
     }
-    return result.toArray(new int[0][]);
+    return result;
 }
 ```
 

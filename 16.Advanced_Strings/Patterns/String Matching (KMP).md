@@ -19,18 +19,21 @@ For a string `s` of length `n`, define:
 
 When matching a pattern against a text and a mismatch happens at pattern index `j`, we already know that `s[0..j-1]` matched. The longest border `lps[j-1]` tells us the longest stretch we can *reuse* without re-reading the text. We jump `j` back to `lps[j-1]` instead of restarting at 0 — that is what turns naive O(nm) matching into O(n+m).
 
-### Construction — full Java
+### Construction — full C++
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // lps[i] = length of the longest proper prefix of s[0..i] that is also a suffix.
-public static int[] buildLPS(String s) {
+vector<int> buildLPS(const string& s) {
     int n = s.length();
-    int[] lps = new int[n];
+    vector<int> lps(n);
     lps[0] = 0;            // a single char has no proper prefix
     int len = 0;          // length of the previous longest border
     int i = 1;
     while (i < n) {
-        if (s.charAt(i) == s.charAt(len)) {
+        if (s[i] == s[len]) {
             len++;            // extend the current border by one
             lps[i] = len;
             i++;
@@ -52,16 +55,19 @@ The crucial line is `len = lps[len - 1]`. On a mismatch we do **not** reset `len
 
 ## 2. KMP Search using the LPS array
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Returns the first index in text where pattern occurs, or -1.
-public static int kmpSearch(String text, String pattern) {
-    if (pattern.isEmpty()) return 0;
-    int[] lps = buildLPS(pattern);
+int kmpSearch(const string& text, const string& pattern) {
+    if (pattern.empty()) return 0;
+    vector<int> lps = buildLPS(pattern);
     int i = 0; // index into text
     int j = 0; // index into pattern
     int n = text.length(), m = pattern.length();
     while (i < n) {
-        if (text.charAt(i) == pattern.charAt(j)) {
+        if (text[i] == pattern[j]) {
             i++; j++;
             if (j == m) return i - j;          // full match found
         } else if (j > 0) {
@@ -82,14 +88,18 @@ To find **all** occurrences, replace `return i - j;` with: record `i - j`, then 
 
 > Return the index of the first occurrence of `needle` in `haystack`, or -1.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int strStr(String haystack, String needle) {
-        if (needle.isEmpty()) return 0;
-        int[] lps = buildLPS(needle);
+public:
+    int strStr(string haystack, string needle) {
+        if (needle.empty()) return 0;
+        vector<int> lps = buildLPS(needle);
         int i = 0, j = 0, n = haystack.length(), m = needle.length();
         while (i < n) {
-            if (haystack.charAt(i) == needle.charAt(j)) {
+            if (haystack[i] == needle[j]) {
                 i++; j++;
                 if (j == m) return i - j;
             } else if (j > 0) {
@@ -101,21 +111,22 @@ class Solution {
         return -1;
     }
 
-    private int[] buildLPS(String s) {
+private:
+    vector<int> buildLPS(const string& s) {
         int n = s.length();
-        int[] lps = new int[n];
+        vector<int> lps(n);
         int len = 0, i = 1;
         while (i < n) {
-            if (s.charAt(i) == s.charAt(len)) { lps[i++] = ++len; }
+            if (s[i] == s[len]) { lps[i++] = ++len; }
             else if (len > 0) { len = lps[len - 1]; }
             else { lps[i++] = 0; }
         }
         return lps;
     }
-}
+};
 ```
 
-**Complexity:** O(n + m) time, O(m) space. In Java `haystack.indexOf(needle)` does the same job; use KMP only when the interviewer forbids library calls or asks for the algorithm explicitly.
+**Complexity:** O(n + m) time, O(m) space. In C++ `haystack.find(needle) != string::npos` does the same job; use KMP only when the interviewer forbids library calls or asks for the algorithm explicitly.
 
 ---
 
@@ -125,20 +136,24 @@ class Solution {
 
 This is the prefix function **by definition**: the longest border of the whole string is `lps[n-1]`.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public String longestPrefix(String s) {
+public:
+    string longestPrefix(string s) {
         int n = s.length();
-        int[] lps = new int[n];
+        vector<int> lps(n);
         int len = 0, i = 1;
         while (i < n) {
-            if (s.charAt(i) == s.charAt(len)) { lps[i++] = ++len; }
+            if (s[i] == s[len]) { lps[i++] = ++len; }
             else if (len > 0) { len = lps[len - 1]; }
             else { lps[i++] = 0; }
         }
-        return s.substring(0, lps[n - 1]);   // longest proper prefix == suffix
+        return s.substr(0, lps[n - 1]);   // longest proper prefix == suffix
     }
-}
+};
 ```
 
 **Complexity:** O(n) time, O(n) space. This is the cleanest demonstration that the prefix function *is* the answer, not just a tool.
@@ -155,21 +170,25 @@ class Solution {
 
 `lps[n-1] = k` means the length-`k` prefix equals the length-`k` suffix. Overlaying these two borders forces `s[i] == s[i+p]` for all valid `i`, i.e. `p = n - k` is a period of `s`. If `p` divides `n`, the block `s[0..p-1]` tiles the whole string exactly `n/p` times. The `k != 0` guard rules out strings with no border at all (e.g. `"abc"`), where `p = n` would falsely "divide" `n` once.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public boolean repeatedSubstringPattern(String s) {
+public:
+    bool repeatedSubstringPattern(string s) {
         int n = s.length();
-        int[] lps = new int[n];
+        vector<int> lps(n);
         int len = 0, i = 1;
         while (i < n) {
-            if (s.charAt(i) == s.charAt(len)) { lps[i++] = ++len; }
+            if (s[i] == s[len]) { lps[i++] = ++len; }
             else if (len > 0) { len = lps[len - 1]; }
             else { lps[i++] = 0; }
         }
         int k = lps[n - 1];
         return k != 0 && n % (n - k) == 0;
     }
-}
+};
 ```
 
 **Complexity:** O(n) time, O(n) space.
@@ -182,26 +201,31 @@ class Solution {
 
 **Insight.** If `b` is a substring of `a` repeated `q` times, the smallest `q` is at least `ceil(|b| / |a|)`. But `b` may straddle a boundary, so we may need **one more** copy. Therefore only `q` and `q+1` can ever be the answer — test both with a substring/KMP search.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int repeatedStringMatch(String a, String b) {
-        StringBuilder sb = new StringBuilder();
+public:
+    int repeatedStringMatch(string a, string b) {
+        string sb = "";
         int count = 0;
         // Append a until the built string is at least as long as b.
-        while (sb.length() < b.length()) { sb.append(a); count++; }
+        while (sb.length() < b.length()) { sb += a; count++; }
         // b might cross the boundary -> try with one extra copy.
-        if (contains(sb.toString(), b)) return count;
-        sb.append(a);
-        if (contains(sb.toString(), b)) return count + 1;
+        if (contains(sb, b)) return count;
+        sb += a;
+        if (contains(sb, b)) return count + 1;
         return -1;
     }
 
-    // KMP membership test (or simply: return text.contains(pattern); in an interview).
-    private boolean contains(String text, String pattern) {
-        int[] lps = buildLPS(pattern);
+private:
+    // KMP membership test (or simply: return text.find(pattern) != string::npos; in an interview).
+    bool contains(const string& text, const string& pattern) {
+        vector<int> lps = buildLPS(pattern);
         int i = 0, j = 0, n = text.length(), m = pattern.length();
         while (i < n) {
-            if (text.charAt(i) == pattern.charAt(j)) {
+            if (text[i] == pattern[j]) {
                 i++; j++;
                 if (j == m) return true;
             } else if (j > 0) { j = lps[j - 1]; }
@@ -210,18 +234,18 @@ class Solution {
         return false;
     }
 
-    private int[] buildLPS(String s) {
+    vector<int> buildLPS(const string& s) {
         int n = s.length();
-        int[] lps = new int[n];
+        vector<int> lps(n);
         int len = 0, i = 1;
         while (i < n) {
-            if (s.charAt(i) == s.charAt(len)) { lps[i++] = ++len; }
+            if (s[i] == s[len]) { lps[i++] = ++len; }
             else if (len > 0) { len = lps[len - 1]; }
             else { lps[i++] = 0; }
         }
         return lps;
     }
-}
+};
 ```
 
 **Complexity:** O(|a| + |b|) time and space. The KMP membership keeps the search linear; the bound "only `q` or `q+1`" keeps the number of copies minimal.
@@ -252,7 +276,7 @@ A second classic, `"AABAACAABAA"`, yields `lps = [0,1,0,1,2,0,1,2,3,4,5]`; the f
 
 | Signal in the prompt | Reach for |
 |----------------------|-----------|
-| "first occurrence", "index of substring", "implement strStr" | KMP search (or `indexOf` if allowed) |
+| "first occurrence", "index of substring", "implement strStr" | KMP search (or `find` if allowed) |
 | "prefix that is also a suffix", "happy prefix", "border" | `lps[n-1]` directly |
 | "repeated copies of a substring", "is the string periodic" | period `n - lps[n-1]`, check `n % p == 0` |
 | "how many times repeat A to contain B" | build until `>= |b|`, test `q` and `q+1` |

@@ -10,7 +10,7 @@ This pattern focuses on **Breadth-First Search (BFS)** over grids, with a heavy 
 
 ## Core Concept: The Grid as an Implicit Graph
 
-In an explicit graph you have `List<Integer>[] adj`. In a grid you have nothing but `grid[r][c]`. The "neighbors" of cell `(r, c)` are computed:
+In an explicit graph you have `vector<int> adj[]`. In a grid you have nothing but `grid[r][c]`. The "neighbors" of cell `(r, c)` are computed:
 
 ```
 (r+1, c), (r-1, c), (r, c+1), (r, c-1)   // 4-directional
@@ -37,24 +37,27 @@ Because all sources start at level 0 together, the BFS naturally computes, for e
 
 The skeleton:
 
-```java
-Queue<int[]> q = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+queue<pair<int,int>> q;
 // 1. seed every source
 for (each source cell s) {
-    q.offer(s);
+    q.push(s);
     visited[s] = true;        // or write distance 0
 }
 // 2. expand level by level
 int level = 0;
-while (!q.isEmpty()) {
+while (!q.empty()) {
     int size = q.size();      // freeze this level's frontier
     for (int i = 0; i < size; i++) {
-        int[] cell = q.poll();
-        for (int[] d : dirs) {
-            int nr = cell[0] + d[0], nc = cell[1] + d[1];
+        auto [r, c] = q.front(); q.pop();
+        for (auto& d : dirs) {
+            int nr = r + d[0], nc = c + d[1];
             if (inBounds(nr, nc) && !visited[nr][nc] && valid(nr, nc)) {
                 visited[nr][nc] = true;
-                q.offer(new int[]{nr, nc});
+                q.push({nr, nc});
             }
         }
     }
@@ -72,14 +75,14 @@ The single most reused idiom in grid problems. Iterating over a small array keep
 
 **4-directional** (up / down / left / right):
 
-```java
-int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+```cpp
+vector<vector<int>> dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 ```
 
 **8-directional** (orthogonal + diagonals) — required for *Shortest Path in Binary Matrix*, where diagonal moves are legal:
 
-```java
-int[][] dirs8 = {
+```cpp
+vector<vector<int>> dirs8 = {
     {1, 0}, {-1, 0}, {0, 1}, {0, -1},
     {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
 };
@@ -87,8 +90,8 @@ int[][] dirs8 = {
 
 Usage:
 
-```java
-for (int[] d : dirs) {
+```cpp
+for (auto& d : dirs) {
     int nr = r + d[0], nc = c + d[1];
     if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
     // ... process (nr, nc)
@@ -117,23 +120,24 @@ for (int[] d : dirs) {
 
 **Idea:** Every rotten orange is a BFS source. Each minute, all rotten oranges simultaneously rot their fresh neighbors — exactly a multi-source level-order BFS. The answer is the number of levels; return `-1` if any fresh orange is unreachable.
 
-```java
-import java.util.ArrayDeque;
-import java.util.Queue;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int orangesRotting(int[][] grid) {
-        int rows = grid.length, cols = grid[0].length;
-        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+public:
+    int orangesRotting(vector<vector<int>>& grid) {
+        int rows = grid.size(), cols = grid[0].size();
+        vector<vector<int>> dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
-        Queue<int[]> queue = new ArrayDeque<>();
+        queue<pair<int,int>> q;
         int fresh = 0;
 
         // Seed all initially rotten oranges (value 2) as sources at minute 0.
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 if (grid[r][c] == 2) {
-                    queue.offer(new int[]{r, c});
+                    q.push({r, c});
                 } else if (grid[r][c] == 1) {
                     fresh++;
                 }
@@ -144,22 +148,21 @@ class Solution {
         if (fresh == 0) return 0;
 
         int minutes = 0;
-        while (!queue.isEmpty()) {
-            int size = queue.size();   // all oranges rotting this minute
-            boolean rottedThisMinute = false;
+        while (!q.empty()) {
+            int size = q.size();   // all oranges rotting this minute
+            bool rottedThisMinute = false;
 
             for (int i = 0; i < size; i++) {
-                int[] cell = queue.poll();
-                int r = cell[0], c = cell[1];
+                auto [r, c] = q.front(); q.pop();
 
-                for (int[] d : dirs) {
+                for (auto& d : dirs) {
                     int nr = r + d[0], nc = c + d[1];
                     if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
                     if (grid[nr][nc] != 1) continue;   // skip empty or already rotten
 
                     grid[nr][nc] = 2;                  // rot it (also marks visited)
                     fresh--;
-                    queue.offer(new int[]{nr, nc});
+                    q.push({nr, nc});
                     rottedThisMinute = true;
                 }
             }
@@ -169,7 +172,7 @@ class Solution {
         // If any fresh orange remains, some were isolated and can never rot.
         return fresh == 0 ? minutes : -1;
     }
-}
+};
 ```
 
 **Complexity:** Time `O(rows × cols)` — every cell is enqueued at most once. Space `O(rows × cols)` for the queue in the worst case (grid full of rotten oranges).
@@ -232,47 +235,47 @@ Grid (`2` = rotten, `1` = fresh, `0` = empty):
 
 **Idea:** For each cell, find the distance to the nearest `0`. Run multi-source BFS seeded from **all** `0` cells at once; the BFS level at which a `1` is first reached is its nearest-zero distance.
 
-```java
-import java.util.ArrayDeque;
-import java.util.Queue;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int[][] updateMatrix(int[][] mat) {
-        int rows = mat.length, cols = mat[0].length;
-        int[][] dist = new int[rows][cols];
-        boolean[][] visited = new boolean[rows][cols];
-        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+public:
+    vector<vector<int>> updateMatrix(vector<vector<int>>& mat) {
+        int rows = mat.size(), cols = mat[0].size();
+        vector<vector<int>> dist(rows, vector<int>(cols, 0));
+        vector<vector<bool>> visited(rows, vector<bool>(cols, false));
+        vector<vector<int>> dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
-        Queue<int[]> queue = new ArrayDeque<>();
+        queue<pair<int,int>> q;
 
         // Seed every 0 as a source (distance 0).
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 if (mat[r][c] == 0) {
-                    queue.offer(new int[]{r, c});
+                    q.push({r, c});
                     visited[r][c] = true;
                 }
             }
         }
 
-        while (!queue.isEmpty()) {
-            int[] cell = queue.poll();
-            int r = cell[0], c = cell[1];
+        while (!q.empty()) {
+            auto [r, c] = q.front(); q.pop();
 
-            for (int[] d : dirs) {
+            for (auto& d : dirs) {
                 int nr = r + d[0], nc = c + d[1];
                 if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
                 if (visited[nr][nc]) continue;
 
                 dist[nr][nc] = dist[r][c] + 1;   // one step farther from source
                 visited[nr][nc] = true;
-                queue.offer(new int[]{nr, nc});
+                q.push({nr, nc});
             }
         }
 
         return dist;
     }
-}
+};
 ```
 
 **Complexity:** Time `O(rows × cols)`. Space `O(rows × cols)` for the queue and visited/distance arrays.
@@ -283,34 +286,34 @@ class Solution {
 
 **Idea:** Fill each empty room with the distance to its nearest gate. Gates are `0`, walls are `-1`, empty rooms are `INF = 2147483647`. Multi-source BFS from all gates; we never need a separate visited array because an empty room still holding `INF` is "unvisited".
 
-```java
-import java.util.ArrayDeque;
-import java.util.Queue;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    private static final int INF = 2147483647;  // Integer.MAX_VALUE
+    static const int INF = 2147483647;  // INT_MAX
 
-    public void wallsAndGates(int[][] rooms) {
-        if (rooms == null || rooms.length == 0) return;
-        int rows = rooms.length, cols = rooms[0].length;
-        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+public:
+    void wallsAndGates(vector<vector<int>>& rooms) {
+        if (rooms.empty()) return;
+        int rows = rooms.size(), cols = rooms[0].size();
+        vector<vector<int>> dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
-        Queue<int[]> queue = new ArrayDeque<>();
+        queue<pair<int,int>> q;
 
         // Seed every gate (value 0) as a source.
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 if (rooms[r][c] == 0) {
-                    queue.offer(new int[]{r, c});
+                    q.push({r, c});
                 }
             }
         }
 
-        while (!queue.isEmpty()) {
-            int[] cell = queue.poll();
-            int r = cell[0], c = cell[1];
+        while (!q.empty()) {
+            auto [r, c] = q.front(); q.pop();
 
-            for (int[] d : dirs) {
+            for (auto& d : dirs) {
                 int nr = r + d[0], nc = c + d[1];
                 if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
                 // Only update untouched empty rooms (still INF). Walls (-1)
@@ -318,11 +321,11 @@ class Solution {
                 if (rooms[nr][nc] != INF) continue;
 
                 rooms[nr][nc] = rooms[r][c] + 1;
-                queue.offer(new int[]{nr, nc});
+                q.push({nr, nc});
             }
         }
     }
-}
+};
 ```
 
 **Complexity:** Time `O(rows × cols)`. Space `O(rows × cols)` for the queue worst case (grid full of gates).
@@ -333,40 +336,40 @@ class Solution {
 
 **Idea:** Find the shortest clear path from top-left to bottom-right where you may move in **8 directions** and only step on `0` cells. Single-source BFS with an 8-directional dirs array; path length counts cells visited (start counts as 1).
 
-```java
-import java.util.ArrayDeque;
-import java.util.Queue;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int shortestPathBinaryMatrix(int[][] grid) {
-        int n = grid.length;
+public:
+    int shortestPathBinaryMatrix(vector<vector<int>>& grid) {
+        int n = grid.size();
         if (grid[0][0] != 0 || grid[n - 1][n - 1] != 0) return -1;
 
-        int[][] dirs = {
+        vector<vector<int>> dirs = {
             {1, 0}, {-1, 0}, {0, 1}, {0, -1},
             {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
         };
 
-        Queue<int[]> queue = new ArrayDeque<>();
-        queue.offer(new int[]{0, 0});
+        queue<pair<int,int>> q;
+        q.push({0, 0});
         grid[0][0] = 1;            // mark visited by reusing the grid; start path length = 1
         int pathLen = 1;
 
-        while (!queue.isEmpty()) {
-            int size = queue.size();
+        while (!q.empty()) {
+            int size = q.size();
             for (int i = 0; i < size; i++) {
-                int[] cell = queue.poll();
-                int r = cell[0], c = cell[1];
+                auto [r, c] = q.front(); q.pop();
 
                 if (r == n - 1 && c == n - 1) return pathLen;
 
-                for (int[] d : dirs) {
+                for (auto& d : dirs) {
                     int nr = r + d[0], nc = c + d[1];
                     if (nr < 0 || nr >= n || nc < 0 || nc >= n) continue;
                     if (grid[nr][nc] != 0) continue;   // wall (1) or already visited
 
                     grid[nr][nc] = 1;                  // mark visited on enqueue
-                    queue.offer(new int[]{nr, nc});
+                    q.push({nr, nc});
                 }
             }
             pathLen++;
@@ -374,7 +377,7 @@ class Solution {
 
         return -1;
     }
-}
+};
 ```
 
 **Complexity:** Time `O(n²)` — each cell enqueued once, 8 neighbor checks each. Space `O(n²)` for the queue.
@@ -385,23 +388,24 @@ class Solution {
 
 **Idea:** Find the water cell whose distance to the nearest land is maximized. Multi-source BFS seeded from **all land** cells; the BFS expands outward, and the *last* level reached is the maximum land-to-water distance.
 
-```java
-import java.util.ArrayDeque;
-import java.util.Queue;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int maxDistance(int[][] grid) {
-        int n = grid.length;
-        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+public:
+    int maxDistance(vector<vector<int>>& grid) {
+        int n = grid.size();
+        vector<vector<int>> dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
-        Queue<int[]> queue = new ArrayDeque<>();
+        queue<pair<int,int>> q;
         int landCount = 0, waterCount = 0;
 
         // Seed all land cells (value 1) as sources.
         for (int r = 0; r < n; r++) {
             for (int c = 0; c < n; c++) {
                 if (grid[r][c] == 1) {
-                    queue.offer(new int[]{r, c});
+                    q.push({r, c});
                     landCount++;
                 } else {
                     waterCount++;
@@ -413,28 +417,27 @@ class Solution {
         if (landCount == 0 || waterCount == 0) return -1;
 
         int distance = -1;
-        while (!queue.isEmpty()) {
-            int size = queue.size();
+        while (!q.empty()) {
+            int size = q.size();
             distance++;   // each full level pushes the frontier one step into the water
 
             for (int i = 0; i < size; i++) {
-                int[] cell = queue.poll();
-                int r = cell[0], c = cell[1];
+                auto [r, c] = q.front(); q.pop();
 
-                for (int[] d : dirs) {
+                for (auto& d : dirs) {
                     int nr = r + d[0], nc = c + d[1];
                     if (nr < 0 || nr >= n || nc < 0 || nc >= n) continue;
                     if (grid[nr][nc] != 0) continue;   // skip land / already visited
 
                     grid[nr][nc] = 1;   // mark this water cell as reached
-                    queue.offer(new int[]{nr, nc});
+                    q.push({nr, nc});
                 }
             }
         }
 
         return distance;   // last level processed = farthest water from any land
     }
-}
+};
 ```
 
 **Complexity:** Time `O(n²)`. Space `O(n²)` for the queue.
@@ -445,23 +448,24 @@ class Solution {
 
 **Idea:** There are exactly two islands. Use **DFS** to find and mark the first island (changing its cells to `2` and seeding them into a queue), then run **multi-source BFS** outward through water until it touches the second island. The number of BFS levels is the shortest bridge length.
 
-```java
-import java.util.ArrayDeque;
-import java.util.Queue;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    private final int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+    vector<vector<int>> dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
-    public int shortestBridge(int[][] grid) {
-        int n = grid.length;
-        Queue<int[]> queue = new ArrayDeque<>();
+public:
+    int shortestBridge(vector<vector<int>>& grid) {
+        int n = grid.size();
+        queue<pair<int,int>> q;
 
         // Step 1: locate the first island, mark it (1 -> 2) and seed its cells.
-        boolean found = false;
+        bool found = false;
         for (int r = 0; r < n && !found; r++) {
             for (int c = 0; c < n && !found; c++) {
                 if (grid[r][c] == 1) {
-                    dfsMark(grid, r, c, queue);
+                    dfsMark(grid, r, c, q);
                     found = true;
                 }
             }
@@ -469,20 +473,19 @@ class Solution {
 
         // Step 2: BFS outward from the entire first island simultaneously.
         int steps = 0;
-        while (!queue.isEmpty()) {
-            int size = queue.size();
+        while (!q.empty()) {
+            int size = q.size();
             for (int i = 0; i < size; i++) {
-                int[] cell = queue.poll();
-                int r = cell[0], c = cell[1];
+                auto [r, c] = q.front(); q.pop();
 
-                for (int[] d : dirs) {
+                for (auto& d : dirs) {
                     int nr = r + d[0], nc = c + d[1];
                     if (nr < 0 || nr >= n || nc < 0 || nc >= n) continue;
 
                     if (grid[nr][nc] == 1) return steps;  // reached the second island
                     if (grid[nr][nc] == 0) {              // water: extend the bridge
                         grid[nr][nc] = 2;                 // mark visited
-                        queue.offer(new int[]{nr, nc});
+                        q.push({nr, nc});
                     }
                     // grid[nr][nc] == 2 -> already part of island/visited, skip
                 }
@@ -493,16 +496,17 @@ class Solution {
         return -1;  // unreachable in valid input
     }
 
-    private void dfsMark(int[][] grid, int r, int c, Queue<int[]> queue) {
-        int n = grid.length;
+private:
+    void dfsMark(vector<vector<int>>& grid, int r, int c, queue<pair<int,int>>& q) {
+        int n = grid.size();
         if (r < 0 || r >= n || c < 0 || c >= n || grid[r][c] != 1) return;
         grid[r][c] = 2;                   // mark as visited / first island
-        queue.offer(new int[]{r, c});
-        for (int[] d : dirs) {
-            dfsMark(grid, r + d[0], c + d[1], queue);
+        q.push({r, c});
+        for (auto& d : dirs) {
+            dfsMark(grid, r + d[0], c + d[1], q);
         }
     }
-}
+};
 ```
 
 **Complexity:** Time `O(n²)` — DFS touches the first island once, BFS touches each cell once. Space `O(n²)` for the recursion stack and queue.
@@ -511,26 +515,27 @@ class Solution {
 
 ## 17. Number of Distinct Islands — Medium (LC694)
 
-**Idea:** Count islands that are distinct in **shape** (translations are the same, rotations/reflections are not). DFS each island while recording the **relative path signature** — the sequence of moves taken from the island's entry cell. Two islands with the same signature have the same shape. Store signatures in a `Set`.
+**Idea:** Count islands that are distinct in **shape** (translations are the same, rotations/reflections are not). DFS each island while recording the **relative path signature** — the sequence of moves taken from the island's entry cell. Two islands with the same signature have the same shape. Store signatures in an `unordered_set`.
 
-```java
-import java.util.HashSet;
-import java.util.Set;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    private final int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-    private final char[] dirChar = {'D', 'U', 'R', 'L'};  // aligned with dirs
+    vector<vector<int>> dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+    string dirChar = "DURL";  // aligned with dirs
 
-    public int numDistinctIslands(int[][] grid) {
-        int rows = grid.length, cols = grid[0].length;
-        Set<String> shapes = new HashSet<>();
+public:
+    int numDistinctIslands(vector<vector<int>>& grid) {
+        int rows = grid.size(), cols = grid[0].size();
+        unordered_set<string> shapes;
 
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 if (grid[r][c] == 1) {
-                    StringBuilder path = new StringBuilder();
+                    string path;
                     dfs(grid, r, c, 'S', path);   // 'S' = start of this island
-                    shapes.add(path.toString());
+                    shapes.insert(path);
                 }
             }
         }
@@ -538,21 +543,22 @@ class Solution {
         return shapes.size();
     }
 
-    private void dfs(int[][] grid, int r, int c, char move, StringBuilder path) {
-        int rows = grid.length, cols = grid[0].length;
+private:
+    void dfs(vector<vector<int>>& grid, int r, int c, char move, string& path) {
+        int rows = grid.size(), cols = grid[0].size();
         if (r < 0 || r >= rows || c < 0 || c >= cols || grid[r][c] != 1) return;
 
         grid[r][c] = 0;          // mark visited
-        path.append(move);       // record how we entered this cell
+        path += move;            // record how we entered this cell
 
-        for (int i = 0; i < dirs.length; i++) {
+        for (int i = 0; i < (int)dirs.size(); i++) {
             dfs(grid, r + dirs[i][0], c + dirs[i][1], dirChar[i], path);
         }
 
         // Append a backtrack marker so different shapes can't collide via concatenation.
-        path.append('B');
+        path += 'B';
     }
-}
+};
 ```
 
 The `'B'` backtrack marker is important: without it, shapes that branch differently could produce identical strings. By recording both forward moves and backtracks, the signature uniquely encodes the traversal tree, and identical shapes always yield identical signatures because the DFS visits directions in a fixed order.
@@ -565,18 +571,17 @@ The `'B'` backtrack marker is important: without it, shapes that branch differen
 
 **Idea:** You may flip at most one `0` to `1`. Maximize the resulting island size. First, **label every island with a unique id** and record each island's size in a map. Then, for each `0` cell, look at its distinct neighboring island ids and sum their sizes plus one (the flipped cell). The best such sum is the answer. If there are no `0` cells, the whole grid is already one island.
 
-```java
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    private final int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+    vector<vector<int>> dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
-    public int largestIsland(int[][] grid) {
-        int n = grid.length;
-        Map<Integer, Integer> sizeById = new HashMap<>();
+public:
+    int largestIsland(vector<vector<int>>& grid) {
+        int n = grid.size();
+        unordered_map<int, int> sizeById;
         int id = 2;   // start ids at 2 (0 = water, 1 = unlabeled land)
 
         // Pass 1: label each island and store its size.
@@ -584,7 +589,7 @@ class Solution {
             for (int c = 0; c < n; c++) {
                 if (grid[r][c] == 1) {
                     int size = dfsLabel(grid, r, c, id);
-                    sizeById.put(id, size);
+                    sizeById[id] = size;
                     id++;
                 }
             }
@@ -592,23 +597,24 @@ class Solution {
 
         // If the grid was entirely land, there is no 0 to flip.
         int best = 0;
-        for (int value : sizeById.values()) best = Math.max(best, value);
+        for (auto& [k, v] : sizeById) best = max(best, v);
 
         // Pass 2: try flipping each water cell and sum distinct neighbor islands.
         for (int r = 0; r < n; r++) {
             for (int c = 0; c < n; c++) {
                 if (grid[r][c] == 0) {
-                    Set<Integer> seen = new HashSet<>();
+                    unordered_set<int> seen;
                     int combined = 1;   // the flipped cell itself
-                    for (int[] d : dirs) {
+                    for (auto& d : dirs) {
                         int nr = r + d[0], nc = c + d[1];
                         if (nr < 0 || nr >= n || nc < 0 || nc >= n) continue;
                         int neighborId = grid[nr][nc];
-                        if (neighborId > 1 && seen.add(neighborId)) {
-                            combined += sizeById.get(neighborId);
+                        if (neighborId > 1 && seen.find(neighborId) == seen.end()) {
+                            seen.insert(neighborId);
+                            combined += sizeById[neighborId];
                         }
                     }
-                    best = Math.max(best, combined);
+                    best = max(best, combined);
                 }
             }
         }
@@ -616,20 +622,21 @@ class Solution {
         return best;
     }
 
-    private int dfsLabel(int[][] grid, int r, int c, int id) {
-        int n = grid.length;
+private:
+    int dfsLabel(vector<vector<int>>& grid, int r, int c, int id) {
+        int n = grid.size();
         if (r < 0 || r >= n || c < 0 || c >= n || grid[r][c] != 1) return 0;
         grid[r][c] = id;   // overwrite land with its island id
         int size = 1;
-        for (int[] d : dirs) {
+        for (auto& d : dirs) {
             size += dfsLabel(grid, r + d[0], c + d[1], id);
         }
         return size;
     }
-}
+};
 ```
 
-Using a `Set` of neighbor ids per `0` cell prevents double-counting when two of the four neighbors belong to the *same* island. Labeling with ids (rather than re-flooding for every candidate flip) is what keeps this efficient.
+Using an `unordered_set` of neighbor ids per `0` cell prevents double-counting when two of the four neighbors belong to the *same* island. Labeling with ids (rather than re-flooding for every candidate flip) is what keeps this efficient.
 
 **Complexity:** Time `O(n²)` — one labeling pass and one flip-evaluation pass, each touching every cell a constant number of times. Space `O(n²)` for the recursion stack and the size map.
 

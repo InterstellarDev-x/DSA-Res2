@@ -8,12 +8,16 @@ array* the balanced root is the **middle** element. From a *preorder traversal* 
 element is the root and an **upper bound** cleanly separates the two subtrees in a single O(n)
 pass.
 
-```java
-public class TreeNode {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
+};
 ```
 
 > **Recognition signals:** "build a height-balanced BST", "from a sorted array", "from preorder",
@@ -27,17 +31,20 @@ The array is already sorted (= an inorder sequence). Choosing the **middle** ele
 at every level guarantees a **height-balanced** tree: left half builds the left subtree, right half
 the right subtree.
 
-```java
-public TreeNode sortedArrayToBST(int[] nums) {
-    return build(nums, 0, nums.length - 1);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+TreeNode* sortedArrayToBST(vector<int>& nums) {
+    return build(nums, 0, nums.size() - 1);
 }
 
-private TreeNode build(int[] nums, int lo, int hi) {
-    if (lo > hi) return null;
+TreeNode* build(vector<int>& nums, int lo, int hi) {
+    if (lo > hi) return nullptr;
     int mid = lo + (hi - lo) / 2;            // middle ⇒ balanced; avoids overflow
-    TreeNode root = new TreeNode(nums[mid]);
-    root.left  = build(nums, lo, mid - 1);
-    root.right = build(nums, mid + 1, hi);
+    TreeNode* root = new TreeNode(nums[mid]);
+    root->left  = build(nums, lo, mid - 1);
+    root->right = build(nums, mid + 1, hi);
     return root;
 }
 ```
@@ -54,19 +61,22 @@ belongs to the left subtree; the first value larger starts the right subtree. Th
 solution uses a single shared index and an **upper bound** that says "consume values that still
 belong to the current subtree."
 
-```java
-private int idx = 0;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public TreeNode bstFromPreorder(int[] preorder) {
+int idx = 0;
+
+TreeNode* bstFromPreorder(vector<int>& preorder) {
     idx = 0;
-    return build(preorder, Integer.MAX_VALUE);
+    return build(preorder, INT_MAX);
 }
 
-private TreeNode build(int[] pre, int bound) {
-    if (idx == pre.length || pre[idx] > bound) return null;  // nothing more fits here
-    TreeNode root = new TreeNode(pre[idx++]);
-    root.left  = build(pre, root.val);   // left subtree: values < root.val
-    root.right = build(pre, bound);      // right subtree: values < inherited bound
+TreeNode* build(vector<int>& pre, int bound) {
+    if (idx == (int)pre.size() || pre[idx] > bound) return nullptr;  // nothing more fits here
+    TreeNode* root = new TreeNode(pre[idx++]);
+    root->left  = build(pre, root->val);   // left subtree: values < root->val
+    root->right = build(pre, bound);      // right subtree: values < inherited bound
     return root;
 }
 ```
@@ -75,22 +85,25 @@ Each element is consumed exactly once → **O(n)**.
 
 A simpler-to-explain (but O(n²) worst case) recursion uses explicit lo/hi value bounds:
 
-```java
-private int p = 0;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public TreeNode bstFromPreorderBounds(int[] pre) {
+int p = 0;
+
+TreeNode* bstFromPreorderBounds(vector<int>& pre) {
     p = 0;
-    return helper(pre, Integer.MIN_VALUE, Integer.MAX_VALUE);
+    return helper(pre, INT_MIN, INT_MAX);
 }
 
-private TreeNode helper(int[] pre, int lower, int upper) {
-    if (p == pre.length) return null;
+TreeNode* helper(vector<int>& pre, int lower, int upper) {
+    if (p == (int)pre.size()) return nullptr;
     int v = pre[p];
-    if (v < lower || v > upper) return null;
+    if (v < lower || v > upper) return nullptr;
     p++;
-    TreeNode node = new TreeNode(v);
-    node.left  = helper(pre, lower, v);
-    node.right = helper(pre, v, upper);
+    TreeNode* node = new TreeNode(v);
+    node->left  = helper(pre, lower, v);
+    node->right = helper(pre, v, upper);
     return node;
 }
 ```
@@ -106,26 +119,29 @@ Two-step composition of the previous ideas:
 1. **Inorder traversal → sorted array** (a BST's inorder is sorted, so no actual sorting needed).
 2. **Sorted array → height-balanced BST** using the LC 108 mid-element technique.
 
-```java
-public TreeNode balanceBST(TreeNode root) {
-    List<Integer> sorted = new ArrayList<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+TreeNode* balanceBST(TreeNode* root) {
+    vector<int> sorted;
     inorder(root, sorted);
     return build(sorted, 0, sorted.size() - 1);
 }
 
-private void inorder(TreeNode node, List<Integer> out) {
-    if (node == null) return;
-    inorder(node.left, out);
-    out.add(node.val);
-    inorder(node.right, out);
+void inorder(TreeNode* node, vector<int>& out) {
+    if (node == nullptr) return;
+    inorder(node->left, out);
+    out.push_back(node->val);
+    inorder(node->right, out);
 }
 
-private TreeNode build(List<Integer> a, int lo, int hi) {
-    if (lo > hi) return null;
+TreeNode* build(vector<int>& a, int lo, int hi) {
+    if (lo > hi) return nullptr;
     int mid = lo + (hi - lo) / 2;
-    TreeNode root = new TreeNode(a.get(mid));
-    root.left  = build(a, lo, mid - 1);
-    root.right = build(a, mid + 1, hi);
+    TreeNode* root = new TreeNode(a[mid]);
+    root->left  = build(a, lo, mid - 1);
+    root->right = build(a, mid + 1, hi);
     return root;
 }
 ```

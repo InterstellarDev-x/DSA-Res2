@@ -26,41 +26,38 @@ Idea: a node can only appear in the ordering once all of its prerequisites are p
 
 **Cycle check:** count how many nodes you actually pop from the queue. If `processed < V`, some nodes were stuck with indegree > 0 forever — they form (or depend on) a cycle, so no topo order exists.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class KahnTemplate {
-    // n nodes labelled 0..n-1, edges given as directed [from, to]
-    public int[] topoSort(int n, int[][] edges) {
-        List<List<Integer>> adj = new ArrayList<>();
-        for (int i = 0; i < n; i++) adj.add(new ArrayList<>());
-        int[] indegree = new int[n];
+// n nodes labelled 0..n-1, edges given as directed [from, to]
+vector<int> topoSort(int n, vector<vector<int>>& edges) {
+    vector<vector<int>> adj(n);
+    vector<int> indegree(n, 0);
 
-        for (int[] e : edges) {
-            int from = e[0], to = e[1];
-            adj.get(from).add(to);
-            indegree[to]++;
-        }
-
-        Queue<Integer> queue = new LinkedList<>();
-        for (int i = 0; i < n; i++) {
-            if (indegree[i] == 0) queue.offer(i);
-        }
-
-        int[] order = new int[n];
-        int idx = 0;
-        while (!queue.isEmpty()) {
-            int node = queue.poll();
-            order[idx++] = node;
-            for (int next : adj.get(node)) {
-                if (--indegree[next] == 0) queue.offer(next);
-            }
-        }
-
-        // If we couldn't place every node, a cycle exists -> no valid order.
-        if (idx != n) return new int[0];
-        return order;
+    for (auto& e : edges) {
+        int from = e[0], to = e[1];
+        adj[from].push_back(to);
+        indegree[to]++;
     }
+
+    queue<int> q;
+    for (int i = 0; i < n; i++) {
+        if (indegree[i] == 0) q.push(i);
+    }
+
+    vector<int> order;
+    while (!q.empty()) {
+        int node = q.front(); q.pop();
+        order.push_back(node);
+        for (int next : adj[node]) {
+            if (--indegree[next] == 0) q.push(next);
+        }
+    }
+
+    // If we couldn't place every node, a cycle exists -> no valid order.
+    if ((int)order.size() != n) return {};
+    return order;
 }
 ```
 
@@ -77,38 +74,19 @@ Idea: run DFS. After fully exploring all descendants of a node (postorder), push
 
 If DFS reaches a **GRAY** node, there is a back edge → a cycle → no topo order.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class DfsTopoTemplate {
-    private List<List<Integer>> adj;
-    private int[] color;   // 0 = white, 1 = gray, 2 = black
-    private Deque<Integer> stack;
-    private boolean hasCycle;
+class DfsTopoTemplate {
+    vector<vector<int>> adj;
+    vector<int> color;   // 0 = white, 1 = gray, 2 = black
+    stack<int> stk;
+    bool hasCycle;
 
-    public int[] topoSort(int n, int[][] edges) {
-        adj = new ArrayList<>();
-        for (int i = 0; i < n; i++) adj.add(new ArrayList<>());
-        for (int[] e : edges) adj.get(e[0]).add(e[1]);
-
-        color = new int[n];
-        stack = new ArrayDeque<>();
-        hasCycle = false;
-
-        for (int i = 0; i < n; i++) {
-            if (color[i] == 0) dfs(i);
-            if (hasCycle) return new int[0];
-        }
-
-        int[] order = new int[n];
-        int idx = 0;
-        while (!stack.isEmpty()) order[idx++] = stack.pop();
-        return order;
-    }
-
-    private void dfs(int node) {
+    void dfs(int node) {
         color[node] = 1; // gray: on the recursion stack
-        for (int next : adj.get(node)) {
+        for (int next : adj[node]) {
             if (color[next] == 1) {      // back edge -> cycle
                 hasCycle = true;
                 return;
@@ -119,9 +97,30 @@ public class DfsTopoTemplate {
             }
         }
         color[node] = 2;   // black: done
-        stack.push(node);  // postorder; stack reverses it for us
+        stk.push(node);  // postorder; stack reverses it for us
     }
-}
+
+public:
+    vector<int> topoSort(int n, vector<vector<int>>& edges) {
+        adj.assign(n, {});
+        for (auto& e : edges) adj[e[0]].push_back(e[1]);
+
+        color.assign(n, 0);
+        hasCycle = false;
+
+        for (int i = 0; i < n; i++) {
+            if (color[i] == 0) dfs(i);
+            if (hasCycle) return {};
+        }
+
+        vector<int> order;
+        while (!stk.empty()) {
+            order.push_back(stk.top());
+            stk.pop();
+        }
+        return order;
+    }
+};
 ```
 
 ---
@@ -145,38 +144,39 @@ public class DfsTopoTemplate {
 
 **Idea:** Model courses as nodes and prerequisites as directed edges `prereq -> course`. You can finish all courses iff the graph is a DAG (no cycle). Use Kahn's: if every node gets processed, no cycle.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public boolean canFinish(int numCourses, int[][] prerequisites) {
-        List<List<Integer>> adj = new ArrayList<>();
-        for (int i = 0; i < numCourses; i++) adj.add(new ArrayList<>());
-        int[] indegree = new int[numCourses];
+public:
+    bool canFinish(int numCourses, vector<vector<int>>& prerequisites) {
+        vector<vector<int>> adj(numCourses);
+        vector<int> indegree(numCourses, 0);
 
         // prerequisites[i] = [course, prereq]: must take prereq before course
-        for (int[] p : prerequisites) {
+        for (auto& p : prerequisites) {
             int course = p[0], prereq = p[1];
-            adj.get(prereq).add(course);
+            adj[prereq].push_back(course);
             indegree[course]++;
         }
 
-        Queue<Integer> queue = new LinkedList<>();
+        queue<int> q;
         for (int i = 0; i < numCourses; i++) {
-            if (indegree[i] == 0) queue.offer(i);
+            if (indegree[i] == 0) q.push(i);
         }
 
         int processed = 0;
-        while (!queue.isEmpty()) {
-            int node = queue.poll();
+        while (!q.empty()) {
+            int node = q.front(); q.pop();
             processed++;
-            for (int next : adj.get(node)) {
-                if (--indegree[next] == 0) queue.offer(next);
+            for (int next : adj[node]) {
+                if (--indegree[next] == 0) q.push(next);
             }
         }
         return processed == numCourses;
     }
-}
+};
 ```
 
 **Complexity:** Time `O(V + E)`, Space `O(V + E)`.
@@ -187,39 +187,39 @@ class Solution {
 
 **Idea:** Same setup as LC207, but record the order in which nodes are popped. If a cycle prevents processing all nodes, return an empty array.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int[] findOrder(int numCourses, int[][] prerequisites) {
-        List<List<Integer>> adj = new ArrayList<>();
-        for (int i = 0; i < numCourses; i++) adj.add(new ArrayList<>());
-        int[] indegree = new int[numCourses];
+public:
+    vector<int> findOrder(int numCourses, vector<vector<int>>& prerequisites) {
+        vector<vector<int>> adj(numCourses);
+        vector<int> indegree(numCourses, 0);
 
-        for (int[] p : prerequisites) {
+        for (auto& p : prerequisites) {
             int course = p[0], prereq = p[1];
-            adj.get(prereq).add(course);
+            adj[prereq].push_back(course);
             indegree[course]++;
         }
 
-        Queue<Integer> queue = new LinkedList<>();
+        queue<int> q;
         for (int i = 0; i < numCourses; i++) {
-            if (indegree[i] == 0) queue.offer(i);
+            if (indegree[i] == 0) q.push(i);
         }
 
-        int[] order = new int[numCourses];
-        int idx = 0;
-        while (!queue.isEmpty()) {
-            int node = queue.poll();
-            order[idx++] = node;
-            for (int next : adj.get(node)) {
-                if (--indegree[next] == 0) queue.offer(next);
+        vector<int> order;
+        while (!q.empty()) {
+            int node = q.front(); q.pop();
+            order.push_back(node);
+            for (int next : adj[node]) {
+                if (--indegree[next] == 0) q.push(next);
             }
         }
 
-        return idx == numCourses ? order : new int[0];
+        return (int)order.size() == numCourses ? order : vector<int>{};
     }
-}
+};
 ```
 
 **Complexity:** Time `O(V + E)`, Space `O(V + E)`.
@@ -247,34 +247,36 @@ Initial indegrees: `[0, 1, 1, 2]` (node 0 has none; node 3 depends on 1 and 2).
 
 **Idea:** The words are sorted by an unknown alphabet. For each adjacent pair of words, the **first differing character** gives an ordering edge `c1 -> c2`. Topologically sort the characters. Edge case: if word A is longer than word B, A comes after B, yet B is a prefix of A (no differing char), that is invalid → return `""`.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public String alienOrder(String[] words) {
+public:
+    string alienOrder(vector<string>& words) {
         // Track all characters that appear, and the dependency graph.
-        Map<Character, Set<Character>> adj = new HashMap<>();
-        Map<Character, Integer> indegree = new HashMap<>();
+        unordered_map<char, unordered_set<char>> adj;
+        unordered_map<char, int> indegree;
 
-        for (String w : words) {
-            for (char c : w.toCharArray()) {
-                adj.putIfAbsent(c, new HashSet<>());
-                indegree.putIfAbsent(c, 0);
+        for (auto& w : words) {
+            for (char c : w) {
+                if (!adj.count(c)) adj[c] = {};
+                if (!indegree.count(c)) indegree[c] = 0;
             }
         }
 
         // Build edges from each adjacent pair of words.
-        for (int i = 0; i + 1 < words.length; i++) {
-            String a = words[i], b = words[i + 1];
-            int minLen = Math.min(a.length(), b.length());
+        for (int i = 0; i + 1 < (int)words.size(); i++) {
+            auto& a = words[i]; auto& b = words[i + 1];
+            int minLen = min(a.length(), b.length());
             int j = 0;
-            while (j < minLen && a.charAt(j) == b.charAt(j)) j++;
+            while (j < (int)minLen && a[j] == b[j]) j++;
 
-            if (j < minLen) {
-                char from = a.charAt(j), to = b.charAt(j);
-                if (!adj.get(from).contains(to)) {
-                    adj.get(from).add(to);
-                    indegree.put(to, indegree.get(to) + 1);
+            if (j < (int)minLen) {
+                char from = a[j], to = b[j];
+                if (!adj[from].count(to)) {
+                    adj[from].insert(to);
+                    indegree[to]++;
                 }
             } else if (a.length() > b.length()) {
                 // b is a prefix of a but comes first -> invalid ordering
@@ -282,25 +284,25 @@ class Solution {
             }
         }
 
-        Queue<Character> queue = new LinkedList<>();
-        for (Map.Entry<Character, Integer> e : indegree.entrySet()) {
-            if (e.getValue() == 0) queue.offer(e.getKey());
+        queue<char> q;
+        for (auto& [c, deg] : indegree) {
+            if (deg == 0) q.push(c);
         }
 
-        StringBuilder sb = new StringBuilder();
-        while (!queue.isEmpty()) {
-            char c = queue.poll();
-            sb.append(c);
-            for (char next : adj.get(c)) {
-                indegree.put(next, indegree.get(next) - 1);
-                if (indegree.get(next) == 0) queue.offer(next);
+        string result;
+        while (!q.empty()) {
+            char c = q.front(); q.pop();
+            result += c;
+            for (char next : adj[c]) {
+                indegree[next]--;
+                if (indegree[next] == 0) q.push(next);
             }
         }
 
         // If not all characters placed, there was a cycle.
-        return sb.length() == indegree.size() ? sb.toString() : "";
+        return result.length() == indegree.size() ? result : "";
     }
-}
+};
 ```
 
 **Complexity:** Time `O(C)` where `C` is total content length across words (graph has at most 26 nodes and 26*26 edges), Space `O(1)` for the fixed alphabet (or `O(U + edges)` for the distinct chars).
@@ -336,42 +338,43 @@ All 5 chars placed → result `"wertf"`.
 
 **Idea:** The roots that minimize tree height are the **centroids** of the tree, and there are at most 2 of them. Find them by **trimming leaves layer by layer** (a topo-style peel on an undirected graph): repeatedly remove all degree-1 nodes. The last 1 or 2 nodes remaining are the answers.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public List<Integer> findMinHeightTrees(int n, int[][] edges) {
-        if (n == 1) return Collections.singletonList(0);
+public:
+    vector<int> findMinHeightTrees(int n, vector<vector<int>>& edges) {
+        if (n == 1) return {0};
 
-        List<Set<Integer>> adj = new ArrayList<>();
-        for (int i = 0; i < n; i++) adj.add(new HashSet<>());
-        for (int[] e : edges) {
-            adj.get(e[0]).add(e[1]);
-            adj.get(e[1]).add(e[0]);
+        vector<unordered_set<int>> adj(n);
+        for (auto& e : edges) {
+            adj[e[0]].insert(e[1]);
+            adj[e[1]].insert(e[0]);
         }
 
         // Initial leaves: degree 1.
-        List<Integer> leaves = new ArrayList<>();
+        vector<int> leaves;
         for (int i = 0; i < n; i++) {
-            if (adj.get(i).size() == 1) leaves.add(i);
+            if (adj[i].size() == 1) leaves.push_back(i);
         }
 
         int remaining = n;
         while (remaining > 2) {
             remaining -= leaves.size();
-            List<Integer> newLeaves = new ArrayList<>();
+            vector<int> newLeaves;
             for (int leaf : leaves) {
                 // Each leaf has exactly one neighbor; detach it.
-                int neighbor = adj.get(leaf).iterator().next();
-                adj.get(neighbor).remove(leaf);
-                if (adj.get(neighbor).size() == 1) newLeaves.add(neighbor);
+                int neighbor = *adj[leaf].begin();
+                adj[neighbor].erase(leaf);
+                if (adj[neighbor].size() == 1) newLeaves.push_back(neighbor);
             }
             leaves = newLeaves;
         }
 
         return leaves; // the 1 or 2 centroids
     }
-}
+};
 ```
 
 **Complexity:** Time `O(V + E)`, Space `O(V + E)`.
@@ -382,54 +385,56 @@ class Solution {
 
 **Idea:** Check whether `org` is the **unique** topological order consistent with the given subsequences `seqs`. Build a graph from consecutive elements within each sequence, then run Kahn's. Uniqueness holds iff at every step the queue contains **exactly one** node, the produced order matches `org`, and every element of `org` appears.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public boolean sequenceReconstruction(int[] org, List<List<Integer>> seqs) {
-        int n = org.length;
-        Map<Integer, List<Integer>> adj = new HashMap<>();
-        Map<Integer, Integer> indegree = new HashMap<>();
+public:
+    bool sequenceReconstruction(vector<int>& org, vector<vector<int>>& seqs) {
+        int n = org.size();
+        unordered_map<int, vector<int>> adj;
+        unordered_map<int, int> indegree;
 
         // Register every value that appears in seqs.
-        for (List<Integer> seq : seqs) {
+        for (auto& seq : seqs) {
             for (int v : seq) {
-                adj.putIfAbsent(v, new ArrayList<>());
-                indegree.putIfAbsent(v, 0);
+                if (!adj.count(v)) adj[v] = {};
+                if (!indegree.count(v)) indegree[v] = 0;
             }
         }
 
-        for (List<Integer> seq : seqs) {
-            for (int i = 0; i + 1 < seq.size(); i++) {
-                int from = seq.get(i), to = seq.get(i + 1);
-                adj.get(from).add(to);
-                indegree.put(to, indegree.get(to) + 1);
+        for (auto& seq : seqs) {
+            for (int i = 0; i + 1 < (int)seq.size(); i++) {
+                int from = seq[i], to = seq[i + 1];
+                adj[from].push_back(to);
+                indegree[to]++;
             }
         }
 
         // Every value must lie in [1, n] and match org's universe.
-        if (indegree.size() != n) return false;
+        if ((int)indegree.size() != n) return false;
 
-        Queue<Integer> queue = new LinkedList<>();
-        for (Map.Entry<Integer, Integer> e : indegree.entrySet()) {
-            if (e.getValue() == 0) queue.offer(e.getKey());
+        queue<int> q;
+        for (auto& [v, deg] : indegree) {
+            if (deg == 0) q.push(v);
         }
 
         int idx = 0;
-        while (!queue.isEmpty()) {
-            if (queue.size() > 1) return false;      // order not unique
-            int node = queue.poll();
+        while (!q.empty()) {
+            if (q.size() > 1) return false;      // order not unique
+            int node = q.front(); q.pop();
             if (idx >= n || org[idx] != node) return false; // mismatch
             idx++;
-            for (int next : adj.get(node)) {
-                indegree.put(next, indegree.get(next) - 1);
-                if (indegree.get(next) == 0) queue.offer(next);
+            for (int next : adj[node]) {
+                indegree[next]--;
+                if (indegree[next] == 0) q.push(next);
             }
         }
 
         return idx == n;
     }
-}
+};
 ```
 
 **Complexity:** Time `O(V + E)` where `E` is the total length of all sequences, Space `O(V + E)`.
@@ -440,42 +445,43 @@ class Solution {
 
 **Idea:** All courses with no remaining prerequisites can be taken **in the same semester (in parallel)**. So run Kahn's **by levels**: each BFS layer is one semester. The number of layers is the minimum number of semesters. If a cycle blocks some courses, return `-1`.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public int minimumSemesters(int n, int[][] relations) {
-        List<List<Integer>> adj = new ArrayList<>();
-        for (int i = 0; i <= n; i++) adj.add(new ArrayList<>()); // 1-indexed
-        int[] indegree = new int[n + 1];
+public:
+    int minimumSemesters(int n, vector<vector<int>>& relations) {
+        vector<vector<int>> adj(n + 1); // 1-indexed
+        vector<int> indegree(n + 1, 0);
 
-        for (int[] r : relations) {
+        for (auto& r : relations) {
             int prev = r[0], next = r[1]; // prev -> next
-            adj.get(prev).add(next);
+            adj[prev].push_back(next);
             indegree[next]++;
         }
 
-        Queue<Integer> queue = new LinkedList<>();
+        queue<int> q;
         for (int i = 1; i <= n; i++) {
-            if (indegree[i] == 0) queue.offer(i);
+            if (indegree[i] == 0) q.push(i);
         }
 
         int semesters = 0, studied = 0;
-        while (!queue.isEmpty()) {
+        while (!q.empty()) {
             semesters++;
-            int size = queue.size();
+            int size = q.size();
             for (int s = 0; s < size; s++) {
-                int node = queue.poll();
+                int node = q.front(); q.pop();
                 studied++;
-                for (int next : adj.get(node)) {
-                    if (--indegree[next] == 0) queue.offer(next);
+                for (int next : adj[node]) {
+                    if (--indegree[next] == 0) q.push(next);
                 }
             }
         }
 
         return studied == n ? semesters : -1;
     }
-}
+};
 ```
 
 **Complexity:** Time `O(V + E)`, Space `O(V + E)`.
@@ -486,44 +492,45 @@ class Solution {
 
 **Idea:** A node is **safe** if every path from it leads to a terminal node (no cycle reachable). Reverse the graph and run Kahn's: terminal nodes (outdegree 0) become **indegree 0 in the reversed graph**. Peeling them off marks all nodes whose every outgoing edge leads only to safe nodes. Return safe nodes sorted.
 
-```java
-import java.util.*;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
-    public List<Integer> eventualSafeNodes(int[][] graph) {
-        int n = graph.length;
-        List<List<Integer>> reverse = new ArrayList<>();
-        for (int i = 0; i < n; i++) reverse.add(new ArrayList<>());
-        int[] outdegree = new int[n]; // outdegree in original graph
+public:
+    vector<int> eventualSafeNodes(vector<vector<int>>& graph) {
+        int n = graph.size();
+        vector<vector<int>> rev(n);
+        vector<int> outdegree(n, 0); // outdegree in original graph
 
         for (int u = 0; u < n; u++) {
             for (int v : graph[u]) {
-                reverse.get(v).add(u);  // reversed edge v -> u
+                rev[v].push_back(u);  // reversed edge v -> u
                 outdegree[u]++;
             }
         }
 
-        Queue<Integer> queue = new LinkedList<>();
+        queue<int> q;
         for (int i = 0; i < n; i++) {
-            if (outdegree[i] == 0) queue.offer(i); // terminal nodes
+            if (outdegree[i] == 0) q.push(i); // terminal nodes
         }
 
-        boolean[] safe = new boolean[n];
-        while (!queue.isEmpty()) {
-            int node = queue.poll();
+        vector<bool> safe(n, false);
+        while (!q.empty()) {
+            int node = q.front(); q.pop();
             safe[node] = true;
-            for (int prev : reverse.get(node)) {
-                if (--outdegree[prev] == 0) queue.offer(prev);
+            for (int prev : rev[node]) {
+                if (--outdegree[prev] == 0) q.push(prev);
             }
         }
 
-        List<Integer> result = new ArrayList<>();
+        vector<int> result;
         for (int i = 0; i < n; i++) {
-            if (safe[i]) result.add(i); // already in ascending order
+            if (safe[i]) result.push_back(i); // already in ascending order
         }
         return result;
     }
-}
+};
 ```
 
 **Alternative — DFS 3-color:** mark each node WHITE/GRAY/BLACK; a node is safe iff DFS from it never touches a GRAY node (no back edge / cycle). BLACK = safe.

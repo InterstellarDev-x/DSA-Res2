@@ -10,12 +10,13 @@ Implement an iterator over a BST that returns keys in **ascending (inorder)** or
 
 **Both `next()` and `hasNext()` must be amortized O(1), using at most O(h) memory.**
 
-```java
-public class TreeNode {
+```cpp
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
+};
 ```
 
 ---
@@ -30,36 +31,38 @@ on top.
 The helper `pushLeftmost(node)` pushes a node and all of its left descendants. Calling it on `root`
 in the constructor primes the stack so the top is the global minimum.
 
-```java
-import java.util.ArrayDeque;
-import java.util.Deque;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
 class BSTIterator {
-    private final Deque<TreeNode> stack = new ArrayDeque<>();
+    stack<TreeNode*> stk;
 
-    public BSTIterator(TreeNode root) {
+    void pushLeftmost(TreeNode* node) {
+        while (node != nullptr) {
+            stk.push(node);
+            node = node->left;
+        }
+    }
+
+public:
+    BSTIterator(TreeNode* root) {
         pushLeftmost(root);              // prime: leftmost (smallest) ends up on top
     }
 
-    public int next() {
-        TreeNode node = stack.pop();     // next-smallest is always on top
-        if (node.right != null) {
-            pushLeftmost(node.right);    // its successor lives at the leftmost of its right subtree
+    int next() {
+        TreeNode* node = stk.top();      // next-smallest is always on top
+        stk.pop();
+        if (node->right != nullptr) {
+            pushLeftmost(node->right);   // its successor lives at the leftmost of its right subtree
         }
-        return node.val;
+        return node->val;
     }
 
-    public boolean hasNext() {
-        return !stack.isEmpty();
+    bool hasNext() {
+        return !stk.empty();
     }
-
-    private void pushLeftmost(TreeNode node) {
-        while (node != null) {
-            stack.push(node);
-            node = node.left;
-        }
-    }
-}
+};
 ```
 
 ---
@@ -115,33 +118,38 @@ space — strictly worse and the reason the follow-up is asked.
 A descending iterator mirrors everything: push the **rightmost** spine, and on each step move into
 the popped node's **left** subtree.
 
-```java
-class BSTIteratorReverse {
-    private final Deque<TreeNode> stack = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public BSTIteratorReverse(TreeNode root) {
+class BSTIteratorReverse {
+    stack<TreeNode*> stk;
+
+    void pushRightmost(TreeNode* node) {
+        while (node != nullptr) {
+            stk.push(node);
+            node = node->right;
+        }
+    }
+
+public:
+    BSTIteratorReverse(TreeNode* root) {
         pushRightmost(root);             // largest ends up on top
     }
 
-    public int prev() {                  // returns next-largest
-        TreeNode node = stack.pop();
-        if (node.left != null) {
-            pushRightmost(node.left);    // predecessor = rightmost of left subtree
+    int prev() {                         // returns next-largest
+        TreeNode* node = stk.top();
+        stk.pop();
+        if (node->left != nullptr) {
+            pushRightmost(node->left);   // predecessor = rightmost of left subtree
         }
-        return node.val;
+        return node->val;
     }
 
-    public boolean hasPrev() {
-        return !stack.isEmpty();
+    bool hasPrev() {
+        return !stk.empty();
     }
-
-    private void pushRightmost(TreeNode node) {
-        while (node != null) {
-            stack.push(node);
-            node = node.right;
-        }
-    }
-}
+};
 ```
 
 > **Bidirectional variant (LC 1586):** maintain both directions by re-priming the appropriate

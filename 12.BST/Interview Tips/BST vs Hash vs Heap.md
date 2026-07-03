@@ -9,12 +9,12 @@ ordering or query** you need.
 
 ## Decision Table
 
-| You need… | Use | Why | Java |
+| You need… | Use | Why | C++ |
 |---|---|---|---|
-| **Ordered** iteration, range queries, floor/ceil, successor/predecessor | **BST** (balanced) | Keeps keys sorted; all order queries in O(log n) | `TreeMap`, `TreeSet` |
-| **O(1)** average lookup/insert/delete by exact key; no ordering | **Hash** | Buckets, no ordering overhead | `HashMap`, `HashSet` |
-| Repeated **min** (or **max**) extraction from a stream; top-k | **Heap** | O(1) peek, O(log n) push/pop of the extreme only | `PriorityQueue` |
-| Insertion-order or LRU iteration | Linked Hash | Hash + linked list | `LinkedHashMap` |
+| **Ordered** iteration, range queries, floor/ceil, successor/predecessor | **BST** (balanced) | Keeps keys sorted; all order queries in O(log n) | `std::map`, `std::set` |
+| **O(1)** average lookup/insert/delete by exact key; no ordering | **Hash** | Buckets, no ordering overhead | `std::unordered_map`, `std::unordered_set` |
+| Repeated **min** (or **max**) extraction from a stream; top-k | **Heap** | O(1) peek, O(log n) push/pop of the extreme only | `std::priority_queue` |
+| Insertion-order or LRU iteration | Linked Hash | Hash + linked list | `std::list + std::unordered_map` |
 
 Key contrasts:
 - A **heap** gives you the single extreme cheaply but **cannot** answer "is key x present?",
@@ -26,43 +26,47 @@ Key contrasts:
 
 ---
 
-## Java `TreeMap` / `TreeSet` — the production BST
+## C++ `std::map` / `std::set` — the production BST
 
-`TreeMap` and `TreeSet` are Red-Black trees, so every operation below is **O(log n)** guaranteed.
+`std::map` and `std::set` are typically Red-Black trees, so every operation below is **O(log n)** guaranteed.
 
 | Method | Returns |
 |---|---|
-| `floorKey(k)` | greatest key **≤ k** (else `null`) |
-| `ceilingKey(k)` | smallest key **≥ k** (else `null`) |
-| `lowerKey(k)` | greatest key **< k** (strict) |
-| `higherKey(k)` | smallest key **> k** (strict) |
-| `firstKey()` / `lastKey()` | min / max key |
-| `subMap(from, to)` | a sorted view over a key range |
-| `headMap(k)` / `tailMap(k)` | keys `< k` / `≥ k` |
+| `prev(map.upper_bound(k))->first` | greatest key **≤ k** (else `end()`) |
+| `map.lower_bound(k)->first` | smallest key **≥ k** (else `end()`) |
+| `prev(map.lower_bound(k))->first` | greatest key **< k** (strict) |
+| `map.upper_bound(k)->first` | smallest key **> k** (strict) |
+| `map.begin()->first` / `prev(map.end())->first` | min / max key |
+| `lower_bound(from)` to `lower_bound(to)` | a sorted view over a key range |
+| `begin()` to `lower_bound(k)` / `lower_bound(k)` to `end()` | keys `< k` / `≥ k` |
 
-```java
-TreeMap<Integer, String> map = new TreeMap<>();
-map.put(10, "a"); map.put(20, "b"); map.put(30, "c");
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-map.floorKey(25);    // 20  (largest key <= 25)   ← maps to BST "floor"
-map.ceilingKey(25);  // 30  (smallest key >= 25)  ← maps to BST "ceil"
-map.lowerKey(20);    // 10  (strictly < 20)
-map.higherKey(20);   // 30  (strictly > 20)
-map.firstKey();      // 10
-map.lastKey();       // 30
+map<int, string> m;
+m[10] = "a"; m[20] = "b"; m[30] = "c";
+
+prev(m.upper_bound(25))->first;    // 20  (largest key <= 25)   <- maps to BST "floor"
+m.lower_bound(25)->first;          // 30  (smallest key >= 25)  <- maps to BST "ceil"
+prev(m.lower_bound(20))->first;    // 10  (strictly < 20)
+m.upper_bound(20)->first;          // 30  (strictly > 20)
+m.begin()->first;                  // 10
+prev(m.end())->first;              // 30
 
 // range query [15, 30) — like Range Sum of BST, in O(log n + count)
-for (Integer k : map.subMap(15, 30).keySet()) { /* 20 */ }
+for (auto it = m.lower_bound(15); it != m.lower_bound(30); ++it) { /* it->first == 20 */ }
 
-// TreeSet for set semantics
-TreeSet<Integer> set = new TreeSet<>(List.of(1, 3, 5, 7));
-set.floor(4);    // 3
-set.ceiling(4);  // 5
-set.headSet(5);  // [1, 3]
+// set<int> for set semantics
+set<int> s = {1, 3, 5, 7};
+*prev(s.upper_bound(4));     // 3   (floor)
+*s.lower_bound(4);           // 5   (ceiling)
+// headSet(5): elements < 5 → {1, 3}
+for (auto it = s.begin(); it != s.lower_bound(5); ++it) { /* 1, 3 */ }
 ```
 
 These methods are *exactly* the hand-rolled `floor` / `ceil` / `successor` from
-[BST LCA & Ancestors](../Patterns/BST%20LCA%20and%20Ancestors.md) — reach for `TreeMap` in
+[BST LCA & Ancestors](../Patterns/BST%20LCA%20and%20Ancestors.md) — reach for `std::map` in
 production unless the interviewer wants the manual implementation.
 
 ---
@@ -70,7 +74,7 @@ production unless the interviewer wants the manual implementation.
 ## When the interviewer says "make lookups faster"
 
 If you used a BST only for point lookups and the prompt has **no ordering requirement**, switch to
-a `HashMap` for O(1). But if any of "range", "next greater", "k-th", "sorted output", "floor/ceil"
-appear, the BST / `TreeMap` is correct and a hash map would force an O(n log n) re-sort.
+an `std::unordered_map` for O(1). But if any of "range", "next greater", "k-th", "sorted output", "floor/ceil"
+appear, the BST / `std::map` is correct and a hash map would force an O(n log n) re-sort.
 
 > **Last Updated:** 2026-06-26

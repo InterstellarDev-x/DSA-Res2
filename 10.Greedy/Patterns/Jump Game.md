@@ -45,23 +45,29 @@ At any point in the scan, maintain the farthest index currently reachable. If th
 
 If we process all indices without encountering an unreachable one, return true.
 
-```java
-public class JumpGame {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public boolean canJump(int[] nums) {
+class JumpGame {
+public:
+    bool canJump(vector<int>& nums) {
         int maxReach = 0;
-        for (int i = 0; i < nums.length; i++) {
+        for (int i = 0; i < (int)nums.size(); i++) {
             if (i > maxReach) return false;
-            maxReach = Math.max(maxReach, i + nums[i]);
+            maxReach = max(maxReach, i + nums[i]);
         }
         return true;
     }
+};
 
-    public static void main(String[] args) {
-        JumpGame sol = new JumpGame();
-        System.out.println(sol.canJump(new int[]{2, 3, 1, 1, 4})); // true
-        System.out.println(sol.canJump(new int[]{3, 2, 1, 0, 4})); // false
-    }
+int main() {
+    JumpGame sol;
+    vector<int> v1 = {2, 3, 1, 1, 4};
+    vector<int> v2 = {3, 2, 1, 0, 4};
+    cout << sol.canJump(v1) << "\n"; // true
+    cout << sol.canJump(v2) << "\n"; // false
+    return 0;
 }
 ```
 
@@ -99,13 +105,16 @@ Loop completes without returning false  return true
 
 We stop the loop at `nums.length - 1` (not `nums.length`) because once we can reach the last index (i.e., `farthest >= last`), we don't need another jump.
 
-```java
-public class JumpGameII {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int jump(int[] nums) {
+class JumpGameII {
+public:
+    int jump(vector<int>& nums) {
         int jumps = 0, curEnd = 0, farthest = 0;
-        for (int i = 0; i < nums.length - 1; i++) {
-            farthest = Math.max(farthest, i + nums[i]);
+        for (int i = 0; i < (int)nums.size() - 1; i++) {
+            farthest = max(farthest, i + nums[i]);
             if (i == curEnd) {
                 jumps++;
                 curEnd = farthest;
@@ -113,12 +122,15 @@ public class JumpGameII {
         }
         return jumps;
     }
+};
 
-    public static void main(String[] args) {
-        JumpGameII sol = new JumpGameII();
-        System.out.println(sol.jump(new int[]{2, 3, 1, 1, 4})); // 2
-        System.out.println(sol.jump(new int[]{2, 3, 0, 1, 4})); // 2
-    }
+int main() {
+    JumpGameII sol;
+    vector<int> v1 = {2, 3, 1, 1, 4};
+    vector<int> v2 = {2, 3, 0, 1, 4};
+    cout << sol.jump(v1) << "\n"; // 2
+    cout << sol.jump(v2) << "\n"; // 2
+    return 0;
 }
 ```
 

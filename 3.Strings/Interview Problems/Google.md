@@ -28,24 +28,27 @@
 | **Skill** | Expand around center (O(n)) vs DP (O(n²) space) |
 | **LeetCode** | [LC 5](https://leetcode.com/problems/longest-palindromic-substring/) |
 
-```java
-public String longestPalindrome(String s) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int expand(const string& s, int l, int r) {
+    while (l >= 0 && r < (int)s.length() && s[l] == s[r]) { l--; r++; }
+    return r - l - 1; // length of palindrome
+}
+
+string longestPalindrome(string s) {
     int start = 0, maxLen = 1;
-    for (int i = 0; i < s.length(); i++) {
+    for (int i = 0; i < (int)s.length(); i++) {
         int odd  = expand(s, i, i);     // odd-length
         int even = expand(s, i, i + 1); // even-length
-        int len  = Math.max(odd, even);
+        int len  = max(odd, even);
         if (len > maxLen) {
             maxLen = len;
             start = i - (len - 1) / 2;
         }
     }
-    return s.substring(start, start + maxLen);
-}
-
-private int expand(String s, int l, int r) {
-    while (l >= 0 && r < s.length() && s.charAt(l) == s.charAt(r)) { l--; r++; }
-    return r - l - 1; // length of palindrome
+    return s.substr(start, maxLen);
 }
 // Time: O(n) | Space: O(1)
 ```

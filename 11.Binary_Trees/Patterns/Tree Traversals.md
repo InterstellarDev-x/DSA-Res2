@@ -6,12 +6,13 @@ Traversal is the foundation of every binary-tree algorithm. Master the four core
 (preorder, inorder, postorder, level-order) both recursively and iteratively, plus the two
 "hard" traversals interviewers love: **zigzag** and **vertical order**.
 
-```java
-public class TreeNode {
+```cpp
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
+};
 ```
 
 ---
@@ -21,29 +22,32 @@ public class TreeNode {
 The recursive shape is identical for all three orders — only the *position* of the visit
 statement changes.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // Preorder: Root -> Left -> Right
-void preorder(TreeNode node, List<Integer> out) {
-    if (node == null) return;
-    out.add(node.val);              // visit
-    preorder(node.left, out);
-    preorder(node.right, out);
+void preorder(TreeNode* node, vector<int>& out) {
+    if (node == nullptr) return;
+    out.push_back(node->val);              // visit
+    preorder(node->left, out);
+    preorder(node->right, out);
 }
 
 // Inorder: Left -> Root -> Right
-void inorder(TreeNode node, List<Integer> out) {
-    if (node == null) return;
-    inorder(node.left, out);
-    out.add(node.val);              // visit
-    inorder(node.right, out);
+void inorder(TreeNode* node, vector<int>& out) {
+    if (node == nullptr) return;
+    inorder(node->left, out);
+    out.push_back(node->val);              // visit
+    inorder(node->right, out);
 }
 
 // Postorder: Left -> Right -> Root
-void postorder(TreeNode node, List<Integer> out) {
-    if (node == null) return;
-    postorder(node.left, out);
-    postorder(node.right, out);
-    out.add(node.val);              // visit
+void postorder(TreeNode* node, vector<int>& out) {
+    if (node == nullptr) return;
+    postorder(node->left, out);
+    postorder(node->right, out);
+    out.push_back(node->val);              // visit
 }
 ```
 
@@ -57,19 +61,22 @@ two recursive descents.
 Walk all the way left pushing onto a stack, then pop (visit), then move to the right child
 and repeat.
 
-```java
-public List<Integer> inorderTraversal(TreeNode root) {
-    List<Integer> out = new ArrayList<>();
-    Deque<TreeNode> stack = new ArrayDeque<>();
-    TreeNode curr = root;
-    while (curr != null || !stack.isEmpty()) {
-        while (curr != null) {      // push the entire left spine
-            stack.push(curr);
-            curr = curr.left;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> inorderTraversal(TreeNode* root) {
+    vector<int> out;
+    stack<TreeNode*> stk;
+    TreeNode* curr = root;
+    while (curr != nullptr || !stk.empty()) {
+        while (curr != nullptr) {      // push the entire left spine
+            stk.push(curr);
+            curr = curr->left;
         }
-        curr = stack.pop();         // leftmost unvisited node
-        out.add(curr.val);          // visit
-        curr = curr.right;          // then explore its right subtree
+        curr = stk.top(); stk.pop();   // leftmost unvisited node
+        out.push_back(curr->val);      // visit
+        curr = curr->right;            // then explore its right subtree
     }
     return out;
 }
@@ -82,17 +89,20 @@ public List<Integer> inorderTraversal(TreeNode root) {
 Because a stack is LIFO, push the **right** child first so the **left** child is processed
 next (preorder = Root, Left, Right).
 
-```java
-public List<Integer> preorderTraversal(TreeNode root) {
-    List<Integer> out = new ArrayList<>();
-    if (root == null) return out;
-    Deque<TreeNode> stack = new ArrayDeque<>();
-    stack.push(root);
-    while (!stack.isEmpty()) {
-        TreeNode node = stack.pop();
-        out.add(node.val);                       // visit root first
-        if (node.right != null) stack.push(node.right); // right pushed first
-        if (node.left  != null) stack.push(node.left);  // left popped first
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> preorderTraversal(TreeNode* root) {
+    vector<int> out;
+    if (root == nullptr) return out;
+    stack<TreeNode*> stk;
+    stk.push(root);
+    while (!stk.empty()) {
+        TreeNode* node = stk.top(); stk.pop();
+        out.push_back(node->val);                        // visit root first
+        if (node->right != nullptr) stk.push(node->right); // right pushed first
+        if (node->left  != nullptr) stk.push(node->left);  // left popped first
     }
     return out;
 }
@@ -105,41 +115,49 @@ public List<Integer> preorderTraversal(TreeNode root) {
 ### Approach A — two stacks
 Do a *modified preorder* (Root, Right, Left) onto `stack2`, then reverse it by popping.
 
-```java
-public List<Integer> postorderTraversal(TreeNode root) {
-    LinkedList<Integer> out = new LinkedList<>();
-    if (root == null) return out;
-    Deque<TreeNode> stack = new ArrayDeque<>();
-    stack.push(root);
-    while (!stack.isEmpty()) {
-        TreeNode node = stack.pop();
-        out.addFirst(node.val);                  // prepend => reverses Root,Right,Left
-        if (node.left  != null) stack.push(node.left);
-        if (node.right != null) stack.push(node.right);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> postorderTraversal(TreeNode* root) {
+    vector<int> out;
+    if (root == nullptr) return out;
+    stack<TreeNode*> stk;
+    stk.push(root);
+    while (!stk.empty()) {
+        TreeNode* node = stk.top(); stk.pop();
+        out.push_back(node->val);                  // collect Root,Right,Left
+        if (node->left  != nullptr) stk.push(node->left);
+        if (node->right != nullptr) stk.push(node->right);
     }
-    return out; // ends up Left, Right, Root
+    reverse(out.begin(), out.end()); // ends up Left, Right, Root
+    return out;
 }
 ```
 
 This is the **reverse-of-modified-preorder trick**: preorder visiting Root→Right→Left,
-collected with `addFirst`, yields Left→Right→Root.
+collected with `push_back` then `reverse`, yields Left→Right→Root.
 
 ### Approach B — single stack with a `lastVisited` pointer
 Visit a node only after its right child has been fully processed.
 
-```java
-public List<Integer> postorderSingleStack(TreeNode root) {
-    List<Integer> out = new ArrayList<>();
-    Deque<TreeNode> stack = new ArrayDeque<>();
-    TreeNode curr = root, lastVisited = null;
-    while (curr != null || !stack.isEmpty()) {
-        while (curr != null) { stack.push(curr); curr = curr.left; }
-        TreeNode peek = stack.peek();
-        if (peek.right != null && lastVisited != peek.right) {
-            curr = peek.right;                   // go right before visiting
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> postorderSingleStack(TreeNode* root) {
+    vector<int> out;
+    stack<TreeNode*> stk;
+    TreeNode* curr = root;
+    TreeNode* lastVisited = nullptr;
+    while (curr != nullptr || !stk.empty()) {
+        while (curr != nullptr) { stk.push(curr); curr = curr->left; }
+        TreeNode* peek = stk.top();
+        if (peek->right != nullptr && lastVisited != peek->right) {
+            curr = peek->right;                   // go right before visiting
         } else {
-            out.add(peek.val);
-            lastVisited = stack.pop();
+            out.push_back(peek->val);
+            lastVisited = stk.top(); stk.pop();
         }
     }
     return out;
@@ -153,24 +171,27 @@ public List<Integer> postorderSingleStack(TreeNode root) {
 Threads each node's predecessor's right pointer to itself, removing the need for a stack.
 Time O(n), space **O(1)** (mutates then restores pointers).
 
-```java
-public List<Integer> morrisInorder(TreeNode root) {
-    List<Integer> out = new ArrayList<>();
-    TreeNode curr = root;
-    while (curr != null) {
-        if (curr.left == null) {
-            out.add(curr.val);
-            curr = curr.right;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> morrisInorder(TreeNode* root) {
+    vector<int> out;
+    TreeNode* curr = root;
+    while (curr != nullptr) {
+        if (curr->left == nullptr) {
+            out.push_back(curr->val);
+            curr = curr->right;
         } else {
-            TreeNode pred = curr.left;
-            while (pred.right != null && pred.right != curr) pred = pred.right;
-            if (pred.right == null) {            // create thread
-                pred.right = curr;
-                curr = curr.left;
+            TreeNode* pred = curr->left;
+            while (pred->right != nullptr && pred->right != curr) pred = pred->right;
+            if (pred->right == nullptr) {            // create thread
+                pred->right = curr;
+                curr = curr->left;
             } else {                             // thread exists -> remove it, visit
-                pred.right = null;
-                out.add(curr.val);
-                curr = curr.right;
+                pred->right = nullptr;
+                out.push_back(curr->val);
+                curr = curr->right;
             }
         }
     }
@@ -185,22 +206,26 @@ public List<Integer> morrisInorder(TreeNode root) {
 The **size-snapshot** is the key idiom: capture `queue.size()` *before* the inner loop so
 you process exactly one level at a time.
 
-```java
-public List<List<Integer>> levelOrder(TreeNode root) {
-    List<List<Integer>> result = new ArrayList<>();
-    if (root == null) return result;
-    Queue<TreeNode> queue = new LinkedList<>();
-    queue.offer(root);
-    while (!queue.isEmpty()) {
-        int size = queue.size();                 // snapshot: nodes on this level
-        List<Integer> level = new ArrayList<>(size);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> levelOrder(TreeNode* root) {
+    vector<vector<int>> result;
+    if (root == nullptr) return result;
+    queue<TreeNode*> q;
+    q.push(root);
+    while (!q.empty()) {
+        int size = q.size();                 // snapshot: nodes on this level
+        vector<int> level;
+        level.reserve(size);
         for (int i = 0; i < size; i++) {
-            TreeNode node = queue.poll();
-            level.add(node.val);
-            if (node.left  != null) queue.offer(node.left);
-            if (node.right != null) queue.offer(node.right);
+            TreeNode* node = q.front(); q.pop();
+            level.push_back(node->val);
+            if (node->left  != nullptr) q.push(node->left);
+            if (node->right != nullptr) q.push(node->right);
         }
-        result.add(level);
+        result.push_back(level);
     }
     return result;
 }
@@ -211,26 +236,30 @@ public List<List<Integer>> levelOrder(TreeNode root) {
 ## 7. Zigzag Level Order (LC 103)
 
 Run normal BFS but alternate the **insertion direction** within each level using a
-`LinkedList` + `addFirst`/`addLast`. This keeps each insert O(1) (never `add(0, x)`).
+`deque` + `push_front`/`push_back`. This keeps each insert O(1) (never inserting at an
+arbitrary index).
 
-```java
-public List<List<Integer>> zigzagLevelOrder(TreeNode root) {
-    List<List<Integer>> result = new ArrayList<>();
-    if (root == null) return result;
-    Queue<TreeNode> queue = new LinkedList<>();
-    queue.offer(root);
-    boolean leftToRight = true;
-    while (!queue.isEmpty()) {
-        int size = queue.size();
-        LinkedList<Integer> level = new LinkedList<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> zigzagLevelOrder(TreeNode* root) {
+    vector<vector<int>> result;
+    if (root == nullptr) return result;
+    queue<TreeNode*> q;
+    q.push(root);
+    bool leftToRight = true;
+    while (!q.empty()) {
+        int size = q.size();
+        deque<int> level;
         for (int i = 0; i < size; i++) {
-            TreeNode node = queue.poll();
-            if (leftToRight) level.addLast(node.val);
-            else             level.addFirst(node.val);
-            if (node.left  != null) queue.offer(node.left);
-            if (node.right != null) queue.offer(node.right);
+            TreeNode* node = q.front(); q.pop();
+            if (leftToRight) level.push_back(node->val);
+            else             level.push_front(node->val);
+            if (node->left  != nullptr) q.push(node->left);
+            if (node->right != nullptr) q.push(node->right);
         }
-        result.add(level);
+        result.push_back(vector<int>(level.begin(), level.end()));
         leftToRight = !leftToRight;
     }
     return result;
@@ -243,23 +272,27 @@ public List<List<Integer>> zigzagLevelOrder(TreeNode root) {
 
 Identical BFS, but children come from a list (`node.children`).
 
-```java
-class Node { public int val; public List<Node> children; }
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public List<List<Integer>> levelOrder(Node root) {
-    List<List<Integer>> result = new ArrayList<>();
-    if (root == null) return result;
-    Queue<Node> queue = new LinkedList<>();
-    queue.offer(root);
-    while (!queue.isEmpty()) {
-        int size = queue.size();
-        List<Integer> level = new ArrayList<>(size);
+struct Node { int val; vector<Node*> children; };
+
+vector<vector<int>> levelOrder(Node* root) {
+    vector<vector<int>> result;
+    if (root == nullptr) return result;
+    queue<Node*> q;
+    q.push(root);
+    while (!q.empty()) {
+        int size = q.size();
+        vector<int> level;
+        level.reserve(size);
         for (int i = 0; i < size; i++) {
-            Node node = queue.poll();
-            level.add(node.val);
-            for (Node child : node.children) queue.offer(child);
+            Node* node = q.front(); q.pop();
+            level.push_back(node->val);
+            for (auto& child : node->children) q.push(child);
         }
-        result.add(level);
+        result.push_back(level);
     }
     return result;
 }
@@ -271,34 +304,37 @@ public List<List<Integer>> levelOrder(Node root) {
 
 Group nodes by **column** (root = 0, left = col−1, right = col+1). Within a column, order by
 **row** (depth), and ties at the same (row, col) by **value**. A
-`TreeMap<col, TreeMap<row, PriorityQueue<val>>>` makes ordering deterministic without a final
-sort — `TreeMap` is used (not `HashMap`) precisely because we need keys iterated in sorted
+`map<col, map<row, priority_queue<val>>>` makes ordering deterministic without a final
+sort — `std::map` is used (not `std::unordered_map`) precisely because we need keys iterated in sorted
 order.
 
-```java
-public List<List<Integer>> verticalTraversal(TreeNode root) {
-    // col -> (row -> min-heap of values)
-    TreeMap<Integer, TreeMap<Integer, PriorityQueue<Integer>>> map = new TreeMap<>();
-    dfs(root, 0, 0, map);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    List<List<Integer>> result = new ArrayList<>();
-    for (TreeMap<Integer, PriorityQueue<Integer>> rows : map.values()) {
-        List<Integer> col = new ArrayList<>();
-        for (PriorityQueue<Integer> pq : rows.values())
-            while (!pq.isEmpty()) col.add(pq.poll());
-        result.add(col);
-    }
-    return result;
+void dfs(TreeNode* node, int row, int col,
+         map<int, map<int, priority_queue<int, vector<int>, greater<int>>>>& mp) {
+    if (node == nullptr) return;
+    mp[col][row].push(node->val);
+    dfs(node->left,  row + 1, col - 1, mp);
+    dfs(node->right, row + 1, col + 1, mp);
 }
 
-private void dfs(TreeNode node, int row, int col,
-                 TreeMap<Integer, TreeMap<Integer, PriorityQueue<Integer>>> map) {
-    if (node == null) return;
-    map.computeIfAbsent(col, k -> new TreeMap<>())
-       .computeIfAbsent(row, k -> new PriorityQueue<>())
-       .offer(node.val);
-    dfs(node.left,  row + 1, col - 1, map);
-    dfs(node.right, row + 1, col + 1, map);
+vector<vector<int>> verticalTraversal(TreeNode* root) {
+    // col -> (row -> min-heap of values)
+    map<int, map<int, priority_queue<int, vector<int>, greater<int>>>> mp;
+    dfs(root, 0, 0, mp);
+
+    vector<vector<int>> result;
+    for (auto& [colKey, rows] : mp) {
+        vector<int> col;
+        for (auto& [rowKey, pq] : rows) {
+            auto tmp = pq; // copy so we can pop
+            while (!tmp.empty()) { col.push_back(tmp.top()); tmp.pop(); }
+        }
+        result.push_back(col);
+    }
+    return result;
 }
 ```
 
@@ -316,7 +352,7 @@ private void dfs(TreeNode node, int row, int col,
 | Level Order (LC 102) | BFS | O(n) | O(w) queue |
 | Zigzag (LC 103) | BFS | O(n) | O(w) |
 | N-ary Level Order (LC 429) | BFS | O(n) | O(w) |
-| Vertical Order (LC 987) | DFS + TreeMap | O(n log n) | O(n) |
+| Vertical Order (LC 987) | DFS + std::map | O(n log n) | O(n) |
 
 *h = tree height (O(log n) balanced, O(n) skewed); w = max width of any level.*
 

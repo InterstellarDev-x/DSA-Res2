@@ -10,7 +10,7 @@
 1. [Problem Statement](#problem-statement)
 2. [Interview Expectations](#interview-expectations)
 3. [Approaches](#approaches)
-4. [Java Implementation](#java-implementation)
+4. [C++ Implementation](#c-implementation)
 5. [Complexity Analysis](#complexity-analysis)
 6. [Edge Cases](#edge-cases)
 7. [Similar Problems](#similar-problems)
@@ -23,8 +23,8 @@
 
 Design a system that, given a set of `k` patterns, can find **all occurrences of any pattern** in a text string efficiently.
 
-- `PatternMatcher(String[] patterns)` — preprocess patterns
-- `List<int[]> search(String text)` — return `[start, patternIndex]` for each match
+- `PatternMatcher(string[] patterns)` — preprocess patterns
+- `vector<pair<int,int>> search(string text)` — return `{start, patternIndex}` for each match
 
 ---
 
@@ -35,7 +35,7 @@ Design a system that, given a set of `k` patterns, can find **all occurrences of
 | Know naive approach | Run KMP for each pattern: O(n×k + m×k) |
 | Know optimal | Aho-Corasick: build once O(m×k), search O(n + total_matches) |
 | Understand failure links | How they mirror KMP's LPS but across a Trie |
-| Discuss Java's `String.contains` | Uses Boyer-Moore-Horspool internally, O(n×m) worst |
+| Discuss std::string `find` | Uses Boyer-Moore-Horspool internally, O(n×m) worst |
 
 ---
 
@@ -49,84 +49,86 @@ Design a system that, given a set of `k` patterns, can find **all occurrences of
 
 ---
 
-## Java Implementation — Aho-Corasick
+## C++ Implementation — Aho-Corasick
 
-```java
-public class AhoCorasick {
-    static class TrieNode {
-        int[] next = new int[26];
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+struct AhoCorasick {
+    struct TrieNode {
+        int next[26];
         int fail;                  // failure link
-        List<Integer> output;      // pattern indices ending here
+        vector<int> output;       // pattern indices ending here
 
         TrieNode() {
-            Arrays.fill(next, -1);
-            output = new ArrayList<>();
+            fill(next, next + 26, -1);
         }
-    }
+    };
 
-    private final List<TrieNode> trie = new ArrayList<>();
-    private final List<String> patterns;
+    vector<TrieNode> trie;
+    vector<string> patterns;
 
-    public AhoCorasick(String[] patterns) {
-        this.patterns = Arrays.asList(patterns);
-        trie.add(new TrieNode()); // root
+    AhoCorasick(vector<string>& pats) : patterns(pats) {
+        trie.push_back(TrieNode()); // root
 
         // Build Trie
-        for (int pi = 0; pi < patterns.length; pi++) {
+        for (int pi = 0; pi < (int)patterns.size(); pi++) {
             int cur = 0;
-            for (char c : patterns[pi].toCharArray()) {
+            for (char c : patterns[pi]) {
                 int idx = c - 'a';
-                if (trie.get(cur).next[idx] == -1) {
-                    trie.get(cur).next[idx] = trie.size();
-                    trie.add(new TrieNode());
+                if (trie[cur].next[idx] == -1) {
+                    trie[cur].next[idx] = trie.size();
+                    trie.push_back(TrieNode());
                 }
-                cur = trie.get(cur).next[idx];
+                cur = trie[cur].next[idx];
             }
-            trie.get(cur).output.add(pi);
+            trie[cur].output.push_back(pi);
         }
 
         // Build failure links (BFS)
-        Queue<Integer> queue = new LinkedList<>();
-        trie.get(0).fail = 0;
+        queue<int> q;
+        trie[0].fail = 0;
         for (int c = 0; c < 26; c++) {
-            int child = trie.get(0).next[c];
+            int child = trie[0].next[c];
             if (child == -1) {
-                trie.get(0).next[c] = 0; // redirect to root
+                trie[0].next[c] = 0; // redirect to root
             } else {
-                trie.get(child).fail = 0;
-                queue.add(child);
+                trie[child].fail = 0;
+                q.push(child);
             }
         }
-        while (!queue.isEmpty()) {
-            int u = queue.poll();
+        while (!q.empty()) {
+            int u = q.front(); q.pop();
             // Merge output of failure link into current node
-            trie.get(u).output.addAll(trie.get(trie.get(u).fail).output);
+            auto& failOut = trie[trie[u].fail].output;
+            trie[u].output.insert(trie[u].output.end(), failOut.begin(), failOut.end());
             for (int c = 0; c < 26; c++) {
-                int v = trie.get(u).next[c];
+                int v = trie[u].next[c];
                 if (v == -1) {
-                    trie.get(u).next[c] = trie.get(trie.get(u).fail).next[c];
+                    trie[u].next[c] = trie[trie[u].fail].next[c];
                 } else {
-                    trie.get(v).fail = trie.get(trie.get(u).fail).next[c];
-                    queue.add(v);
+                    trie[v].fail = trie[trie[u].fail].next[c];
+                    q.push(v);
                 }
             }
         }
     }
 
-    public List<int[]> search(String text) {
-        List<int[]> result = new ArrayList<>();
+    vector<pair<int,int>> search(const string& text) {
+        vector<pair<int,int>> result;
         int cur = 0;
-        for (int i = 0; i < text.length(); i++) {
-            int c = text.charAt(i) - 'a';
-            cur = trie.get(cur).next[c];
-            for (int pi : trie.get(cur).output) {
-                int start = i - patterns.get(pi).length() + 1;
-                result.add(new int[]{start, pi});
+        for (int i = 0; i < (int)text.length(); i++) {
+            int c = text[i] - 'a';
+            cur = trie[cur].next[c];
+            for (int pi : trie[cur].output) {
+                int start = i - (int)patterns[pi].length() + 1;
+                result.push_back({start, pi});
             }
         }
         return result;
     }
-}
+};
 // Build: O(total_pattern_len × 26)
 // Search: O(n + total_matches)
 ```
@@ -167,7 +169,7 @@ Where Σ = alphabet size (26 for lowercase).
 
 1. **Aho-Corasick vs running KMP for each pattern?** → AC wins when patterns are many and text is reused; KMP is simpler for a small fixed set.
 2. **Case insensitive?** → Lowercase all chars before insertion.
-3. **Unicode / large alphabet?** → Use `HashMap<Character, Integer>` at each node instead of `int[26]`.
+3. **Unicode / large alphabet?** → Use `unordered_map<char, int>` at each node instead of `int[26]`.
 
 ---
 

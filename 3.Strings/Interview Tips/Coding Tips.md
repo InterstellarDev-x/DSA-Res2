@@ -1,88 +1,99 @@
-# Coding Tips — Strings (Java)
+# Coding Tips — Strings (C++)
 
 > **Topic:** [Strings](../README.md) · **Section:** Interview Tips
 
 ---
 
-## Java String Essentials
+## C++ String Essentials
 
-```java
-// Never do this in a loop — O(n²) due to immutability
-String result = "";
-for (String s : list) result += s; // BAD
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+// std::string is mutable; += is O(n) amortized
+string result = "";
+for (auto& s : list) result += s; // OK — string is mutable in C++
 
-// Always use StringBuilder — O(n) amortized
-StringBuilder sb = new StringBuilder();
-for (String s : list) sb.append(s); // GOOD
-String result = sb.toString();
+// For complex formatting, prefer ostringstream
+ostringstream sb;
+for (auto& s : list) sb << s;
+string result = sb.str();
 ```
 
 ## Char Access Patterns
 
-```java
-char c = s.charAt(i);              // O(1)
-char[] arr = s.toCharArray();      // O(n) copy — do once, index freely
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+char c = s[i];                     // O(1)
+// iterate string directly with range-for: for (char c : s)
 int freq = c - 'a';                // 0-25 for lowercase letters
 int ascii = (int) c;               // full ASCII value
 
-Character.isLetter(c)              // true for a-z, A-Z
-Character.isDigit(c)               // true for 0-9
-Character.isLetterOrDigit(c)       // used in palindrome problems
-Character.toLowerCase(c)           // case-insensitive compare
-Character.toUpperCase(c)
+isalpha(c)                         // true for a-z, A-Z
+isdigit(c)                         // true for 0-9
+isalnum(c)                         // used in palindrome problems
+tolower(c)                         // case-insensitive compare
+toupper(c)
 ```
 
 ## Common Frequency Array Patterns
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 // Lowercase only
-int[] freq = new int[26];
-for (char c : s.toCharArray()) freq[c - 'a']++;
+vector<int> freq(26, 0);
+for (char c : s) freq[c - 'a']++;
 
 // All ASCII
-int[] freq = new int[128];
-for (char c : s.toCharArray()) freq[c]++;
+vector<int> freq(128, 0);
+for (char c : s) freq[c]++;
 
 // Check equal frequency
-Arrays.equals(freq1, freq2);       // O(26) — fast
+freq1 == freq2;                    // O(26) — fast
 ```
 
 ## String Comparison & Operations
 
-```java
-s.equals(t)                        // content equality (not ==)
-s.equalsIgnoreCase(t)
-s.compareTo(t)                     // lexicographic; returns 0 if equal
-s.contains(sub)                    // O(n×m) — use KMP for O(n+m)
-s.startsWith(prefix)
-s.indexOf(c)                       // first occurrence, -1 if not found
-s.substring(l, r)                  // [l, r) exclusive; O(r-l)
-s.split("\\s+")                    // split on whitespace
-s.trim()                           // remove leading/trailing whitespace
-s.replace('a', 'b')                // char replacement
-new StringBuilder(s).reverse().toString() // reverse
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+s == t                             // content equality
+// equalsIgnoreCase → convert both with tolower/toupper first
+s.compare(t)                       // lexicographic; returns 0 if equal
+s.find(sub) != string::npos        // O(n×m) — use KMP for O(n+m)
+s.rfind(prefix, 0) == 0            // startsWith equivalent
+s.find(c)                          // first occurrence, string::npos if not found
+s.substr(l, r - l)                 // [l, r) exclusive; O(r-l)
+// split on whitespace → use istringstream
+s.erase(0, s.find_first_not_of(" \t\n")); // trim leading
+s.erase(s.find_last_not_of(" \t\n") + 1); // trim trailing
+replace(s.begin(), s.end(), 'a', 'b'); // char replacement
+reverse(s.begin(), s.end());       // reverse in-place
 ```
 
 ## Interview Quick-Start Template
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 // 1. Always clarify charset first
 // 2. Choose data structure:
-//    - int[26]  → lowercase only
-//    - int[128] → ASCII
-//    - HashMap  → Unicode or unknown
+//    - vector<int>(26, 0)   → lowercase only
+//    - vector<int>(128, 0)  → ASCII
+//    - unordered_map        → Unicode or unknown
 
 // 3. Sliding window skeleton
 int l = 0, maxLen = 0;
-Map<Character, Integer> window = new HashMap<>();
-for (int r = 0; r < s.length(); r++) {
-    window.merge(s.charAt(r), 1, Integer::sum);
+unordered_map<char, int> window;
+for (int r = 0; r < (int)s.length(); r++) {
+    window[s[r]]++;
     while (/* invalid */) {
-        window.merge(s.charAt(l), -1, Integer::sum);
-        if (window.get(s.charAt(l)) == 0) window.remove(s.charAt(l));
+        window[s[l]]--;
+        if (window[s[l]] == 0) window.erase(s[l]);
         l++;
     }
-    maxLen = Math.max(maxLen, r - l + 1);
+    maxLen = max(maxLen, r - l + 1);
 }
 ```
 

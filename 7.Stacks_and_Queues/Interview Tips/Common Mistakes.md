@@ -5,37 +5,43 @@
 
 ---
 
-## Mistake 1: Using `Stack<>` Instead of `ArrayDeque`
+## Mistake 1: Using `std::stack<>` Instead of `std::deque`
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // BAD
-Stack<Integer> stack = new Stack<>();
-stack.push(1);
+stack<int> stk;
+stk.push(1);
 
 // GOOD
-Deque<Integer> stack = new ArrayDeque<>();
-stack.push(1);
+deque<int> stk;
+stk.push_front(1);
 ```
 
-`Stack<T>` is a legacy class that extends `Vector` and is synchronized by default. It also exposes `get(i)` random access, which doesn't belong on a stack. `ArrayDeque` is the correct choice.
+`std::stack<T>` is a container adaptor that only exposes one end and does not support random access via `operator[]`. `std::deque` provides direct access to both ends and does not expose unintended access patterns. `std::deque` is the correct choice when you need a double-ended structure.
 
 ---
 
 ## Mistake 2: Pushing Values Instead of Indices in Monotonic Stack
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // BAD — for Daily Temperatures
-while (!stack.isEmpty() && nums[stack.peek()] < nums[i]) {
-    int prevIdx = stack.pop();
-    result[prevIdx] = i - prevIdx;  // ERROR: stack.pop() returns the VALUE, can't do i - value
+while (!stk.empty() && nums[stk.top()] < nums[i]) {
+    int prevIdx = stk.top(); stk.pop();
+    result[prevIdx] = i - prevIdx;  // ERROR: stk.top() returns the VALUE, can't do i - value
 }
 
 // GOOD
-while (!stack.isEmpty() && temperatures[stack.peek()] < temperatures[i]) {
-    int prevIdx = stack.pop();
+while (!stk.empty() && temperatures[stk.top()] < temperatures[i]) {
+    int prevIdx = stk.top(); stk.pop();
     result[prevIdx] = i - prevIdx;  // prevIdx is an INDEX, subtraction gives days
 }
-stack.push(i);  // push index, not temperatures[i]
+stk.push(i);  // push index, not temperatures[i]
 ```
 
 If you push values, you can't compute distances or write back to the result array by position.
@@ -44,32 +50,38 @@ If you push values, you can't compute distances or write back to the result arra
 
 ## Mistake 3: Histogram Width Formula Off-By-One
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // BAD — wrong width
-int width = i - stack.peek();           // off by 1 (includes left wall)
+int width = i - stk.top();           // off by 1 (includes left wall)
 
 // GOOD
-int width = stack.isEmpty() ? i : i - stack.peek() - 1;
+int width = stk.empty() ? i : i - stk.top() - 1;
 
 // Explanation:
 // - Right boundary (exclusive): i (heights[i] is shorter, so rectangle ends before i)
-// - Left boundary (exclusive): stack.peek() (this is the next-shorter bar to the left)
-// - Width: (i-1) - (stack.peek()+1) + 1 = i - stack.peek() - 1
+// - Left boundary (exclusive): stk.top() (this is the next-shorter bar to the left)
+// - Width: (i-1) - (stk.top()+1) + 1 = i - stk.top() - 1
 ```
 
-The `-1` is the most common off-by-one in this problem. Verify with a 1-element array: `heights=[5]`, at sentinel `i=1`, stack.pop()=0, stack is empty, width=1 ✓.
+The `-1` is the most common off-by-one in this problem. Verify with a 1-element array: `heights=[5]`, at sentinel `i=1`, stk.pop()=0, stk is empty, width=1 ✓.
 
 ---
 
 ## Mistake 4: Forgetting the Histogram Sentinel
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // BAD — bars that are never smaller than their right neighbor stay in stack
 for (int i = 0; i < n; i++) {
-    while (!stack.isEmpty() && heights[stack.peek()] > heights[i]) {
+    while (!stk.empty() && heights[stk.top()] > heights[i]) {
         // compute area
     }
-    stack.push(i);
+    stk.push(i);
 }
 // Stack still has entries! Never flushed for bars like [3, 5, 7]
 
@@ -86,16 +98,19 @@ For input `[3, 5, 7]` (monotonically increasing), no pops occur in the main loop
 
 ## Mistake 5: Wrong Transfer Order in Queue via Two Stacks
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // BAD — partial transfer breaks FIFO
-private void transfer() {
-    while (!inStack.isEmpty()) outStack.push(inStack.pop());  // always transfers
+void transfer() {
+    while (!inStack.empty()) { outStack.push(inStack.top()); inStack.pop(); }  // always transfers
 }
 
 // GOOD — only transfer when outStack is completely empty
-private void transfer() {
-    if (outStack.isEmpty())
-        while (!inStack.isEmpty()) outStack.push(inStack.pop());
+void transfer() {
+    if (outStack.empty())
+        while (!inStack.empty()) { outStack.push(inStack.top()); inStack.pop(); }
 }
 ```
 
@@ -105,15 +120,15 @@ If `outStack` has `[3,2,1]` (1 on top = dequeue next) and you transfer `inStack=
 
 ## Mistake 6: Circular Queue — Forgetting `size` or Using Wrong Condition
 
-```java
+```cpp
 // BAD — ambiguous: head==tail could mean empty OR full
-boolean isEmpty() { return head == tail; }
-boolean isFull()  { return head == tail; }  // same condition!
+bool isEmpty() { return head == tail; }
+bool isFull()  { return head == tail; }  // same condition!
 
 // GOOD — track size separately
-private int size = 0;
-boolean isEmpty() { return size == 0; }
-boolean isFull()  { return size == capacity; }
+int size = 0;
+bool isEmpty() { return size == 0; }
+bool isFull()  { return size == capacity; }
 ```
 
 Without a size counter (or a `isFull` boolean flag), you can't distinguish an empty circular buffer from a full one when `head == tail`.
@@ -122,35 +137,41 @@ Without a size counter (or a `isFull` boolean flag), you can't distinguish an em
 
 ## Mistake 7: Basic Calculator — Forgetting the Last Number
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // BAD — misses the last token (no operator after it)
-for (int i = 0; i < s.length(); i++) {
-    char c = s.charAt(i);
-    if (Character.isDigit(c)) num = num * 10 + (c - '0');
-    if (!Character.isDigit(c) && c != ' ') {  // WRONG: only processes on operator
+for (int i = 0; i < (int)s.length(); i++) {
+    char c = s[i];
+    if (isdigit(c)) num = num * 10 + (c - '0');
+    if (!isdigit(c) && c != ' ') {  // WRONG: only processes on operator
         // apply sign to num
     }
 }
 // Last number never gets processed!
 
 // GOOD — process on operator OR at end of string
-if ((!Character.isDigit(c) && c != ' ') || i == s.length() - 1) {
+if ((!isdigit(c) && c != ' ') || i == (int)s.length() - 1) {
     // apply sign to num
 }
 ```
 
-The input `"3+5"` ends with a digit. Without the `i == s.length() - 1` condition, `5` is never pushed to the stack.
+The input `"3+5"` ends with a digit. Without the `i == (int)s.length() - 1` condition, `5` is never pushed to the stack.
 
 ---
 
 ## Mistake 8: Decode String — Not Resetting `k` After `[`
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // BAD
 } else if (c == '[') {
     countStack.push(k);
     strStack.push(current);
-    current = new StringBuilder();
+    current = "";
     // MISSING: k = 0
 }
 
@@ -158,8 +179,8 @@ The input `"3+5"` ends with a digit. Without the `i == s.length() - 1` condition
 } else if (c == '[') {
     countStack.push(k);
     strStack.push(current);
-    k = 0;                    // ← reset for the next number
-    current = new StringBuilder();
+    k = 0;                    // reset for the next number
+    current = "";
 }
 ```
 
@@ -169,23 +190,26 @@ Without resetting `k`, nested brackets like `"2[3[a]]"` would use `k=3` again fo
 
 ## Mistake 9: Max Frequency Stack — `maxFreq` Decrement Condition
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // BAD — always decrement maxFreq on pop
-public int pop() {
-    Deque<Integer> stack = group.get(maxFreq);
-    int val = stack.pop();
-    freq.put(val, freq.get(val) - 1);
+int pop() {
+    auto& stk = group[maxFreq];
+    int val = stk.top(); stk.pop();
+    freq[val]--;
     maxFreq--;   // WRONG: only decrement if group[maxFreq] is now empty
     return val;
 }
 
 // GOOD
-public int pop() {
-    Deque<Integer> stack = group.get(maxFreq);
-    int val = stack.pop();
-    freq.put(val, freq.get(val) - 1);
-    if (stack.isEmpty()) {
-        group.remove(maxFreq);
+int pop() {
+    auto& stk = group[maxFreq];
+    int val = stk.top(); stk.pop();
+    freq[val]--;
+    if (stk.empty()) {
+        group.erase(maxFreq);
         maxFreq--;   // only decrement when bucket is empty
     }
     return val;
@@ -199,11 +223,11 @@ After popping from `group[3]`, if `group[3]` still has elements, `maxFreq` shoul
 ## Mistake 10: 132 Pattern — Confusing Which Pointer Is Which
 
 The pattern requires three pointers: `nums[i] < nums[k] < nums[j]` where `i < j < k`.
-- `stack` = candidates for `nums[j]` (the "3" in 132 — the largest)
+- `stk` = candidates for `nums[j]` (the "3" in 132 — the largest)
 - `third` = best candidate for `nums[k]` (the "2" in 132 — middle value)
 - `nums[i]` = current element being checked as the smallest ("1")
 
-```java
+```cpp
 // BAD — checking wrong condition
 if (nums[i] > third) return true;   // WRONG: we want nums[i] < third
 

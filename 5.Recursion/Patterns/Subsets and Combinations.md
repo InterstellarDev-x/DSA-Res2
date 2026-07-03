@@ -26,19 +26,23 @@ At each element, make a binary decision: **include** or **exclude**. This genera
 
 ## Template 1 — Subsets (LC 78, no duplicates)
 
-```java
-public List<List<Integer>> subsets(int[] nums) {
-    List<List<Integer>> result = new ArrayList<>();
-    backtrack(nums, 0, new ArrayList<>(), result);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> subsets(vector<int>& nums) {
+    vector<vector<int>> result;
+    vector<int> path;
+    backtrack(nums, 0, path, result);
     return result;
 }
 
-private void backtrack(int[] nums, int start, List<Integer> path, List<List<Integer>> res) {
-    res.add(new ArrayList<>(path)); // add at EVERY node, not just leaves
-    for (int i = start; i < nums.length; i++) {
-        path.add(nums[i]);
+void backtrack(vector<int>& nums, int start, vector<int>& path, vector<vector<int>>& res) {
+    res.push_back(path); // add at EVERY node, not just leaves
+    for (int i = start; i < (int)nums.size(); i++) {
+        path.push_back(nums[i]);
         backtrack(nums, i + 1, path, res); // i+1: each element used at most once
-        path.remove(path.size() - 1);
+        path.pop_back();
     }
 }
 ```
@@ -47,22 +51,26 @@ private void backtrack(int[] nums, int start, List<Integer> path, List<List<Inte
 
 ## Template 2 — Subsets II (LC 90, with duplicates)
 
-```java
-public List<List<Integer>> subsetsWithDup(int[] nums) {
-    Arrays.sort(nums); // MUST sort to group duplicates
-    List<List<Integer>> result = new ArrayList<>();
-    backtrack(nums, 0, new ArrayList<>(), result);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> subsetsWithDup(vector<int>& nums) {
+    sort(nums.begin(), nums.end()); // MUST sort to group duplicates
+    vector<vector<int>> result;
+    vector<int> path;
+    backtrack(nums, 0, path, result);
     return result;
 }
 
-private void backtrack(int[] nums, int start, List<Integer> path, List<List<Integer>> res) {
-    res.add(new ArrayList<>(path));
-    for (int i = start; i < nums.length; i++) {
+void backtrack(vector<int>& nums, int start, vector<int>& path, vector<vector<int>>& res) {
+    res.push_back(path);
+    for (int i = start; i < (int)nums.size(); i++) {
         // Skip duplicates at the SAME recursion level (not within a branch)
         if (i > start && nums[i] == nums[i - 1]) continue;
-        path.add(nums[i]);
+        path.push_back(nums[i]);
         backtrack(nums, i + 1, path, res);
-        path.remove(path.size() - 1);
+        path.pop_back();
     }
 }
 ```
@@ -77,21 +85,25 @@ private void backtrack(int[] nums, int start, List<Integer> path, List<List<Inte
 
 Same element can be used unlimited times → pass `i` not `i+1` on recursion.
 
-```java
-public List<List<Integer>> combinationSum(int[] candidates, int target) {
-    Arrays.sort(candidates); // enables pruning
-    List<List<Integer>> result = new ArrayList<>();
-    backtrack(candidates, 0, target, new ArrayList<>(), result);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> combinationSum(vector<int>& candidates, int target) {
+    sort(candidates.begin(), candidates.end()); // enables pruning
+    vector<vector<int>> result;
+    vector<int> path;
+    backtrack(candidates, 0, target, path, result);
     return result;
 }
 
-private void backtrack(int[] cands, int start, int remaining, List<Integer> path, List<List<Integer>> res) {
-    if (remaining == 0) { res.add(new ArrayList<>(path)); return; }
-    for (int i = start; i < cands.length; i++) {
+void backtrack(vector<int>& cands, int start, int remaining, vector<int>& path, vector<vector<int>>& res) {
+    if (remaining == 0) { res.push_back(path); return; }
+    for (int i = start; i < (int)cands.size(); i++) {
         if (cands[i] > remaining) break; // pruning: sorted, so rest also > remaining
-        path.add(cands[i]);
+        path.push_back(cands[i]);
         backtrack(cands, i, remaining - cands[i], path, res); // i, NOT i+1 (reuse OK)
-        path.remove(path.size() - 1);
+        path.pop_back();
     }
 }
 ```
@@ -102,22 +114,26 @@ private void backtrack(int[] cands, int start, int remaining, List<Integer> path
 
 Each element used at most once; input may have duplicates; no duplicate combinations.
 
-```java
-public List<List<Integer>> combinationSum2(int[] candidates, int target) {
-    Arrays.sort(candidates);
-    List<List<Integer>> result = new ArrayList<>();
-    backtrack(candidates, 0, target, new ArrayList<>(), result);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> combinationSum2(vector<int>& candidates, int target) {
+    sort(candidates.begin(), candidates.end());
+    vector<vector<int>> result;
+    vector<int> path;
+    backtrack(candidates, 0, target, path, result);
     return result;
 }
 
-private void backtrack(int[] cands, int start, int remaining, List<Integer> path, List<List<Integer>> res) {
-    if (remaining == 0) { res.add(new ArrayList<>(path)); return; }
-    for (int i = start; i < cands.length; i++) {
+void backtrack(vector<int>& cands, int start, int remaining, vector<int>& path, vector<vector<int>>& res) {
+    if (remaining == 0) { res.push_back(path); return; }
+    for (int i = start; i < (int)cands.size(); i++) {
         if (cands[i] > remaining) break;
         if (i > start && cands[i] == cands[i - 1]) continue; // skip duplicate at same level
-        path.add(cands[i]);
+        path.push_back(cands[i]);
         backtrack(cands, i + 1, remaining - cands[i], path, res); // i+1: no reuse
-        path.remove(path.size() - 1);
+        path.pop_back();
     }
 }
 ```
@@ -128,21 +144,25 @@ private void backtrack(int[] cands, int start, int remaining, List<Integer> path
 
 Exactly k numbers from 1–9 summing to n.
 
-```java
-public List<List<Integer>> combinationSum3(int k, int n) {
-    List<List<Integer>> result = new ArrayList<>();
-    backtrack(1, k, n, new ArrayList<>(), result);
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<int>> combinationSum3(int k, int n) {
+    vector<vector<int>> result;
+    vector<int> path;
+    backtrack(1, k, n, path, result);
     return result;
 }
 
-private void backtrack(int start, int k, int remaining, List<Integer> path, List<List<Integer>> res) {
-    if (path.size() == k && remaining == 0) { res.add(new ArrayList<>(path)); return; }
-    if (path.size() == k || remaining <= 0) return; // prune
+void backtrack(int start, int k, int remaining, vector<int>& path, vector<vector<int>>& res) {
+    if ((int)path.size() == k && remaining == 0) { res.push_back(path); return; }
+    if ((int)path.size() == k || remaining <= 0) return; // prune
     for (int i = start; i <= 9; i++) {
         if (i > remaining) break; // prune
-        path.add(i);
+        path.push_back(i);
         backtrack(i + 1, k, remaining - i, path, res);
-        path.remove(path.size() - 1);
+        path.pop_back();
     }
 }
 ```
@@ -151,22 +171,26 @@ private void backtrack(int start, int k, int remaining, List<Integer> path, List
 
 ## Template 6 — Letter Combinations of Phone Number (LC 17)
 
-```java
-private static final String[] MAP = {"", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"};
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public List<String> letterCombinations(String digits) {
-    List<String> result = new ArrayList<>();
-    if (digits.isEmpty()) return result;
-    backtrack(digits, 0, new StringBuilder(), result);
+static const string MAP[] = {"", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"};
+
+vector<string> letterCombinations(string digits) {
+    vector<string> result;
+    if (digits.empty()) return result;
+    string path;
+    backtrack(digits, 0, path, result);
     return result;
 }
 
-private void backtrack(String digits, int i, StringBuilder sb, List<String> res) {
-    if (i == digits.length()) { res.add(sb.toString()); return; }
-    for (char ch : MAP[digits.charAt(i) - '0'].toCharArray()) {
-        sb.append(ch);
-        backtrack(digits, i + 1, sb, res);
-        sb.deleteCharAt(sb.length() - 1);
+void backtrack(const string& digits, int i, string& path, vector<string>& res) {
+    if (i == (int)digits.size()) { res.push_back(path); return; }
+    for (char ch : MAP[digits[i] - '0']) {
+        path += ch;
+        backtrack(digits, i + 1, path, res);
+        path.pop_back();
     }
 }
 ```
@@ -186,7 +210,7 @@ private void backtrack(String digits, int i, StringBuilder sb, List<String> res)
 
 ## Duplicate Skipping Rule (Memorize This)
 
-```java
+```cpp
 if (i > start && nums[i] == nums[i - 1]) continue;
 ```
 
@@ -200,7 +224,7 @@ if (i > start && nums[i] == nums[i - 1]) continue;
 
 | Mistake | Fix |
 |---------|-----|
-| Not copying `path` on add | `new ArrayList<>(path)` — stores a snapshot |
+| Not copying `path` on add | `vector<int>(path)` — stores a snapshot (or just `path` when passed by value) |
 | Adding to result at leaf only (subset) | Add at every node for subsets, at leaf only for combinations |
 | Reuse: passing `i+1` instead of `i` | Combination Sum I requires `i` |
 | Duplicate skip: `i > 0` instead of `i > start` | `i > start` preserves first pick at each level |

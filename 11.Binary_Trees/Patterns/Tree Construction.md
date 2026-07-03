@@ -6,12 +6,13 @@ Rebuilding a tree from traversal arrays, and structural rewrites (flatten, width
 pointers). The unifying idea: **the root is identifiable from one array, and its position in
 another array splits the remaining nodes into left and right subtrees.**
 
-```java
-public class TreeNode {
+```cpp
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+};
 ```
 
 ---
@@ -22,7 +23,7 @@ public class TreeNode {
 - **Inorder**  = `[Left subtree | Root | Right subtree]` → finding the root in inorder splits
   left vs right.
 
-Use a `HashMap<val → inorderIndex>` for **O(1)** root lookup instead of a linear scan.
+Use a `unordered_map<val → inorderIndex>` for **O(1)** root lookup instead of a linear scan.
 
 **Key invariants:**
 ```
@@ -33,24 +34,27 @@ left  subtree: preorder[preStart+1 .. preStart+leftSize], inorder[inStart .. inI
 right subtree: preorder[preStart+leftSize+1 .. ],          inorder[inIdx+1 .. inEnd]
 ```
 
-```java
-private Map<Integer, Integer> idx;       // inorder value -> index
-private int preIndex;                     // global pointer into preorder
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public TreeNode buildTree(int[] preorder, int[] inorder) {
-    idx = new HashMap<>();
-    for (int i = 0; i < inorder.length; i++) idx.put(inorder[i], i);
+unordered_map<int, int> idx;       // inorder value -> index
+int preIndex;                       // global pointer into preorder
+
+TreeNode* buildTree(vector<int>& preorder, vector<int>& inorder) {
+    idx.clear();
+    for (int i = 0; i < (int)inorder.size(); i++) idx[inorder[i]] = i;
     preIndex = 0;
-    return build(preorder, 0, inorder.length - 1);
+    return build(preorder, 0, inorder.size() - 1);
 }
 
-private TreeNode build(int[] preorder, int inStart, int inEnd) {
-    if (inStart > inEnd) return null;
+TreeNode* build(vector<int>& preorder, int inStart, int inEnd) {
+    if (inStart > inEnd) return nullptr;
     int rootVal = preorder[preIndex++];   // preorder consumed front-to-back
-    TreeNode root = new TreeNode(rootVal);
-    int inIdx = idx.get(rootVal);
-    root.left  = build(preorder, inStart, inIdx - 1);   // build LEFT first
-    root.right = build(preorder, inIdx + 1, inEnd);     // matches preorder order
+    TreeNode* root = new TreeNode(rootVal);
+    int inIdx = idx[rootVal];
+    root->left  = build(preorder, inStart, inIdx - 1);   // build LEFT first
+    root->right = build(preorder, inIdx + 1, inEnd);     // matches preorder order
     return root;
 }
 ```
@@ -66,24 +70,27 @@ private TreeNode build(int[] preorder, int inStart, int inEnd) {
 **back-to-front** gives Root, then Right subtree, then Left subtree — so build the **right**
 subtree before the left.
 
-```java
-private Map<Integer, Integer> idx;
-private int postIndex;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public TreeNode buildTree(int[] inorder, int[] postorder) {
-    idx = new HashMap<>();
-    for (int i = 0; i < inorder.length; i++) idx.put(inorder[i], i);
-    postIndex = postorder.length - 1;     // consume from the back
-    return build(postorder, 0, inorder.length - 1);
+unordered_map<int, int> idx;
+int postIndex;
+
+TreeNode* buildTree(vector<int>& inorder, vector<int>& postorder) {
+    idx.clear();
+    for (int i = 0; i < (int)inorder.size(); i++) idx[inorder[i]] = i;
+    postIndex = postorder.size() - 1;     // consume from the back
+    return build(postorder, 0, inorder.size() - 1);
 }
 
-private TreeNode build(int[] postorder, int inStart, int inEnd) {
-    if (inStart > inEnd) return null;
+TreeNode* build(vector<int>& postorder, int inStart, int inEnd) {
+    if (inStart > inEnd) return nullptr;
     int rootVal = postorder[postIndex--];
-    TreeNode root = new TreeNode(rootVal);
-    int inIdx = idx.get(rootVal);
-    root.right = build(postorder, inIdx + 1, inEnd);    // RIGHT first (mirror of LC 105)
-    root.left  = build(postorder, inStart, inIdx - 1);
+    TreeNode* root = new TreeNode(rootVal);
+    int inIdx = idx[rootVal];
+    root->right = build(postorder, inIdx + 1, inEnd);    // RIGHT first (mirror of LC 105)
+    root->left  = build(postorder, inStart, inIdx - 1);
     return root;
 }
 ```
@@ -96,24 +103,27 @@ Without inorder the answer isn't unique, but any valid tree works. Identify the 
 subtree's root** = `preorder[preStart+1]`, find it in postorder to compute the left-subtree
 size.
 
-```java
-private Map<Integer, Integer> postIdx;
-private int preIndex = 0;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public TreeNode constructFromPrePost(int[] pre, int[] post) {
-    postIdx = new HashMap<>();
-    for (int i = 0; i < post.length; i++) postIdx.put(post[i], i);
-    return build(pre, post, 0, post.length - 1);
+unordered_map<int, int> postIdx;
+int preIndex = 0;
+
+TreeNode* constructFromPrePost(vector<int>& pre, vector<int>& post) {
+    postIdx.clear();
+    for (int i = 0; i < (int)post.size(); i++) postIdx[post[i]] = i;
+    return build(pre, post, 0, post.size() - 1);
 }
 
-private TreeNode build(int[] pre, int[] post, int postStart, int postEnd) {
-    if (preIndex >= pre.length || postStart > postEnd) return null;
-    TreeNode root = new TreeNode(pre[preIndex++]);
+TreeNode* build(vector<int>& pre, vector<int>& post, int postStart, int postEnd) {
+    if (preIndex >= (int)pre.size() || postStart > postEnd) return nullptr;
+    TreeNode* root = new TreeNode(pre[preIndex++]);
     if (postStart == postEnd) return root;        // leaf
     int leftRootVal = pre[preIndex];              // next in preorder is left child's root
-    int leftRootPos = postIdx.get(leftRootVal);
-    root.left  = build(pre, post, postStart, leftRootPos);
-    root.right = build(pre, post, leftRootPos + 1, postEnd - 1);
+    int leftRootPos = postIdx[leftRootVal];
+    root->left  = build(pre, post, postStart, leftRootPos);
+    root->right = build(pre, post, leftRootPos + 1, postEnd - 1);
     return root;
 }
 ```
@@ -126,34 +136,37 @@ Assign each node a **heap-style index**: a node at index `i` has children `2i` a
 Width of a level = `rightmostIndex − leftmostIndex + 1`. **Normalize** indices each level by
 subtracting the level's leftmost index to prevent `int` overflow on deep trees.
 
-```java
-public int widthOfBinaryTree(TreeNode root) {
-    if (root == null) return 0;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int widthOfBinaryTree(TreeNode* root) {
+    if (root == nullptr) return 0;
     int maxWidth = 0;
     // pair (node, index)
-    Queue<int[]> idxQueue = new LinkedList<>();
-    Queue<TreeNode> nodeQueue = new LinkedList<>();
-    nodeQueue.offer(root);
-    idxQueue.offer(new int[]{0});
-    while (!nodeQueue.isEmpty()) {
+    queue<int> idxQueue;
+    queue<TreeNode*> nodeQueue;
+    nodeQueue.push(root);
+    idxQueue.push(0);
+    while (!nodeQueue.empty()) {
         int size = nodeQueue.size();
-        int leftmost = idxQueue.peek()[0];        // normalize against this
+        int leftmost = idxQueue.front();        // normalize against this
         int first = 0, last = 0;
         for (int i = 0; i < size; i++) {
-            TreeNode node = nodeQueue.poll();
-            int idx = idxQueue.poll()[0] - leftmost;   // <-- overflow guard
+            TreeNode* node = nodeQueue.front(); nodeQueue.pop();
+            int idx = idxQueue.front() - leftmost; idxQueue.pop();   // <-- overflow guard
             if (i == 0) first = idx;
             if (i == size - 1) last = idx;
-            if (node.left != null) {
-                nodeQueue.offer(node.left);
-                idxQueue.offer(new int[]{2 * idx});
+            if (node->left != nullptr) {
+                nodeQueue.push(node->left);
+                idxQueue.push(2 * idx);
             }
-            if (node.right != null) {
-                nodeQueue.offer(node.right);
-                idxQueue.offer(new int[]{2 * idx + 1});
+            if (node->right != nullptr) {
+                nodeQueue.push(node->right);
+                idxQueue.push(2 * idx + 1);
             }
         }
-        maxWidth = Math.max(maxWidth, last - first + 1);
+        maxWidth = max(maxWidth, last - first + 1);
     }
     return maxWidth;
 }
@@ -169,18 +182,18 @@ Flatten in-place into a "linked list" using the **right** pointers, in preorder.
 For each node with a left child, find the left subtree's rightmost node, and splice the
 current right subtree onto it; then move the left subtree to the right.
 
-```java
-public void flatten(TreeNode root) {
-    TreeNode curr = root;
-    while (curr != null) {
-        if (curr.left != null) {
-            TreeNode pred = curr.left;
-            while (pred.right != null) pred = pred.right;  // rightmost of left subtree
-            pred.right = curr.right;        // splice original right subtree after it
-            curr.right = curr.left;         // move left subtree to the right
-            curr.left = null;
+```cpp
+void flatten(TreeNode* root) {
+    TreeNode* curr = root;
+    while (curr != nullptr) {
+        if (curr->left != nullptr) {
+            TreeNode* pred = curr->left;
+            while (pred->right != nullptr) pred = pred->right;  // rightmost of left subtree
+            pred->right = curr->right;        // splice original right subtree after it
+            curr->right = curr->left;         // move left subtree to the right
+            curr->left = nullptr;
         }
-        curr = curr.right;
+        curr = curr->right;
     }
 }
 ```
@@ -188,15 +201,15 @@ public void flatten(TreeNode root) {
 ### Approach B — recursive reverse-postorder (Right → Left → Root)
 Visit in reverse preorder, chaining each node onto a `prev` pointer.
 
-```java
-private TreeNode prev = null;
+```cpp
+TreeNode* prev = nullptr;
 
-public void flattenRecursive(TreeNode root) {
-    if (root == null) return;
-    flattenRecursive(root.right);   // right first
-    flattenRecursive(root.left);
-    root.right = prev;              // attach what comes after in preorder
-    root.left = null;
+void flattenRecursive(TreeNode* root) {
+    if (root == nullptr) return;
+    flattenRecursive(root->right);   // right first
+    flattenRecursive(root->left);
+    root->right = prev;              // attach what comes after in preorder
+    root->left = nullptr;
     prev = root;
 }
 ```
@@ -208,21 +221,21 @@ public void flattenRecursive(TreeNode root) {
 In a **perfect** binary tree, use the already-established `next` pointers of the parent level
 to connect the child level in **constant space** (no queue).
 
-```java
-class Node { int val; Node left, right, next; }
+```cpp
+struct Node { int val; Node* left; Node* right; Node* next; };
 
-public Node connect(Node root) {
-    if (root == null) return root;
-    Node leftmost = root;
-    while (leftmost.left != null) {           // while there is a next level
-        Node head = leftmost;
-        while (head != null) {
-            head.left.next = head.right;                 // within same parent
-            if (head.next != null)
-                head.right.next = head.next.left;        // across adjacent parents
-            head = head.next;
+Node* connect(Node* root) {
+    if (root == nullptr) return root;
+    Node* leftmost = root;
+    while (leftmost->left != nullptr) {           // while there is a next level
+        Node* head = leftmost;
+        while (head != nullptr) {
+            head->left->next = head->right;                 // within same parent
+            if (head->next != nullptr)
+                head->right->next = head->next->left;        // across adjacent parents
+            head = head->next;
         }
-        leftmost = leftmost.left;
+        leftmost = leftmost->left;
     }
     return root;
 }

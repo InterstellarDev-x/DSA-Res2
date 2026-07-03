@@ -2,7 +2,7 @@
 
 # Stock Buy Sell
 
-The "Stock Buy Sell" family is a collection of problems that look superficially different — one transaction, infinite transactions, at most two, at most K, with a cooldown, with a fee — but every one of them is a specialization of a **single underlying state machine**. Once you internalize that machine, you stop memorizing six tricks and instead derive each variant by *constraining* one general recurrence. This page builds that unified model first, then solves all six problems with full, compilable Java.
+The "Stock Buy Sell" family is a collection of problems that look superficially different — one transaction, infinite transactions, at most two, at most K, with a cooldown, with a fee — but every one of them is a specialization of a **single underlying state machine**. Once you internalize that machine, you stop memorizing six tricks and instead derive each variant by *constraining* one general recurrence. This page builds that unified model first, then solves all six problems with full, compilable C++.
 
 The whole family shares one rule: on any day you either **hold** a share or you don't, and you transition between those two states by buying (pay `prices[i]`) or selling (receive `prices[i]`). The variations only change *how many times* you may transition and *what penalties* apply.
 
@@ -82,18 +82,19 @@ You may complete **at most one** transaction. This is the `K = 1` specialization
 - `minPrice` = lowest price in `prices[0..i]`.
 - `maxProfit` = `max over i of (prices[i] - minPrice)`.
 
-### Java
+### C++
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class StockI {
-
+class StockI {
+public:
     // O(n) time, O(1) space — the K = 1 specialization.
-    public int maxProfit(int[] prices) {
-        int minPrice = Integer.MAX_VALUE;
+    int maxProfit(vector<int>& prices) {
+        int minPrice = INT_MAX;
         int best = 0;
-        for (int price : prices) {
+        for (auto& price : prices) {
             if (price < minPrice) {
                 minPrice = price;
             } else if (price - minPrice > best) {
@@ -107,16 +108,16 @@ public class StockI {
     // cash0 = best profit holding nothing, having used 0 buys.
     // hold1 = best profit holding a share (the one allowed buy).
     // cash1 = best profit holding nothing after the one allowed sell.
-    public int maxProfitDP(int[] prices) {
-        int hold1 = Integer.MIN_VALUE; // bought once, not yet sold
-        int cash1 = 0;                 // sold the one share
-        for (int price : prices) {
-            hold1 = Math.max(hold1, -price);        // buy today (from initial cash 0)
-            cash1 = Math.max(cash1, hold1 + price); // sell today
+    int maxProfitDP(vector<int>& prices) {
+        int hold1 = INT_MIN; // bought once, not yet sold
+        int cash1 = 0;       // sold the one share
+        for (auto& price : prices) {
+            hold1 = max(hold1, -price);        // buy today (from initial cash 0)
+            cash1 = max(cash1, hold1 + price); // sell today
         }
         return cash1;
     }
-}
+};
 ```
 
 ### Dry run
@@ -155,15 +156,18 @@ Any multi-day upswing `a < b < c` yields the same profit whether you take it as 
 
 With unbounded transactions the state reduces to two values: best profit while in cash, best profit while holding.
 
-### Java
+### C++
 
-```java
-public class StockII {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
+class StockII {
+public:
     // Greedy: O(n) time, O(1) space.
-    public int maxProfit(int[] prices) {
+    int maxProfit(vector<int>& prices) {
         int profit = 0;
-        for (int i = 1; i < prices.length; i++) {
+        for (int i = 1; i < (int)prices.size(); i++) {
             int delta = prices[i] - prices[i - 1];
             if (delta > 0) {
                 profit += delta;
@@ -173,17 +177,17 @@ public class StockII {
     }
 
     // Holding-state DP (K = infinite => no transaction dimension), O(1) space.
-    public int maxProfitDP(int[] prices) {
-        int cash = 0;                   // not holding
-        int hold = Integer.MIN_VALUE;   // holding a share
-        for (int price : prices) {
+    int maxProfitDP(vector<int>& prices) {
+        int cash = 0;        // not holding
+        int hold = INT_MIN;  // holding a share
+        for (auto& price : prices) {
             int prevCash = cash;
-            cash = Math.max(cash, hold + price); // sell today
-            hold = Math.max(hold, prevCash - price); // buy today (reuse prior cash)
+            cash = max(cash, hold + price);       // sell today
+            hold = max(hold, prevCash - price);   // buy today (reuse prior cash)
         }
         return cash;
     }
-}
+};
 ```
 
 ### Recurrence
@@ -210,29 +214,17 @@ Now `K = 2`. We use the full three-dimensional machine but with the transaction 
 
 ### 4.1 Top-down memoization (3D)
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class StockIII_Memo {
+class StockIII_Memo {
 
-    private int[][][] memo;
-    private int[] prices;
-    private int n;
+    vector<vector<vector<int>>> memo;
+    vector<int> prices;
+    int n;
 
-    public int maxProfit(int[] prices) {
-        this.prices = prices;
-        this.n = prices.length;
-        // dimensions: day (n), transactionsLeft (3: 0,1,2), holding (2)
-        this.memo = new int[n][3][2];
-        for (int[][] plane : memo) {
-            for (int[] row : plane) {
-                Arrays.fill(row, -1);
-            }
-        }
-        return solve(0, 2, 0);
-    }
-
-    private int solve(int day, int cap, int holding) {
+    int solve(int day, int cap, int holding) {
         if (day == n || cap == 0) {
             return 0;
         }
@@ -250,66 +242,81 @@ public class StockIII_Memo {
             action = solve(day + 1, cap - 1, 0) + prices[day];
         }
 
-        int result = Math.max(rest, action);
+        int result = max(rest, action);
         memo[day][cap][holding] = result;
         return result;
     }
-}
+
+public:
+    int maxProfit(vector<int>& prices) {
+        this->prices = prices;
+        this->n = prices.size();
+        // dimensions: day (n), transactionsLeft (3: 0,1,2), holding (2)
+        memo = vector<vector<vector<int>>>(n, vector<vector<int>>(3, vector<int>(2, -1)));
+        return solve(0, 2, 0);
+    }
+};
 ```
 
 ### 4.2 Bottom-up tabulation (3D)
 
-```java
-public class StockIII_Tab {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int maxProfit(int[] prices) {
-        int n = prices.length;
+class StockIII_Tab {
+public:
+    int maxProfit(vector<int>& prices) {
+        int n = prices.size();
         if (n == 0) {
             return 0;
         }
         // dp[day][cap][holding]; day goes n down to 0
-        int[][][] dp = new int[n + 1][3][2];
+        vector<vector<vector<int>>> dp(n + 1, vector<vector<int>>(3, vector<int>(2, 0)));
         // base: dp[n][*][*] = 0 (already zero); cap == 0 also yields 0.
 
         for (int day = n - 1; day >= 0; day--) {
             for (int cap = 1; cap <= 2; cap++) {
                 // holding == 0 (can buy)
-                dp[day][cap][0] = Math.max(
+                dp[day][cap][0] = max(
                         dp[day + 1][cap][0],                 // rest
                         dp[day + 1][cap][1] - prices[day]);  // buy
                 // holding == 1 (can sell)
-                dp[day][cap][1] = Math.max(
+                dp[day][cap][1] = max(
                         dp[day + 1][cap][1],                     // rest
                         dp[day + 1][cap - 1][0] + prices[day]);  // sell, consume txn
             }
         }
         return dp[0][2][0];
     }
-}
+};
 ```
 
 ### 4.3 Space-optimized (four scalars)
 
 With `K = 2` the entire table collapses to four running values: cost/profit after the 1st buy, after the 1st sell, after the 2nd buy, after the 2nd sell.
 
-```java
-public class StockIII_Opt {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
+class StockIII_Opt {
+public:
     // O(n) time, O(1) space.
-    public int maxProfit(int[] prices) {
-        int buy1 = Integer.MIN_VALUE;  // after first buy
-        int sell1 = 0;                 // after first sell
-        int buy2 = Integer.MIN_VALUE;  // after second buy
-        int sell2 = 0;                 // after second sell
-        for (int price : prices) {
-            buy1 = Math.max(buy1, -price);
-            sell1 = Math.max(sell1, buy1 + price);
-            buy2 = Math.max(buy2, sell1 - price);
-            sell2 = Math.max(sell2, buy2 + price);
+    int maxProfit(vector<int>& prices) {
+        int buy1 = INT_MIN;  // after first buy
+        int sell1 = 0;       // after first sell
+        int buy2 = INT_MIN;  // after second buy
+        int sell2 = 0;       // after second sell
+        for (auto& price : prices) {
+            buy1 = max(buy1, -price);
+            sell1 = max(sell1, buy1 + price);
+            buy2 = max(buy2, sell1 - price);
+            sell2 = max(sell2, buy2 + price);
         }
         return sell2;
     }
-}
+};
 ```
 
 ### Complexity
@@ -328,32 +335,17 @@ The general machine, no constraint removed. Below are the memo, the tabulation, 
 
 ### 5.1 Top-down memoization (3D)
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class StockIV_Memo {
+class StockIV_Memo {
 
-    private int[][][] memo;
-    private int[] prices;
-    private int n;
+    vector<vector<vector<int>>> memo;
+    vector<int> prices;
+    int n;
 
-    public int maxProfit(int k, int[] prices) {
-        this.prices = prices;
-        this.n = prices.length;
-        if (n == 0 || k == 0) {
-            return 0;
-        }
-        // dimensions: day (n), transactionsLeft (k+1), holding (2)
-        this.memo = new int[n][k + 1][2];
-        for (int[][] plane : memo) {
-            for (int[] row : plane) {
-                Arrays.fill(row, -1);
-            }
-        }
-        return solve(0, k, 0);
-    }
-
-    private int solve(int day, int cap, int holding) {
+    int solve(int day, int cap, int holding) {
         if (day == n || cap == 0) {
             return 0;
         }
@@ -369,57 +361,75 @@ public class StockIV_Memo {
             action = solve(day + 1, cap - 1, 0) + prices[day];    // sell, consume txn
         }
 
-        int result = Math.max(rest, action);
+        int result = max(rest, action);
         memo[day][cap][holding] = result;
         return result;
     }
-}
+
+public:
+    int maxProfit(int k, vector<int>& prices) {
+        this->prices = prices;
+        this->n = prices.size();
+        if (n == 0 || k == 0) {
+            return 0;
+        }
+        // dimensions: day (n), transactionsLeft (k+1), holding (2)
+        memo = vector<vector<vector<int>>>(n, vector<vector<int>>(k + 1, vector<int>(2, -1)));
+        return solve(0, k, 0);
+    }
+};
 ```
 
 ### 5.2 Bottom-up tabulation (3D)
 
-```java
-public class StockIV_Tab {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int maxProfit(int k, int[] prices) {
-        int n = prices.length;
+class StockIV_Tab {
+public:
+    int maxProfit(int k, vector<int>& prices) {
+        int n = prices.size();
         if (n == 0 || k == 0) {
             return 0;
         }
-        int[][][] dp = new int[n + 1][k + 1][2]; // base dp[n][*][*] = 0
+        vector<vector<vector<int>>> dp(n + 1, vector<vector<int>>(k + 1, vector<int>(2, 0))); // base dp[n][*][*] = 0
 
         for (int day = n - 1; day >= 0; day--) {
             for (int cap = 1; cap <= k; cap++) {
-                dp[day][cap][0] = Math.max(
+                dp[day][cap][0] = max(
                         dp[day + 1][cap][0],
                         dp[day + 1][cap][1] - prices[day]);
-                dp[day][cap][1] = Math.max(
+                dp[day][cap][1] = max(
                         dp[day + 1][cap][1],
                         dp[day + 1][cap - 1][0] + prices[day]);
             }
         }
         return dp[0][k][0];
     }
-}
+};
 ```
 
 ### 5.3 Space-optimized to 2D (rolling day) and 1D (buy/sell pairs)
 
-```java
-public class StockIV_Opt {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
+class StockIV_Opt {
+public:
     // 2D: keep only the next day's plane -> O(k) space.
-    public int maxProfit2D(int k, int[] prices) {
-        int n = prices.length;
+    int maxProfit2D(int k, vector<int>& prices) {
+        int n = prices.size();
         if (n == 0 || k == 0) {
             return 0;
         }
-        int[][] next = new int[k + 1][2];
+        vector<vector<int>> next(k + 1, vector<int>(2, 0));
         for (int day = n - 1; day >= 0; day--) {
-            int[][] cur = new int[k + 1][2];
+            vector<vector<int>> cur(k + 1, vector<int>(2, 0));
             for (int cap = 1; cap <= k; cap++) {
-                cur[cap][0] = Math.max(next[cap][0], next[cap][1] - prices[day]);
-                cur[cap][1] = Math.max(next[cap][1], next[cap - 1][0] + prices[day]);
+                cur[cap][0] = max(next[cap][0], next[cap][1] - prices[day]);
+                cur[cap][1] = max(next[cap][1], next[cap - 1][0] + prices[day]);
             }
             next = cur;
         }
@@ -428,26 +438,26 @@ public class StockIV_Opt {
 
     // 1D: buy[t]/sell[t] arrays scanned over days, like the four-scalar StockIII
     // generalized to k pairs. O(k) space.
-    public int maxProfit1D(int k, int[] prices) {
-        if (prices.length == 0 || k == 0) {
+    int maxProfit1D(int k, vector<int>& prices) {
+        if (prices.empty() || k == 0) {
             return 0;
         }
-        int[] buy = new int[k + 1];
-        int[] sell = new int[k + 1];
-        Arrays.fill(buy, Integer.MIN_VALUE);
+        vector<int> buy(k + 1, 0);
+        vector<int> sell(k + 1, 0);
+        fill(buy.begin(), buy.end(), INT_MIN);
         // sell[0] stays 0; buy[0] unused for transactions.
-        for (int price : prices) {
+        for (auto& price : prices) {
             for (int t = 1; t <= k; t++) {
-                buy[t] = Math.max(buy[t], sell[t - 1] - price);
-                sell[t] = Math.max(sell[t], buy[t] + price);
+                buy[t] = max(buy[t], sell[t - 1] - price);
+                sell[t] = max(sell[t], buy[t] + price);
             }
         }
         return sell[k];
     }
-}
+};
 ```
 
-(The `import java.util.Arrays;` is needed for `StockIV_Opt.maxProfit1D`.)
+(The `#include <bits/stdc++.h>` covers all standard library needs for `StockIV_Opt::maxProfit1D`.)
 
 ### Complexity
 
@@ -480,31 +490,34 @@ rest[i] = max( rest[i-1], sold[i-1] )                // stay in cash, or come of
 
 Answer = `max(sold[n-1], rest[n-1])` (never end holding).
 
-### Java
+### C++
 
-```java
-public class StockCooldown {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
+class StockCooldown {
+public:
     // O(n) time, O(1) space.
-    public int maxProfit(int[] prices) {
-        if (prices.length == 0) {
+    int maxProfit(vector<int>& prices) {
+        if (prices.empty()) {
             return 0;
         }
-        int hold = Integer.MIN_VALUE; // own a share
-        int sold = 0;                 // sold today (cooldown begins)
-        int rest = 0;                 // in cash, free to buy
-        for (int price : prices) {
+        int hold = INT_MIN; // own a share
+        int sold = 0;       // sold today (cooldown begins)
+        int rest = 0;       // in cash, free to buy
+        for (auto& price : prices) {
             int prevHold = hold;
             int prevSold = sold;
             int prevRest = rest;
 
-            hold = Math.max(prevHold, prevRest - price); // buy only from rest
-            sold = prevHold + price;                     // sell
-            rest = Math.max(prevRest, prevSold);         // stay or exit cooldown
+            hold = max(prevHold, prevRest - price); // buy only from rest
+            sold = prevHold + price;                // sell
+            rest = max(prevRest, prevSold);         // stay or exit cooldown
         }
-        return Math.max(sold, rest);
+        return max(sold, rest);
     }
-}
+};
 ```
 
 ### Complexity
@@ -526,23 +539,26 @@ cash[i] = max( cash[i-1], hold[i-1] + prices[i] - fee )  // sell, pay fee
 hold[i] = max( hold[i-1], cash[i-1] - prices[i] )        // buy
 ```
 
-### Java
+### C++
 
-```java
-public class StockWithFee {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
+class StockWithFee {
+public:
     // O(n) time, O(1) space.
-    public int maxProfit(int[] prices, int fee) {
-        int cash = 0;                 // not holding
-        int hold = Integer.MIN_VALUE; // holding a share
-        for (int price : prices) {
+    int maxProfit(vector<int>& prices, int fee) {
+        int cash = 0;        // not holding
+        int hold = INT_MIN;  // holding a share
+        for (auto& price : prices) {
             int prevCash = cash;
-            cash = Math.max(cash, hold + price - fee); // sell, charge fee
-            hold = Math.max(hold, prevCash - price);   // buy
+            cash = max(cash, hold + price - fee); // sell, charge fee
+            hold = max(hold, prevCash - price);   // buy
         }
         return cash;
     }
-}
+};
 ```
 
 ### Complexity
@@ -557,12 +573,12 @@ public class StockWithFee {
 
 Everything above is the one template from Section 1:
 
-```java
+```cpp
 // dp[day][cap][holding]
-dp[day][cap][0] = Math.max(dp[day + 1][cap][0],
-                           dp[day + 1][cap][1] - prices[day]);   // rest / buy
-dp[day][cap][1] = Math.max(dp[day + 1][cap][1],
-                           dp[day + 1][cap - 1][0] + prices[day]); // rest / sell
+dp[day][cap][0] = max(dp[day + 1][cap][0],
+                      dp[day + 1][cap][1] - prices[day]);   // rest / buy
+dp[day][cap][1] = max(dp[day + 1][cap][1],
+                      dp[day + 1][cap - 1][0] + prices[day]); // rest / sell
 ```
 
 Explicit specializations:
@@ -599,7 +615,7 @@ Explicit specializations:
 - **K = ∞** drops the transaction dimension entirely → the greedy positive-delta sum.
 - **General K** is the full 3D table; optimize to `O(k)` space, and short-circuit to greedy when `K ≥ n/2`.
 - **Cooldown** adds a forced-rest edge after selling; **fee** subtracts a constant on the sell edge. Neither changes the core machine.
-- Java standards used throughout: `int[][][]` / `int[][]` tables, `Arrays.fill(row, -1)` for memo init, `Math.max` for transitions, guarding holding state with `Integer.MIN_VALUE` as the "impossible" sentinel.
+- C++ standards used throughout: `vector<vector<vector<int>>>` / `vector<vector<int>>` tables, vector constructor with `-1` for memo init, `max` for transitions, guarding holding state with `INT_MIN` as the "impossible" sentinel.
 
 | Problem | LC | Constraint | Best space |
 | --- | --- | --- | --- |

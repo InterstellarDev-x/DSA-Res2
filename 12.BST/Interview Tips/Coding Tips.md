@@ -4,12 +4,13 @@
 
 Eight tips that turn most BST interview problems into a 5-minute exercise.
 
-```java
-public class TreeNode {
+```cpp
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int val) : val(val), left(nullptr), right(nullptr) {}
+};
 ```
 
 ---
@@ -23,44 +24,47 @@ kth-smallest, min-abs-diff, two-sum, and recover.
 A node can be larger than its parent yet still violate an ancestor's bound. Pass an open interval
 down and tighten it:
 
-```java
-private boolean valid(TreeNode n, long lo, long hi) {
-    if (n == null) return true;
-    if (n.val <= lo || n.val >= hi) return false;
-    return valid(n.left, lo, n.val) && valid(n.right, n.val, hi);
+```cpp
+bool valid(TreeNode* n, long lo, long hi) {
+    if (n == nullptr) return true;
+    if (n->val <= lo || n->val >= hi) return false;
+    return valid(n->left, lo, n->val) && valid(n->right, n->val, hi);
 }
 ```
 
 ### 3. Use `long` for validation bounds.
-A node holding `Integer.MIN_VALUE` or `Integer.MAX_VALUE` breaks `int` bounds at the boundary.
-Start from `Long.MIN_VALUE` / `Long.MAX_VALUE` (or store the previous `TreeNode` reference instead
+A node holding `INT_MIN` or `INT_MAX` breaks `int` bounds at the boundary.
+Start from `LONG_MIN` / `LONG_MAX` (or store the previous `TreeNode*` reference instead
 of a primitive).
 
 ### 4. O(h) compare-and-descend for LCA, floor, ceil, successor.
 Never run a full-tree O(n) search when ordering is available. Compare the target against the
 current node and descend one side, updating a candidate as you pass.
 
-```java
+```cpp
 // LCA: descend to the split point
-while (cur != null) {
-    if (p.val < cur.val && q.val < cur.val)      cur = cur.left;
-    else if (p.val > cur.val && q.val > cur.val) cur = cur.right;
+while (cur != nullptr) {
+    if (p->val < cur->val && q->val < cur->val)      cur = cur->left;
+    else if (p->val > cur->val && q->val > cur->val) cur = cur->right;
     else return cur;
 }
 ```
 
 ### 5. Use an explicit stack for *controlled* inorder.
 When you need to stop early (kth smallest) or pause/resume (BST Iterator), drive inorder with a
-`Deque`:
+`stack`:
 
-```java
-Deque<TreeNode> stack = new ArrayDeque<>();
-TreeNode cur = root;
-while (cur != null || !stack.isEmpty()) {
-    while (cur != null) { stack.push(cur); cur = cur.left; }
-    cur = stack.pop();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+stack<TreeNode*> stk;
+TreeNode* cur = root;
+while (cur != nullptr || !stk.empty()) {
+    while (cur != nullptr) { stk.push(cur); cur = cur->left; }
+    cur = stk.top(); stk.pop();
     // visit cur — break here for early stop
-    cur = cur.right;
+    cur = cur->right;
 }
 ```
 
@@ -72,11 +76,11 @@ tree (LC 538) in one pass.
 The successor (leftmost of the right subtree) is the smallest key larger than the node, so
 promoting its value keeps the invariant. Then delete that successor copy from the right subtree.
 
-```java
-TreeNode succ = root.right;
-while (succ.left != null) succ = succ.left;
-root.val = succ.val;
-root.right = deleteNode(root.right, succ.val);
+```cpp
+TreeNode* succ = root->right;
+while (succ->left != nullptr) succ = succ->left;
+root->val = succ->val;
+root->right = deleteNode(root->right, succ->val);
 ```
 
 ### 8. Prune with the BST property on range queries.
@@ -85,7 +89,7 @@ subtree is. Skip them — that is the entire speedup of [Range Sum](../Patterns/
 
 ---
 
-> **Bonus — comparisons:** use `Integer.compare(a, b)` rather than `a - b`; subtraction overflows
+> **Bonus — comparisons:** use `(a > b) - (a < b)` rather than `a - b`; subtraction overflows
 > for large/negative values. It rarely matters inside a BST descent (which uses `<`/`>`) but
 > matters whenever you write a comparator over node values.
 

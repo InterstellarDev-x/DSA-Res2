@@ -4,14 +4,15 @@
 
 A production-quality, interview-focused reference for **Binary Search Trees (BST)**: 16 problems
 organized into 4 reusable patterns, plus a design problem (BST Iterator), company question banks,
-interview deep dives, and tips. Every solution is full Java — no pseudocode.
+interview deep dives, and tips. Every solution is full C++ — no pseudocode.
 
-```java
-public class TreeNode {
+```cpp
+struct TreeNode {
     int val;
-    TreeNode left, right;
-    TreeNode(int val) { this.val = val; }
-}
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+};
 ```
 
 ---
@@ -34,7 +35,7 @@ Three consequences power nearly every solution on this page:
    cannot contain a valid answer.
 
 `h` = tree height. Read it everywhere as **O(log n) balanced / O(n) skewed**. Self-balancing
-variants (Red-Black, AVL) — and Java's `TreeMap`/`TreeSet` — guarantee `h = O(log n)`.
+variants (Red-Black, AVL) — and C++'s `std::map`/`std::set` — guarantee `h = O(log n)`.
 
 ---
 

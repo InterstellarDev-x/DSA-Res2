@@ -6,12 +6,15 @@
 
 **Bug:** Sorting by start time when you should sort by end time for interval scheduling.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // WRONG — sort by start time for non-overlapping intervals
-Arrays.sort(intervals, Comparator.comparingInt(a -> a[0]));
+sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b){ return a[0] < b[0]; });
 
 // CORRECT — sort by end time
-Arrays.sort(intervals, Comparator.comparingInt(a -> a[1]));
+sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b){ return a[1] < b[1]; });
 ```
 
 **Consequence:** Counter-example: `[[1,10],[2,3],[4,5]]`. Sorted by start, greedy keeps `[1,10]` first, then removes everything. Answer: 2 (wrong). Sorted by end, keeps `[2,3]` and `[4,5]`. Answer: 1 (correct).
@@ -27,11 +30,14 @@ Arrays.sort(intervals, Comparator.comparingInt(a -> a[1]));
 
 **Bug:** Forgetting to check if total gain is negative before returning `startStation`.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // WRONG — forgets infeasibility check
-public int canCompleteCircuit(int[] gas, int[] cost) {
+int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
     int currentGain = 0, startStation = 0;
-    for (int i = 0; i < gas.length; i++) {
+    for (int i = 0; i < (int)gas.size(); i++) {
         currentGain += gas[i] - cost[i];
         if (currentGain < 0) { startStation = i + 1; currentGain = 0; }
     }
@@ -39,9 +45,9 @@ public int canCompleteCircuit(int[] gas, int[] cost) {
 }
 
 // CORRECT
-public int canCompleteCircuit(int[] gas, int[] cost) {
+int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
     int totalGain = 0, currentGain = 0, startStation = 0;
-    for (int i = 0; i < gas.length; i++) {
+    for (int i = 0; i < (int)gas.size(); i++) {
         int gain = gas[i] - cost[i];
         totalGain += gain;
         currentGain += gain;
@@ -59,12 +65,14 @@ public int canCompleteCircuit(int[] gas, int[] cost) {
 
 **Bug:** Trying to solve Candy in a single left-to-right pass.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // WRONG — single pass misses decreasing sequences
-public int candy(int[] ratings) {
-    int[] candies = new int[ratings.length];
-    Arrays.fill(candies, 1);
-    for (int i = 1; i < ratings.length; i++) {
+int candy(vector<int>& ratings) {
+    vector<int> candies(ratings.size(), 1);
+    for (int i = 1; i < (int)ratings.size(); i++) {
         if (ratings[i] > ratings[i-1]) candies[i] = candies[i-1] + 1;
         else if (ratings[i] < ratings[i-1]) candies[i-1]++; // BUG: too late!
     }
@@ -82,16 +90,19 @@ public int candy(int[] ratings) {
 
 **Bug:** Only treating `*` as `(` or `)`, not as empty string.
 
-```java
-// The real bug: not clamping lo = Math.max(lo, 0)
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+// The real bug: not clamping lo = max(lo, 0)
 
 // WRONG — lo goes negative, which is invalid
-for (char c : s.toCharArray()) {
+for (char c : s) {
     if (c == '(') { lo++; hi++; }
     else if (c == ')') { lo--; hi--; }
     else { lo--; hi++; }
     if (hi < 0) return false;
-    // Missing: lo = Math.max(lo, 0);
+    // Missing: lo = max(lo, 0);
 }
 return lo == 0; // BUG: lo might be -2, and this returns false when should be true
 ```
@@ -104,21 +115,24 @@ return lo == 0; // BUG: lo might be -2, and this returns false when should be tr
 
 **Bug:** Using `i <= nums.length - 1` instead of `i < nums.length - 1`.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // WRONG — processes the last index unnecessarily, overcounts jumps
-for (int i = 0; i <= nums.length - 1; i++) {
-    farthest = Math.max(farthest, i + nums[i]);
+for (int i = 0; i <= (int)nums.size() - 1; i++) {
+    farthest = max(farthest, i + nums[i]);
     if (i == curEnd) { jumps++; curEnd = farthest; }
 }
 
 // CORRECT — stop at second-to-last index
-for (int i = 0; i < nums.length - 1; i++) {
-    farthest = Math.max(farthest, i + nums[i]);
+for (int i = 0; i < (int)nums.size() - 1; i++) {
+    farthest = max(farthest, i + nums[i]);
     if (i == curEnd) { jumps++; curEnd = farthest; }
 }
 ```
 
-**Why:** When `i == nums.length - 1`, we are already AT the destination. We do not need to "jump from" it. Processing it causes a spurious increment of `jumps`.
+**Why:** When `i == nums.size() - 1`, we are already AT the destination. We do not need to "jump from" it. Processing it causes a spurious increment of `jumps`.
 
 **Test case:** `[0]`. Single element, already at destination. Correct: 0 jumps. Wrong: 1 jump.
 
@@ -128,12 +142,15 @@ for (int i = 0; i < nums.length - 1; i++) {
 
 **Bug:** Using max-heap instead of min-heap.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // WRONG — max-heap gives farthest ending room, not earliest ending room
-PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+priority_queue<int> maxHeap; // default is max-heap
 
 // CORRECT — min-heap gives earliest ending room
-PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+priority_queue<int, vector<int>, greater<int>> minHeap;
 ```
 
 **Why it matters:** We want to check if ANY room is free (has end ≤ new start). The room most likely to be free is the one that ends earliest. Max-heap gives the room that ends latest — useless for this check.
@@ -144,7 +161,7 @@ PriorityQueue<Integer> minHeap = new PriorityQueue<>();
 
 **Bug:** Using `<` instead of `<=` in the overlap merge condition.
 
-```java
+```cpp
 // WRONG — misses touching intervals [1,3] and [3,5] should merge to [1,5]
 while (i < n && intervals[i][0] < newInterval[1]) { ... }
 
@@ -158,19 +175,22 @@ while (i < n && intervals[i][0] <= newInterval[1]) { ... }
 
 ## Mistake 8: Hand of Straights — Not Cleaning Up Zero-Count Keys
 
-**Bug:** Not removing keys with count 0 from TreeMap, causing `firstKey()` to return completed cards.
+**Bug:** Not removing keys with count 0 from `std::map`, causing `begin()->first` to return completed cards.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // WRONG — zero-count keys remain in map
-count.merge(i, -1, Integer::sum);
-// If count.get(i) == 0, the key stays in the TreeMap
+count[i]--;
+// If count[i] == 0, the key stays in the std::map
 
 // CORRECT — remove exhausted keys
-count.merge(i, -1, Integer::sum);
-if (count.get(i) == 0) count.remove(i);
+count[i]--;
+if (count[i] == 0) count.erase(i);
 ```
 
-**Consequence:** `firstKey()` may return a card with count 0 on the next iteration, causing an infinite loop or incorrect group formation.
+**Consequence:** `begin()->first` may return a card with count 0 on the next iteration, causing an infinite loop or incorrect group formation.
 
 ---
 
@@ -178,7 +198,7 @@ if (count.get(i) == 0) count.remove(i);
 
 **Bug:** Using `>` instead of `>=` for the non-overlap check.
 
-```java
+```cpp
 // WRONG — treats touching intervals [1,2] and [2,3] as overlapping
 if (interval[0] > prevEnd) { kept++; prevEnd = interval[1]; }
 
@@ -194,14 +214,17 @@ if (interval[0] >= prevEnd) { kept++; prevEnd = interval[1]; }
 
 **Bug:** Building a frequency count instead of a last-occurrence map.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // WRONG — frequency count does not tell us WHERE the last occurrence is
-int[] freq = new int[26];
+vector<int> freq(26, 0);
 for (char c : s) freq[c - 'a']++;
 
 // CORRECT — last occurrence index is what we need for window stretching
-int[] last = new int[26];
-for (int i = 0; i < s.length(); i++) last[s.charAt(i) - 'a'] = i;
+vector<int> last(26, 0);
+for (int i = 0; i < (int)s.length(); i++) last[s[i] - 'a'] = i;
 ```
 
 **Why:** The window must extend to the POSITION of the last occurrence of each character (so the character is fully contained), not just count how many times it occurs.
@@ -215,11 +238,11 @@ for (int i = 0; i < s.length(); i++) last[s.charAt(i) - 'a'] = i;
 | Wrong sort key | Wrong answer on interval problems | Sort by end (maximize) or start (merge) |
 | Gas Station no feasibility check | Returns wrong station when -1 expected | Track `totalGain`, return -1 if negative |
 | Candy single pass | Wrong candy count on peaks/valleys | Two passes: L→R then R→L |
-| Valid Paren missing lo clamp | Returns false on valid `"*"` strings | Add `lo = Math.max(lo, 0)` |
-| Jump Game II loop bound | Overcounts jumps | Use `i < nums.length - 1` |
-| Meeting Rooms max-heap | Allocates too many rooms | Use `new PriorityQueue<>()` (min) |
+| Valid Paren missing lo clamp | Returns false on valid `"*"` strings | Add `lo = max(lo, 0)` |
+| Jump Game II loop bound | Overcounts jumps | Use `i < nums.size() - 1` |
+| Meeting Rooms max-heap | Allocates too many rooms | Use `priority_queue<int, vector<int>, greater<int>>()` (min) |
 | Insert Interval `<` vs `<=` | Misses touching interval merges | Use `<=` in merge condition |
-| Hand of Straights no cleanup | Infinite loop or wrong groups | Remove 0-count keys from TreeMap |
+| Hand of Straights no cleanup | Infinite loop or wrong groups | Remove 0-count keys from std::map |
 | Non-overlapping `>` vs `>=` | Removes touching intervals | Use `>=` for non-overlap |
 | Partition Labels frequency vs last | Wrong partition boundaries | Build last-occurrence array, not freq |
 

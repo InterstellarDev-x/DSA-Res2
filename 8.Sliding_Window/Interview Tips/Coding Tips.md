@@ -8,7 +8,7 @@
 
 When a window `[left..right]` satisfies a condition and you need to count valid subarrays ending at `right`:
 
-```java
+```cpp
 // All subarrays ending at 'right' starting anywhere in [left..right] are valid
 result += right - left + 1;
 // Subarrays: [right..right], [right-1..right], ..., [left..right]
@@ -21,7 +21,7 @@ This is the core of the `atMost` counting technique.
 
 ## 2. Fixed Window — `right - k` for the Outgoing Element
 
-```java
+```cpp
 for (int right = k; right < n; right++) {
     add(nums[right]);
     remove(nums[right - k]);   // right - k is the element leaving the window
@@ -34,7 +34,7 @@ Don't maintain a separate `left` pointer — `left = right - k + 1` always, so t
 
 ## 3. Variable Window — `while` vs `if` for Shrinking
 
-```java
+```cpp
 // Use WHILE when finding MINIMUM length (keep shrinking as long as valid)
 while (satisfied()) {
     updateAnswer();
@@ -56,7 +56,7 @@ The `if` trick works for "maximum length" problems because shrinking more than 1
 
 ## 4. Min Window Substring — `need[c]` Dual Role
 
-```java
+```cpp
 // 'need' serves as both frequency tracker AND satisfiedness indicator
 // need[c] > 0: we still need more of c
 // need[c] == 0: c is exactly satisfied
@@ -71,8 +71,11 @@ if (++need[l] > 0) have--;   // if restoring makes need positive, we lost a need
 
 ## 5. At Most K Trick — Always Guard `goal < 0`
 
-```java
-private int atMost(int[] nums, int goal) {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int atMost(vector<int>& nums, int goal) {
     if (goal < 0) return 0;   // ← CRITICAL when called with goal-1 and goal=0
     // ...
 }
@@ -84,10 +87,10 @@ For `exactly(k) = atMost(k) - atMost(k-1)`, when `k=0` we call `atMost(-1)`. Wit
 
 ## 6. Character Replacement — `if` Not `while`
 
-```java
+```cpp
 // CORRECT: if not while — we want max window, not min
 if ((right - left + 1) - maxFreq > k) {
-    freq[s.charAt(left) - 'A']--;
+    freq[s[left] - 'A']--;
     left++;
     // Don't recompute maxFreq — it can only grow or stay same for a better answer
 }
@@ -99,9 +102,12 @@ Key consequence: window size is **non-decreasing**. The answer is the maximum wi
 
 ## 7. Two Pointers — Sort First for Sum Problems
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // 3Sum, 4Sum, Two Sum II — ALWAYS sort first
-Arrays.sort(nums);
+sort(nums.begin(), nums.end());
 // Then: sum too small → left++ (increase sum)
 //       sum too large → right-- (decrease sum)
 ```
@@ -112,7 +118,7 @@ Without sorting, you can't make greedy choices about which pointer to move.
 
 ## 8. Duplicate Skipping in kSum
 
-```java
+```cpp
 // Skip duplicate i (outer loop)
 if (i > 0 && nums[i] == nums[i-1]) continue;
 
@@ -128,7 +134,7 @@ The skip condition is `i > 0` (not just `i > start`) to allow the first occurren
 
 ## 9. Product Window — Guard for `k <= 1`
 
-```java
+```cpp
 if (k <= 1) return 0;   // all elements ≥ 1, product ≥ 1, nothing < 1
 ```
 

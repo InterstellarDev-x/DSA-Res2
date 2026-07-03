@@ -27,22 +27,19 @@ Each grammar rule becomes a method. Operator precedence falls naturally from met
 
 ## Full Implementation — Expression with all operators + parentheses
 
-```java
-class Solution {
-    private String s;
-    private int pos;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int calculate(String s) {
-        this.s = s;
-        this.pos = 0;
-        return parseExpr();
-    }
+class Solution {
+    string s;
+    int pos;
 
     // expr → term (('+' | '-') term)*
-    private int parseExpr() {
+    int parseExpr() {
         int result = parseTerm();
-        while (pos < s.length() && (s.charAt(pos) == '+' || s.charAt(pos) == '-')) {
-            char op = s.charAt(pos++);
+        while (pos < (int)s.length() && (s[pos] == '+' || s[pos] == '-')) {
+            char op = s[pos++];
             int term = parseTerm();
             result = (op == '+') ? result + term : result - term;
         }
@@ -50,10 +47,10 @@ class Solution {
     }
 
     // term → factor (('*' | '/') factor)*
-    private int parseTerm() {
+    int parseTerm() {
         int result = parseFactor();
-        while (pos < s.length() && (s.charAt(pos) == '*' || s.charAt(pos) == '/')) {
-            char op = s.charAt(pos++);
+        while (pos < (int)s.length() && (s[pos] == '*' || s[pos] == '/')) {
+            char op = s[pos++];
             int factor = parseFactor();
             result = (op == '*') ? result * factor : result / factor;
         }
@@ -61,9 +58,9 @@ class Solution {
     }
 
     // factor → number | '(' expr ')'
-    private int parseFactor() {
+    int parseFactor() {
         skipSpaces();
-        if (pos < s.length() && s.charAt(pos) == '(') {
+        if (pos < (int)s.length() && s[pos] == '(') {
             pos++; // consume '('
             int val = parseExpr();
             pos++; // consume ')'
@@ -72,22 +69,29 @@ class Solution {
         return parseNumber();
     }
 
-    private int parseNumber() {
+    int parseNumber() {
         skipSpaces();
         int sign = 1;
-        if (pos < s.length() && s.charAt(pos) == '-') { sign = -1; pos++; }
+        if (pos < (int)s.length() && s[pos] == '-') { sign = -1; pos++; }
         int num = 0;
-        while (pos < s.length() && Character.isDigit(s.charAt(pos))) {
-            num = num * 10 + (s.charAt(pos++) - '0');
+        while (pos < (int)s.length() && isdigit(s[pos])) {
+            num = num * 10 + (s[pos++] - '0');
         }
         skipSpaces();
         return sign * num;
     }
 
-    private void skipSpaces() {
-        while (pos < s.length() && s.charAt(pos) == ' ') pos++;
+    void skipSpaces() {
+        while (pos < (int)s.length() && s[pos] == ' ') pos++;
     }
-}
+
+public:
+    int calculate(string s) {
+        this->s = s;
+        this->pos = 0;
+        return parseExpr();
+    }
+};
 ```
 
 ---
@@ -96,13 +100,16 @@ class Solution {
 
 Simpler: only addition/subtraction, no precedence levels. Use a stack to handle parentheses.
 
-```java
-public int calculate(String s) {
-    Deque<Integer> stack = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int calculate(string s) {
+    stack<int> stk;
     int result = 0, num = 0, sign = 1;
 
-    for (char c : s.toCharArray()) {
-        if (Character.isDigit(c)) {
+    for (char c : s) {
+        if (isdigit(c)) {
             num = num * 10 + (c - '0');
         } else if (c == '+') {
             result += sign * num; num = 0; sign = 1;
@@ -110,13 +117,15 @@ public int calculate(String s) {
             result += sign * num; num = 0; sign = -1;
         } else if (c == '(') {
             // Save current result and sign; start fresh
-            stack.push(result);
-            stack.push(sign);
+            stk.push(result);
+            stk.push(sign);
             result = 0; sign = 1;
         } else if (c == ')') {
             result += sign * num; num = 0;
-            result *= stack.pop();   // multiply by sign before '('
-            result += stack.pop();   // add result before '('
+            int topSign = stk.top(); stk.pop();
+            result *= topSign;   // multiply by sign before '('
+            int prevResult = stk.top(); stk.pop();
+            result += prevResult;   // add result before '('
         }
     }
     return result + sign * num;
@@ -129,27 +138,35 @@ public int calculate(String s) {
 
 Use a stack: push positive/negative for `+`/`-`, and apply `*`/`/` immediately.
 
-```java
-public int calculate(String s) {
-    Deque<Integer> stack = new ArrayDeque<>();
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int calculate(string s) {
+    stack<int> stk;
     int num = 0;
     char op = '+';
 
-    for (int i = 0; i < s.length(); i++) {
-        char c = s.charAt(i);
-        if (Character.isDigit(c)) num = num * 10 + (c - '0');
-        if ((!Character.isDigit(c) && c != ' ') || i == s.length() - 1) {
-            if      (op == '+') stack.push(num);
-            else if (op == '-') stack.push(-num);
-            else if (op == '*') stack.push(stack.pop() * num);
-            else if (op == '/') stack.push(stack.pop() / num);
+    for (int i = 0; i < (int)s.length(); i++) {
+        char c = s[i];
+        if (isdigit(c)) num = num * 10 + (c - '0');
+        if ((!isdigit(c) && c != ' ') || i == (int)s.length() - 1) {
+            if (op == '+') stk.push(num);
+            else if (op == '-') stk.push(-num);
+            else if (op == '*') {
+                int top = stk.top(); stk.pop();
+                stk.push(top * num);
+            } else if (op == '/') {
+                int top = stk.top(); stk.pop();
+                stk.push(top / num);
+            }
             op = c;
             num = 0;
         }
     }
 
     int result = 0;
-    while (!stack.isEmpty()) result += stack.pop();
+    while (!stk.empty()) { result += stk.top(); stk.pop(); }
     return result;
 }
 ```

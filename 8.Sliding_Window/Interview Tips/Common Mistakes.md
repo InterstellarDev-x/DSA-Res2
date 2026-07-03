@@ -6,16 +6,16 @@
 
 ## Mistake 1: Using `while` Instead of `if` for Max-Length Windows
 
-```java
+```cpp
 // BAD — for CHARACTER REPLACEMENT (max window problem)
 while ((right - left + 1) - maxFreq > k) {
-    freq[s.charAt(left) - 'A']--;
+    freq[s[left] - 'A']--;
     left++;
 }
 
 // GOOD — use if; window size never needs to decrease below current max
 if ((right - left + 1) - maxFreq > k) {
-    freq[s.charAt(left) - 'A']--;
+    freq[s[left] - 'A']--;
     left++;
 }
 ```
@@ -26,9 +26,12 @@ For min-length problems (Minimum Window Substring, Minimum Subarray Sum), use `w
 
 ## Mistake 2: Missing `if (goal < 0) return 0` in atMost
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // BAD
-private int atMost(int[] nums, int goal) {
+int atMost(vector<int>& nums, int goal) {
     int left = 0, sum = 0, result = 0;
     for (...) {
         sum += nums[right];
@@ -38,7 +41,7 @@ private int atMost(int[] nums, int goal) {
 }
 
 // GOOD
-private int atMost(int[] nums, int goal) {
+int atMost(vector<int>& nums, int goal) {
     if (goal < 0) return 0;   // ← guard
     // ...
 }
@@ -50,11 +53,11 @@ When `exactly(k) = atMost(k) - atMost(k-1)` and `k=0`, we call `atMost(-1)`. The
 
 ## Mistake 3: Forgetting to Advance Both Pointers After Triplet in 3Sum
 
-```java
+```cpp
 // BAD — infinite loop on [0,0,0] since left/right don't advance
 while (left < right) {
     if (sum == 0) {
-        result.add(...);
+        result.push_back(...);
         while (left < right && nums[left] == nums[left+1]) left++;
         while (left < right && nums[right] == nums[right-1]) right--;
         // MISSING: left++; right--;
@@ -63,7 +66,7 @@ while (left < right) {
 
 // GOOD
 if (sum == 0) {
-    result.add(...);
+    result.push_back(...);
     while (left < right && nums[left] == nums[left+1]) left++;
     while (left < right && nums[right] == nums[right-1]) right--;
     left++; right--;   // ← always advance after recording
@@ -74,16 +77,16 @@ if (sum == 0) {
 
 ## Mistake 4: Wrong Duplicate Skip Condition in kSum
 
-```java
+```cpp
 // BAD — i=0 should not be skipped (first element is never a duplicate of previous)
-if (nums[i] == nums[i-1]) continue;   // ArrayIndexOutOfBoundsException when i=0!
+if (nums[i] == nums[i-1]) continue;   // undefined behavior (out-of-bounds) when i=0!
 
 // GOOD
 if (i > 0 && nums[i] == nums[i-1]) continue;
 ```
 
 Also, for inner loops in 4Sum:
-```java
+```cpp
 // BAD — skips valid j=i+1 if nums[i+1]==nums[i]
 if (j > 0 && nums[j] == nums[j-1]) continue;
 
@@ -95,11 +98,14 @@ if (j > i + 1 && nums[j] == nums[j-1]) continue;
 
 ## Mistake 5: Not Handling `k <= 1` in Product < K
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // BAD — infinite loop for k=1 since product=1 ≥ 1 forever
-public int numSubarrayProductLessThanK(int[] nums, int k) {
+int numSubarrayProductLessThanK(vector<int>& nums, int k) {
     int left = 0, product = 1, result = 0;
-    for (int right = 0; right < nums.length; right++) {
+    for (int right = 0; right < (int)nums.size(); right++) {
         product *= nums[right];
         while (product >= k) product /= nums[left++];  // never exits if k=1
         result += right - left + 1;
@@ -114,7 +120,7 @@ if (k <= 1) return 0;
 
 ## Mistake 6: Off-By-One in Fixed Window Initialization
 
-```java
+```cpp
 // BAD — processes first k+1 elements in initial window instead of k
 double sum = 0;
 for (int i = 0; i <= k; i++) sum += nums[i];   // ← <= should be <
@@ -127,29 +133,35 @@ for (int i = 0; i < k; i++) sum += nums[i];
 
 ## Mistake 7: Min Window — Returning Before Checking Last State
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // BAD — misses updating minLen if window is valid at end
-public String minWindow(...) {
+string minWindow(...) {
     // ... loop ends ...
-    return s.substring(minLeft, minLeft + minLen);  // minLen might still be MAX_VALUE
+    return s.substr(minLeft, minLen);  // minLen might still be INT_MAX
 }
 
 // GOOD
-return minLen == Integer.MAX_VALUE ? "" : s.substring(minLeft, minLeft + minLen);
+return minLen == INT_MAX ? "" : s.substr(minLeft, minLen);
 ```
 
-If `t = "abc"` and `s = "abc"`, the window becomes valid at the end but the `while` shrink block updates `minLen` correctly (it fires during the loop when `have == required`). Still, the `== MAX_VALUE` guard is needed for cases where `t` has characters not in `s`.
+If `t = "abc"` and `s = "abc"`, the window becomes valid at the end but the `while` shrink block updates `minLen` correctly (it fires during the loop when `have == required`). Still, the `== INT_MAX` guard is needed for cases where `t` has characters not in `s`.
 
 ---
 
 ## Mistake 8: Longest Subarray After Delete — Wrong Length Formula
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 // BAD — returns window size instead of window size - 1
-maxLen = Math.max(maxLen, right - left + 1);
+maxLen = max(maxLen, right - left + 1);
 
 // GOOD — must delete exactly one element
-maxLen = Math.max(maxLen, right - left);   // window_size - 1
+maxLen = max(maxLen, right - left);   // window_size - 1
 ```
 
 LC 1493 requires **exactly** one deletion (not "at most one"). The answer is always `windowSize - 1`.
@@ -158,9 +170,9 @@ LC 1493 requires **exactly** one deletion (not "at most one"). The answer is alw
 
 ## Mistake 9: Two Pointers on Unsorted Array for Sum Problems
 
-```java
+```cpp
 // BAD — trying two-pointer approach without sorting
-int left = 0, right = nums.length - 1;
+int left = 0, right = (int)nums.size() - 1;
 while (left < right) {
     if (nums[left] + nums[right] == target) { ... }
     else if (nums[left] + nums[right] < target) left++;
@@ -175,14 +187,14 @@ Two pointers for sum problems **require a sorted array**. Sorting is O(n log n) 
 
 ## Mistake 10: Not Removing Entry from Map When Count Reaches Zero
 
-```java
+```cpp
 // BAD — map still has 0-count entries, affecting map.size() check
-basket.put(fruits[left], basket.get(fruits[left]) - 1);
+basket[fruits[left]] = basket[fruits[left]] - 1;
 left++;
 
 // GOOD — remove 0-count entries to keep map size accurate
-basket.merge(fruits[left], -1, Integer::sum);
-if (basket.get(fruits[left]) == 0) basket.remove(fruits[left]);
+basket[fruits[left]]--;
+if (basket[fruits[left]] == 0) basket.erase(fruits[left]);
 left++;
 ```
 

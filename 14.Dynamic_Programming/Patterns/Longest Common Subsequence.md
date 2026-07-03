@@ -43,24 +43,28 @@ else:
 
 The recursion mirrors the recurrence exactly. We move two pointers from the **ends** of both strings toward the front.
 
-```java
-public class LCSRecursion {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int longestCommonSubsequence(String s1, String s2) {
+class LCSRecursion {
+public:
+    int longestCommonSubsequence(string s1, string s2) {
         return solve(s1, s2, s1.length(), s2.length());
     }
 
     // f(i, j) = LCS length of s1[0..i-1] and s2[0..j-1]
-    private int solve(String s1, String s2, int i, int j) {
+private:
+    int solve(string& s1, string& s2, int i, int j) {
         if (i == 0 || j == 0) {
             return 0; // empty prefix
         }
-        if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+        if (s1[i - 1] == s2[j - 1]) {
             return 1 + solve(s1, s2, i - 1, j - 1);
         }
-        return Math.max(solve(s1, s2, i - 1, j), solve(s1, s2, i, j - 1));
+        return max(solve(s1, s2, i - 1, j), solve(s1, s2, i, j - 1));
     }
-}
+};
 ```
 
 **Time:** `O(2^(m+n))` in the worst case — exponential due to overlapping subproblems. **Space:** `O(m + n)` recursion depth.
@@ -69,39 +73,38 @@ public class LCSRecursion {
 
 ## 3. Step 2 — Memoization (Top-Down)
 
-There are only `(m + 1) * (n + 1)` distinct states, so we cache them. We initialize the memo with `-1` using `Arrays.fill` to distinguish "uncomputed" from a legitimate `0`.
+There are only `(m + 1) * (n + 1)` distinct states, so we cache them. We initialize the memo with `-1` (constructor initializes all cells to `-1`) to distinguish "uncomputed" from a legitimate `0`.
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class LCSMemo {
-
-    public int longestCommonSubsequence(String s1, String s2) {
+class LCSMemo {
+public:
+    int longestCommonSubsequence(string s1, string s2) {
         int m = s1.length();
         int n = s2.length();
-        int[][] dp = new int[m + 1][n + 1];
-        for (int[] row : dp) {
-            Arrays.fill(row, -1);
-        }
+        vector<vector<int>> dp(m + 1, vector<int>(n + 1, -1));
         return solve(s1, s2, m, n, dp);
     }
 
-    private int solve(String s1, String s2, int i, int j, int[][] dp) {
+private:
+    int solve(string& s1, string& s2, int i, int j, vector<vector<int>>& dp) {
         if (i == 0 || j == 0) {
             return 0;
         }
         if (dp[i][j] != -1) {
             return dp[i][j];
         }
-        if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+        if (s1[i - 1] == s2[j - 1]) {
             dp[i][j] = 1 + solve(s1, s2, i - 1, j - 1, dp);
         } else {
-            dp[i][j] = Math.max(solve(s1, s2, i - 1, j, dp),
-                                solve(s1, s2, i, j - 1, dp));
+            dp[i][j] = max(solve(s1, s2, i - 1, j, dp),
+                           solve(s1, s2, i, j - 1, dp));
         }
         return dp[i][j];
     }
-}
+};
 ```
 
 **Time:** `O(m * n)`. **Space:** `O(m * n)` table + `O(m + n)` recursion stack.
@@ -110,28 +113,31 @@ public class LCSMemo {
 
 ## 4. Step 3 — Tabulation (Bottom-Up)
 
-Convert the recursion into iteration. Because `dp[i][j]` depends on `dp[i-1][j-1]`, `dp[i-1][j]`, and `dp[i][j-1]`, we fill the table in increasing order of `i` and `j`. Row `0` and column `0` are already `0` (default Java init).
+Convert the recursion into iteration. Because `dp[i][j]` depends on `dp[i-1][j-1]`, `dp[i-1][j]`, and `dp[i][j-1]`, we fill the table in increasing order of `i` and `j`. Row `0` and column `0` are already `0` (zero-initialized by default in C++).
 
-```java
-public class LCSTabulation {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int longestCommonSubsequence(String s1, String s2) {
+class LCSTabulation {
+public:
+    int longestCommonSubsequence(string s1, string s2) {
         int m = s1.length();
         int n = s2.length();
-        int[][] dp = new int[m + 1][n + 1];
+        vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
 
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
-                if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+                if (s1[i - 1] == s2[j - 1]) {
                     dp[i][j] = 1 + dp[i - 1][j - 1];
                 } else {
-                    dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]);
                 }
             }
         }
         return dp[m][n];
     }
-}
+};
 ```
 
 **Time:** `O(m * n)`. **Space:** `O(m * n)`.
@@ -142,30 +148,31 @@ public class LCSTabulation {
 
 Each row depends only on the previous row, so we keep just two 1D arrays of size `n + 1`.
 
-```java
-public class LCSSpaceOptimized {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int longestCommonSubsequence(String s1, String s2) {
+class LCSSpaceOptimized {
+public:
+    int longestCommonSubsequence(string s1, string s2) {
         int m = s1.length();
         int n = s2.length();
-        int[] prev = new int[n + 1];
-        int[] curr = new int[n + 1];
+        vector<int> prev(n + 1, 0);
+        vector<int> curr(n + 1, 0);
 
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
-                if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+                if (s1[i - 1] == s2[j - 1]) {
                     curr[j] = 1 + prev[j - 1];
                 } else {
-                    curr[j] = Math.max(prev[j], curr[j - 1]);
+                    curr[j] = max(prev[j], curr[j - 1]);
                 }
             }
-            int[] temp = prev;
-            prev = curr;
-            curr = temp; // reuse the array; values get overwritten next pass
+            swap(prev, curr); // reuse the array; values get overwritten next pass
         }
         return prev[n];
     }
-}
+};
 ```
 
 **Time:** `O(m * n)`. **Space:** `O(n)`.
@@ -203,25 +210,29 @@ The bottom-right cell `dp[5][3] = 3` is the answer.
 
 This **is** the core, covered in Sections 1–6. Use the space-optimized version in interviews unless reconstruction is required. The canonical signature on LeetCode:
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int longestCommonSubsequence(String text1, String text2) {
+public:
+    int longestCommonSubsequence(string text1, string text2) {
         int m = text1.length();
         int n = text2.length();
-        int[][] dp = new int[m + 1][n + 1];
+        vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
 
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
-                if (text1.charAt(i - 1) == text2.charAt(j - 1)) {
+                if (text1[i - 1] == text2[j - 1]) {
                     dp[i][j] = 1 + dp[i - 1][j - 1];
                 } else {
-                    dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]);
                 }
             }
         }
         return dp[m][n];
     }
-}
+};
 ```
 
 ---
@@ -234,32 +245,35 @@ Beyond the length, reconstruct the actual subsequence string by **backtracking**
 - If `s1[i-1] == s2[j-1]`, this character is part of the LCS — prepend it and move diagonally to `(i-1, j-1)`.
 - Otherwise move toward the larger neighbor: if `dp[i-1][j] >= dp[i][j-1]` go up, else go left.
 
-```java
-public class PrintLCS {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public String printLCS(String s1, String s2) {
+class PrintLCS {
+public:
+    string printLCS(string s1, string s2) {
         int m = s1.length();
         int n = s2.length();
-        int[][] dp = new int[m + 1][n + 1];
+        vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
 
         // Build the standard LCS table.
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
-                if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+                if (s1[i - 1] == s2[j - 1]) {
                     dp[i][j] = 1 + dp[i - 1][j - 1];
                 } else {
-                    dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]);
                 }
             }
         }
 
         // Backtrack to reconstruct the subsequence.
-        StringBuilder sb = new StringBuilder();
+        string result = "";
         int i = m;
         int j = n;
         while (i > 0 && j > 0) {
-            if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
-                sb.append(s1.charAt(i - 1)); // characters are collected in reverse
+            if (s1[i - 1] == s2[j - 1]) {
+                result += s1[i - 1]; // characters are collected in reverse
                 i--;
                 j--;
             } else if (dp[i - 1][j] >= dp[i][j - 1]) {
@@ -268,9 +282,10 @@ public class PrintLCS {
                 j--;
             }
         }
-        return sb.reverse().toString();
+        reverse(result.begin(), result.end());
+        return result;
     }
-}
+};
 ```
 
 **Time:** `O(m * n)` to build + `O(m + n)` to backtrack. **Space:** `O(m * n)` (full table needed for reconstruction).
@@ -291,20 +306,23 @@ else:
 answer = max over all dp[i][j]
 ```
 
-```java
-public class LongestCommonSubstring {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int longestCommonSubstr(String s1, String s2) {
+class LongestCommonSubstring {
+public:
+    int longestCommonSubstr(string s1, string s2) {
         int m = s1.length();
         int n = s2.length();
-        int[][] dp = new int[m + 1][n + 1];
+        vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
         int best = 0;
 
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
-                if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+                if (s1[i - 1] == s2[j - 1]) {
                     dp[i][j] = 1 + dp[i - 1][j - 1];
-                    best = Math.max(best, dp[i][j]);
+                    best = max(best, dp[i][j]);
                 } else {
                     dp[i][j] = 0; // reset on mismatch
                 }
@@ -312,7 +330,7 @@ public class LongestCommonSubstring {
         }
         return best;
     }
-}
+};
 ```
 
 **Time:** `O(m * n)`. **Space:** `O(m * n)`, reducible to `O(n)` with two rows.
@@ -323,29 +341,35 @@ public class LongestCommonSubstring {
 
 **Key reduction:** the longest palindromic subsequence of `s` is exactly the LCS of `s` and `reverse(s)`. A palindrome reads the same forwards and backwards, so the longest subsequence common to `s` and its reverse must itself be a palindrome.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int longestPalindromeSubseq(String s) {
-        String rev = new StringBuilder(s).reverse().toString();
+public:
+    int longestPalindromeSubseq(string s) {
+        string rev = s;
+        reverse(rev.begin(), rev.end());
         return lcs(s, rev);
     }
 
-    private int lcs(String s1, String s2) {
+private:
+    int lcs(string& s1, string& s2) {
         int m = s1.length();
         int n = s2.length();
-        int[][] dp = new int[m + 1][n + 1];
+        vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
-                if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+                if (s1[i - 1] == s2[j - 1]) {
                     dp[i][j] = 1 + dp[i - 1][j - 1];
                 } else {
-                    dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]);
                 }
             }
         }
         return dp[m][n];
     }
-}
+};
 ```
 
 **Time:** `O(n^2)`. **Space:** `O(n^2)`.
@@ -362,29 +386,35 @@ answer = n - LPS(s)
 
 where `LPS(s) = LCS(s, reverse(s))` from Problem 26. The same value also equals the minimum number of *deletions* to make `s` a palindrome.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int minInsertions(String s) {
+public:
+    int minInsertions(string s) {
         int n = s.length();
         return n - longestPalindromeSubseq(s);
     }
 
-    private int longestPalindromeSubseq(String s) {
-        String rev = new StringBuilder(s).reverse().toString();
+private:
+    int longestPalindromeSubseq(string& s) {
+        string rev = s;
+        reverse(rev.begin(), rev.end());
         int n = s.length();
-        int[][] dp = new int[n + 1][n + 1];
+        vector<vector<int>> dp(n + 1, vector<int>(n + 1, 0));
         for (int i = 1; i <= n; i++) {
             for (int j = 1; j <= n; j++) {
-                if (s.charAt(i - 1) == rev.charAt(j - 1)) {
+                if (s[i - 1] == rev[j - 1]) {
                     dp[i][j] = 1 + dp[i - 1][j - 1];
                 } else {
-                    dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]);
                 }
             }
         }
         return dp[n][n];
     }
-}
+};
 ```
 
 **Time:** `O(n^2)`. **Space:** `O(n^2)`.
@@ -401,10 +431,13 @@ insertions = n - LCS(A, B)
 answer     = deletions + insertions = m + n - 2 * LCS(A, B)
 ```
 
-```java
-public class MinInsertDeleteAtoB {
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-    public int minOperations(String a, String b) {
+class MinInsertDeleteAtoB {
+public:
+    int minOperations(string a, string b) {
         int m = a.length();
         int n = b.length();
         int lcs = longestCommonSubsequence(a, b);
@@ -413,22 +446,23 @@ public class MinInsertDeleteAtoB {
         return deletions + insertions; // == m + n - 2 * lcs
     }
 
-    private int longestCommonSubsequence(String s1, String s2) {
+private:
+    int longestCommonSubsequence(string& s1, string& s2) {
         int m = s1.length();
         int n = s2.length();
-        int[][] dp = new int[m + 1][n + 1];
+        vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
-                if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+                if (s1[i - 1] == s2[j - 1]) {
                     dp[i][j] = 1 + dp[i - 1][j - 1];
                 } else {
-                    dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]);
                 }
             }
         }
         return dp[m][n];
     }
-}
+};
 ```
 
 **Time:** `O(m * n)`. **Space:** `O(m * n)`.
@@ -441,51 +475,56 @@ The shortest common supersequence (SCS) is the shortest string that has both `s1
 
 To **reconstruct** the SCS, build the full LCS table and backtrack. When characters match, emit that single character and step diagonally. When they differ, emit the character from whichever direction the LCS table grew from, stepping in that direction. Finally, flush whatever remains of either string.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public String shortestCommonSupersequence(String s1, String s2) {
+public:
+    string shortestCommonSupersequence(string s1, string s2) {
         int m = s1.length();
         int n = s2.length();
-        int[][] dp = new int[m + 1][n + 1];
+        vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
 
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
-                if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+                if (s1[i - 1] == s2[j - 1]) {
                     dp[i][j] = 1 + dp[i - 1][j - 1];
                 } else {
-                    dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]);
                 }
             }
         }
 
-        StringBuilder sb = new StringBuilder();
+        string result = "";
         int i = m;
         int j = n;
         while (i > 0 && j > 0) {
-            if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
-                sb.append(s1.charAt(i - 1)); // shared character, write once
+            if (s1[i - 1] == s2[j - 1]) {
+                result += s1[i - 1]; // shared character, write once
                 i--;
                 j--;
             } else if (dp[i - 1][j] >= dp[i][j - 1]) {
-                sb.append(s1.charAt(i - 1)); // came from s1
+                result += s1[i - 1]; // came from s1
                 i--;
             } else {
-                sb.append(s2.charAt(j - 1)); // came from s2
+                result += s2[j - 1]; // came from s2
                 j--;
             }
         }
         // Flush leftover prefix of whichever string remains.
         while (i > 0) {
-            sb.append(s1.charAt(i - 1));
+            result += s1[i - 1];
             i--;
         }
         while (j > 0) {
-            sb.append(s2.charAt(j - 1));
+            result += s2[j - 1];
             j--;
         }
-        return sb.reverse().toString();
+        reverse(result.begin(), result.end());
+        return result;
     }
-}
+};
 ```
 
 The SCS **length** alone is simply `m + n - dp[m][n]`.
@@ -515,15 +554,19 @@ else:
 
 `dp[i][0] = 1` for all `i` (the empty target is matched exactly one way — by deleting everything). `dp[0][j] = 0` for `j > 0`.
 
-> **Overflow note:** counts can exceed `Integer.MAX_VALUE`. LeetCode guarantees the answer fits in a 32-bit signed int, but **intermediate** sums can overflow. Using `long` for the table (or being careful) is the safe choice; below we use `int[][]` matching the LeetCode guarantee and note where `long` would be required for unconstrained inputs.
+> **Overflow note:** counts can exceed `INT_MAX`. LeetCode guarantees the answer fits in a 32-bit signed int, but **intermediate** sums can overflow. Using `long long` for the table (or being careful) is the safe choice; below we use `vector<vector<int>>` matching the LeetCode guarantee and note where `long long` would be required for unconstrained inputs.
 
-```java
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
-    public int numDistinct(String s, String t) {
+public:
+    int numDistinct(string s, string t) {
         int m = s.length();
         int n = t.length();
-        // Use long internally to avoid intermediate overflow for general inputs.
-        long[][] dp = new long[m + 1][n + 1];
+        // Use long long internally to avoid intermediate overflow for general inputs.
+        vector<vector<long long>> dp(m + 1, vector<long long>(n + 1, 0));
 
         for (int i = 0; i <= m; i++) {
             dp[i][0] = 1; // empty t matched exactly one way
@@ -531,7 +574,7 @@ class Solution {
 
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
-                if (s.charAt(i - 1) == t.charAt(j - 1)) {
+                if (s[i - 1] == t[j - 1]) {
                     dp[i][j] = dp[i - 1][j - 1] + dp[i - 1][j];
                 } else {
                     dp[i][j] = dp[i - 1][j];
@@ -540,7 +583,7 @@ class Solution {
         }
         return (int) dp[m][n];
     }
-}
+};
 ```
 
 **Time:** `O(m * n)`. **Space:** `O(m * n)`, reducible to `O(n)` (iterate `j` from high to low when using one row).
@@ -585,7 +628,7 @@ Almost every problem in this pattern is a thin layer over a single 2D recurrence
 - **Reconstruction** (Print LCS, SCS) requires the full 2D table and a backtrack from `(m, n)` — space optimization is off the table here.
 - **Palindrome problems** reduce to LCS by pairing a string with its reverse (`LPS = LCS(s, reverse(s))`), and insertion/deletion counts are simple arithmetic on the LPS.
 - **Conversion and supersequence** problems are arithmetic identities on the LCS length: `m + n - 2·LCS` for edit distance via insert/delete, and `m + n - LCS` for the shortest common supersequence.
-- **Counting variants** (Distinct Subsequences) keep the same state but **sum** the branches instead of maximizing, and demand care with overflow — prefer `long` for the table.
+- **Counting variants** (Distinct Subsequences) keep the same state but **sum** the branches instead of maximizing, and demand care with overflow — prefer `long long` for the table.
 
 Master the four-step ladder (recursion → memoization → tabulation → space optimization) on the core once, and every other problem becomes "set up the right two strings, then add a one-line transformation."
 

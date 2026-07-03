@@ -19,7 +19,7 @@ The combination works as follows:
 | Selection order fixed (sort once) | Yes | No |
 | Dynamic insertion/removal of candidates | No | Yes |
 | Need to query min/max of evolving set | No | Yes |
-| TreeMap (sorted map) for frequency/order needed | No | Yes |
+| std::map (sorted map) for frequency/order needed | No | Yes |
 
 ---
 
@@ -28,10 +28,10 @@ The combination works as follows:
 | Signal | Approach |
 |--------|----------|
 | "Minimum rooms / workers / machines needed" | Sort by start; min-heap of end times |
-| "Group consecutive elements into fixed-size groups" | TreeMap to process smallest key first |
+| "Group consecutive elements into fixed-size groups" | std::map to process smallest key first |
 | "Schedule tasks with cooldown" | Frequency array + formula, or max-heap simulation |
 | "Assign tasks to available workers" | Min-heap of (availability_time) |
-| "Process in sorted order while dynamically updating counts" | TreeMap (navigable sorted map) |
+| "Process in sorted order while dynamically updating counts" | std::map (navigable sorted map) |
 
 ---
 
@@ -43,42 +43,46 @@ The combination works as follows:
 
 **Problem:** Given an array `hand` of cards and a `groupSize`, determine if you can rearrange all cards into groups of `groupSize` consecutive cards.
 
-**Key Insight:** Use a `TreeMap<Integer, Integer>` to count card frequencies, keeping keys in sorted order. At each step, take the smallest card (`firstKey()`) and try to form a consecutive group of length `groupSize` starting from it. If any required card is missing, return false. Decrement counts (removing key when count reaches 0) and repeat until the map is empty.
+**Key Insight:** Use a `std::map<int, int>` to count card frequencies, keeping keys in sorted order. At each step, take the smallest card (`begin()->first`) and try to form a consecutive group of length `groupSize` starting from it. If any required card is missing, return false. Decrement counts (removing key when count reaches 0) and repeat until the map is empty.
 
-**Why TreeMap (not HashMap):** We must always start a new group with the current smallest card. A `HashMap` has no `firstKey()` operation. A `TreeMap` maintains sorted order and provides O(log n) `firstKey()`, `containsKey()`, and `remove()`.
+**Why std::map (not std::unordered_map):** We must always start a new group with the current smallest card. An `std::unordered_map` has no `begin()->first` in sorted order. A `std::map` maintains sorted order and provides O(log n) `begin()->first`, `count()`, and `erase()`.
 
-**Why `merge(key, -1, Integer::sum)` instead of `put`:** The `merge` method atomically updates a key — if the result of the function is null, the key is removed. However here we manage removal explicitly by checking `if (count.get(i) == 0) count.remove(i)` for clarity.
+**Why explicit decrement and erase:** We decrement `count[i]` and then check `if (count[i] == 0) count.erase(i)` to remove the key cleanly, ensuring `begin()->first` always returns the true minimum.
 
-```java
-import java.util.TreeMap;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class HandOfStraights {
-
-    public boolean isNStraightHand(int[] hand, int groupSize) {
-        if (hand.length % groupSize != 0) return false;
-        TreeMap<Integer, Integer> count = new TreeMap<>();
-        for (int card : hand) count.merge(card, 1, Integer::sum);
-        while (!count.isEmpty()) {
-            int first = count.firstKey();
+class HandOfStraights {
+public:
+    bool isNStraightHand(vector<int>& hand, int groupSize) {
+        if (hand.size() % groupSize != 0) return false;
+        map<int, int> count;
+        for (int card : hand) count[card]++;
+        while (!count.empty()) {
+            int first = count.begin()->first;
             for (int i = first; i < first + groupSize; i++) {
-                if (!count.containsKey(i)) return false;
-                count.merge(i, -1, Integer::sum);
-                if (count.get(i) == 0) count.remove(i);
+                if (!count.count(i)) return false;
+                count[i]--;
+                if (count[i] == 0) count.erase(i);
             }
         }
         return true;
     }
+};
 
-    public static void main(String[] args) {
-        HandOfStraights sol = new HandOfStraights();
-        System.out.println(sol.isNStraightHand(new int[]{1,2,3,6,2,3,4,7,8}, 3)); // true
-        System.out.println(sol.isNStraightHand(new int[]{1,2,3,4,5}, 4));          // false
-    }
+int main() {
+    HandOfStraights sol;
+    vector<int> hand1 = {1,2,3,6,2,3,4,7,8};
+    vector<int> hand2 = {1,2,3,4,5};
+    cout << sol.isNStraightHand(hand1, 3) << "\n"; // true (1)
+    cout << sol.isNStraightHand(hand2, 4) << "\n"; // false (0)
+    return 0;
 }
 ```
 
 **Complexity:**
-- Time: O(n log n) — each card is inserted into the TreeMap once (O(log n)) and processed once (O(log n)). Total O(n log n).
+- Time: O(n log n) — each card is inserted into the std::map once (O(log n)) and processed once (O(log n)). Total O(n log n).
 - Space: O(k) where k = number of distinct card values.
 
 **Dry Run (hand=[1,2,3,6,2,3,4,7,8], groupSize=3):**
@@ -86,21 +90,21 @@ public class HandOfStraights {
 count = {1:1, 2:2, 3:2, 4:1, 6:1, 7:1, 8:1}
 
 Iteration 1: first=1
-  i=1: count={1:1}  exists, count.merge(1,-1)  {1:0}  remove  count={2:2,3:2,4:1,6:1,7:1,8:1}
-  i=2: count={2:2}  exists, count.merge(2,-1)  {2:1}          count={2:1,3:2,4:1,6:1,7:1,8:1}
-  i=3: count={3:2}  exists, count.merge(3,-1)  {3:1}          count={2:1,3:1,4:1,6:1,7:1,8:1}
+  i=1: count={1:1}  exists, count[1]--  {1:0}  erase  count={2:2,3:2,4:1,6:1,7:1,8:1}
+  i=2: count={2:2}  exists, count[2]--  {2:1}          count={2:1,3:2,4:1,6:1,7:1,8:1}
+  i=3: count={3:2}  exists, count[3]--  {3:1}          count={2:1,3:1,4:1,6:1,7:1,8:1}
 
 Iteration 2: first=2
-  i=2: remove 2  count={3:1,4:1,6:1,7:1,8:1}
-  i=3: remove 3  count={4:1,6:1,7:1,8:1}
-  i=4: remove 4  count={6:1,7:1,8:1}
+  i=2: erase 2  count={3:1,4:1,6:1,7:1,8:1}
+  i=3: erase 3  count={4:1,6:1,7:1,8:1}
+  i=4: erase 4  count={6:1,7:1,8:1}
 
 Iteration 3: first=6
-  i=6: remove 6  count={7:1,8:1}
-  i=7: remove 7  count={8:1}
-  i=8: remove 8  count={}
+  i=6: erase 6  count={7:1,8:1}
+  i=7: erase 7  count={8:1}
+  i=8: erase 8  count={}
 
-count.isEmpty()  return true
+count.empty()  return true
 ```
 
 ---
@@ -119,29 +123,32 @@ After processing all meetings, the heap size equals the number of rooms needed.
 
 **Amortized analysis:** Each meeting is pushed once and popped at most once. Total operations: O(n log n) for sort + O(n log n) for heap operations (n pushes and at most n pops, each O(log n)).
 
-```java
-import java.util.Arrays;
-import java.util.PriorityQueue;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class MeetingRoomsII {
-
-    public int minMeetingRooms(int[][] intervals) {
-        Arrays.sort(intervals, Comparator.comparingInt(a -> a[0]));
-        PriorityQueue<Integer> minHeap = new PriorityQueue<>();
-        for (int[] interval : intervals) {
-            if (!minHeap.isEmpty() && minHeap.peek() <= interval[0]) minHeap.poll();
-            minHeap.offer(interval[1]);
+class MeetingRoomsII {
+public:
+    int minMeetingRooms(vector<vector<int>>& intervals) {
+        sort(intervals.begin(), intervals.end(), [](const vector<int>& a, const vector<int>& b) {
+            return a[0] < b[0];
+        });
+        priority_queue<int, vector<int>, greater<int>> minHeap;
+        for (auto& interval : intervals) {
+            if (!minHeap.empty() && minHeap.top() <= interval[0]) minHeap.pop();
+            minHeap.push(interval[1]);
         }
         return minHeap.size();
     }
+};
 
-    public static void main(String[] args) {
-        MeetingRoomsII sol = new MeetingRoomsII();
-        System.out.println(sol.minMeetingRooms(
-            new int[][]{{0,30},{5,10},{15,20}})); // 2
-        System.out.println(sol.minMeetingRooms(
-            new int[][]{{7,10},{2,4}})); // 1
-    }
+int main() {
+    MeetingRoomsII sol;
+    vector<vector<int>> intervals1 = {{0,30},{5,10},{15,20}};
+    vector<vector<int>> intervals2 = {{7,10},{2,4}};
+    cout << sol.minMeetingRooms(intervals1) << "\n"; // 2
+    cout << sol.minMeetingRooms(intervals2) << "\n"; // 1
+    return 0;
 }
 ```
 
@@ -164,12 +171,12 @@ interval=[0,30]:
   rooms in use: {Room A ends at 30}
 
 interval=[5,10]:
-  peek=30, interval[0]=5  30 <= 5? No  no pop (Room A still busy)
+  top=30, interval[0]=5  30 <= 5? No  no pop (Room A still busy)
   push 10  minHeap=[10, 30]
   rooms in use: {Room A ends at 30, Room B ends at 10}
 
 interval=[15,20]:
-  peek=10, interval[0]=15  10 <= 15? Yes  pop 10 (Room B is free)
+  top=10, interval[0]=15  10 <= 15? Yes  pop 10 (Room B is free)
   push 20  minHeap=[20, 30]
   rooms in use: {Room A ends at 30, Room B re-used ends at 20}
 
@@ -229,30 +236,29 @@ Formula: (3-1)*(3)+1 = 7
 tasks.length=9 > 7  answer=9 (no idles needed, other tasks fill all gaps)
 ```
 
-```java
-import java.util.Arrays;
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-public class TaskScheduler {
-
-    public int leastInterval(char[] tasks, int n) {
-        int[] freq = new int[26];
+class TaskScheduler {
+public:
+    int leastInterval(string tasks, int n) {
+        int freq[26] = {};
         for (char t : tasks) freq[t - 'A']++;
-        Arrays.sort(freq);
+        sort(freq, freq + 26);
         int maxFreq = freq[25];
         int maxCount = 0;
         for (int f : freq) if (f == maxFreq) maxCount++;
-        return Math.max(tasks.length, (maxFreq - 1) * (n + 1) + maxCount);
+        return max((int)tasks.size(), (maxFreq - 1) * (n + 1) + maxCount);
     }
+};
 
-    public static void main(String[] args) {
-        TaskScheduler sol = new TaskScheduler();
-        System.out.println(sol.leastInterval(
-            new char[]{'A','A','A','B','B','B'}, 2)); // 8
-        System.out.println(sol.leastInterval(
-            new char[]{'A','A','A','B','B','B'}, 0)); // 6
-        System.out.println(sol.leastInterval(
-            new char[]{'A','A','A','A','B','B','B','C','C','C','D','D','D','E','E','E','F','F','F'}, 2)); // 19
-    }
+int main() {
+    TaskScheduler sol;
+    cout << sol.leastInterval("AAABBB", 2) << "\n"; // 8
+    cout << sol.leastInterval("AAABBB", 0) << "\n"; // 6
+    cout << sol.leastInterval("AAAABBBCCCDDDEEEFFF", 2) << "\n"; // 19
+    return 0;
 }
 ```
 
@@ -268,8 +274,8 @@ public class TaskScheduler {
 
 | Problem | Time | Space | Data Structure |
 |---------|------|-------|----------------|
-| Hand of Straights (#846) | O(n log n) | O(k) distinct values | `TreeMap<Integer,Integer>` |
-| Meeting Rooms II (#253) | O(n log n) | O(n) worst case | `PriorityQueue<Integer>` (min-heap) |
+| Hand of Straights (#846) | O(n log n) | O(k) distinct values | `std::map<int,int>` |
+| Meeting Rooms II (#253) | O(n log n) | O(n) worst case | `std::priority_queue<int>` (min-heap) |
 | Task Scheduler (#621) | O(n) | O(1) | `int[26]` freq array |
 
 ---
@@ -278,7 +284,7 @@ public class TaskScheduler {
 
 | Problem | Heap Role | Key Greedy Decision |
 |---------|-----------|---------------------|
-| Hand of Straights | TreeMap processes smallest-first; ensures consecutive groups formed left-to-right | Always start a new group from the minimum available card |
+| Hand of Straights | std::map processes smallest-first; ensures consecutive groups formed left-to-right | Always start a new group from the minimum available card |
 | Meeting Rooms II | Min-heap of end times; O(log n) check for earliest-freed room | Reuse room with earliest end if it finishes before new meeting starts |
 | Task Scheduler | No heap (formula); heap variant uses max-heap to pick most-frequent task | Always execute the most-frequent available task to minimize idle slots |
 
